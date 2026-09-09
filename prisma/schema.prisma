@@ -12,3 +12,98 @@ generator client {
 datasource db {
   provider = "postgresql"
 }
+
+model Permission {
+  id          String           @id @default(uuid())
+  key         String           @unique
+  description String
+  roles       RolePermission[]
+  createdAt   DateTime         @default(now())
+}
+
+model Role {
+  id          String           @id @default(uuid())
+  name        String           @unique
+  description String?
+  permissions RolePermission[]
+  admins      AdminUserRole[]
+  createdAt   DateTime         @default(now())
+}
+
+model RolePermission {
+  roleId       String
+  permissionId String
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+}
+
+model AdminUser {
+  id           String          @id @default(uuid())
+  email        String          @unique
+  passwordHash String
+  fullName     String
+  isActive     Boolean         @default(true)
+  roles        AdminUserRole[]
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+}
+
+model AdminUserRole {
+  adminUserId String
+  roleId      String
+  adminUser   AdminUser @relation(fields: [adminUserId], references: [id], onDelete: Cascade)
+  role        Role      @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([adminUserId, roleId])
+}
+
+enum AgentStatus {
+  PENDING_REVIEW
+  APPROVED
+  REJECTED
+}
+
+model Agent {
+  id           String      @id @default(uuid())
+  email        String      @unique
+  phone        String
+  fullName     String
+  passwordHash String?
+  status       AgentStatus @default(PENDING_REVIEW)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+}
+
+enum ClientStatus {
+  PHONE_VERIFIED
+  PENDING_IPPIS
+  MANUAL_REVIEW
+  VERIFIED
+}
+
+model Client {
+  id        String       @id @default(uuid())
+  phone     String       @unique
+  status    ClientStatus @default(PHONE_VERIFIED)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+}
+
+enum OtpPurpose {
+  CLIENT_LOGIN
+}
+
+model OtpCode {
+  id         String     @id @default(uuid())
+  phone      String
+  codeHash   String
+  purpose    OtpPurpose
+  expiresAt  DateTime
+  consumedAt DateTime?
+  attempts   Int        @default(0)
+  createdAt  DateTime   @default(now())
+
+  @@index([phone, purpose])
+}
