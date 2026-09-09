@@ -8,11 +8,19 @@ import { AdminAuthController } from './admin/admin-auth.controller';
 import { AdminAuthService } from './admin/admin-auth.service';
 import { ClientAuthController } from './client/client-auth.controller';
 import { ClientAuthService } from './client/client-auth.service';
+import { AgentAuthController } from './agent/agent-auth.controller';
+import { AgentAuthService } from './agent/agent-auth.service';
 
 @Module({
   imports: [PassportModule, JwtModule.register({}), OtpModule],
-  controllers: [AdminAuthController, ClientAuthController],
-  providers: [TokenService, JwtStrategy, AdminAuthService, ClientAuthService],
+  controllers: [AdminAuthController, ClientAuthController, AgentAuthController],
+  providers: [
+    TokenService,
+    JwtStrategy,
+    AdminAuthService,
+    ClientAuthService,
+    AgentAuthService,
+  ],
   exports: [TokenService],
 })
 export class AuthModule {}
