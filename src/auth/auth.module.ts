@@ -1,15 +1,18 @@
 import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
+import { OtpModule } from '../otp/otp.module';
 import { TokenService } from './token.service';
 import { JwtStrategy } from './jwt.strategy';
 import { AdminAuthController } from './admin/admin-auth.controller';
 import { AdminAuthService } from './admin/admin-auth.service';
+import { ClientAuthController } from './client/client-auth.controller';
+import { ClientAuthService } from './client/client-auth.service';
 
 @Module({
-  imports: [PassportModule, JwtModule.register({})],
-  controllers: [AdminAuthController],
-  providers: [TokenService, JwtStrategy, AdminAuthService],
+  imports: [PassportModule, JwtModule.register({}), OtpModule],
+  controllers: [AdminAuthController, ClientAuthController],
+  providers: [TokenService, JwtStrategy, AdminAuthService, ClientAuthService],
   exports: [TokenService],
 })
 export class AuthModule {}
