@@ -5,6 +5,7 @@ dist
 .DS_Store
 
 /src/generated
+/storage
 
 # Real personal data (BVN, bank accounts, phone numbers, names) — reference
 # material for design work only, never committed.
