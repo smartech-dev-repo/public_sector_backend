@@ -14,6 +14,9 @@ const BOOTSTRAP_PERMISSIONS: Array<{ key: string; description: string }> = [
   { key: 'agents:review', description: 'Approve or reject agent submissions' },
   { key: 'clients:review', description: 'Review clients flagged for manual review' },
   { key: 'ippis:upload', description: 'Upload/refresh IPPIS master data' },
+  { key: 'agents:sessions:revoke', description: "Force-revoke an agent's active sessions" },
+  { key: 'clients:sessions:revoke', description: "Force-revoke a client's active sessions" },
+  { key: 'audit:read', description: 'View audit log entries' },
 ];
 
 async function main() {

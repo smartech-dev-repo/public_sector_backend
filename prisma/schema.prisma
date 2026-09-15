@@ -27,6 +27,7 @@ model Role {
   description String?
   permissions RolePermission[]
   admins      AdminUserRole[]
+  invites     AdminInvite[]
   createdAt   DateTime         @default(now())
 }
 
@@ -46,6 +47,7 @@ model AdminUser {
   fullName     String
   isActive     Boolean         @default(true)
   roles        AdminUserRole[]
+  sentInvites  AdminInvite[]
   createdAt    DateTime        @default(now())
   updatedAt    DateTime        @updatedAt
 }
@@ -106,4 +108,73 @@ model OtpCode {
   createdAt  DateTime   @default(now())
 
   @@index([phone, purpose])
+}
+
+enum SessionPrincipalType {
+  ADMIN
+  AGENT
+  CLIENT
+}
+
+model Session {
+  id               String               @id @default(uuid())
+  principalType    SessionPrincipalType
+  principalId      String
+  refreshTokenHash String               @unique
+  userAgent        String?
+  ip               String?
+  createdAt        DateTime             @default(now())
+  lastUsedAt       DateTime             @default(now())
+  expiresAt        DateTime
+  revokedAt        DateTime?
+  revokedReason    String?
+
+  @@index([principalType, principalId])
+}
+
+enum AdminInviteStatus {
+  PENDING
+  ACCEPTED
+  EXPIRED
+  REVOKED
+}
+
+model AdminInvite {
+  id          String            @id @default(uuid())
+  email       String
+  roleId      String
+  role        Role              @relation(fields: [roleId], references: [id])
+  tokenHash   String            @unique
+  invitedById String
+  invitedBy   AdminUser         @relation(fields: [invitedById], references: [id])
+  status      AdminInviteStatus @default(PENDING)
+  expiresAt   DateTime
+  createdAt   DateTime          @default(now())
+  acceptedAt  DateTime?
+
+  @@index([email, status])
+}
+
+enum AuditActorType {
+  ADMIN
+  AGENT
+  CLIENT
+  SYSTEM
+}
+
+model AuditLog {
+  id         String         @id @default(uuid())
+  actorType  AuditActorType
+  actorId    String?
+  action     String
+  targetType String?
+  targetId   String?
+  metadata   Json?
+  ip         String?
+  userAgent  String?
+  createdAt  DateTime       @default(now())
+
+  @@index([actorType, actorId])
+  @@index([targetType, targetId])
+  @@index([action])
 }
