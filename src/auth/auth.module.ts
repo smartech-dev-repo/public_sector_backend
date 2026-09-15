@@ -12,10 +12,11 @@ import { ClientAuthController } from './client/client-auth.controller';
 import { ClientAuthService } from './client/client-auth.service';
 import { AgentAuthController } from './agent/agent-auth.controller';
 import { AgentAuthService } from './agent/agent-auth.service';
+import { SessionAuthController } from './session/session-auth.controller';
 
 @Module({
   imports: [PassportModule, JwtModule.register({}), OtpModule, SessionModule, AdminInviteModule],
-  controllers: [AdminAuthController, ClientAuthController, AgentAuthController],
+  controllers: [AdminAuthController, ClientAuthController, AgentAuthController, SessionAuthController],
   providers: [
     TokenService,
     JwtStrategy,
