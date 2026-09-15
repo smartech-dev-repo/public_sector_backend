@@ -4,6 +4,7 @@
   "testEnvironment": "node",
   "testRegex": ".e2e-spec.ts$",
   "setupFiles": ["dotenv/config"],
+  "globalTeardown": "<rootDir>/global-teardown.ts",
   "transform": {
     "^.+\\.(t|j)s$": "ts-jest"
   }
