@@ -48,6 +48,7 @@ model AdminUser {
   isActive     Boolean         @default(true)
   roles        AdminUserRole[]
   sentInvites  AdminInvite[]
+  uploadedDocumentBatches DocumentUploadBatch[]
   createdAt    DateTime        @default(now())
   updatedAt    DateTime        @updatedAt
 }
@@ -177,4 +178,51 @@ model AuditLog {
   @@index([actorType, actorId])
   @@index([targetType, targetId])
   @@index([action])
+}
+
+enum DocumentType {
+  IPPIS_BROADSHEET
+  REPAYMENT_SCHEDULE
+  DISBURSED_LOANS
+}
+
+enum DocumentBatchStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+model DocumentUploadBatch {
+  id               String              @id @default(uuid())
+  documentType     DocumentType
+  uploadedById     String
+  uploadedBy       AdminUser           @relation(fields: [uploadedById], references: [id])
+  originalFileName String
+  storageKey       String
+  period           String?
+  status           DocumentBatchStatus @default(PENDING)
+  rowsProcessed    Int                 @default(0)
+  rowsCreated      Int                 @default(0)
+  rowsUpdated      Int                 @default(0)
+  rowsSkipped      Int                 @default(0)
+  warnings         Json?
+  errorMessage     String?
+  snapshotExportId String?             @unique
+  snapshotExport   DataSnapshotExport? @relation(fields: [snapshotExportId], references: [id])
+  startedAt        DateTime?
+  completedAt      DateTime?
+  createdAt        DateTime            @default(now())
+}
+
+model DataSnapshotExport {
+  id            String               @id @default(uuid())
+  documentType  DocumentType
+  recordCount   Int
+  sqlStorageKey String
+  csvStorageKey String
+  sqlUrl        String
+  csvUrl        String
+  generatedAt   DateTime             @default(now())
+  batch         DocumentUploadBatch?
 }

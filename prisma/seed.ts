@@ -17,6 +17,9 @@ const BOOTSTRAP_PERMISSIONS: Array<{ key: string; description: string }> = [
   { key: 'agents:sessions:revoke', description: "Force-revoke an agent's active sessions" },
   { key: 'clients:sessions:revoke', description: "Force-revoke a client's active sessions" },
   { key: 'audit:read', description: 'View audit log entries' },
+  { key: 'loans:upload', description: 'Upload disbursed loans reports' },
+  { key: 'repayments:upload', description: 'Upload IPPIS repayment schedule reports' },
+  { key: 'documents:read', description: 'View document upload batches and snapshot exports' },
 ];
 
 async function main() {
