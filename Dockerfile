@@ -30,7 +30,7 @@ RUN npm ci --omit=dev
 # ---- runtime: lean final image ----
 FROM base AS runtime
 ENV NODE_ENV=production
-ENV PORT=3000
+ENV PORT=3020
 
 COPY --from=prod-deps /app/node_modules ./node_modules
 # dist/generated/prisma (the compiled Prisma client) comes along with
@@ -44,7 +44,7 @@ COPY --from=build /app/prisma ./prisma
 COPY --from=build /app/prisma.config.ts ./prisma.config.ts
 COPY package.json ./package.json
 
-EXPOSE 3000
+EXPOSE 3020
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
   CMD wget -qO- "http://127.0.0.1:${PORT}/health" || exit 1
