@@ -5,6 +5,7 @@ import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
 import { AdminModule } from './admin/admin.module';
 import { AdminAuditLogModule } from './admin-audit-log/admin-audit-log.module';
+import { AdminSessionModule } from './admin-session/admin-session.module';
 
 @Module({
   imports: [
@@ -13,6 +14,7 @@ import { AdminAuditLogModule } from './admin-audit-log/admin-audit-log.module';
     AuthModule,
     AdminModule,
     AdminAuditLogModule,
+    AdminSessionModule,
   ],
   controllers: [AppController],
   providers: [],
