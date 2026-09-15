@@ -102,7 +102,7 @@ and no docker-compose (this is a one-service deployment).
    pointing at this repo/branch and `Dockerfile` at the repo root.
 2. Set environment variables on the Dokploy app (mirror `.env.example`):
    `DATABASE_URL`, `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET`,
-   `JWT_ACCESS_TTL`, `JWT_REFRESH_TTL`, `BOOTSTRAP_ADMIN_EMAIL`,
+   `JWT_ACCESS_TTL`, `BOOTSTRAP_ADMIN_EMAIL`,
    `BOOTSTRAP_ADMIN_PASSWORD`, `BOOTSTRAP_ADMIN_NAME`, `OTP_TTL_SECONDS`.
    `DATABASE_URL` should point at a reachable PostgreSQL instance (a
    Dokploy-managed Postgres service or an external one) — never bake
