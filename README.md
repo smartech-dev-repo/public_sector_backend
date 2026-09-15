@@ -63,6 +63,32 @@ created/resent, sessions force-revoked) also get an explicit, richer entry.
 View them at `GET /admin/audit-logs` (`audit:read`), optionally filtered by
 `actorType`, `action`, `targetType`, `targetId`.
 
+## Document ingestion
+
+Upload endpoints for the three source documents exist and are fully wired
+(auth, permissions, audit logging, background processing via BullMQ), but
+**no real parsing exists yet** — every document type is processed by a
+no-op parser that records zero rows. Later work replaces one entry in
+`DOCUMENT_PARSERS` (`src/document-ingestion/document-ingestion.module.ts`)
+per document type; this plan only proves the pipeline shape end-to-end.
+
+| Endpoint | Permission | Notes |
+|---|---|---|
+| `POST /admin/documents/ippis-broadsheet/upload` | `ippis:upload` | Multipart, field `file` |
+| `POST /admin/documents/disbursed-loans/upload` | `loans:upload` | Multipart, field `file` |
+| `POST /admin/documents/repayment-schedule/upload` | `repayments:upload` | Multipart, field `file` + required `period` (`YYYY-MM`) |
+| `GET /admin/documents/batches` | `documents:read` | List upload history, filterable by `documentType`/`status` |
+| `GET /admin/documents/batches/:id` | `documents:read` | Batch detail incl. snapshot export links |
+| `GET /admin/documents/files/:key` | `documents:read` | Download a stored file (raw upload or snapshot export) |
+
+File storage picks its active provider via `STORAGE_PROVIDER` (`local` |
+`s3` | `gcs`, default `local`). Only the selected provider's env vars need
+real values — see `.env.example` for the full list (`AWS_*` for S3,
+`GCP_*`/`GCS_BUCKET` for GCS). Automated tests always run against the local
+provider regardless of this setting. Background processing uses BullMQ
+against the `REDIS_URL`/`REDIS_KEY_PREFIX` already configured in your
+environment.
+
 ## Notes on the stack
 
 - **Prisma 7**: uses `prisma.config.ts` (not just `schema.prisma`) for
