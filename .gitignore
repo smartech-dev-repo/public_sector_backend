@@ -2,5 +2,10 @@ node_modules
 dist
 .env
 *.log
+.DS_Store
 
 /src/generated
+
+# Real personal data (BVN, bank accounts, phone numbers, names) — reference
+# material for design work only, never committed.
+/docs/added
