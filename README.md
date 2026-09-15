@@ -37,6 +37,32 @@
 OTP codes are logged to the console by the mock `ConsoleOtpProvider` in
 development — there is no real SMS vendor wired in yet.
 
+## Session endpoints
+
+| Endpoint | Auth | Notes |
+|---|---|---|
+| `POST /auth/refresh` | `{ refreshToken }` in body | Rotates the refresh token; reusing an already-rotated token revokes every session for that principal. |
+| `POST /auth/logout` | `{ refreshToken }` in body | Revokes one session. |
+| `POST /auth/logout-all` | Bearer access token | Revokes every session for the authenticated principal. |
+| `GET /auth/sessions` | Bearer access token | Lists the caller's own active sessions. |
+| `DELETE /auth/sessions/:id` | Bearer access token | Revokes one of the caller's own sessions. |
+
+## Admin invite flow
+
+`POST /admin/invites` (`admins:create`) → emails a token via the mock console
+email provider → `POST /auth/admin/accept-invite { token, password, fullName }`
+(public) creates the `AdminUser` and logs them in. `POST
+/admin/invites/:id/resend` and `GET /admin/invites` manage outstanding
+invites. No `AdminUser` row exists until the invite is accepted.
+
+## Audit log
+
+Every mutating request to an admin-guarded route gets a baseline `AuditLog`
+row automatically (actor, route, status). Business-meaningful actions (invite
+created/resent, sessions force-revoked) also get an explicit, richer entry.
+View them at `GET /admin/audit-logs` (`audit:read`), optionally filtered by
+`actorType`, `action`, `targetType`, `targetId`.
+
 ## Notes on the stack
 
 - **Prisma 7**: uses `prisma.config.ts` (not just `schema.prisma`) for

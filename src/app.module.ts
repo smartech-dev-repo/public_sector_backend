@@ -4,6 +4,7 @@ import { AppController } from './app.controller';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
 import { AdminModule } from './admin/admin.module';
+import { AdminInviteModule } from './admin-invite/admin-invite.module';
 import { AdminAuditLogModule } from './admin-audit-log/admin-audit-log.module';
 import { AdminSessionModule } from './admin-session/admin-session.module';
 
@@ -13,6 +14,7 @@ import { AdminSessionModule } from './admin-session/admin-session.module';
     PrismaModule,
     AuthModule,
     AdminModule,
+    AdminInviteModule,
     AdminAuditLogModule,
     AdminSessionModule,
   ],
