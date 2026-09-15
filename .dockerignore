@@ -1,0 +1,15 @@
+node_modules
+dist
+generated
+coverage
+.git
+.env
+*.log
+.vscode
+.idea
+docs
+test
+.agents
+.claude
+.windsurf
+skills-lock.json
