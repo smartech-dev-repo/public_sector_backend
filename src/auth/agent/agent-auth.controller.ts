@@ -1,6 +1,8 @@
-import { Body, Controller, HttpCode, Post } from '@nestjs/common';
+import { Body, Controller, HttpCode, Post, Req } from '@nestjs/common';
+import { Request } from 'express';
 import { AgentAuthService } from './agent-auth.service';
 import { AgentLoginDto } from './dto/agent-login.dto';
+import { getRequestMetadata } from '../../common/request-metadata.util';
 
 @Controller('auth/agent')
 export class AgentAuthController {
@@ -8,7 +10,7 @@ export class AgentAuthController {
 
   @Post('login')
   @HttpCode(200)
-  login(@Body() dto: AgentLoginDto) {
-    return this.agentAuthService.login(dto.email, dto.password);
+  login(@Body() dto: AgentLoginDto, @Req() req: Request) {
+    return this.agentAuthService.login(dto.email, dto.password, getRequestMetadata(req));
   }
 }
