@@ -8,6 +8,8 @@ import { AdminModule } from './admin/admin.module';
 import { AdminInviteModule } from './admin-invite/admin-invite.module';
 import { AdminAuditLogModule } from './admin-audit-log/admin-audit-log.module';
 import { AdminSessionModule } from './admin-session/admin-session.module';
+import { FileStorageModule } from './file-storage/file-storage.module';
+import { DocumentIngestionModule } from './document-ingestion/document-ingestion.module';
 
 @Module({
   imports: [
@@ -27,6 +29,10 @@ import { AdminSessionModule } from './admin-session/admin-session.module';
             username: url.username || undefined,
             password: url.password || undefined,
             maxRetriesPerRequest: null,
+            // Without this, an unreachable/flaky network path leaves the
+            // initial TCP connect hanging indefinitely (no error, no
+            // timeout) rather than failing fast with a clear error.
+            connectTimeout: 10000,
           },
           prefix: configService.get<string>('REDIS_KEY_PREFIX', 'bull'),
         };
@@ -39,6 +45,8 @@ import { AdminSessionModule } from './admin-session/admin-session.module';
     AdminInviteModule,
     AdminAuditLogModule,
     AdminSessionModule,
+    FileStorageModule,
+    DocumentIngestionModule,
   ],
   controllers: [AppController],
   providers: [],
