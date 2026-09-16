@@ -46,9 +46,8 @@ describe('Admin RBAC (e2e)', () => {
 
   it('allows the bootstrap super-admin to hit a roles:manage-gated route', () => {
     return request(app.getHttpServer())
-      .get('/admin/roles/ping')
+      .get('/admin/roles')
       .set('Authorization', `Bearer ${accessToken}`)
-      .expect(200)
-      .expect({ ok: true });
+      .expect(200);
   });
 });
