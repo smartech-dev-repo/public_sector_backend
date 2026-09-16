@@ -10,6 +10,7 @@ import { AdminAuditLogModule } from './admin-audit-log/admin-audit-log.module';
 import { AdminSessionModule } from './admin-session/admin-session.module';
 import { FileStorageModule } from './file-storage/file-storage.module';
 import { DocumentIngestionModule } from './document-ingestion/document-ingestion.module';
+import { AdminRbacModule } from './admin-rbac/admin-rbac.module';
 
 @Module({
   imports: [
@@ -47,6 +48,7 @@ import { DocumentIngestionModule } from './document-ingestion/document-ingestion
     AdminSessionModule,
     FileStorageModule,
     DocumentIngestionModule,
+    AdminRbacModule,
   ],
   controllers: [AppController],
   providers: [],
