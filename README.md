@@ -86,11 +86,13 @@ actual repayments) is not built yet.
 
 File storage picks its active provider via `STORAGE_PROVIDER` (`local` |
 `s3` | `gcs`, default `local`). Only the selected provider's env vars need
-real values — see `.env.example` for the full list (`AWS_*` for S3;
-`GCP_BUCKET_NAME` + `GCP_CREDENTIALS_FILE` — a path to a service-account
-JSON key file, never the key contents inline — + optional `GCP_SUB_PATH`
-for GCS). Automated tests always run against the local provider regardless
-of this setting. Background processing uses BullMQ against the
+real values — see `.env.example` for the full list. For GCS:
+`GCP_BUCKET_NAME` plus one of `GCP_CREDENTIALS_FILE` (a local
+service-account JSON key file path — local dev) or `GCP_CREDENTIALS_JSON`
+(that same file's raw contents as one env var — for platforms like
+Dokploy with no file mount; `FILE` wins if both are set), plus optional
+`GCP_SUB_PATH`. Automated tests always run against the local provider
+regardless of this setting. Background processing uses BullMQ against the
 `REDIS_URL`/`REDIS_KEY_PREFIX` already configured in your environment.
 
 ## RBAC management
@@ -164,7 +166,11 @@ and no docker-compose (this is a one-service deployment).
    `BOOTSTRAP_ADMIN_PASSWORD`, `BOOTSTRAP_ADMIN_NAME`, `OTP_TTL_SECONDS`.
    `DATABASE_URL` should point at a reachable PostgreSQL instance (a
    Dokploy-managed Postgres service or an external one) — never bake
-   credentials into the image.
+   credentials into the image. If `STORAGE_PROVIDER=gcs`, also set
+   `GCP_BUCKET_NAME` and `GCP_CREDENTIALS_JSON` (the service-account key
+   file's raw JSON contents, pasted as one env var) — `GCP_CREDENTIALS_FILE`
+   won't work here since there's no file mount and the key file itself is
+   gitignored, never part of the built image.
 3. Set the app's internal port to `3000` (or override `PORT` and match
    it) so Dokploy's Traefik can route to it.
 4. Deploy. The container's start command

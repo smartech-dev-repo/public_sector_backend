@@ -49,6 +49,38 @@ describe('GcsFileStorageProvider', () => {
     expect(Storage).toHaveBeenCalledWith({ keyFilename: './gcp-credentials.json' });
   });
 
+  it('constructs the Storage client from GCP_CREDENTIALS_JSON when no file path is configured', async () => {
+    const credentials = { client_email: 'sa@test.iam.gserviceaccount.com', private_key: 'fake-key' };
+    const config = fakeConfig({ GCP_BUCKET_NAME: 'test-bucket', GCP_CREDENTIALS_JSON: JSON.stringify(credentials) });
+    const provider = new GcsFileStorageProvider(config);
+    fileMock.save.mockResolvedValue(undefined);
+
+    await provider.putObject('uploads/file.xlsx', Buffer.from('data'));
+
+    expect(Storage).toHaveBeenCalledWith({ credentials });
+  });
+
+  it('prefers GCP_CREDENTIALS_FILE over GCP_CREDENTIALS_JSON when both are set', async () => {
+    const config = fakeConfig({
+      GCP_BUCKET_NAME: 'test-bucket',
+      GCP_CREDENTIALS_FILE: './gcp-credentials.json',
+      GCP_CREDENTIALS_JSON: JSON.stringify({ client_email: 'sa@test.iam.gserviceaccount.com' }),
+    });
+    const provider = new GcsFileStorageProvider(config);
+    fileMock.save.mockResolvedValue(undefined);
+
+    await provider.putObject('uploads/file.xlsx', Buffer.from('data'));
+
+    expect(Storage).toHaveBeenCalledWith({ keyFilename: './gcp-credentials.json' });
+  });
+
+  it('throws when neither GCP_CREDENTIALS_FILE nor GCP_CREDENTIALS_JSON is configured', async () => {
+    const config = fakeConfig({ GCP_BUCKET_NAME: 'test-bucket' });
+    const provider = new GcsFileStorageProvider(config);
+
+    await expect(provider.putObject('uploads/file.xlsx', Buffer.from('data'))).rejects.toThrow();
+  });
+
   it('putObject saves the buffer to the keyed file when no sub-path is configured', async () => {
     const config = fakeConfig({ GCP_BUCKET_NAME: 'test-bucket', GCP_CREDENTIALS_FILE: './gcp-credentials.json' });
     const provider = new GcsFileStorageProvider(config);
