@@ -20,6 +20,7 @@ const BOOTSTRAP_PERMISSIONS: Array<{ key: string; description: string }> = [
   { key: 'loans:upload', description: 'Upload disbursed loans reports' },
   { key: 'repayments:upload', description: 'Upload IPPIS repayment schedule reports' },
   { key: 'documents:read', description: 'View document upload batches and snapshot exports' },
+  { key: 'permissions:manage', description: 'Create, edit, and delete permission definitions' },
 ];
 
 async function main() {
