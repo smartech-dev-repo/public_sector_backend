@@ -109,6 +109,14 @@ Roles and permissions can now be managed via the API — previously only
 `GET /admin/roles/ping` no longer exists — it was a Phase 1 placeholder,
 superseded by the real endpoints above.
 
+## CORS
+
+Controlled by `CORS_ORIGINS`: a comma-separated allowlist
+(`https://admin.example.com,https://app.example.com`), `*` to allow any
+origin, or unset/empty to disable CORS entirely (the default — no
+`Access-Control-Allow-Origin` header is sent). Adjust it per environment
+without a code change.
+
 ## Notes on the stack
 
 - **Prisma 7**: uses `prisma.config.ts` (not just `schema.prisma`) for
