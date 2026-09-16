@@ -60,6 +60,10 @@ export interface RowMappingFailure {
 
 export type RowMappingResult = RowMappingSuccess | RowMappingFailure;
 
+export function isRowMappingFailure(result: RowMappingResult): result is RowMappingFailure {
+  return result.ok === false;
+}
+
 function stringOrNull(value: unknown): string | null {
   if (value === null || value === undefined || value === '') return null;
   return String(value).trim() || null;
