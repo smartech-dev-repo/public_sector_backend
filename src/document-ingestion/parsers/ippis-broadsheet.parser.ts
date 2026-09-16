@@ -5,6 +5,7 @@ import { SnapshotExportService } from '../snapshot-export.service';
 import { DocumentParser, ParseResult } from '../document-parser.interface';
 import { DocumentUploadBatch, DocumentType, Prisma } from '../../generated/prisma/client';
 import { isRowMappingFailure, mapIppisRow } from './ippis-row-mapper';
+import { buildRowByHeader } from './build-row-by-header';
 
 const KNOWN_AGENCIES = ['NPF', 'NSCDC', 'IMMIGRATION', 'CORRECTIONAL'];
 
@@ -14,15 +15,6 @@ const SNAPSHOT_COLUMNS = [
   'salary', 'phone', 'bankName', 'accountNumber', 'pfaName', 'pinNumber', 'dateTerminated',
   'bvn', 'legacyId', 'rawFields', 'createdAt', 'updatedAt',
 ];
-
-function buildRowByHeader(headerValues: unknown[], rowValues: unknown[]): Record<string, unknown> {
-  const result: Record<string, unknown> = {};
-  headerValues.forEach((header, index) => {
-    if (typeof header !== 'string' || !header.trim()) return;
-    result[header.trim().toLowerCase()] = rowValues[index];
-  });
-  return result;
-}
 
 @Injectable()
 export class IppisBroadsheetParser implements DocumentParser {
