@@ -66,11 +66,13 @@ View them at `GET /admin/audit-logs` (`audit:read`), optionally filtered by
 ## Document ingestion
 
 Upload endpoints for the three source documents exist and are fully wired
-(auth, permissions, audit logging, background processing via BullMQ), but
-**no real parsing exists yet** — every document type is processed by a
-no-op parser that records zero rows. Later work replaces one entry in
-`DOCUMENT_PARSERS` (`src/document-ingestion/document-ingestion.module.ts`)
-per document type; this plan only proves the pipeline shape end-to-end.
+(auth, permissions, audit logging, background processing via BullMQ).
+**IPPIS Broadsheet uploads are fully parsed** into `IppisRecord` rows
+(upserted by `agency` + `staffId`) — see
+`src/document-ingestion/parsers/ippis-broadsheet.parser.ts`. Disbursed
+Loans and Repayment Schedule uploads are still processed by a no-op parser
+that records zero rows; later work replaces their entries in
+`DOCUMENT_PARSERS` (`src/document-ingestion/document-ingestion.module.ts`).
 
 | Endpoint | Permission | Notes |
 |---|---|---|

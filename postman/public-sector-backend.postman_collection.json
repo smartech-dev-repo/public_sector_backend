@@ -2690,7 +2690,7 @@
                     "upload"
                   ]
                 },
-                "description": "Attach any .xlsx file (real parsing isn't built yet \u2014 a NoOpDocumentParser always reports 0 rows regardless of content). Do NOT attach the real sample files under docs/added/ to a shared workspace \u2014 those contain real BVNs/bank data and are gitignored for that reason."
+                "description": "Attach an .xlsx file with one sheet per agency (NPF/NSCDC/IMMIGRATION/CORRECTIONAL), each with a header row containing at least \"Staff ID\" and \"Employee Name\" \u2014 rows are upserted into IppisRecord by (agency, staffId). Do NOT attach the real sample files under docs/added/ to a shared workspace \u2014 those contain real BVNs/bank data and are gitignored for that reason."
               },
               "event": [
                 {
