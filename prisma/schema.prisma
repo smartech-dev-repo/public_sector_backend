@@ -226,3 +226,34 @@ model DataSnapshotExport {
   generatedAt   DateTime             @default(now())
   batch         DocumentUploadBatch?
 }
+
+model IppisRecord {
+  id              String    @id @default(uuid())
+  agency          String
+  staffId         String
+  employeeName    String
+  employeeStatus  String?
+  hireDate        DateTime?
+  dateOfBirth     DateTime?
+  maritalStatus   String?
+  gender          String?
+  jobTitle        String?
+  department      String?
+  subOrganization String?
+  grade           String?
+  step            String?
+  salary          Decimal?
+  phone           String?
+  bankName        String?
+  accountNumber   String?
+  pfaName         String?
+  pinNumber       String?
+  dateTerminated  DateTime?
+  bvn             String?
+  legacyId        String?
+  rawFields       Json?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@unique([agency, staffId])
+}
