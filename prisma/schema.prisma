@@ -257,3 +257,33 @@ model IppisRecord {
 
   @@unique([agency, staffId])
 }
+
+model Loan {
+  id                     String    @id @default(uuid())
+  customerId             String    @unique
+  customerName           String
+  accountNumber          String
+  address                String?
+  branch                 String?
+  gender                 String?
+  phone                  String?
+  ippisNumber            String
+  agency                 String?
+  loanAmount             Decimal
+  principalBalance       Decimal
+  disbursementDate       DateTime
+  maturationDate         DateTime
+  effectiveDate          DateTime?
+  moratoriumDays         Int?
+  product                String
+  linkedAccountNumber    String?
+  bvn                    String?
+  interestRatePercent    Decimal
+  accountOfficer         String?
+  hasPreviouslyTakenLoan Boolean   @default(false)
+  rawFields              Json?
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+
+  @@index([ippisNumber])
+}
