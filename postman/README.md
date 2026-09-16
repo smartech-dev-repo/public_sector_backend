@@ -14,12 +14,14 @@ and its own Session sub-folder using that group's own tokens), plus a
 standalone Health check:
 
 - **Health** — the one endpoint that isn't tied to any principal type.
-- **Admin** — Auth, Session (admin tokens), Reference (`/admin/me`,
-  `/admin/roles/ping`), Invites, Audit Logs, and **Force-Revoke Sessions**
-  (an admin action that *targets* an Agent's or a Client's sessions — it
-  lives here because an Admin performs it, and it doesn't affect or get
-  affected by the Agent/Client groups' own session management of
-  themselves).
+- **Admin** — Auth, Session (admin tokens), Reference (`/admin/me`),
+  **Permissions** (full CRUD, blocked-delete-if-in-use), **Roles** (full
+  CRUD, SUPER_ADMIN protections, role↔permission assignment), **Admins**
+  (list admins, assign/remove roles, SUPER_ADMIN-lockout protection),
+  Invites, Audit Logs, and Force-Revoke Sessions (an admin action that
+  *targets* an Agent's or a Client's sessions — it lives here because an
+  Admin performs it, and it doesn't affect or get affected by the
+  Agent/Client groups' own session management of themselves).
 - **Agent** — Auth and this agent's own Session (agent tokens).
 - **IPPIS** — Documents (the ippis-broadsheet/disbursed-loans/repayment-schedule
   upload + batch + file-download endpoints) and a Session sub-folder. IPPIS

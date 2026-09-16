@@ -89,6 +89,26 @@ provider regardless of this setting. Background processing uses BullMQ
 against the `REDIS_URL`/`REDIS_KEY_PREFIX` already configured in your
 environment.
 
+## RBAC management
+
+Roles and permissions can now be managed via the API — previously only
+`prisma/seed.ts` could create them.
+
+| Endpoint | Permission | Notes |
+|---|---|---|
+| `POST/GET /admin/permissions` | `permissions:manage` | |
+| `GET/PATCH/DELETE /admin/permissions/:id` | `permissions:manage` | `PATCH` only changes `description` — `key` is immutable. `DELETE` is blocked (409) if any role still has it. |
+| `POST/GET /admin/roles` | `roles:manage` | |
+| `GET/PATCH/DELETE /admin/roles/:id` | `roles:manage` | Renaming or deleting `SUPER_ADMIN` is blocked (409); deleting a role assigned to any admin is blocked (409). |
+| `POST /admin/roles/:id/permissions` | `roles:manage` | `{ permissionId }` |
+| `DELETE /admin/roles/:id/permissions/:permissionId` | `roles:manage` | |
+| `GET /admin/admins` | `roles:manage` | Lists admins with their roles |
+| `POST /admin/admins/:id/roles` | `roles:manage` | `{ roleId }` |
+| `DELETE /admin/admins/:id/roles/:roleId` | `roles:manage` | Blocked (409) if it would leave zero admins holding `SUPER_ADMIN` |
+
+`GET /admin/roles/ping` no longer exists — it was a Phase 1 placeholder,
+superseded by the real endpoints above.
+
 ## Notes on the stack
 
 - **Prisma 7**: uses `prisma.config.ts` (not just `schema.prisma`) for

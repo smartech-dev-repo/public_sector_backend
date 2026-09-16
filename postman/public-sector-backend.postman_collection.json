@@ -2,37 +2,138 @@
   "info": {
     "_postman_id": "7b1e4c2a-4f3e-4a2b-9c1d-3a7e2f8b6d10",
     "name": "Public Sector Backend",
-    "description": "Full API coverage for the public-sector-backend NestJS app: Phase 1 auth (Admin/Agent/Client), the Governance Bundle (sessions, invites, audit log), and Document Ingestion Infrastructure.\n\nOrganized into four top-level groups (Admin, Agent, IPPIS, Client) plus a standalone Health check. Each group is self-contained: it has its own Auth (where applicable) and its own Session sub-folder using that group's own tokens, so you can run a whole group top-to-bottom without reaching into another group. Admin's 'Force-Revoke Sessions' (which targets an Agent's or a Client's sessions) stays under Admin since it's an admin-performed action, even though its target is an Agent/Client — it does not change how Agent/Client manage their own sessions.\n\nEach endpoint has multiple requests: at least one success scenario and the meaningful failure scenarios (validation, auth, permission, not-found). Success requests have test scripts that capture tokens/ids into collection variables so later requests in the same folder (or run via Collection Runner) chain automatically.\n\nMAINTENANCE: this collection must be kept in sync with the codebase. See ../CLAUDE.md and postman/README.md for the standing rule — any change to a controller, DTO, or permission key must be reflected here in the same change.",
+    "description": "Full API coverage for the public-sector-backend NestJS app: Phase 1 auth (Admin/Agent/Client), the Governance Bundle (sessions, invites, audit log), and Document Ingestion Infrastructure.\n\nOrganized into four top-level groups (Admin, Agent, IPPIS, Client) plus a standalone Health check. Each group is self-contained: it has its own Auth (where applicable) and its own Session sub-folder using that group's own tokens, so you can run a whole group top-to-bottom without reaching into another group. Admin's 'Force-Revoke Sessions' (which targets an Agent's or a Client's sessions) stays under Admin since it's an admin-performed action, even though its target is an Agent/Client \u2014 it does not change how Agent/Client manage their own sessions.\n\nEach endpoint has multiple requests: at least one success scenario and the meaningful failure scenarios (validation, auth, permission, not-found). Success requests have test scripts that capture tokens/ids into collection variables so later requests in the same folder (or run via Collection Runner) chain automatically.\n\nMAINTENANCE: this collection must be kept in sync with the codebase. See ../CLAUDE.md and postman/README.md for the standing rule \u2014 any change to a controller, DTO, or permission key must be reflected here in the same change.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
-    { "key": "base_url", "value": "http://localhost:3020" },
-    { "key": "admin_email", "value": "admin@example.com" },
-    { "key": "admin_password", "value": "ChangeMe123!Strong" },
-    { "key": "admin_access_token", "value": "" },
-    { "key": "admin_refresh_token", "value": "" },
-    { "key": "session_id", "value": "" },
-    { "key": "agent_email", "value": "approved-agent@example.com" },
-    { "key": "agent_password", "value": "agent-password" },
-    { "key": "agent_access_token", "value": "" },
-    { "key": "agent_refresh_token", "value": "" },
-    { "key": "agent_session_id", "value": "" },
-    { "key": "client_phone", "value": "+2348011111111" },
-    { "key": "client_otp_code", "value": "" },
-    { "key": "client_access_token", "value": "" },
-    { "key": "client_refresh_token", "value": "" },
-    { "key": "client_session_id", "value": "" },
-    { "key": "super_admin_role_id", "value": "" },
-    { "key": "invite_email", "value": "invited-admin@example.com" },
-    { "key": "invite_id", "value": "" },
-    { "key": "invite_token", "value": "" },
-    { "key": "agent_id", "value": "" },
-    { "key": "client_id", "value": "" },
-    { "key": "ippis_batch_id", "value": "" },
-    { "key": "loans_batch_id", "value": "" },
-    { "key": "repayment_batch_id", "value": "" },
-    { "key": "repayment_period", "value": "2026-09" },
-    { "key": "file_storage_key", "value": "" }
+    {
+      "key": "base_url",
+      "value": "http://localhost:3020"
+    },
+    {
+      "key": "admin_email",
+      "value": "admin@example.com"
+    },
+    {
+      "key": "admin_password",
+      "value": "ChangeMe123!Strong"
+    },
+    {
+      "key": "admin_access_token",
+      "value": ""
+    },
+    {
+      "key": "admin_refresh_token",
+      "value": ""
+    },
+    {
+      "key": "session_id",
+      "value": ""
+    },
+    {
+      "key": "agent_email",
+      "value": "approved-agent@example.com"
+    },
+    {
+      "key": "agent_password",
+      "value": "agent-password"
+    },
+    {
+      "key": "agent_access_token",
+      "value": ""
+    },
+    {
+      "key": "agent_refresh_token",
+      "value": ""
+    },
+    {
+      "key": "agent_session_id",
+      "value": ""
+    },
+    {
+      "key": "client_phone",
+      "value": "+2348011111111"
+    },
+    {
+      "key": "client_otp_code",
+      "value": ""
+    },
+    {
+      "key": "client_access_token",
+      "value": ""
+    },
+    {
+      "key": "client_refresh_token",
+      "value": ""
+    },
+    {
+      "key": "client_session_id",
+      "value": ""
+    },
+    {
+      "key": "super_admin_role_id",
+      "value": ""
+    },
+    {
+      "key": "permission_id",
+      "value": ""
+    },
+    {
+      "key": "role_id",
+      "value": ""
+    },
+    {
+      "key": "test_permission_key",
+      "value": "reports:export"
+    },
+    {
+      "key": "test_role_name",
+      "value": "REPORTS_MANAGER"
+    },
+    {
+      "key": "admin_id",
+      "value": ""
+    },
+    {
+      "key": "invite_email",
+      "value": "invited-admin@example.com"
+    },
+    {
+      "key": "invite_id",
+      "value": ""
+    },
+    {
+      "key": "invite_token",
+      "value": ""
+    },
+    {
+      "key": "agent_id",
+      "value": ""
+    },
+    {
+      "key": "client_id",
+      "value": ""
+    },
+    {
+      "key": "ippis_batch_id",
+      "value": ""
+    },
+    {
+      "key": "loans_batch_id",
+      "value": ""
+    },
+    {
+      "key": "repayment_batch_id",
+      "value": ""
+    },
+    {
+      "key": "repayment_period",
+      "value": "2026-09"
+    },
+    {
+      "key": "file_storage_key",
+      "value": ""
+    }
   ],
   "item": [
     {
@@ -43,7 +144,15 @@
           "request": {
             "method": "GET",
             "header": [],
-            "url": { "raw": "{{base_url}}/health", "host": ["{{base_url}}"], "path": ["health"] }
+            "url": {
+              "raw": "{{base_url}}/health",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "health"
+              ]
+            }
           },
           "event": [
             {
@@ -70,9 +179,27 @@
               "name": "POST /auth/admin/login - Success",
               "request": {
                 "method": "POST",
-                "header": [{ "key": "Content-Type", "value": "application/json" }],
-                "body": { "mode": "raw", "raw": "{\n  \"email\": \"{{admin_email}}\",\n  \"password\": \"{{admin_password}}\"\n}" },
-                "url": { "raw": "{{base_url}}/auth/admin/login", "host": ["{{base_url}}"], "path": ["auth", "admin", "login"] },
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"{{admin_email}}\",\n  \"password\": \"{{admin_password}}\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/auth/admin/login",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "auth",
+                    "admin",
+                    "login"
+                  ]
+                },
                 "description": "Logs in the seeded bootstrap admin (BOOTSTRAP_ADMIN_EMAIL/PASSWORD from .env)."
               },
               "event": [
@@ -94,37 +221,102 @@
               "name": "POST /auth/admin/login - Invalid credentials (401)",
               "request": {
                 "method": "POST",
-                "header": [{ "key": "Content-Type", "value": "application/json" }],
-                "body": { "mode": "raw", "raw": "{\n  \"email\": \"{{admin_email}}\",\n  \"password\": \"wrong-password\"\n}" },
-                "url": { "raw": "{{base_url}}/auth/admin/login", "host": ["{{base_url}}"], "path": ["auth", "admin", "login"] }
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"{{admin_email}}\",\n  \"password\": \"wrong-password\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/auth/admin/login",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "auth",
+                    "admin",
+                    "login"
+                  ]
+                }
               },
               "event": [
-                { "listen": "test", "script": { "exec": ["pm.test('status 401', () => pm.response.to.have.status(401));"] } }
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 401', () => pm.response.to.have.status(401));"
+                    ]
+                  }
+                }
               ]
             },
             {
               "name": "POST /auth/admin/login - Validation error (400)",
               "request": {
                 "method": "POST",
-                "header": [{ "key": "Content-Type", "value": "application/json" }],
-                "body": { "mode": "raw", "raw": "{\n  \"email\": \"not-an-email\",\n  \"password\": \"short\"\n}" },
-                "url": { "raw": "{{base_url}}/auth/admin/login", "host": ["{{base_url}}"], "path": ["auth", "admin", "login"] }
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"not-an-email\",\n  \"password\": \"short\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/auth/admin/login",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "auth",
+                    "admin",
+                    "login"
+                  ]
+                }
               },
               "event": [
-                { "listen": "test", "script": { "exec": ["pm.test('status 400', () => pm.response.to.have.status(400));"] } }
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 400', () => pm.response.to.have.status(400));"
+                    ]
+                  }
+                }
               ]
             },
             {
               "name": "POST /auth/admin/accept-invite - Success",
               "request": {
                 "method": "POST",
-                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"token\": \"{{invite_token}}\",\n  \"password\": \"Invited123!Strong\",\n  \"fullName\": \"Invited Admin\"\n}"
                 },
-                "url": { "raw": "{{base_url}}/auth/admin/accept-invite", "host": ["{{base_url}}"], "path": ["auth", "admin", "accept-invite"] },
-                "description": "The token is only ever sent via the (mock console) email provider, never returned by any API response — it's never captured automatically by this collection. Check the running server's console log after 'Admin > Invites > POST /admin/invites - Success' for a line like 'Email to ... Use this token to accept: <token>', then paste it into the invite_token collection variable before running this request."
+                "url": {
+                  "raw": "{{base_url}}/auth/admin/accept-invite",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "auth",
+                    "admin",
+                    "accept-invite"
+                  ]
+                },
+                "description": "The token is only ever sent via the (mock console) email provider, never returned by any API response \u2014 it's never captured automatically by this collection. Check the running server's console log after 'Admin > Invites > POST /admin/invites - Success' for a line like 'Email to ... Use this token to accept: <token>', then paste it into the invite_token collection variable before running this request."
               },
               "event": [
                 {
@@ -148,15 +340,37 @@
               "name": "POST /auth/admin/accept-invite - Invalid/expired token (401)",
               "request": {
                 "method": "POST",
-                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"token\": \"not-a-real-token\",\n  \"password\": \"Invited123!Strong\",\n  \"fullName\": \"Invited Admin\"\n}"
                 },
-                "url": { "raw": "{{base_url}}/auth/admin/accept-invite", "host": ["{{base_url}}"], "path": ["auth", "admin", "accept-invite"] }
+                "url": {
+                  "raw": "{{base_url}}/auth/admin/accept-invite",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "auth",
+                    "admin",
+                    "accept-invite"
+                  ]
+                }
               },
               "event": [
-                { "listen": "test", "script": { "exec": ["pm.test('status 401', () => pm.response.to.have.status(401));"] } }
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 401', () => pm.response.to.have.status(401));"
+                    ]
+                  }
+                }
               ]
             }
           ]
@@ -169,10 +383,27 @@
               "name": "POST /auth/refresh - Success (admin token)",
               "request": {
                 "method": "POST",
-                "header": [{ "key": "Content-Type", "value": "application/json" }],
-                "body": { "mode": "raw", "raw": "{\n  \"refreshToken\": \"{{admin_refresh_token}}\"\n}" },
-                "url": { "raw": "{{base_url}}/auth/refresh", "host": ["{{base_url}}"], "path": ["auth", "refresh"] },
-                "description": "Not role-namespaced — the Session row itself carries the principal type. Rotates the token: the old refresh token is revoked and a new one is returned."
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"refreshToken\": \"{{admin_refresh_token}}\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/auth/refresh",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "auth",
+                    "refresh"
+                  ]
+                },
+                "description": "Not role-namespaced \u2014 the Session row itself carries the principal type. Rotates the token: the old refresh token is revoked and a new one is returned."
               },
               "event": [
                 {
@@ -193,20 +424,58 @@
               "name": "POST /auth/refresh - Unknown token (401)",
               "request": {
                 "method": "POST",
-                "header": [{ "key": "Content-Type", "value": "application/json" }],
-                "body": { "mode": "raw", "raw": "{\n  \"refreshToken\": \"not-a-real-token\"\n}" },
-                "url": { "raw": "{{base_url}}/auth/refresh", "host": ["{{base_url}}"], "path": ["auth", "refresh"] }
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"refreshToken\": \"not-a-real-token\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/auth/refresh",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "auth",
+                    "refresh"
+                  ]
+                }
               },
               "event": [
-                { "listen": "test", "script": { "exec": ["pm.test('status 401', () => pm.response.to.have.status(401));"] } }
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 401', () => pm.response.to.have.status(401));"
+                    ]
+                  }
+                }
               ]
             },
             {
               "name": "GET /auth/sessions - Success",
               "request": {
                 "method": "GET",
-                "header": [{ "key": "Authorization", "value": "Bearer {{admin_access_token}}" }],
-                "url": { "raw": "{{base_url}}/auth/sessions", "host": ["{{base_url}}"], "path": ["auth", "sessions"] }
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/auth/sessions",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "auth",
+                    "sessions"
+                  ]
+                }
               },
               "event": [
                 {
@@ -227,66 +496,165 @@
               "request": {
                 "method": "GET",
                 "header": [],
-                "url": { "raw": "{{base_url}}/auth/sessions", "host": ["{{base_url}}"], "path": ["auth", "sessions"] }
+                "url": {
+                  "raw": "{{base_url}}/auth/sessions",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "auth",
+                    "sessions"
+                  ]
+                }
               },
               "event": [
-                { "listen": "test", "script": { "exec": ["pm.test('status 401', () => pm.response.to.have.status(401));"] } }
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 401', () => pm.response.to.have.status(401));"
+                    ]
+                  }
+                }
               ]
             },
             {
               "name": "DELETE /auth/sessions/:id - Success",
               "request": {
                 "method": "DELETE",
-                "header": [{ "key": "Authorization", "value": "Bearer {{admin_access_token}}" }],
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
                 "url": {
                   "raw": "{{base_url}}/auth/sessions/{{session_id}}",
-                  "host": ["{{base_url}}"],
-                  "path": ["auth", "sessions", "{{session_id}}"]
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "auth",
+                    "sessions",
+                    "{{session_id}}"
+                  ]
                 },
                 "description": "Run 'GET /auth/sessions - Success' first to populate session_id."
               },
               "event": [
-                { "listen": "test", "script": { "exec": ["pm.test('status 200', () => pm.response.to.have.status(200));", "pm.test('revoked true', () => pm.expect(pm.response.json().revoked).to.eql(true));"] } }
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));",
+                      "pm.test('revoked true', () => pm.expect(pm.response.json().revoked).to.eql(true));"
+                    ]
+                  }
+                }
               ]
             },
             {
               "name": "DELETE /auth/sessions/:id - Not found / not owned (404)",
               "request": {
                 "method": "DELETE",
-                "header": [{ "key": "Authorization", "value": "Bearer {{admin_access_token}}" }],
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
                 "url": {
                   "raw": "{{base_url}}/auth/sessions/00000000-0000-0000-0000-000000000000",
-                  "host": ["{{base_url}}"],
-                  "path": ["auth", "sessions", "00000000-0000-0000-0000-000000000000"]
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "auth",
+                    "sessions",
+                    "00000000-0000-0000-0000-000000000000"
+                  ]
                 }
               },
               "event": [
-                { "listen": "test", "script": { "exec": ["pm.test('status 404', () => pm.response.to.have.status(404));"] } }
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 404', () => pm.response.to.have.status(404));"
+                    ]
+                  }
+                }
               ]
             },
             {
               "name": "POST /auth/logout - Success",
               "request": {
                 "method": "POST",
-                "header": [{ "key": "Content-Type", "value": "application/json" }],
-                "body": { "mode": "raw", "raw": "{\n  \"refreshToken\": \"{{admin_refresh_token}}\"\n}" },
-                "url": { "raw": "{{base_url}}/auth/logout", "host": ["{{base_url}}"], "path": ["auth", "logout"] },
-                "description": "Idempotent — also returns 200 on an already-revoked/unknown token."
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"refreshToken\": \"{{admin_refresh_token}}\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/auth/logout",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "auth",
+                    "logout"
+                  ]
+                },
+                "description": "Idempotent \u2014 also returns 200 on an already-revoked/unknown token."
               },
               "event": [
-                { "listen": "test", "script": { "exec": ["pm.test('status 200', () => pm.response.to.have.status(200));", "pm.test('loggedOut true', () => pm.expect(pm.response.json().loggedOut).to.eql(true));"] } }
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));",
+                      "pm.test('loggedOut true', () => pm.expect(pm.response.json().loggedOut).to.eql(true));"
+                    ]
+                  }
+                }
               ]
             },
             {
               "name": "POST /auth/logout-all - Success",
               "request": {
                 "method": "POST",
-                "header": [{ "key": "Authorization", "value": "Bearer {{admin_access_token}}" }],
-                "url": { "raw": "{{base_url}}/auth/logout-all", "host": ["{{base_url}}"], "path": ["auth", "logout-all"] },
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/auth/logout-all",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "auth",
+                    "logout-all"
+                  ]
+                },
                 "description": "Revokes every session for the authenticated principal. Run 'Admin > Auth > POST /auth/admin/login - Success' again afterward to get a fresh usable token, since this one's session is now revoked."
               },
               "event": [
-                { "listen": "test", "script": { "exec": ["pm.test('status 200', () => pm.response.to.have.status(200));"] } }
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));"
+                    ]
+                  }
+                }
               ]
             },
             {
@@ -294,10 +662,26 @@
               "request": {
                 "method": "POST",
                 "header": [],
-                "url": { "raw": "{{base_url}}/auth/logout-all", "host": ["{{base_url}}"], "path": ["auth", "logout-all"] }
+                "url": {
+                  "raw": "{{base_url}}/auth/logout-all",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "auth",
+                    "logout-all"
+                  ]
+                }
               },
               "event": [
-                { "listen": "test", "script": { "exec": ["pm.test('status 401', () => pm.response.to.have.status(401));"] } }
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 401', () => pm.response.to.have.status(401));"
+                    ]
+                  }
+                }
               ]
             }
           ]
@@ -309,11 +693,34 @@
               "name": "GET /admin/me - Success",
               "request": {
                 "method": "GET",
-                "header": [{ "key": "Authorization", "value": "Bearer {{admin_access_token}}" }],
-                "url": { "raw": "{{base_url}}/admin/me", "host": ["{{base_url}}"], "path": ["admin", "me"] }
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/me",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "me"
+                  ]
+                }
               },
               "event": [
-                { "listen": "test", "script": { "exec": ["pm.test('status 200', () => pm.response.to.have.status(200));", "pm.test('type is admin', () => pm.expect(pm.response.json().type).to.eql('admin'));"] } }
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));",
+                      "pm.test('type is admin', () => pm.expect(pm.response.json().type).to.eql('admin'));",
+                      "pm.collectionVariables.set('admin_id', pm.response.json().id);"
+                    ]
+                  }
+                }
               ]
             },
             {
@@ -321,33 +728,26 @@
               "request": {
                 "method": "GET",
                 "header": [],
-                "url": { "raw": "{{base_url}}/admin/me", "host": ["{{base_url}}"], "path": ["admin", "me"] }
+                "url": {
+                  "raw": "{{base_url}}/admin/me",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "me"
+                  ]
+                }
               },
               "event": [
-                { "listen": "test", "script": { "exec": ["pm.test('status 401', () => pm.response.to.have.status(401));"] } }
-              ]
-            },
-            {
-              "name": "GET /admin/roles/ping - Success (requires roles:manage)",
-              "request": {
-                "method": "GET",
-                "header": [{ "key": "Authorization", "value": "Bearer {{admin_access_token}}" }],
-                "url": { "raw": "{{base_url}}/admin/roles/ping", "host": ["{{base_url}}"], "path": ["admin", "roles", "ping"] }
-              },
-              "event": [
-                { "listen": "test", "script": { "exec": ["pm.test('status 200', () => pm.response.to.have.status(200));", "pm.test('ok true', () => pm.expect(pm.response.json().ok).to.eql(true));"] } }
-              ]
-            },
-            {
-              "name": "GET /admin/roles/ping - Missing permission (403)",
-              "request": {
-                "method": "GET",
-                "header": [{ "key": "Authorization", "value": "Bearer {{agent_access_token}}" }],
-                "url": { "raw": "{{base_url}}/admin/roles/ping", "host": ["{{base_url}}"], "path": ["admin", "roles", "ping"] },
-                "description": "Uses an agent token (no admin permissions at all) to demonstrate PermissionsGuard rejecting a principal that isn't even an admin/has no permissions array. Requires 'Agent > Auth > POST /auth/agent/login - Success' to have run first."
-              },
-              "event": [
-                { "listen": "test", "script": { "exec": ["pm.test('status 401 or 403', () => pm.expect([401,403]).to.include(pm.response.code));"] } }
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 401', () => pm.response.to.have.status(401));"
+                    ]
+                  }
+                }
               ]
             }
           ]
@@ -360,11 +760,29 @@
               "request": {
                 "method": "POST",
                 "header": [
-                  { "key": "Content-Type", "value": "application/json" },
-                  { "key": "Authorization", "value": "Bearer {{admin_access_token}}" }
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
                 ],
-                "body": { "mode": "raw", "raw": "{\n  \"email\": \"{{invite_email}}\",\n  \"roleId\": \"{{super_admin_role_id}}\"\n}" },
-                "url": { "raw": "{{base_url}}/admin/invites", "host": ["{{base_url}}"], "path": ["admin", "invites"] },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"{{invite_email}}\",\n  \"roleId\": \"{{super_admin_role_id}}\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/admin/invites",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "invites"
+                  ]
+                },
                 "description": "There is no GET /admin/roles endpoint yet to look up role ids. Find the SUPER_ADMIN role's id directly in the database (e.g. `SELECT id FROM \"Role\" WHERE name = 'SUPER_ADMIN';`) and set super_admin_role_id before running this."
               },
               "event": [
@@ -386,14 +804,39 @@
               "request": {
                 "method": "POST",
                 "header": [
-                  { "key": "Content-Type", "value": "application/json" },
-                  { "key": "Authorization", "value": "Bearer {{agent_access_token}}" }
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{agent_access_token}}"
+                  }
                 ],
-                "body": { "mode": "raw", "raw": "{\n  \"email\": \"{{invite_email}}\",\n  \"roleId\": \"{{super_admin_role_id}}\"\n}" },
-                "url": { "raw": "{{base_url}}/admin/invites", "host": ["{{base_url}}"], "path": ["admin", "invites"] }
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"{{invite_email}}\",\n  \"roleId\": \"{{super_admin_role_id}}\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/admin/invites",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "invites"
+                  ]
+                }
               },
               "event": [
-                { "listen": "test", "script": { "exec": ["pm.test('status 401 or 403', () => pm.expect([401,403]).to.include(pm.response.code));"] } }
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 401 or 403', () => pm.expect([401,403]).to.include(pm.response.code));"
+                    ]
+                  }
+                }
               ]
             },
             {
@@ -401,68 +844,169 @@
               "request": {
                 "method": "POST",
                 "header": [
-                  { "key": "Content-Type", "value": "application/json" },
-                  { "key": "Authorization", "value": "Bearer {{admin_access_token}}" }
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
                 ],
-                "body": { "mode": "raw", "raw": "{\n  \"email\": \"not-an-email\",\n  \"roleId\": \"not-a-uuid\"\n}" },
-                "url": { "raw": "{{base_url}}/admin/invites", "host": ["{{base_url}}"], "path": ["admin", "invites"] }
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"not-an-email\",\n  \"roleId\": \"not-a-uuid\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/admin/invites",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "invites"
+                  ]
+                }
               },
               "event": [
-                { "listen": "test", "script": { "exec": ["pm.test('status 400', () => pm.response.to.have.status(400));"] } }
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 400', () => pm.response.to.have.status(400));"
+                    ]
+                  }
+                }
               ]
             },
             {
               "name": "POST /admin/invites/:id/resend - Success",
               "request": {
                 "method": "POST",
-                "header": [{ "key": "Authorization", "value": "Bearer {{admin_access_token}}" }],
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
                 "url": {
                   "raw": "{{base_url}}/admin/invites/{{invite_id}}/resend",
-                  "host": ["{{base_url}}"],
-                  "path": ["admin", "invites", "{{invite_id}}", "resend"]
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "invites",
+                    "{{invite_id}}",
+                    "resend"
+                  ]
                 },
                 "description": "Run 'POST /admin/invites - Success' first to populate invite_id."
               },
               "event": [
-                { "listen": "test", "script": { "exec": ["pm.test('status 201', () => pm.response.to.have.status(201));"] } }
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 201', () => pm.response.to.have.status(201));"
+                    ]
+                  }
+                }
               ]
             },
             {
               "name": "POST /admin/invites/:id/resend - Not found / not pending (404)",
               "request": {
                 "method": "POST",
-                "header": [{ "key": "Authorization", "value": "Bearer {{admin_access_token}}" }],
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
                 "url": {
                   "raw": "{{base_url}}/admin/invites/00000000-0000-0000-0000-000000000000/resend",
-                  "host": ["{{base_url}}"],
-                  "path": ["admin", "invites", "00000000-0000-0000-0000-000000000000", "resend"]
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "invites",
+                    "00000000-0000-0000-0000-000000000000",
+                    "resend"
+                  ]
                 }
               },
               "event": [
-                { "listen": "test", "script": { "exec": ["pm.test('status 404', () => pm.response.to.have.status(404));"] } }
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 404', () => pm.response.to.have.status(404));"
+                    ]
+                  }
+                }
               ]
             },
             {
               "name": "GET /admin/invites - Success (all)",
               "request": {
                 "method": "GET",
-                "header": [{ "key": "Authorization", "value": "Bearer {{admin_access_token}}" }],
-                "url": { "raw": "{{base_url}}/admin/invites", "host": ["{{base_url}}"], "path": ["admin", "invites"] }
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/invites",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "invites"
+                  ]
+                }
               },
               "event": [
-                { "listen": "test", "script": { "exec": ["pm.test('status 200', () => pm.response.to.have.status(200));", "pm.test('is array', () => pm.expect(pm.response.json()).to.be.an('array'));"] } }
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));",
+                      "pm.test('is array', () => pm.expect(pm.response.json()).to.be.an('array'));"
+                    ]
+                  }
+                }
               ]
             },
             {
               "name": "GET /admin/invites - Filtered by status=PENDING",
               "request": {
                 "method": "GET",
-                "header": [{ "key": "Authorization", "value": "Bearer {{admin_access_token}}" }],
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
                 "url": {
                   "raw": "{{base_url}}/admin/invites?status=PENDING",
-                  "host": ["{{base_url}}"],
-                  "path": ["admin", "invites"],
-                  "query": [{ "key": "status", "value": "PENDING", "description": "PENDING | ACCEPTED | EXPIRED | REVOKED" }]
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "invites"
+                  ],
+                  "query": [
+                    {
+                      "key": "status",
+                      "value": "PENDING",
+                      "description": "PENDING | ACCEPTED | EXPIRED | REVOKED"
+                    }
+                  ]
                 }
               },
               "event": [
@@ -487,60 +1031,150 @@
               "name": "GET /admin/audit-logs - Success (all)",
               "request": {
                 "method": "GET",
-                "header": [{ "key": "Authorization", "value": "Bearer {{admin_access_token}}" }],
-                "url": { "raw": "{{base_url}}/admin/audit-logs", "host": ["{{base_url}}"], "path": ["admin", "audit-logs"] }
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/audit-logs",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "audit-logs"
+                  ]
+                }
               },
               "event": [
-                { "listen": "test", "script": { "exec": ["pm.test('status 200', () => pm.response.to.have.status(200));", "pm.test('is array', () => pm.expect(pm.response.json()).to.be.an('array'));"] } }
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));",
+                      "pm.test('is array', () => pm.expect(pm.response.json()).to.be.an('array'));"
+                    ]
+                  }
+                }
               ]
             },
             {
               "name": "GET /admin/audit-logs - Filtered by actorType + action",
               "request": {
                 "method": "GET",
-                "header": [{ "key": "Authorization", "value": "Bearer {{admin_access_token}}" }],
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
                 "url": {
                   "raw": "{{base_url}}/admin/audit-logs?actorType=ADMIN&action=admin.invite.created",
-                  "host": ["{{base_url}}"],
-                  "path": ["admin", "audit-logs"],
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "audit-logs"
+                  ],
                   "query": [
-                    { "key": "actorType", "value": "ADMIN", "description": "ADMIN | AGENT | CLIENT | SYSTEM" },
-                    { "key": "action", "value": "admin.invite.created" }
+                    {
+                      "key": "actorType",
+                      "value": "ADMIN",
+                      "description": "ADMIN | AGENT | CLIENT | SYSTEM"
+                    },
+                    {
+                      "key": "action",
+                      "value": "admin.invite.created"
+                    }
                   ]
                 }
               },
               "event": [
-                { "listen": "test", "script": { "exec": ["pm.test('status 200', () => pm.response.to.have.status(200));"] } }
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));"
+                    ]
+                  }
+                }
               ]
             },
             {
               "name": "GET /admin/audit-logs - Filtered by targetType + targetId",
               "request": {
                 "method": "GET",
-                "header": [{ "key": "Authorization", "value": "Bearer {{admin_access_token}}" }],
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
                 "url": {
                   "raw": "{{base_url}}/admin/audit-logs?targetType=AdminInvite&targetId={{invite_id}}",
-                  "host": ["{{base_url}}"],
-                  "path": ["admin", "audit-logs"],
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "audit-logs"
+                  ],
                   "query": [
-                    { "key": "targetType", "value": "AdminInvite" },
-                    { "key": "targetId", "value": "{{invite_id}}" }
+                    {
+                      "key": "targetType",
+                      "value": "AdminInvite"
+                    },
+                    {
+                      "key": "targetId",
+                      "value": "{{invite_id}}"
+                    }
                   ]
                 }
               },
               "event": [
-                { "listen": "test", "script": { "exec": ["pm.test('status 200', () => pm.response.to.have.status(200));"] } }
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));"
+                    ]
+                  }
+                }
               ]
             },
             {
               "name": "GET /admin/audit-logs - Missing permission (403)",
               "request": {
                 "method": "GET",
-                "header": [{ "key": "Authorization", "value": "Bearer {{agent_access_token}}" }],
-                "url": { "raw": "{{base_url}}/admin/audit-logs", "host": ["{{base_url}}"], "path": ["admin", "audit-logs"] }
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{agent_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/audit-logs",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "audit-logs"
+                  ]
+                }
               },
               "event": [
-                { "listen": "test", "script": { "exec": ["pm.test('status 401 or 403', () => pm.expect([401,403]).to.include(pm.response.code));"] } }
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 401 or 403', () => pm.expect([401,403]).to.include(pm.response.code));"
+                    ]
+                  }
+                }
               ]
             }
           ]
@@ -553,31 +1187,72 @@
               "name": "POST /admin/agents/:id/sessions/revoke-all - Success",
               "request": {
                 "method": "POST",
-                "header": [{ "key": "Authorization", "value": "Bearer {{admin_access_token}}" }],
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
                 "url": {
                   "raw": "{{base_url}}/admin/agents/{{agent_id}}/sessions/revoke-all",
-                  "host": ["{{base_url}}"],
-                  "path": ["admin", "agents", "{{agent_id}}", "sessions", "revoke-all"]
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "agents",
+                    "{{agent_id}}",
+                    "sessions",
+                    "revoke-all"
+                  ]
                 },
                 "description": "Set agent_id to a real Agent row's id first (e.g. from the database, since there's no agent-listing endpoint yet)."
               },
               "event": [
-                { "listen": "test", "script": { "exec": ["pm.test('status 200', () => pm.response.to.have.status(200));", "pm.test('revoked true', () => pm.expect(pm.response.json().revoked).to.eql(true));"] } }
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));",
+                      "pm.test('revoked true', () => pm.expect(pm.response.json().revoked).to.eql(true));"
+                    ]
+                  }
+                }
               ]
             },
             {
               "name": "POST /admin/agents/:id/sessions/revoke-all - Missing permission (403)",
               "request": {
                 "method": "POST",
-                "header": [{ "key": "Authorization", "value": "Bearer {{agent_access_token}}" }],
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{agent_access_token}}"
+                  }
+                ],
                 "url": {
                   "raw": "{{base_url}}/admin/agents/{{agent_id}}/sessions/revoke-all",
-                  "host": ["{{base_url}}"],
-                  "path": ["admin", "agents", "{{agent_id}}", "sessions", "revoke-all"]
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "agents",
+                    "{{agent_id}}",
+                    "sessions",
+                    "revoke-all"
+                  ]
                 }
               },
               "event": [
-                { "listen": "test", "script": { "exec": ["pm.test('status 401 or 403', () => pm.expect([401,403]).to.include(pm.response.code));"] } }
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 401 or 403', () => pm.expect([401,403]).to.include(pm.response.code));"
+                    ]
+                  }
+                }
               ]
             },
             {
@@ -587,43 +1262,948 @@
                 "header": [],
                 "url": {
                   "raw": "{{base_url}}/admin/agents/{{agent_id}}/sessions/revoke-all",
-                  "host": ["{{base_url}}"],
-                  "path": ["admin", "agents", "{{agent_id}}", "sessions", "revoke-all"]
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "agents",
+                    "{{agent_id}}",
+                    "sessions",
+                    "revoke-all"
+                  ]
                 }
               },
               "event": [
-                { "listen": "test", "script": { "exec": ["pm.test('status 401', () => pm.response.to.have.status(401));"] } }
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 401', () => pm.response.to.have.status(401));"
+                    ]
+                  }
+                }
               ]
             },
             {
               "name": "POST /admin/clients/:id/sessions/revoke-all - Success",
               "request": {
                 "method": "POST",
-                "header": [{ "key": "Authorization", "value": "Bearer {{admin_access_token}}" }],
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
                 "url": {
                   "raw": "{{base_url}}/admin/clients/{{client_id}}/sessions/revoke-all",
-                  "host": ["{{base_url}}"],
-                  "path": ["admin", "clients", "{{client_id}}", "sessions", "revoke-all"]
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "clients",
+                    "{{client_id}}",
+                    "sessions",
+                    "revoke-all"
+                  ]
                 },
                 "description": "Set client_id to a real Client row's id first (e.g. captured after a successful OTP verify, or from the database)."
               },
               "event": [
-                { "listen": "test", "script": { "exec": ["pm.test('status 200', () => pm.response.to.have.status(200));"] } }
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));"
+                    ]
+                  }
+                }
               ]
             },
             {
               "name": "POST /admin/clients/:id/sessions/revoke-all - Missing permission (403)",
               "request": {
                 "method": "POST",
-                "header": [{ "key": "Authorization", "value": "Bearer {{agent_access_token}}" }],
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{agent_access_token}}"
+                  }
+                ],
                 "url": {
                   "raw": "{{base_url}}/admin/clients/{{client_id}}/sessions/revoke-all",
-                  "host": ["{{base_url}}"],
-                  "path": ["admin", "clients", "{{client_id}}", "sessions", "revoke-all"]
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "clients",
+                    "{{client_id}}",
+                    "sessions",
+                    "revoke-all"
+                  ]
                 }
               },
               "event": [
-                { "listen": "test", "script": { "exec": ["pm.test('status 401 or 403', () => pm.expect([401,403]).to.include(pm.response.code));"] } }
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 401 or 403', () => pm.expect([401,403]).to.include(pm.response.code));"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Permissions",
+          "item": [
+            {
+              "name": "POST /admin/permissions - Success",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"key\": \"{{test_permission_key}}\",\n  \"description\": \"Export financial reports\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/admin/permissions",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "permissions"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 201', () => pm.response.to.have.status(201));",
+                      "const json = pm.response.json();",
+                      "pm.test('key matches', () => pm.expect(json.key).to.eql(pm.collectionVariables.get('test_permission_key')));",
+                      "pm.collectionVariables.set('permission_id', json.id);"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "POST /admin/permissions - Invalid key format (400)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"key\": \"Not A Valid Key!\",\n  \"description\": \"bad\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/admin/permissions",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "permissions"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 400', () => pm.response.to.have.status(400));"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "POST /admin/permissions - Duplicate key (409)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"key\": \"{{test_permission_key}}\",\n  \"description\": \"duplicate\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/admin/permissions",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "permissions"
+                  ]
+                },
+                "description": "Run 'POST /admin/permissions - Success' first so this key already exists."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 409', () => pm.response.to.have.status(409));"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "GET /admin/permissions - Success (all)",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/permissions",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "permissions"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));",
+                      "pm.test('is array', () => pm.expect(pm.response.json()).to.be.an('array'));"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "GET /admin/permissions/:id - Success",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/permissions/{{permission_id}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "permissions",
+                    "{{permission_id}}"
+                  ]
+                },
+                "description": "Run 'POST /admin/permissions - Success' first to populate permission_id."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "PATCH /admin/permissions/:id - Success",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"description\": \"Updated description\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/admin/permissions/{{permission_id}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "permissions",
+                    "{{permission_id}}"
+                  ]
+                },
+                "description": "key is immutable \u2014 only description can change."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));",
+                      "const json = pm.response.json();",
+                      "pm.test('key unchanged', () => pm.expect(json.key).to.eql(pm.collectionVariables.get('test_permission_key')));",
+                      "pm.test('description updated', () => pm.expect(json.description).to.eql('Updated description'));"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "DELETE /admin/permissions/:id - Blocked, in use by a role (409)",
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/permissions/{{permission_id}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "permissions",
+                    "{{permission_id}}"
+                  ]
+                },
+                "description": "Run 'Admin > Roles > POST /admin/roles/:id/permissions - Success' first to assign this permission to a role."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 409', () => pm.response.to.have.status(409));"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "DELETE /admin/permissions/:id - Success",
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/permissions/{{permission_id}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "permissions",
+                    "{{permission_id}}"
+                  ]
+                },
+                "description": "Run 'Admin > Roles > DELETE /admin/roles/:id/permissions/:permissionId - Success' first so it's no longer in use."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));",
+                      "pm.test('deleted true', () => pm.expect(pm.response.json().deleted).to.eql(true));"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Roles",
+          "item": [
+            {
+              "name": "POST /admin/roles - Success",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"{{test_role_name}}\",\n  \"description\": \"Can export financial reports\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/admin/roles",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "roles"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 201', () => pm.response.to.have.status(201));",
+                      "const json = pm.response.json();",
+                      "pm.collectionVariables.set('role_id', json.id);"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "POST /admin/roles - Duplicate name (409)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"SUPER_ADMIN\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/admin/roles",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "roles"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 409', () => pm.response.to.have.status(409));"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "GET /admin/roles - Success (all)",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/roles",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "roles"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));",
+                      "pm.test('is array', () => pm.expect(pm.response.json()).to.be.an('array'));"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "GET /admin/roles/:id - Success",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/roles/{{role_id}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "roles",
+                    "{{role_id}}"
+                  ]
+                },
+                "description": "Run 'POST /admin/roles - Success' first to populate role_id."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));",
+                      "pm.test('has permissions array', () => pm.expect(pm.response.json().permissions).to.be.an('array'));"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "PATCH /admin/roles/:id - Success",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"description\": \"Updated role description\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/admin/roles/{{role_id}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "roles",
+                    "{{role_id}}"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "PATCH /admin/roles/:id - Rejects renaming SUPER_ADMIN (409)",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"NOT_SUPER_ADMIN\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/admin/roles/{{super_admin_role_id}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "roles",
+                    "{{super_admin_role_id}}"
+                  ]
+                },
+                "description": "super_admin_role_id must be set first (see the Invites folder's description for how to find it)."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 409', () => pm.response.to.have.status(409));"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "DELETE /admin/roles/:id - Rejects deleting SUPER_ADMIN (409)",
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/roles/{{super_admin_role_id}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "roles",
+                    "{{super_admin_role_id}}"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 409', () => pm.response.to.have.status(409));"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "POST /admin/roles/:id/permissions - Success",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"permissionId\": \"{{permission_id}}\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/admin/roles/{{role_id}}/permissions",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "roles",
+                    "{{role_id}}",
+                    "permissions"
+                  ]
+                },
+                "description": "Run 'Admin > Permissions > POST /admin/permissions - Success' and this folder's 'POST /admin/roles - Success' first."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));",
+                      "pm.test('assigned true', () => pm.expect(pm.response.json().assigned).to.eql(true));"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "DELETE /admin/roles/:id/permissions/:permissionId - Success",
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/roles/{{role_id}}/permissions/{{permission_id}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "roles",
+                    "{{role_id}}",
+                    "permissions",
+                    "{{permission_id}}"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));",
+                      "pm.test('removed true', () => pm.expect(pm.response.json().removed).to.eql(true));"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "DELETE /admin/roles/:id - Success",
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/roles/{{role_id}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "roles",
+                    "{{role_id}}"
+                  ]
+                },
+                "description": "Run the permission-removal request above first, and make sure no admin has this role assigned."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));",
+                      "pm.test('deleted true', () => pm.expect(pm.response.json().deleted).to.eql(true));"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Admins",
+          "item": [
+            {
+              "name": "GET /admin/admins - Success",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/admins",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "admins"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));",
+                      "pm.test('is array', () => pm.expect(pm.response.json()).to.be.an('array'));"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "POST /admin/admins/:id/roles - Success",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"roleId\": \"{{role_id}}\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/admin/admins/{{admin_id}}/roles",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "admins",
+                    "{{admin_id}}",
+                    "roles"
+                  ]
+                },
+                "description": "admin_id is set by 'Admin > Reference > GET /admin/me - Success'. role_id is set by 'Admin > Roles > POST /admin/roles - Success' \u2014 run that again first if you already deleted it in this run."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));",
+                      "pm.test('assigned true', () => pm.expect(pm.response.json().assigned).to.eql(true));"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "DELETE /admin/admins/:id/roles/:roleId - Success",
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/admins/{{admin_id}}/roles/{{role_id}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "admins",
+                    "{{admin_id}}",
+                    "roles",
+                    "{{role_id}}"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));",
+                      "pm.test('removed true', () => pm.expect(pm.response.json().removed).to.eql(true));"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "DELETE /admin/admins/:id/roles/:roleId - Blocked, last SUPER_ADMIN holder (409)",
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/admins/{{admin_id}}/roles/{{super_admin_role_id}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "admins",
+                    "{{admin_id}}",
+                    "roles",
+                    "{{super_admin_role_id}}"
+                  ]
+                },
+                "description": "Only returns 409 if admin_id is genuinely the only SUPER_ADMIN holder in this environment (true on a freshly seeded database)."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 409 (or 200 if other SUPER_ADMIN holders exist)', () => pm.expect([200,409]).to.include(pm.response.code));"
+                    ]
+                  }
+                }
               ]
             }
           ]
@@ -641,10 +2221,28 @@
               "name": "POST /auth/agent/login - Success",
               "request": {
                 "method": "POST",
-                "header": [{ "key": "Content-Type", "value": "application/json" }],
-                "body": { "mode": "raw", "raw": "{\n  \"email\": \"{{agent_email}}\",\n  \"password\": \"{{agent_password}}\"\n}" },
-                "url": { "raw": "{{base_url}}/auth/agent/login", "host": ["{{base_url}}"], "path": ["auth", "agent", "login"] },
-                "description": "Agent self-registration/approval isn't built yet (deferred to Phase 2 — see docs/specs). This only works if an Agent row with status=APPROVED and a bcrypt passwordHash already exists in the DB — insert one directly for testing, matching agent_email/agent_password."
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"{{agent_email}}\",\n  \"password\": \"{{agent_password}}\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/auth/agent/login",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "auth",
+                    "agent",
+                    "login"
+                  ]
+                },
+                "description": "Agent self-registration/approval isn't built yet (deferred to Phase 2 \u2014 see docs/specs). This only works if an Agent row with status=APPROVED and a bcrypt passwordHash already exists in the DB \u2014 insert one directly for testing, matching agent_email/agent_password."
               },
               "event": [
                 {
@@ -668,24 +2266,74 @@
               "name": "POST /auth/agent/login - Invalid credentials (401)",
               "request": {
                 "method": "POST",
-                "header": [{ "key": "Content-Type", "value": "application/json" }],
-                "body": { "mode": "raw", "raw": "{\n  \"email\": \"{{agent_email}}\",\n  \"password\": \"wrong-password\"\n}" },
-                "url": { "raw": "{{base_url}}/auth/agent/login", "host": ["{{base_url}}"], "path": ["auth", "agent", "login"] }
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"{{agent_email}}\",\n  \"password\": \"wrong-password\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/auth/agent/login",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "auth",
+                    "agent",
+                    "login"
+                  ]
+                }
               },
               "event": [
-                { "listen": "test", "script": { "exec": ["pm.test('status 401', () => pm.response.to.have.status(401));"] } }
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 401', () => pm.response.to.have.status(401));"
+                    ]
+                  }
+                }
               ]
             },
             {
               "name": "POST /auth/agent/login - Validation error (400)",
               "request": {
                 "method": "POST",
-                "header": [{ "key": "Content-Type", "value": "application/json" }],
-                "body": { "mode": "raw", "raw": "{\n  \"email\": \"not-an-email\",\n  \"password\": \"short\"\n}" },
-                "url": { "raw": "{{base_url}}/auth/agent/login", "host": ["{{base_url}}"], "path": ["auth", "agent", "login"] }
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"not-an-email\",\n  \"password\": \"short\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/auth/agent/login",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "auth",
+                    "agent",
+                    "login"
+                  ]
+                }
               },
               "event": [
-                { "listen": "test", "script": { "exec": ["pm.test('status 400', () => pm.response.to.have.status(400));"] } }
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 400', () => pm.response.to.have.status(400));"
+                    ]
+                  }
+                }
               ]
             }
           ]
@@ -698,10 +2346,27 @@
               "name": "POST /auth/refresh - Success (agent token)",
               "request": {
                 "method": "POST",
-                "header": [{ "key": "Content-Type", "value": "application/json" }],
-                "body": { "mode": "raw", "raw": "{\n  \"refreshToken\": \"{{agent_refresh_token}}\"\n}" },
-                "url": { "raw": "{{base_url}}/auth/refresh", "host": ["{{base_url}}"], "path": ["auth", "refresh"] },
-                "description": "Not role-namespaced — the Session row itself carries the principal type. Rotates the token: the old refresh token is revoked and a new one is returned."
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"refreshToken\": \"{{agent_refresh_token}}\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/auth/refresh",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "auth",
+                    "refresh"
+                  ]
+                },
+                "description": "Not role-namespaced \u2014 the Session row itself carries the principal type. Rotates the token: the old refresh token is revoked and a new one is returned."
               },
               "event": [
                 {
@@ -722,20 +2387,58 @@
               "name": "POST /auth/refresh - Unknown token (401)",
               "request": {
                 "method": "POST",
-                "header": [{ "key": "Content-Type", "value": "application/json" }],
-                "body": { "mode": "raw", "raw": "{\n  \"refreshToken\": \"not-a-real-token\"\n}" },
-                "url": { "raw": "{{base_url}}/auth/refresh", "host": ["{{base_url}}"], "path": ["auth", "refresh"] }
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"refreshToken\": \"not-a-real-token\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/auth/refresh",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "auth",
+                    "refresh"
+                  ]
+                }
               },
               "event": [
-                { "listen": "test", "script": { "exec": ["pm.test('status 401', () => pm.response.to.have.status(401));"] } }
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 401', () => pm.response.to.have.status(401));"
+                    ]
+                  }
+                }
               ]
             },
             {
               "name": "GET /auth/sessions - Success",
               "request": {
                 "method": "GET",
-                "header": [{ "key": "Authorization", "value": "Bearer {{agent_access_token}}" }],
-                "url": { "raw": "{{base_url}}/auth/sessions", "host": ["{{base_url}}"], "path": ["auth", "sessions"] }
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{agent_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/auth/sessions",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "auth",
+                    "sessions"
+                  ]
+                }
               },
               "event": [
                 {
@@ -756,66 +2459,165 @@
               "request": {
                 "method": "GET",
                 "header": [],
-                "url": { "raw": "{{base_url}}/auth/sessions", "host": ["{{base_url}}"], "path": ["auth", "sessions"] }
+                "url": {
+                  "raw": "{{base_url}}/auth/sessions",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "auth",
+                    "sessions"
+                  ]
+                }
               },
               "event": [
-                { "listen": "test", "script": { "exec": ["pm.test('status 401', () => pm.response.to.have.status(401));"] } }
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 401', () => pm.response.to.have.status(401));"
+                    ]
+                  }
+                }
               ]
             },
             {
               "name": "DELETE /auth/sessions/:id - Success",
               "request": {
                 "method": "DELETE",
-                "header": [{ "key": "Authorization", "value": "Bearer {{agent_access_token}}" }],
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{agent_access_token}}"
+                  }
+                ],
                 "url": {
                   "raw": "{{base_url}}/auth/sessions/{{agent_session_id}}",
-                  "host": ["{{base_url}}"],
-                  "path": ["auth", "sessions", "{{agent_session_id}}"]
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "auth",
+                    "sessions",
+                    "{{agent_session_id}}"
+                  ]
                 },
                 "description": "Run 'GET /auth/sessions - Success' first to populate agent_session_id."
               },
               "event": [
-                { "listen": "test", "script": { "exec": ["pm.test('status 200', () => pm.response.to.have.status(200));", "pm.test('revoked true', () => pm.expect(pm.response.json().revoked).to.eql(true));"] } }
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));",
+                      "pm.test('revoked true', () => pm.expect(pm.response.json().revoked).to.eql(true));"
+                    ]
+                  }
+                }
               ]
             },
             {
               "name": "DELETE /auth/sessions/:id - Not found / not owned (404)",
               "request": {
                 "method": "DELETE",
-                "header": [{ "key": "Authorization", "value": "Bearer {{agent_access_token}}" }],
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{agent_access_token}}"
+                  }
+                ],
                 "url": {
                   "raw": "{{base_url}}/auth/sessions/00000000-0000-0000-0000-000000000000",
-                  "host": ["{{base_url}}"],
-                  "path": ["auth", "sessions", "00000000-0000-0000-0000-000000000000"]
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "auth",
+                    "sessions",
+                    "00000000-0000-0000-0000-000000000000"
+                  ]
                 }
               },
               "event": [
-                { "listen": "test", "script": { "exec": ["pm.test('status 404', () => pm.response.to.have.status(404));"] } }
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 404', () => pm.response.to.have.status(404));"
+                    ]
+                  }
+                }
               ]
             },
             {
               "name": "POST /auth/logout - Success",
               "request": {
                 "method": "POST",
-                "header": [{ "key": "Content-Type", "value": "application/json" }],
-                "body": { "mode": "raw", "raw": "{\n  \"refreshToken\": \"{{agent_refresh_token}}\"\n}" },
-                "url": { "raw": "{{base_url}}/auth/logout", "host": ["{{base_url}}"], "path": ["auth", "logout"] },
-                "description": "Idempotent — also returns 200 on an already-revoked/unknown token."
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"refreshToken\": \"{{agent_refresh_token}}\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/auth/logout",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "auth",
+                    "logout"
+                  ]
+                },
+                "description": "Idempotent \u2014 also returns 200 on an already-revoked/unknown token."
               },
               "event": [
-                { "listen": "test", "script": { "exec": ["pm.test('status 200', () => pm.response.to.have.status(200));", "pm.test('loggedOut true', () => pm.expect(pm.response.json().loggedOut).to.eql(true));"] } }
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));",
+                      "pm.test('loggedOut true', () => pm.expect(pm.response.json().loggedOut).to.eql(true));"
+                    ]
+                  }
+                }
               ]
             },
             {
               "name": "POST /auth/logout-all - Success",
               "request": {
                 "method": "POST",
-                "header": [{ "key": "Authorization", "value": "Bearer {{agent_access_token}}" }],
-                "url": { "raw": "{{base_url}}/auth/logout-all", "host": ["{{base_url}}"], "path": ["auth", "logout-all"] },
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{agent_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/auth/logout-all",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "auth",
+                    "logout-all"
+                  ]
+                },
                 "description": "Revokes every session for the authenticated principal. Run 'Agent > Auth > POST /auth/agent/login - Success' again afterward to get a fresh usable token, since this one's session is now revoked."
               },
               "event": [
-                { "listen": "test", "script": { "exec": ["pm.test('status 200', () => pm.response.to.have.status(200));"] } }
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));"
+                    ]
+                  }
+                }
               ]
             },
             {
@@ -823,10 +2625,26 @@
               "request": {
                 "method": "POST",
                 "header": [],
-                "url": { "raw": "{{base_url}}/auth/logout-all", "host": ["{{base_url}}"], "path": ["auth", "logout-all"] }
+                "url": {
+                  "raw": "{{base_url}}/auth/logout-all",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "auth",
+                    "logout-all"
+                  ]
+                }
               },
               "event": [
-                { "listen": "test", "script": { "exec": ["pm.test('status 401', () => pm.response.to.have.status(401));"] } }
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 401', () => pm.response.to.have.status(401));"
+                    ]
+                  }
+                }
               ]
             }
           ]
@@ -835,7 +2653,7 @@
     },
     {
       "name": "IPPIS",
-      "description": "Document ingestion for the three IPPIS-related source documents (IPPIS Broadsheet, Disbursed Loans Report, Repayment Schedule) — upload, batch tracking, and snapshot/file download. These are admin-authenticated actions (no separate 'IPPIS principal' exists in the JWT system), so its Session sub-folder reuses the Admin identity — this is intentional, not a duplicate-in-error.",
+      "description": "Document ingestion for the three IPPIS-related source documents (IPPIS Broadsheet, Disbursed Loans Report, Repayment Schedule) \u2014 upload, batch tracking, and snapshot/file download. These are admin-authenticated actions (no separate 'IPPIS principal' exists in the JWT system), so its Session sub-folder reuses the Admin identity \u2014 this is intentional, not a duplicate-in-error.",
       "item": [
         {
           "name": "Documents",
@@ -844,17 +2662,35 @@
               "name": "POST /admin/documents/ippis-broadsheet/upload - Success",
               "request": {
                 "method": "POST",
-                "header": [{ "key": "Authorization", "value": "Bearer {{admin_access_token}}" }],
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
                 "body": {
                   "mode": "formdata",
-                  "formdata": [{ "key": "file", "type": "file", "src": [] }]
+                  "formdata": [
+                    {
+                      "key": "file",
+                      "type": "file",
+                      "src": []
+                    }
+                  ]
                 },
                 "url": {
                   "raw": "{{base_url}}/admin/documents/ippis-broadsheet/upload",
-                  "host": ["{{base_url}}"],
-                  "path": ["admin", "documents", "ippis-broadsheet", "upload"]
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "documents",
+                    "ippis-broadsheet",
+                    "upload"
+                  ]
                 },
-                "description": "Attach any .xlsx file (real parsing isn't built yet — a NoOpDocumentParser always reports 0 rows regardless of content). Do NOT attach the real sample files under docs/added/ to a shared workspace — those contain real BVNs/bank data and are gitignored for that reason."
+                "description": "Attach any .xlsx file (real parsing isn't built yet \u2014 a NoOpDocumentParser always reports 0 rows regardless of content). Do NOT attach the real sample files under docs/added/ to a shared workspace \u2014 those contain real BVNs/bank data and are gitignored for that reason."
               },
               "event": [
                 {
@@ -875,27 +2711,71 @@
               "request": {
                 "method": "POST",
                 "header": [],
-                "body": { "mode": "formdata", "formdata": [{ "key": "file", "type": "file", "src": [] }] },
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "file",
+                      "type": "file",
+                      "src": []
+                    }
+                  ]
+                },
                 "url": {
                   "raw": "{{base_url}}/admin/documents/ippis-broadsheet/upload",
-                  "host": ["{{base_url}}"],
-                  "path": ["admin", "documents", "ippis-broadsheet", "upload"]
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "documents",
+                    "ippis-broadsheet",
+                    "upload"
+                  ]
                 }
               },
               "event": [
-                { "listen": "test", "script": { "exec": ["pm.test('status 401', () => pm.response.to.have.status(401));"] } }
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 401', () => pm.response.to.have.status(401));"
+                    ]
+                  }
+                }
               ]
             },
             {
               "name": "POST /admin/documents/disbursed-loans/upload - Success",
               "request": {
                 "method": "POST",
-                "header": [{ "key": "Authorization", "value": "Bearer {{admin_access_token}}" }],
-                "body": { "mode": "formdata", "formdata": [{ "key": "file", "type": "file", "src": [] }] },
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "file",
+                      "type": "file",
+                      "src": []
+                    }
+                  ]
+                },
                 "url": {
                   "raw": "{{base_url}}/admin/documents/disbursed-loans/upload",
-                  "host": ["{{base_url}}"],
-                  "path": ["admin", "documents", "disbursed-loans", "upload"]
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "documents",
+                    "disbursed-loans",
+                    "upload"
+                  ]
                 }
               },
               "event": [
@@ -916,34 +2796,82 @@
               "name": "POST /admin/documents/disbursed-loans/upload - Missing permission (403)",
               "request": {
                 "method": "POST",
-                "header": [{ "key": "Authorization", "value": "Bearer {{agent_access_token}}" }],
-                "body": { "mode": "formdata", "formdata": [{ "key": "file", "type": "file", "src": [] }] },
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{agent_access_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "file",
+                      "type": "file",
+                      "src": []
+                    }
+                  ]
+                },
                 "url": {
                   "raw": "{{base_url}}/admin/documents/disbursed-loans/upload",
-                  "host": ["{{base_url}}"],
-                  "path": ["admin", "documents", "disbursed-loans", "upload"]
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "documents",
+                    "disbursed-loans",
+                    "upload"
+                  ]
                 }
               },
               "event": [
-                { "listen": "test", "script": { "exec": ["pm.test('status 401 or 403', () => pm.expect([401,403]).to.include(pm.response.code));"] } }
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 401 or 403', () => pm.expect([401,403]).to.include(pm.response.code));"
+                    ]
+                  }
+                }
               ]
             },
             {
               "name": "POST /admin/documents/repayment-schedule/upload - Success",
               "request": {
                 "method": "POST",
-                "header": [{ "key": "Authorization", "value": "Bearer {{admin_access_token}}" }],
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
                 "body": {
                   "mode": "formdata",
                   "formdata": [
-                    { "key": "file", "type": "file", "src": [] },
-                    { "key": "period", "value": "{{repayment_period}}", "type": "text" }
+                    {
+                      "key": "file",
+                      "type": "file",
+                      "src": []
+                    },
+                    {
+                      "key": "period",
+                      "value": "{{repayment_period}}",
+                      "type": "text"
+                    }
                   ]
                 },
                 "url": {
                   "raw": "{{base_url}}/admin/documents/repayment-schedule/upload",
-                  "host": ["{{base_url}}"],
-                  "path": ["admin", "documents", "repayment-schedule", "upload"]
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "documents",
+                    "repayment-schedule",
+                    "upload"
+                  ]
                 }
               },
               "event": [
@@ -963,81 +2891,198 @@
               "name": "POST /admin/documents/repayment-schedule/upload - Missing period (400)",
               "request": {
                 "method": "POST",
-                "header": [{ "key": "Authorization", "value": "Bearer {{admin_access_token}}" }],
-                "body": { "mode": "formdata", "formdata": [{ "key": "file", "type": "file", "src": [] }] },
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "file",
+                      "type": "file",
+                      "src": []
+                    }
+                  ]
+                },
                 "url": {
                   "raw": "{{base_url}}/admin/documents/repayment-schedule/upload",
-                  "host": ["{{base_url}}"],
-                  "path": ["admin", "documents", "repayment-schedule", "upload"]
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "documents",
+                    "repayment-schedule",
+                    "upload"
+                  ]
                 }
               },
               "event": [
-                { "listen": "test", "script": { "exec": ["pm.test('status 400', () => pm.response.to.have.status(400));"] } }
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 400', () => pm.response.to.have.status(400));"
+                    ]
+                  }
+                }
               ]
             },
             {
               "name": "POST /admin/documents/repayment-schedule/upload - Invalid period format (400)",
               "request": {
                 "method": "POST",
-                "header": [{ "key": "Authorization", "value": "Bearer {{admin_access_token}}" }],
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
                 "body": {
                   "mode": "formdata",
                   "formdata": [
-                    { "key": "file", "type": "file", "src": [] },
-                    { "key": "period", "value": "2024-13", "type": "text", "description": "Month 13 does not exist — must match YYYY-MM with month 01-12" }
+                    {
+                      "key": "file",
+                      "type": "file",
+                      "src": []
+                    },
+                    {
+                      "key": "period",
+                      "value": "2024-13",
+                      "type": "text",
+                      "description": "Month 13 does not exist \u2014 must match YYYY-MM with month 01-12"
+                    }
                   ]
                 },
                 "url": {
                   "raw": "{{base_url}}/admin/documents/repayment-schedule/upload",
-                  "host": ["{{base_url}}"],
-                  "path": ["admin", "documents", "repayment-schedule", "upload"]
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "documents",
+                    "repayment-schedule",
+                    "upload"
+                  ]
                 }
               },
               "event": [
-                { "listen": "test", "script": { "exec": ["pm.test('status 400', () => pm.response.to.have.status(400));"] } }
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 400', () => pm.response.to.have.status(400));"
+                    ]
+                  }
+                }
               ]
             },
             {
               "name": "GET /admin/documents/batches - Success (all)",
               "request": {
                 "method": "GET",
-                "header": [{ "key": "Authorization", "value": "Bearer {{admin_access_token}}" }],
-                "url": { "raw": "{{base_url}}/admin/documents/batches", "host": ["{{base_url}}"], "path": ["admin", "documents", "batches"] }
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/documents/batches",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "documents",
+                    "batches"
+                  ]
+                }
               },
               "event": [
-                { "listen": "test", "script": { "exec": ["pm.test('status 200', () => pm.response.to.have.status(200));", "pm.test('is array', () => pm.expect(pm.response.json()).to.be.an('array'));"] } }
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));",
+                      "pm.test('is array', () => pm.expect(pm.response.json()).to.be.an('array'));"
+                    ]
+                  }
+                }
               ]
             },
             {
               "name": "GET /admin/documents/batches - Filtered by documentType + status",
               "request": {
                 "method": "GET",
-                "header": [{ "key": "Authorization", "value": "Bearer {{admin_access_token}}" }],
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
                 "url": {
                   "raw": "{{base_url}}/admin/documents/batches?documentType=IPPIS_BROADSHEET&status=COMPLETED",
-                  "host": ["{{base_url}}"],
-                  "path": ["admin", "documents", "batches"],
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "documents",
+                    "batches"
+                  ],
                   "query": [
-                    { "key": "documentType", "value": "IPPIS_BROADSHEET", "description": "IPPIS_BROADSHEET | REPAYMENT_SCHEDULE | DISBURSED_LOANS" },
-                    { "key": "status", "value": "COMPLETED", "description": "PENDING | PROCESSING | COMPLETED | FAILED" }
+                    {
+                      "key": "documentType",
+                      "value": "IPPIS_BROADSHEET",
+                      "description": "IPPIS_BROADSHEET | REPAYMENT_SCHEDULE | DISBURSED_LOANS"
+                    },
+                    {
+                      "key": "status",
+                      "value": "COMPLETED",
+                      "description": "PENDING | PROCESSING | COMPLETED | FAILED"
+                    }
                   ]
                 }
               },
               "event": [
-                { "listen": "test", "script": { "exec": ["pm.test('status 200', () => pm.response.to.have.status(200));"] } }
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));"
+                    ]
+                  }
+                }
               ]
             },
             {
               "name": "GET /admin/documents/batches/:id - Success",
               "request": {
                 "method": "GET",
-                "header": [{ "key": "Authorization", "value": "Bearer {{admin_access_token}}" }],
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
                 "url": {
                   "raw": "{{base_url}}/admin/documents/batches/{{ippis_batch_id}}",
-                  "host": ["{{base_url}}"],
-                  "path": ["admin", "documents", "batches", "{{ippis_batch_id}}"]
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "documents",
+                    "batches",
+                    "{{ippis_batch_id}}"
+                  ]
                 },
-                "description": "Run 'POST /admin/documents/ippis-broadsheet/upload - Success' first to populate ippis_batch_id. Note the batch reaches COMPLETED asynchronously via the BullMQ worker — if you run this immediately, status may still show PENDING/PROCESSING; wait a second and retry if so."
+                "description": "Run 'POST /admin/documents/ippis-broadsheet/upload - Success' first to populate ippis_batch_id. Note the batch reaches COMPLETED asynchronously via the BullMQ worker \u2014 if you run this immediately, status may still show PENDING/PROCESSING; wait a second and retry if so."
               },
               "event": [
                 {
@@ -1056,62 +3101,136 @@
               "name": "GET /admin/documents/batches/:id - Missing permission (403)",
               "request": {
                 "method": "GET",
-                "header": [{ "key": "Authorization", "value": "Bearer {{agent_access_token}}" }],
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{agent_access_token}}"
+                  }
+                ],
                 "url": {
                   "raw": "{{base_url}}/admin/documents/batches/{{ippis_batch_id}}",
-                  "host": ["{{base_url}}"],
-                  "path": ["admin", "documents", "batches", "{{ippis_batch_id}}"]
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "documents",
+                    "batches",
+                    "{{ippis_batch_id}}"
+                  ]
                 }
               },
               "event": [
-                { "listen": "test", "script": { "exec": ["pm.test('status 401 or 403', () => pm.expect([401,403]).to.include(pm.response.code));"] } }
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 401 or 403', () => pm.expect([401,403]).to.include(pm.response.code));"
+                    ]
+                  }
+                }
               ]
             },
             {
               "name": "GET /admin/documents/files/:key - Success (download)",
               "request": {
                 "method": "GET",
-                "header": [{ "key": "Authorization", "value": "Bearer {{admin_access_token}}" }],
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
                 "url": {
                   "raw": "{{base_url}}/admin/documents/files/{{file_storage_key}}",
-                  "host": ["{{base_url}}"],
-                  "path": ["admin", "documents", "files", "{{file_storage_key}}"]
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "documents",
+                    "files",
+                    "{{file_storage_key}}"
+                  ]
                 },
-                "description": "file_storage_key must be URL-encoded (storage keys contain '/', e.g. 'uploads/ippis_broadsheet/171...-broadsheet.xlsx') — Postman encodes path variables automatically, but if pasting manually into the raw URL, encode '/' as %2F. Populated automatically by 'GET /admin/documents/batches/:id - Success'."
+                "description": "file_storage_key must be URL-encoded (storage keys contain '/', e.g. 'uploads/ippis_broadsheet/171...-broadsheet.xlsx') \u2014 Postman encodes path variables automatically, but if pasting manually into the raw URL, encode '/' as %2F. Populated automatically by 'GET /admin/documents/batches/:id - Success'."
               },
               "event": [
-                { "listen": "test", "script": { "exec": ["pm.test('status 200', () => pm.response.to.have.status(200));"] } }
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));"
+                    ]
+                  }
+                }
               ]
             },
             {
               "name": "GET /admin/documents/files/:key - Not found (404)",
               "request": {
                 "method": "GET",
-                "header": [{ "key": "Authorization", "value": "Bearer {{admin_access_token}}" }],
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
                 "url": {
                   "raw": "{{base_url}}/admin/documents/files/does%2Fnot%2Fexist.xlsx",
-                  "host": ["{{base_url}}"],
-                  "path": ["admin", "documents", "files", "does%2Fnot%2Fexist.xlsx"]
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "documents",
+                    "files",
+                    "does%2Fnot%2Fexist.xlsx"
+                  ]
                 }
               },
               "event": [
-                { "listen": "test", "script": { "exec": ["pm.test('status 404', () => pm.response.to.have.status(404));"] } }
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 404', () => pm.response.to.have.status(404));"
+                    ]
+                  }
+                }
               ]
             }
           ]
         },
         {
           "name": "Session (admin identity)",
-          "description": "Document ingestion has no principal type of its own — it's authenticated as an Admin. Identical mechanics to Admin > Session, included here so this group is self-contained for anyone testing just the IPPIS area. Uses admin_access_token/admin_refresh_token/session_id, same as Admin > Session.",
+          "description": "Document ingestion has no principal type of its own \u2014 it's authenticated as an Admin. Identical mechanics to Admin > Session, included here so this group is self-contained for anyone testing just the IPPIS area. Uses admin_access_token/admin_refresh_token/session_id, same as Admin > Session.",
           "item": [
             {
               "name": "POST /auth/refresh - Success (admin token)",
               "request": {
                 "method": "POST",
-                "header": [{ "key": "Content-Type", "value": "application/json" }],
-                "body": { "mode": "raw", "raw": "{\n  \"refreshToken\": \"{{admin_refresh_token}}\"\n}" },
-                "url": { "raw": "{{base_url}}/auth/refresh", "host": ["{{base_url}}"], "path": ["auth", "refresh"] },
-                "description": "Not role-namespaced — the Session row itself carries the principal type. Rotates the token: the old refresh token is revoked and a new one is returned."
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"refreshToken\": \"{{admin_refresh_token}}\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/auth/refresh",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "auth",
+                    "refresh"
+                  ]
+                },
+                "description": "Not role-namespaced \u2014 the Session row itself carries the principal type. Rotates the token: the old refresh token is revoked and a new one is returned."
               },
               "event": [
                 {
@@ -1132,8 +3251,22 @@
               "name": "GET /auth/sessions - Success",
               "request": {
                 "method": "GET",
-                "header": [{ "key": "Authorization", "value": "Bearer {{admin_access_token}}" }],
-                "url": { "raw": "{{base_url}}/auth/sessions", "host": ["{{base_url}}"], "path": ["auth", "sessions"] }
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/auth/sessions",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "auth",
+                    "sessions"
+                  ]
+                }
               },
               "event": [
                 {
@@ -1153,13 +3286,38 @@
               "name": "POST /auth/logout - Success",
               "request": {
                 "method": "POST",
-                "header": [{ "key": "Content-Type", "value": "application/json" }],
-                "body": { "mode": "raw", "raw": "{\n  \"refreshToken\": \"{{admin_refresh_token}}\"\n}" },
-                "url": { "raw": "{{base_url}}/auth/logout", "host": ["{{base_url}}"], "path": ["auth", "logout"] },
-                "description": "Idempotent — also returns 200 on an already-revoked/unknown token."
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"refreshToken\": \"{{admin_refresh_token}}\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/auth/logout",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "auth",
+                    "logout"
+                  ]
+                },
+                "description": "Idempotent \u2014 also returns 200 on an already-revoked/unknown token."
               },
               "event": [
-                { "listen": "test", "script": { "exec": ["pm.test('status 200', () => pm.response.to.have.status(200));", "pm.test('loggedOut true', () => pm.expect(pm.response.json().loggedOut).to.eql(true));"] } }
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));",
+                      "pm.test('loggedOut true', () => pm.expect(pm.response.json().loggedOut).to.eql(true));"
+                    ]
+                  }
+                }
               ]
             }
           ]
@@ -1168,7 +3326,7 @@
     },
     {
       "name": "Client",
-      "description": "Everything authenticated as a Client (phone + OTP) — in this codebase, an IPPIS civil servant is onboarded and logs in as a Client. Login/OTP and this client's own session management. Independent of Admin's ability to force-revoke this client's sessions (see Admin > Force-Revoke Sessions).",
+      "description": "Everything authenticated as a Client (phone + OTP) \u2014 in this codebase, an IPPIS civil servant is onboarded and logs in as a Client. Login/OTP and this client's own session management. Independent of Admin's ability to force-revoke this client's sessions (see Admin > Force-Revoke Sessions).",
       "item": [
         {
           "name": "Auth",
@@ -1177,34 +3335,106 @@
               "name": "POST /auth/client/otp/request - Success",
               "request": {
                 "method": "POST",
-                "header": [{ "key": "Content-Type", "value": "application/json" }],
-                "body": { "mode": "raw", "raw": "{\n  \"phone\": \"{{client_phone}}\"\n}" },
-                "url": { "raw": "{{base_url}}/auth/client/otp/request", "host": ["{{base_url}}"], "path": ["auth", "client", "otp", "request"] },
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"phone\": \"{{client_phone}}\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/auth/client/otp/request",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "auth",
+                    "client",
+                    "otp",
+                    "request"
+                  ]
+                },
                 "description": "The mock ConsoleOtpProvider logs the 6-digit code to the running server's stdout (e.g. 'OTP for +234...: 123456') since there's no real SMS vendor wired in. Copy that code into client_otp_code before running the verify request."
               },
               "event": [
-                { "listen": "test", "script": { "exec": ["pm.test('status 200', () => pm.response.to.have.status(200));", "pm.test('sent true', () => pm.expect(pm.response.json().sent).to.eql(true));"] } }
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));",
+                      "pm.test('sent true', () => pm.expect(pm.response.json().sent).to.eql(true));"
+                    ]
+                  }
+                }
               ]
             },
             {
               "name": "POST /auth/client/otp/request - Validation error (400)",
               "request": {
                 "method": "POST",
-                "header": [{ "key": "Content-Type", "value": "application/json" }],
-                "body": { "mode": "raw", "raw": "{\n  \"phone\": \"not-a-phone-number\"\n}" },
-                "url": { "raw": "{{base_url}}/auth/client/otp/request", "host": ["{{base_url}}"], "path": ["auth", "client", "otp", "request"] }
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"phone\": \"not-a-phone-number\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/auth/client/otp/request",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "auth",
+                    "client",
+                    "otp",
+                    "request"
+                  ]
+                }
               },
               "event": [
-                { "listen": "test", "script": { "exec": ["pm.test('status 400', () => pm.response.to.have.status(400));"] } }
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 400', () => pm.response.to.have.status(400));"
+                    ]
+                  }
+                }
               ]
             },
             {
               "name": "POST /auth/client/otp/verify - Success",
               "request": {
                 "method": "POST",
-                "header": [{ "key": "Content-Type", "value": "application/json" }],
-                "body": { "mode": "raw", "raw": "{\n  \"phone\": \"{{client_phone}}\",\n  \"code\": \"{{client_otp_code}}\"\n}" },
-                "url": { "raw": "{{base_url}}/auth/client/otp/verify", "host": ["{{base_url}}"], "path": ["auth", "client", "otp", "verify"] },
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"phone\": \"{{client_phone}}\",\n  \"code\": \"{{client_otp_code}}\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/auth/client/otp/verify",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "auth",
+                    "client",
+                    "otp",
+                    "verify"
+                  ]
+                },
                 "description": "Requires client_otp_code to be set from the server console log first (see the 'otp/request - Success' request's description)."
               },
               "event": [
@@ -1229,24 +3459,76 @@
               "name": "POST /auth/client/otp/verify - Invalid or expired code (401)",
               "request": {
                 "method": "POST",
-                "header": [{ "key": "Content-Type", "value": "application/json" }],
-                "body": { "mode": "raw", "raw": "{\n  \"phone\": \"{{client_phone}}\",\n  \"code\": \"000000\"\n}" },
-                "url": { "raw": "{{base_url}}/auth/client/otp/verify", "host": ["{{base_url}}"], "path": ["auth", "client", "otp", "verify"] }
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"phone\": \"{{client_phone}}\",\n  \"code\": \"000000\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/auth/client/otp/verify",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "auth",
+                    "client",
+                    "otp",
+                    "verify"
+                  ]
+                }
               },
               "event": [
-                { "listen": "test", "script": { "exec": ["pm.test('status 401', () => pm.response.to.have.status(401));"] } }
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 401', () => pm.response.to.have.status(401));"
+                    ]
+                  }
+                }
               ]
             },
             {
               "name": "POST /auth/client/otp/verify - Validation error (400, code not 6 digits)",
               "request": {
                 "method": "POST",
-                "header": [{ "key": "Content-Type", "value": "application/json" }],
-                "body": { "mode": "raw", "raw": "{\n  \"phone\": \"{{client_phone}}\",\n  \"code\": \"123\"\n}" },
-                "url": { "raw": "{{base_url}}/auth/client/otp/verify", "host": ["{{base_url}}"], "path": ["auth", "client", "otp", "verify"] }
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"phone\": \"{{client_phone}}\",\n  \"code\": \"123\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/auth/client/otp/verify",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "auth",
+                    "client",
+                    "otp",
+                    "verify"
+                  ]
+                }
               },
               "event": [
-                { "listen": "test", "script": { "exec": ["pm.test('status 400', () => pm.response.to.have.status(400));"] } }
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 400', () => pm.response.to.have.status(400));"
+                    ]
+                  }
+                }
               ]
             }
           ]
@@ -1259,10 +3541,27 @@
               "name": "POST /auth/refresh - Success (client token)",
               "request": {
                 "method": "POST",
-                "header": [{ "key": "Content-Type", "value": "application/json" }],
-                "body": { "mode": "raw", "raw": "{\n  \"refreshToken\": \"{{client_refresh_token}}\"\n}" },
-                "url": { "raw": "{{base_url}}/auth/refresh", "host": ["{{base_url}}"], "path": ["auth", "refresh"] },
-                "description": "Not role-namespaced — the Session row itself carries the principal type. Rotates the token: the old refresh token is revoked and a new one is returned."
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"refreshToken\": \"{{client_refresh_token}}\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/auth/refresh",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "auth",
+                    "refresh"
+                  ]
+                },
+                "description": "Not role-namespaced \u2014 the Session row itself carries the principal type. Rotates the token: the old refresh token is revoked and a new one is returned."
               },
               "event": [
                 {
@@ -1283,20 +3582,58 @@
               "name": "POST /auth/refresh - Unknown token (401)",
               "request": {
                 "method": "POST",
-                "header": [{ "key": "Content-Type", "value": "application/json" }],
-                "body": { "mode": "raw", "raw": "{\n  \"refreshToken\": \"not-a-real-token\"\n}" },
-                "url": { "raw": "{{base_url}}/auth/refresh", "host": ["{{base_url}}"], "path": ["auth", "refresh"] }
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"refreshToken\": \"not-a-real-token\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/auth/refresh",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "auth",
+                    "refresh"
+                  ]
+                }
               },
               "event": [
-                { "listen": "test", "script": { "exec": ["pm.test('status 401', () => pm.response.to.have.status(401));"] } }
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 401', () => pm.response.to.have.status(401));"
+                    ]
+                  }
+                }
               ]
             },
             {
               "name": "GET /auth/sessions - Success",
               "request": {
                 "method": "GET",
-                "header": [{ "key": "Authorization", "value": "Bearer {{client_access_token}}" }],
-                "url": { "raw": "{{base_url}}/auth/sessions", "host": ["{{base_url}}"], "path": ["auth", "sessions"] }
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{client_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/auth/sessions",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "auth",
+                    "sessions"
+                  ]
+                }
               },
               "event": [
                 {
@@ -1317,66 +3654,165 @@
               "request": {
                 "method": "GET",
                 "header": [],
-                "url": { "raw": "{{base_url}}/auth/sessions", "host": ["{{base_url}}"], "path": ["auth", "sessions"] }
+                "url": {
+                  "raw": "{{base_url}}/auth/sessions",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "auth",
+                    "sessions"
+                  ]
+                }
               },
               "event": [
-                { "listen": "test", "script": { "exec": ["pm.test('status 401', () => pm.response.to.have.status(401));"] } }
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 401', () => pm.response.to.have.status(401));"
+                    ]
+                  }
+                }
               ]
             },
             {
               "name": "DELETE /auth/sessions/:id - Success",
               "request": {
                 "method": "DELETE",
-                "header": [{ "key": "Authorization", "value": "Bearer {{client_access_token}}" }],
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{client_access_token}}"
+                  }
+                ],
                 "url": {
                   "raw": "{{base_url}}/auth/sessions/{{client_session_id}}",
-                  "host": ["{{base_url}}"],
-                  "path": ["auth", "sessions", "{{client_session_id}}"]
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "auth",
+                    "sessions",
+                    "{{client_session_id}}"
+                  ]
                 },
                 "description": "Run 'GET /auth/sessions - Success' first to populate client_session_id."
               },
               "event": [
-                { "listen": "test", "script": { "exec": ["pm.test('status 200', () => pm.response.to.have.status(200));", "pm.test('revoked true', () => pm.expect(pm.response.json().revoked).to.eql(true));"] } }
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));",
+                      "pm.test('revoked true', () => pm.expect(pm.response.json().revoked).to.eql(true));"
+                    ]
+                  }
+                }
               ]
             },
             {
               "name": "DELETE /auth/sessions/:id - Not found / not owned (404)",
               "request": {
                 "method": "DELETE",
-                "header": [{ "key": "Authorization", "value": "Bearer {{client_access_token}}" }],
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{client_access_token}}"
+                  }
+                ],
                 "url": {
                   "raw": "{{base_url}}/auth/sessions/00000000-0000-0000-0000-000000000000",
-                  "host": ["{{base_url}}"],
-                  "path": ["auth", "sessions", "00000000-0000-0000-0000-000000000000"]
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "auth",
+                    "sessions",
+                    "00000000-0000-0000-0000-000000000000"
+                  ]
                 }
               },
               "event": [
-                { "listen": "test", "script": { "exec": ["pm.test('status 404', () => pm.response.to.have.status(404));"] } }
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 404', () => pm.response.to.have.status(404));"
+                    ]
+                  }
+                }
               ]
             },
             {
               "name": "POST /auth/logout - Success",
               "request": {
                 "method": "POST",
-                "header": [{ "key": "Content-Type", "value": "application/json" }],
-                "body": { "mode": "raw", "raw": "{\n  \"refreshToken\": \"{{client_refresh_token}}\"\n}" },
-                "url": { "raw": "{{base_url}}/auth/logout", "host": ["{{base_url}}"], "path": ["auth", "logout"] },
-                "description": "Idempotent — also returns 200 on an already-revoked/unknown token."
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"refreshToken\": \"{{client_refresh_token}}\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/auth/logout",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "auth",
+                    "logout"
+                  ]
+                },
+                "description": "Idempotent \u2014 also returns 200 on an already-revoked/unknown token."
               },
               "event": [
-                { "listen": "test", "script": { "exec": ["pm.test('status 200', () => pm.response.to.have.status(200));", "pm.test('loggedOut true', () => pm.expect(pm.response.json().loggedOut).to.eql(true));"] } }
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));",
+                      "pm.test('loggedOut true', () => pm.expect(pm.response.json().loggedOut).to.eql(true));"
+                    ]
+                  }
+                }
               ]
             },
             {
               "name": "POST /auth/logout-all - Success",
               "request": {
                 "method": "POST",
-                "header": [{ "key": "Authorization", "value": "Bearer {{client_access_token}}" }],
-                "url": { "raw": "{{base_url}}/auth/logout-all", "host": ["{{base_url}}"], "path": ["auth", "logout-all"] },
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{client_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/auth/logout-all",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "auth",
+                    "logout-all"
+                  ]
+                },
                 "description": "Revokes every session for the authenticated principal. Run 'Client > Auth > POST /auth/client/otp/verify - Success' again afterward to get a fresh usable token, since this one's session is now revoked."
               },
               "event": [
-                { "listen": "test", "script": { "exec": ["pm.test('status 200', () => pm.response.to.have.status(200));"] } }
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));"
+                    ]
+                  }
+                }
               ]
             },
             {
@@ -1384,10 +3820,26 @@
               "request": {
                 "method": "POST",
                 "header": [],
-                "url": { "raw": "{{base_url}}/auth/logout-all", "host": ["{{base_url}}"], "path": ["auth", "logout-all"] }
+                "url": {
+                  "raw": "{{base_url}}/auth/logout-all",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "auth",
+                    "logout-all"
+                  ]
+                }
               },
               "event": [
-                { "listen": "test", "script": { "exec": ["pm.test('status 401', () => pm.response.to.have.status(401));"] } }
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 401', () => pm.response.to.have.status(401));"
+                    ]
+                  }
+                }
               ]
             }
           ]
