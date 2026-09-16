@@ -16,7 +16,7 @@ export class GcsFileStorageProvider implements FileStorageProvider {
   // comment. Constructed on first use, not in the constructor.
   private getBucketName(): string {
     if (!this.bucketName) {
-      this.bucketName = this.configService.getOrThrow<string>('GCS_BUCKET');
+      this.bucketName = this.configService.getOrThrow<string>('GCP_BUCKET_NAME');
     }
     return this.bucketName;
   }
@@ -24,20 +24,22 @@ export class GcsFileStorageProvider implements FileStorageProvider {
   private getStorage(): Storage {
     if (!this.storage) {
       this.storage = new Storage({
-        projectId: this.configService.getOrThrow<string>('GCP_PROJECT_ID'),
-        credentials: {
-          client_email: this.configService.getOrThrow<string>('GCP_CLIENT_EMAIL'),
-          private_key: this.configService
-            .getOrThrow<string>('GCP_PRIVATE_KEY')
-            .replace(/\\n/g, '\n'),
-        },
+        keyFilename: this.configService.getOrThrow<string>('GCP_CREDENTIALS_FILE'),
       });
     }
     return this.storage;
   }
 
+  // Optional prefix so multiple apps/environments can share one bucket
+  // without colliding — mirrors the reasoning behind this project's
+  // REDIS_KEY_PREFIX convention.
+  private resolveKey(key: string): string {
+    const subPath = this.configService.get<string>('GCP_SUB_PATH', '').replace(/^\/+|\/+$/g, '');
+    return subPath ? `${subPath}/${key}` : key;
+  }
+
   private file(key: string) {
-    return this.getStorage().bucket(this.getBucketName()).file(key);
+    return this.getStorage().bucket(this.getBucketName()).file(this.resolveKey(key));
   }
 
   async putObject(key: string, content: Buffer): Promise<void> {

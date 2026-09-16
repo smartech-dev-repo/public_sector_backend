@@ -13,17 +13,11 @@ function fakeConfig(values: Record<string, string>): ConfigService {
       }
       return values[key];
     },
+    get: (key: string, defaultValue?: string) => (key in values ? values[key] : defaultValue),
   } as unknown as ConfigService;
 }
 
 describe('GcsFileStorageProvider', () => {
-  const config = fakeConfig({
-    GCP_PROJECT_ID: 'test-project',
-    GCP_CLIENT_EMAIL: 'sa@test-project.iam.gserviceaccount.com',
-    GCP_PRIVATE_KEY: '-----BEGIN PRIVATE KEY-----\\nfake\\n-----END PRIVATE KEY-----\\n',
-    GCS_BUCKET: 'test-bucket',
-  });
-  let provider: GcsFileStorageProvider;
   let fileMock: {
     save: jest.Mock;
     download: jest.Mock;
@@ -43,31 +37,79 @@ describe('GcsFileStorageProvider', () => {
     (Storage as unknown as jest.Mock).mockImplementation(() => ({
       bucket: jest.fn().mockReturnValue(bucketMock),
     }));
-
-    provider = new GcsFileStorageProvider(config);
   });
 
-  it('putObject saves the buffer to the keyed file', async () => {
+  it('constructs the Storage client from GCP_CREDENTIALS_FILE via keyFilename', async () => {
+    const config = fakeConfig({ GCP_BUCKET_NAME: 'test-bucket', GCP_CREDENTIALS_FILE: './gcp-credentials.json' });
+    const provider = new GcsFileStorageProvider(config);
     fileMock.save.mockResolvedValue(undefined);
+
+    await provider.putObject('uploads/file.xlsx', Buffer.from('data'));
+
+    expect(Storage).toHaveBeenCalledWith({ keyFilename: './gcp-credentials.json' });
+  });
+
+  it('putObject saves the buffer to the keyed file when no sub-path is configured', async () => {
+    const config = fakeConfig({ GCP_BUCKET_NAME: 'test-bucket', GCP_CREDENTIALS_FILE: './gcp-credentials.json' });
+    const provider = new GcsFileStorageProvider(config);
+    fileMock.save.mockResolvedValue(undefined);
+
     await provider.putObject('uploads/file.xlsx', Buffer.from('data'));
 
     expect(bucketMock.file).toHaveBeenCalledWith('uploads/file.xlsx');
     expect(fileMock.save).toHaveBeenCalledWith(Buffer.from('data'));
   });
 
+  it('prefixes the key with GCP_SUB_PATH when configured', async () => {
+    const config = fakeConfig({
+      GCP_BUCKET_NAME: 'test-bucket',
+      GCP_CREDENTIALS_FILE: './gcp-credentials.json',
+      GCP_SUB_PATH: 'camco',
+    });
+    const provider = new GcsFileStorageProvider(config);
+    fileMock.save.mockResolvedValue(undefined);
+
+    await provider.putObject('uploads/file.xlsx', Buffer.from('data'));
+
+    expect(bucketMock.file).toHaveBeenCalledWith('camco/uploads/file.xlsx');
+  });
+
+  it('trims stray slashes from GCP_SUB_PATH before prefixing', async () => {
+    const config = fakeConfig({
+      GCP_BUCKET_NAME: 'test-bucket',
+      GCP_CREDENTIALS_FILE: './gcp-credentials.json',
+      GCP_SUB_PATH: '/camco/',
+    });
+    const provider = new GcsFileStorageProvider(config);
+    fileMock.save.mockResolvedValue(undefined);
+
+    await provider.putObject('uploads/file.xlsx', Buffer.from('data'));
+
+    expect(bucketMock.file).toHaveBeenCalledWith('camco/uploads/file.xlsx');
+  });
+
   it('getObject downloads and returns the file contents as a Buffer', async () => {
+    const config = fakeConfig({ GCP_BUCKET_NAME: 'test-bucket', GCP_CREDENTIALS_FILE: './gcp-credentials.json' });
+    const provider = new GcsFileStorageProvider(config);
     fileMock.download.mockResolvedValue([Buffer.from('hello')]);
+
     const result = await provider.getObject('uploads/file.xlsx');
     expect(result.toString('utf-8')).toBe('hello');
   });
 
   it('getObject throws NotFoundException when GCS reports the object is missing', async () => {
+    const config = fakeConfig({ GCP_BUCKET_NAME: 'test-bucket', GCP_CREDENTIALS_FILE: './gcp-credentials.json' });
+    const provider = new GcsFileStorageProvider(config);
     fileMock.download.mockRejectedValue(Object.assign(new Error('not found'), { code: 404 }));
+
     await expect(provider.getObject('missing.xlsx')).rejects.toThrow(NotFoundException);
   });
 
   it('getSignedDownloadUrl returns a signed read URL', async () => {
+    const config = fakeConfig({ GCP_BUCKET_NAME: 'test-bucket', GCP_CREDENTIALS_FILE: './gcp-credentials.json' });
+    const provider = new GcsFileStorageProvider(config);
     fileMock.getSignedUrl.mockResolvedValue(['https://storage.googleapis.com/signed-url']);
+
     const url = await provider.getSignedDownloadUrl('uploads/file.xlsx');
 
     expect(fileMock.getSignedUrl).toHaveBeenCalledWith(
@@ -77,7 +119,10 @@ describe('GcsFileStorageProvider', () => {
   });
 
   it('deleteObject deletes the keyed file', async () => {
+    const config = fakeConfig({ GCP_BUCKET_NAME: 'test-bucket', GCP_CREDENTIALS_FILE: './gcp-credentials.json' });
+    const provider = new GcsFileStorageProvider(config);
     fileMock.delete.mockResolvedValue(undefined);
+
     await provider.deleteObject('uploads/file.xlsx');
     expect(fileMock.delete).toHaveBeenCalled();
   });

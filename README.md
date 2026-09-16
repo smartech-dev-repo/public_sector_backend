@@ -86,11 +86,12 @@ actual repayments) is not built yet.
 
 File storage picks its active provider via `STORAGE_PROVIDER` (`local` |
 `s3` | `gcs`, default `local`). Only the selected provider's env vars need
-real values — see `.env.example` for the full list (`AWS_*` for S3,
-`GCP_*`/`GCS_BUCKET` for GCS). Automated tests always run against the local
-provider regardless of this setting. Background processing uses BullMQ
-against the `REDIS_URL`/`REDIS_KEY_PREFIX` already configured in your
-environment.
+real values — see `.env.example` for the full list (`AWS_*` for S3;
+`GCP_BUCKET_NAME` + `GCP_CREDENTIALS_FILE` — a path to a service-account
+JSON key file, never the key contents inline — + optional `GCP_SUB_PATH`
+for GCS). Automated tests always run against the local provider regardless
+of this setting. Background processing uses BullMQ against the
+`REDIS_URL`/`REDIS_KEY_PREFIX` already configured in your environment.
 
 ## RBAC management
 
