@@ -21,11 +21,19 @@ export class GcsFileStorageProvider implements FileStorageProvider {
     return this.bucketName;
   }
 
+  // GCP_CREDENTIALS_FILE (a local key file) is used when set — the normal
+  // path for local dev. GCP_CREDENTIALS_JSON (the key file's raw contents,
+  // one environment variable) is the fallback for platforms like Dokploy
+  // that inject secrets purely via env vars with no file mount available.
   private getStorage(): Storage {
     if (!this.storage) {
-      this.storage = new Storage({
-        keyFilename: this.configService.getOrThrow<string>('GCP_CREDENTIALS_FILE'),
-      });
+      const credentialsFile = this.configService.get<string>('GCP_CREDENTIALS_FILE');
+      if (credentialsFile) {
+        this.storage = new Storage({ keyFilename: credentialsFile });
+      } else {
+        const credentialsJson = this.configService.getOrThrow<string>('GCP_CREDENTIALS_JSON');
+        this.storage = new Storage({ credentials: JSON.parse(credentialsJson) });
+      }
     }
     return this.storage;
   }
