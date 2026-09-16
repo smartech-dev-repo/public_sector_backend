@@ -53,14 +53,14 @@ describe('Document uploads (e2e)', () => {
     }
   });
 
-  it('uploads an IPPIS broadsheet file, processes it via the no-op parser, and completes', async () => {
+  it('uploads a disbursed-loans file, processes it via the no-op parser, and completes', async () => {
     const res = await request(app.getHttpServer())
-      .post('/admin/documents/ippis-broadsheet/upload')
+      .post('/admin/documents/disbursed-loans/upload')
       .set('Authorization', `Bearer ${accessToken}`)
-      .attach('file', Buffer.from('fake-xlsx-content'), 'broadsheet.xlsx')
+      .attach('file', Buffer.from('fake-xlsx-content'), 'loans.xlsx')
       .expect(201);
 
-    expect(res.body.documentType).toBe('IPPIS_BROADSHEET');
+    expect(res.body.documentType).toBe('DISBURSED_LOANS');
     createdBatchIds.push(res.body.id);
 
     const batch = await waitForBatchCompletion(prisma, res.body.id);
