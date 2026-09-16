@@ -2873,7 +2873,8 @@
                     "repayment-schedule",
                     "upload"
                   ]
-                }
+                },
+                "description": "Attach an .xlsx file with one sheet per agency (NPF/NSCDC/IMMIGRATION/CORRECTIONAL/CUSTOM/LASG) \u2014 column layouts differ per agency; see src/document-ingestion/parsers/repayment-row-mapper.ts for each sheet's expected headers. Rows are upserted into LoanRepaymentRecord by (agency, staffId, period, elementName). Do NOT attach the real sample files under docs/added/ to a shared workspace \u2014 those contain real BVNs/bank data and are gitignored for that reason."
               },
               "event": [
                 {

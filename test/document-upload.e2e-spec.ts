@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import * as request from 'supertest';
+import * as ExcelJS from 'exceljs';
 import { AppModule } from '../src/app.module';
 import { PrismaService } from '../src/prisma/prisma.service';
 
@@ -53,12 +54,16 @@ describe('Document uploads (e2e)', () => {
     }
   });
 
-  it('uploads a repayment-schedule file, processes it via the no-op parser, and completes', async () => {
+  it('uploads a repayment-schedule file with no recognizable sheets, and still completes with zero rows processed', async () => {
+    const workbook = new ExcelJS.Workbook();
+    workbook.addWorksheet('NotARealAgency');
+    const buffer = (await workbook.xlsx.writeBuffer()) as unknown as Buffer;
+
     const res = await request(app.getHttpServer())
       .post('/admin/documents/repayment-schedule/upload')
       .set('Authorization', `Bearer ${accessToken}`)
       .field('period', '2024-11')
-      .attach('file', Buffer.from('fake-xlsx-content'), 'loans.xlsx')
+      .attach('file', buffer, 'repayments.xlsx')
       .expect(201);
 
     expect(res.body.documentType).toBe('REPAYMENT_SCHEDULE');
@@ -85,11 +90,15 @@ describe('Document uploads (e2e)', () => {
   });
 
   it('accepts a repayment-schedule upload with a valid period and records it on the batch', async () => {
+    const workbook = new ExcelJS.Workbook();
+    workbook.addWorksheet('NotARealAgency');
+    const buffer = (await workbook.xlsx.writeBuffer()) as unknown as Buffer;
+
     const res = await request(app.getHttpServer())
       .post('/admin/documents/repayment-schedule/upload')
       .set('Authorization', `Bearer ${accessToken}`)
       .field('period', '2024-12')
-      .attach('file', Buffer.from('fake'), 'repayments.xlsx')
+      .attach('file', buffer, 'repayments.xlsx')
       .expect(201);
     createdBatchIds.push(res.body.id);
 
