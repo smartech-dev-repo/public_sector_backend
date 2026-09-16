@@ -7,6 +7,31 @@ list endpoints (`/admin/invites`, `/admin/audit-logs`,
 `/admin/documents/batches`) include requests demonstrating their query
 params.
 
+## Folder structure
+
+Four top-level groups, each self-contained (its own Auth where applicable,
+and its own Session sub-folder using that group's own tokens), plus a
+standalone Health check:
+
+- **Health** — the one endpoint that isn't tied to any principal type.
+- **Admin** — Auth, Session (admin tokens), Reference (`/admin/me`,
+  `/admin/roles/ping`), Invites, Audit Logs, and **Force-Revoke Sessions**
+  (an admin action that *targets* an Agent's or a Client's sessions — it
+  lives here because an Admin performs it, and it doesn't affect or get
+  affected by the Agent/Client groups' own session management of
+  themselves).
+- **Agent** — Auth and this agent's own Session (agent tokens).
+- **IPPIS** — Documents (the ippis-broadsheet/disbursed-loans/repayment-schedule
+  upload + batch + file-download endpoints) and a Session sub-folder. IPPIS
+  document actions are admin-authenticated — there's no separate "IPPIS"
+  principal type in the JWT system — so its Session sub-folder intentionally
+  reuses the admin tokens/mechanics already covered under Admin > Session,
+  trimmed to a representative subset so the group is self-contained without
+  fully re-duplicating nine identical requests.
+- **Client** — Auth (phone + OTP) and this client's own Session (client
+  tokens). In this codebase an IPPIS civil servant is onboarded and logs in
+  *as* a Client — see `docs/specs/2026-09-09-public-sector-backend-spec.md`.
+
 ## Setup
 
 1. Import `public-sector-backend.postman_collection.json` into Postman.
@@ -16,7 +41,7 @@ params.
    `agent_password` to your real local values from `.env`
    (`BOOTSTRAP_ADMIN_PASSWORD`, and whatever password you used when
    inserting a test Agent row — see the description on
-   "Auth - Agent > POST /auth/agent/login - Success"). Edits you make
+   "Agent > Auth > POST /auth/agent/login - Success"). Edits you make
    inside the Postman app are stored in Postman's own local data, not
    written back to this repo's JSON file, so there's no risk of committing
    a real password by doing this.
@@ -74,6 +99,10 @@ work, not "later." This is a standing project rule (see the repo's
 When adding a new endpoint, follow the existing pattern: one success
 request with a test script that captures anything later requests need,
 plus the meaningful failure requests (at minimum: validation error if it
-takes a body, auth/permission error if it's guarded). Put it in the
-folder matching its controller; create a new folder if it's a new
-controller/module.
+takes a body, auth/permission error if it's guarded). Place it under
+whichever of the four groups (Admin/Agent/IPPIS/Client) matches who
+*authenticates* to call it — not who it's about — in the sub-folder
+matching its controller, creating a new sub-folder for a new
+controller/module. A brand new fifth top-level group is only warranted for
+a genuinely new principal type (the JWT system currently has exactly
+three: admin, agent, client).

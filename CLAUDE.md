@@ -16,13 +16,23 @@ Update it whenever you:
   in the collection depends on (e.g. a field a later request's test script
   reads to set a collection variable).
 
+The collection is organized into four top-level groups by *who
+authenticates* to call the endpoint — Admin, Agent, IPPIS (document
+ingestion, which is admin-authenticated), Client — plus a standalone
+Health folder, each with an Auth (where applicable) and Session
+sub-folder. See `postman/README.md`'s "Folder structure" section for the
+full rationale (e.g. why Admin's force-revoke-sessions endpoints, which
+*target* an Agent/Client, still live under Admin).
+
 For a **new** endpoint: add a folder-appropriate request with a success
 scenario (with a test script capturing anything later requests need into a
 collection variable, following the existing naming pattern) plus the
 meaningful failure scenarios — at minimum validation error if it takes a
 body, and auth/permission error if it's guarded by `JwtAuthGuard`/
-`PermissionsGuard`. Put it in the folder matching its controller; create a
-new folder for a new controller/module.
+`PermissionsGuard`. Place it under the group matching who authenticates to
+call it, in the sub-folder matching its controller; create a new
+sub-folder for a new controller/module within that group. Only add a new
+top-level group if a genuinely new principal type is introduced.
 
 For a **changed** endpoint: find its existing request(s) by searching the
 collection JSON for the route path, and update the body/params/test
