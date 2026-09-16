@@ -2776,7 +2776,8 @@
                     "disbursed-loans",
                     "upload"
                   ]
-                }
+                },
+                "description": "Attach an .xlsx file with a report-header block (any number of rows) followed by a row containing both \"Customer ID\" and \"IPPIS\" column headers \u2014 rows below that are upserted into Loan by customerId. Do NOT attach the real sample files under docs/added/ to a shared workspace \u2014 those contain real BVNs/bank data and are gitignored for that reason."
               },
               "event": [
                 {

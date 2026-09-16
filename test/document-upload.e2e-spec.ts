@@ -53,14 +53,15 @@ describe('Document uploads (e2e)', () => {
     }
   });
 
-  it('uploads a disbursed-loans file, processes it via the no-op parser, and completes', async () => {
+  it('uploads a repayment-schedule file, processes it via the no-op parser, and completes', async () => {
     const res = await request(app.getHttpServer())
-      .post('/admin/documents/disbursed-loans/upload')
+      .post('/admin/documents/repayment-schedule/upload')
       .set('Authorization', `Bearer ${accessToken}`)
+      .field('period', '2024-11')
       .attach('file', Buffer.from('fake-xlsx-content'), 'loans.xlsx')
       .expect(201);
 
-    expect(res.body.documentType).toBe('DISBURSED_LOANS');
+    expect(res.body.documentType).toBe('REPAYMENT_SCHEDULE');
     createdBatchIds.push(res.body.id);
 
     const batch = await waitForBatchCompletion(prisma, res.body.id);

@@ -6,6 +6,7 @@ import { SnapshotExportService } from './snapshot-export.service';
 import { DocumentIngestionProcessor } from './document-ingestion.processor';
 import { NoOpDocumentParser } from './no-op-document.parser';
 import { IppisBroadsheetParser } from './parsers/ippis-broadsheet.parser';
+import { DisbursedLoansParser } from './parsers/disbursed-loans.parser';
 import { DOCUMENT_PARSERS } from './document-parser.interface';
 import { FileStorageModule } from '../file-storage/file-storage.module';
 import { AuditModule } from '../audit/audit.module';
@@ -25,14 +26,19 @@ import { AdminDocumentsController } from './admin-documents.controller';
     DocumentIngestionProcessor,
     NoOpDocumentParser,
     IppisBroadsheetParser,
+    DisbursedLoansParser,
     {
       provide: DOCUMENT_PARSERS,
-      useFactory: (noOpParser: NoOpDocumentParser, ippisParser: IppisBroadsheetParser) => ({
+      useFactory: (
+        noOpParser: NoOpDocumentParser,
+        ippisParser: IppisBroadsheetParser,
+        loansParser: DisbursedLoansParser,
+      ) => ({
         [DocumentType.IPPIS_BROADSHEET]: ippisParser,
         [DocumentType.REPAYMENT_SCHEDULE]: noOpParser,
-        [DocumentType.DISBURSED_LOANS]: noOpParser,
+        [DocumentType.DISBURSED_LOANS]: loansParser,
       }),
-      inject: [NoOpDocumentParser, IppisBroadsheetParser],
+      inject: [NoOpDocumentParser, IppisBroadsheetParser, DisbursedLoansParser],
     },
   ],
   exports: [DocumentBatchService, SnapshotExportService, BullModule],
