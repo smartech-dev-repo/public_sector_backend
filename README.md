@@ -67,12 +67,13 @@ View them at `GET /admin/audit-logs` (`audit:read`), optionally filtered by
 
 Upload endpoints for the three source documents exist and are fully wired
 (auth, permissions, audit logging, background processing via BullMQ).
-**IPPIS Broadsheet and Disbursed Loans uploads are fully parsed** into
-`IppisRecord` and `Loan` rows respectively (upserted by `agency`+`staffId`
-and by `customerId`) — see `src/document-ingestion/parsers/`. Repayment
-Schedule uploads are still processed by a no-op parser that records zero
-rows; later work replaces its entry in `DOCUMENT_PARSERS`
-(`src/document-ingestion/document-ingestion.module.ts`).
+**All three document types are now fully parsed**: IPPIS Broadsheet into
+`IppisRecord` (by `agency`+`staffId`), Disbursed Loans into `Loan` (by
+`customerId`), and Repayment Schedule into `LoanRepaymentRecord` (by
+`agency`+`staffId`+`period`+`elementName`, one small hardcoded mapper per
+agency sheet since those six sheets share almost no column names) — see
+`src/document-ingestion/parsers/`. Reconciliation (comparing expected vs.
+actual repayments) is not built yet.
 
 | Endpoint | Permission | Notes |
 |---|---|---|
