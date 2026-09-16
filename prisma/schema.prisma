@@ -287,3 +287,17 @@ model Loan {
 
   @@index([ippisNumber])
 }
+
+model LoanRepaymentRecord {
+  id            String    @id @default(uuid())
+  agency        String
+  staffId       String
+  period        String?
+  elementName   String
+  elementDetail String?
+  amount        Decimal
+  rawFields     Json?
+  createdAt     DateTime  @default(now())
+
+  @@unique([agency, staffId, period, elementName])
+}
