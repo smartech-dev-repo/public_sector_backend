@@ -783,7 +783,7 @@
                     "invites"
                   ]
                 },
-                "description": "There is no GET /admin/roles endpoint yet to look up role ids. Find the SUPER_ADMIN role's id directly in the database (e.g. `SELECT id FROM \"Role\" WHERE name = 'SUPER_ADMIN';`) and set super_admin_role_id before running this."
+                "description": "Run 'Admin > Roles > GET /admin/roles - Success (all)' first to populate super_admin_role_id automatically."
               },
               "event": [
                 {
@@ -1780,7 +1780,9 @@
                   "script": {
                     "exec": [
                       "pm.test('status 200', () => pm.response.to.have.status(200));",
-                      "pm.test('is array', () => pm.expect(pm.response.json()).to.be.an('array'));"
+                      "pm.test('is array', () => pm.expect(pm.response.json()).to.be.an('array'));",
+                      "const superAdmin = pm.response.json().find((r) => r.name === 'SUPER_ADMIN');",
+                      "if (superAdmin) { pm.collectionVariables.set('super_admin_role_id', superAdmin.id); }"
                     ]
                   }
                 }
@@ -1891,7 +1893,7 @@
                     "{{super_admin_role_id}}"
                   ]
                 },
-                "description": "super_admin_role_id must be set first (see the Invites folder's description for how to find it)."
+                "description": "super_admin_role_id is captured automatically by 'Admin > Roles > GET /admin/roles - Success (all)' - run that first."
               },
               "event": [
                 {
@@ -2207,454 +2209,7 @@
               ]
             }
           ]
-        }
-      ]
-    },
-    {
-      "name": "Agent",
-      "description": "Everything authenticated as an Agent: login and this agent's own session management. Independent of Admin's ability to force-revoke this agent's sessions (see Admin > Force-Revoke Sessions).",
-      "item": [
-        {
-          "name": "Auth",
-          "item": [
-            {
-              "name": "POST /auth/agent/login - Success",
-              "request": {
-                "method": "POST",
-                "header": [
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                  }
-                ],
-                "body": {
-                  "mode": "raw",
-                  "raw": "{\n  \"email\": \"{{agent_email}}\",\n  \"password\": \"{{agent_password}}\"\n}"
-                },
-                "url": {
-                  "raw": "{{base_url}}/auth/agent/login",
-                  "host": [
-                    "{{base_url}}"
-                  ],
-                  "path": [
-                    "auth",
-                    "agent",
-                    "login"
-                  ]
-                },
-                "description": "Agent self-registration/approval isn't built yet (deferred to Phase 2 \u2014 see docs/specs). This only works if an Agent row with status=APPROVED and a bcrypt passwordHash already exists in the DB \u2014 insert one directly for testing, matching agent_email/agent_password."
-              },
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "exec": [
-                      "if (pm.response.code === 200) {",
-                      "  const json = pm.response.json();",
-                      "  pm.collectionVariables.set('agent_access_token', json.accessToken);",
-                      "  pm.collectionVariables.set('agent_refresh_token', json.refreshToken);",
-                      "}",
-                      "pm.test('status 200 or 401 (401 if no approved agent seeded yet)', () => {",
-                      "  pm.expect([200, 401]).to.include(pm.response.code);",
-                      "});"
-                    ]
-                  }
-                }
-              ]
-            },
-            {
-              "name": "POST /auth/agent/login - Invalid credentials (401)",
-              "request": {
-                "method": "POST",
-                "header": [
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                  }
-                ],
-                "body": {
-                  "mode": "raw",
-                  "raw": "{\n  \"email\": \"{{agent_email}}\",\n  \"password\": \"wrong-password\"\n}"
-                },
-                "url": {
-                  "raw": "{{base_url}}/auth/agent/login",
-                  "host": [
-                    "{{base_url}}"
-                  ],
-                  "path": [
-                    "auth",
-                    "agent",
-                    "login"
-                  ]
-                }
-              },
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "exec": [
-                      "pm.test('status 401', () => pm.response.to.have.status(401));"
-                    ]
-                  }
-                }
-              ]
-            },
-            {
-              "name": "POST /auth/agent/login - Validation error (400)",
-              "request": {
-                "method": "POST",
-                "header": [
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                  }
-                ],
-                "body": {
-                  "mode": "raw",
-                  "raw": "{\n  \"email\": \"not-an-email\",\n  \"password\": \"short\"\n}"
-                },
-                "url": {
-                  "raw": "{{base_url}}/auth/agent/login",
-                  "host": [
-                    "{{base_url}}"
-                  ],
-                  "path": [
-                    "auth",
-                    "agent",
-                    "login"
-                  ]
-                }
-              },
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "exec": [
-                      "pm.test('status 400', () => pm.response.to.have.status(400));"
-                    ]
-                  }
-                }
-              ]
-            }
-          ]
         },
-        {
-          "name": "Session",
-          "description": "Refresh/logout/session-listing for the Agent principal, using agent_access_token/agent_refresh_token. Run 'Agent > Auth > POST /auth/agent/login - Success' first.",
-          "item": [
-            {
-              "name": "POST /auth/refresh - Success (agent token)",
-              "request": {
-                "method": "POST",
-                "header": [
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                  }
-                ],
-                "body": {
-                  "mode": "raw",
-                  "raw": "{\n  \"refreshToken\": \"{{agent_refresh_token}}\"\n}"
-                },
-                "url": {
-                  "raw": "{{base_url}}/auth/refresh",
-                  "host": [
-                    "{{base_url}}"
-                  ],
-                  "path": [
-                    "auth",
-                    "refresh"
-                  ]
-                },
-                "description": "Not role-namespaced \u2014 the Session row itself carries the principal type. Rotates the token: the old refresh token is revoked and a new one is returned."
-              },
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "exec": [
-                      "pm.test('status 200', () => pm.response.to.have.status(200));",
-                      "const json = pm.response.json();",
-                      "pm.test('refresh token rotated (new value)', () => pm.expect(json.refreshToken).to.not.eql(pm.collectionVariables.get('agent_refresh_token')));",
-                      "pm.collectionVariables.set('agent_access_token', json.accessToken);",
-                      "pm.collectionVariables.set('agent_refresh_token', json.refreshToken);"
-                    ]
-                  }
-                }
-              ]
-            },
-            {
-              "name": "POST /auth/refresh - Unknown token (401)",
-              "request": {
-                "method": "POST",
-                "header": [
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                  }
-                ],
-                "body": {
-                  "mode": "raw",
-                  "raw": "{\n  \"refreshToken\": \"not-a-real-token\"\n}"
-                },
-                "url": {
-                  "raw": "{{base_url}}/auth/refresh",
-                  "host": [
-                    "{{base_url}}"
-                  ],
-                  "path": [
-                    "auth",
-                    "refresh"
-                  ]
-                }
-              },
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "exec": [
-                      "pm.test('status 401', () => pm.response.to.have.status(401));"
-                    ]
-                  }
-                }
-              ]
-            },
-            {
-              "name": "GET /auth/sessions - Success",
-              "request": {
-                "method": "GET",
-                "header": [
-                  {
-                    "key": "Authorization",
-                    "value": "Bearer {{agent_access_token}}"
-                  }
-                ],
-                "url": {
-                  "raw": "{{base_url}}/auth/sessions",
-                  "host": [
-                    "{{base_url}}"
-                  ],
-                  "path": [
-                    "auth",
-                    "sessions"
-                  ]
-                }
-              },
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "exec": [
-                      "pm.test('status 200', () => pm.response.to.have.status(200));",
-                      "const json = pm.response.json();",
-                      "pm.test('is array', () => pm.expect(json).to.be.an('array'));",
-                      "if (json.length > 0) { pm.collectionVariables.set('agent_session_id', json[0].id); }"
-                    ]
-                  }
-                }
-              ]
-            },
-            {
-              "name": "GET /auth/sessions - Unauthenticated (401)",
-              "request": {
-                "method": "GET",
-                "header": [],
-                "url": {
-                  "raw": "{{base_url}}/auth/sessions",
-                  "host": [
-                    "{{base_url}}"
-                  ],
-                  "path": [
-                    "auth",
-                    "sessions"
-                  ]
-                }
-              },
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "exec": [
-                      "pm.test('status 401', () => pm.response.to.have.status(401));"
-                    ]
-                  }
-                }
-              ]
-            },
-            {
-              "name": "DELETE /auth/sessions/:id - Success",
-              "request": {
-                "method": "DELETE",
-                "header": [
-                  {
-                    "key": "Authorization",
-                    "value": "Bearer {{agent_access_token}}"
-                  }
-                ],
-                "url": {
-                  "raw": "{{base_url}}/auth/sessions/{{agent_session_id}}",
-                  "host": [
-                    "{{base_url}}"
-                  ],
-                  "path": [
-                    "auth",
-                    "sessions",
-                    "{{agent_session_id}}"
-                  ]
-                },
-                "description": "Run 'GET /auth/sessions - Success' first to populate agent_session_id."
-              },
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "exec": [
-                      "pm.test('status 200', () => pm.response.to.have.status(200));",
-                      "pm.test('revoked true', () => pm.expect(pm.response.json().revoked).to.eql(true));"
-                    ]
-                  }
-                }
-              ]
-            },
-            {
-              "name": "DELETE /auth/sessions/:id - Not found / not owned (404)",
-              "request": {
-                "method": "DELETE",
-                "header": [
-                  {
-                    "key": "Authorization",
-                    "value": "Bearer {{agent_access_token}}"
-                  }
-                ],
-                "url": {
-                  "raw": "{{base_url}}/auth/sessions/00000000-0000-0000-0000-000000000000",
-                  "host": [
-                    "{{base_url}}"
-                  ],
-                  "path": [
-                    "auth",
-                    "sessions",
-                    "00000000-0000-0000-0000-000000000000"
-                  ]
-                }
-              },
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "exec": [
-                      "pm.test('status 404', () => pm.response.to.have.status(404));"
-                    ]
-                  }
-                }
-              ]
-            },
-            {
-              "name": "POST /auth/logout - Success",
-              "request": {
-                "method": "POST",
-                "header": [
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                  }
-                ],
-                "body": {
-                  "mode": "raw",
-                  "raw": "{\n  \"refreshToken\": \"{{agent_refresh_token}}\"\n}"
-                },
-                "url": {
-                  "raw": "{{base_url}}/auth/logout",
-                  "host": [
-                    "{{base_url}}"
-                  ],
-                  "path": [
-                    "auth",
-                    "logout"
-                  ]
-                },
-                "description": "Idempotent \u2014 also returns 200 on an already-revoked/unknown token."
-              },
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "exec": [
-                      "pm.test('status 200', () => pm.response.to.have.status(200));",
-                      "pm.test('loggedOut true', () => pm.expect(pm.response.json().loggedOut).to.eql(true));"
-                    ]
-                  }
-                }
-              ]
-            },
-            {
-              "name": "POST /auth/logout-all - Success",
-              "request": {
-                "method": "POST",
-                "header": [
-                  {
-                    "key": "Authorization",
-                    "value": "Bearer {{agent_access_token}}"
-                  }
-                ],
-                "url": {
-                  "raw": "{{base_url}}/auth/logout-all",
-                  "host": [
-                    "{{base_url}}"
-                  ],
-                  "path": [
-                    "auth",
-                    "logout-all"
-                  ]
-                },
-                "description": "Revokes every session for the authenticated principal. Run 'Agent > Auth > POST /auth/agent/login - Success' again afterward to get a fresh usable token, since this one's session is now revoked."
-              },
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "exec": [
-                      "pm.test('status 200', () => pm.response.to.have.status(200));"
-                    ]
-                  }
-                }
-              ]
-            },
-            {
-              "name": "POST /auth/logout-all - Unauthenticated (401)",
-              "request": {
-                "method": "POST",
-                "header": [],
-                "url": {
-                  "raw": "{{base_url}}/auth/logout-all",
-                  "host": [
-                    "{{base_url}}"
-                  ],
-                  "path": [
-                    "auth",
-                    "logout-all"
-                  ]
-                }
-              },
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "exec": [
-                      "pm.test('status 401', () => pm.response.to.have.status(401));"
-                    ]
-                  }
-                }
-              ]
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "name": "IPPIS",
-      "description": "Document ingestion for the three IPPIS-related source documents (IPPIS Broadsheet, Disbursed Loans Report, Repayment Schedule) \u2014 upload, batch tracking, and snapshot/file download. These are admin-authenticated actions (no separate 'IPPIS principal' exists in the JWT system), so its Session sub-folder reuses the Admin identity \u2014 this is intentional, not a duplicate-in-error.",
-      "item": [
         {
           "name": "Documents",
           "item": [
@@ -3203,13 +2758,18 @@
               ]
             }
           ]
-        },
+        }
+      ]
+    },
+    {
+      "name": "Agent",
+      "description": "Everything authenticated as an Agent: login and this agent's own session management. Independent of Admin's ability to force-revoke this agent's sessions (see Admin > Force-Revoke Sessions).",
+      "item": [
         {
-          "name": "Session (admin identity)",
-          "description": "Document ingestion has no principal type of its own \u2014 it's authenticated as an Admin. Identical mechanics to Admin > Session, included here so this group is self-contained for anyone testing just the IPPIS area. Uses admin_access_token/admin_refresh_token/session_id, same as Admin > Session.",
+          "name": "Auth",
           "item": [
             {
-              "name": "POST /auth/refresh - Success (admin token)",
+              "name": "POST /auth/agent/login - Success",
               "request": {
                 "method": "POST",
                 "header": [
@@ -3220,7 +2780,132 @@
                 ],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"refreshToken\": \"{{admin_refresh_token}}\"\n}"
+                  "raw": "{\n  \"email\": \"{{agent_email}}\",\n  \"password\": \"{{agent_password}}\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/auth/agent/login",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "auth",
+                    "agent",
+                    "login"
+                  ]
+                },
+                "description": "Agent self-registration/approval isn't built yet (deferred to Phase 2 \u2014 see docs/specs). This only works if an Agent row with status=APPROVED and a bcrypt passwordHash already exists in the DB \u2014 insert one directly for testing, matching agent_email/agent_password."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "if (pm.response.code === 200) {",
+                      "  const json = pm.response.json();",
+                      "  pm.collectionVariables.set('agent_access_token', json.accessToken);",
+                      "  pm.collectionVariables.set('agent_refresh_token', json.refreshToken);",
+                      "}",
+                      "pm.test('status 200 or 401 (401 if no approved agent seeded yet)', () => {",
+                      "  pm.expect([200, 401]).to.include(pm.response.code);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "POST /auth/agent/login - Invalid credentials (401)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"{{agent_email}}\",\n  \"password\": \"wrong-password\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/auth/agent/login",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "auth",
+                    "agent",
+                    "login"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 401', () => pm.response.to.have.status(401));"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "POST /auth/agent/login - Validation error (400)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"not-an-email\",\n  \"password\": \"short\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/auth/agent/login",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "auth",
+                    "agent",
+                    "login"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 400', () => pm.response.to.have.status(400));"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Session",
+          "description": "Refresh/logout/session-listing for the Agent principal, using agent_access_token/agent_refresh_token. Run 'Agent > Auth > POST /auth/agent/login - Success' first.",
+          "item": [
+            {
+              "name": "POST /auth/refresh - Success (agent token)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"refreshToken\": \"{{agent_refresh_token}}\"\n}"
                 },
                 "url": {
                   "raw": "{{base_url}}/auth/refresh",
@@ -3241,9 +2926,45 @@
                     "exec": [
                       "pm.test('status 200', () => pm.response.to.have.status(200));",
                       "const json = pm.response.json();",
-                      "pm.test('refresh token rotated (new value)', () => pm.expect(json.refreshToken).to.not.eql(pm.collectionVariables.get('admin_refresh_token')));",
-                      "pm.collectionVariables.set('admin_access_token', json.accessToken);",
-                      "pm.collectionVariables.set('admin_refresh_token', json.refreshToken);"
+                      "pm.test('refresh token rotated (new value)', () => pm.expect(json.refreshToken).to.not.eql(pm.collectionVariables.get('agent_refresh_token')));",
+                      "pm.collectionVariables.set('agent_access_token', json.accessToken);",
+                      "pm.collectionVariables.set('agent_refresh_token', json.refreshToken);"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "POST /auth/refresh - Unknown token (401)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"refreshToken\": \"not-a-real-token\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/auth/refresh",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "auth",
+                    "refresh"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 401', () => pm.response.to.have.status(401));"
                     ]
                   }
                 }
@@ -3256,7 +2977,7 @@
                 "header": [
                   {
                     "key": "Authorization",
-                    "value": "Bearer {{admin_access_token}}"
+                    "value": "Bearer {{agent_access_token}}"
                   }
                 ],
                 "url": {
@@ -3278,7 +2999,102 @@
                       "pm.test('status 200', () => pm.response.to.have.status(200));",
                       "const json = pm.response.json();",
                       "pm.test('is array', () => pm.expect(json).to.be.an('array'));",
-                      "if (json.length > 0) { pm.collectionVariables.set('session_id', json[0].id); }"
+                      "if (json.length > 0) { pm.collectionVariables.set('agent_session_id', json[0].id); }"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "GET /auth/sessions - Unauthenticated (401)",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/auth/sessions",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "auth",
+                    "sessions"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 401', () => pm.response.to.have.status(401));"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "DELETE /auth/sessions/:id - Success",
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{agent_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/auth/sessions/{{agent_session_id}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "auth",
+                    "sessions",
+                    "{{agent_session_id}}"
+                  ]
+                },
+                "description": "Run 'GET /auth/sessions - Success' first to populate agent_session_id."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));",
+                      "pm.test('revoked true', () => pm.expect(pm.response.json().revoked).to.eql(true));"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "DELETE /auth/sessions/:id - Not found / not owned (404)",
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{agent_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/auth/sessions/00000000-0000-0000-0000-000000000000",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "auth",
+                    "sessions",
+                    "00000000-0000-0000-0000-000000000000"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 404', () => pm.response.to.have.status(404));"
                     ]
                   }
                 }
@@ -3296,7 +3112,7 @@
                 ],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"refreshToken\": \"{{admin_refresh_token}}\"\n}"
+                  "raw": "{\n  \"refreshToken\": \"{{agent_refresh_token}}\"\n}"
                 },
                 "url": {
                   "raw": "{{base_url}}/auth/logout",
@@ -3317,6 +3133,66 @@
                     "exec": [
                       "pm.test('status 200', () => pm.response.to.have.status(200));",
                       "pm.test('loggedOut true', () => pm.expect(pm.response.json().loggedOut).to.eql(true));"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "POST /auth/logout-all - Success",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{agent_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/auth/logout-all",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "auth",
+                    "logout-all"
+                  ]
+                },
+                "description": "Revokes every session for the authenticated principal. Run 'Agent > Auth > POST /auth/agent/login - Success' again afterward to get a fresh usable token, since this one's session is now revoked."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "POST /auth/logout-all - Unauthenticated (401)",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/auth/logout-all",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "auth",
+                    "logout-all"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 401', () => pm.response.to.have.status(401));"
                     ]
                   }
                 }
