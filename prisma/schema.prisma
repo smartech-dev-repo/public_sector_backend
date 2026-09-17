@@ -94,6 +94,7 @@ model Client {
   updatedAt DateTime     @updatedAt
 
   onboarding ClientOnboarding?
+  loanRequests LoanRequest[]
 }
 
 enum OtpPurpose {
@@ -340,4 +341,23 @@ model LoanRepaymentRecord {
   createdAt     DateTime  @default(now())
 
   @@unique([agency, staffId, period, elementName])
+}
+
+enum LoanRequestStatus {
+  PENDING
+  CONFIRMED
+  FAILED
+}
+
+model LoanRequest {
+  id                    String            @id @default(uuid())
+  clientId              String
+  client                Client            @relation(fields: [clientId], references: [id])
+  amount                Decimal
+  status                LoanRequestStatus @default(PENDING)
+  confirmationSmsSentAt DateTime?
+  confirmedAt           DateTime?
+  expiresAt             DateTime
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
 }
