@@ -11,6 +11,7 @@ import { AdminSessionModule } from './admin-session/admin-session.module';
 import { FileStorageModule } from './file-storage/file-storage.module';
 import { DocumentIngestionModule } from './document-ingestion/document-ingestion.module';
 import { AdminRbacModule } from './admin-rbac/admin-rbac.module';
+import { ClientOnboardingModule } from './client-onboarding/client-onboarding.module';
 
 @Module({
   imports: [
@@ -49,6 +50,7 @@ import { AdminRbacModule } from './admin-rbac/admin-rbac.module';
     FileStorageModule,
     DocumentIngestionModule,
     AdminRbacModule,
+    ClientOnboardingModule,
   ],
   controllers: [AppController],
   providers: [],

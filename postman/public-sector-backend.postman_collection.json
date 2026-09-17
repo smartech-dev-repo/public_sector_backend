@@ -133,6 +133,10 @@
     {
       "key": "file_storage_key",
       "value": ""
+    },
+    {
+      "key": "test_ippis_staff_id",
+      "value": ""
     }
   ],
   "item": [
@@ -3715,6 +3719,321 @@
                   "script": {
                     "exec": [
                       "pm.test('status 401', () => pm.response.to.have.status(401));"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Onboarding",
+          "description": "IPPIS link, BVN/NIN identity submission, and face-match verification for the authenticated Client. Run 'Client > Auth > POST /auth/client/otp/verify - Success' first to populate client_access_token, and set test_ippis_staff_id to a Staff ID already present in IppisRecord (e.g. from Admin > Documents > IPPIS Broadsheet upload) that isn't already linked to another client.",
+          "item": [
+            {
+              "name": "GET /client/onboarding/status - Unauthenticated (401)",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/client/onboarding/status",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "client",
+                    "onboarding",
+                    "status"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 401', () => pm.response.to.have.status(401));"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "GET /client/onboarding/status - Success (before any step)",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{client_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/client/onboarding/status",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "client",
+                    "onboarding",
+                    "status"
+                  ]
+                },
+                "description": "Run 'Client > Auth > POST /auth/client/otp/verify - Success' first to populate client_access_token."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "POST /client/onboarding/ippis-link - Success",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{client_access_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"ippisNumber\": \"{{test_ippis_staff_id}}\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/client/onboarding/ippis-link",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "client",
+                    "onboarding",
+                    "ippis-link"
+                  ]
+                },
+                "description": "test_ippis_staff_id must be a Staff ID that exists in IppisRecord (e.g. from a prior IPPIS Broadsheet upload) and isn't already linked to another client."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 201', () => pm.response.to.have.status(201));",
+                      "pm.test('step is IPPIS_LINKED', () => pm.expect(pm.response.json().step).to.eql('IPPIS_LINKED'));"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "POST /client/onboarding/ippis-link - Not found (404)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{client_access_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"ippisNumber\": \"DOES-NOT-EXIST\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/client/onboarding/ippis-link",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "client",
+                    "onboarding",
+                    "ippis-link"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 404', () => pm.response.to.have.status(404));"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "POST /client/onboarding/identity - Success",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{client_access_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"bvn\": \"12345678901\",\n  \"nin\": \"98765432109\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/client/onboarding/identity",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "client",
+                    "onboarding",
+                    "identity"
+                  ]
+                },
+                "description": "Uses the mock IdentityVerificationProvider by default (IDENTITY_VERIFICATION_PROVIDER=mock) — any 11-digit values work."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 201', () => pm.response.to.have.status(201));",
+                      "pm.test('step is IDENTITY_SUBMITTED', () => pm.expect(pm.response.json().step).to.eql('IDENTITY_SUBMITTED'));"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "POST /client/onboarding/identity - Invalid BVN/NIN format (400)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{client_access_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"bvn\": \"123\",\n  \"nin\": \"98765432109\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/client/onboarding/identity",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "client",
+                    "onboarding",
+                    "identity"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 400', () => pm.response.to.have.status(400));"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "POST /client/onboarding/face-match - Success",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{client_access_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "selfie",
+                      "type": "file",
+                      "src": []
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "{{base_url}}/client/onboarding/face-match",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "client",
+                    "onboarding",
+                    "face-match"
+                  ]
+                },
+                "description": "Attach any image file — the mock FaceVerificationProvider always passes. Run the identity request above first."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 201', () => pm.response.to.have.status(201));",
+                      "pm.test('step is COMPLETED', () => pm.expect(pm.response.json().step).to.eql('COMPLETED'));"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "GET /client/onboarding/status - Success (after completion)",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{client_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/client/onboarding/status",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "client",
+                    "onboarding",
+                    "status"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));",
+                      "pm.test('step is COMPLETED', () => pm.expect(pm.response.json().step).to.eql('COMPLETED'));"
                     ]
                   }
                 }

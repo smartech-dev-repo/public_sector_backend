@@ -27,9 +27,12 @@ standalone Health check:
   lives here rather than under its own group; there's no separate "IPPIS"
   principal type in the JWT system).
 - **Agent** — Auth and this agent's own Session (agent tokens).
-- **Client** — Auth (phone + OTP) and this client's own Session (client
-  tokens). In this codebase an IPPIS civil servant is onboarded and logs in
-  *as* a Client — see `docs/specs/2026-09-09-public-sector-backend-spec.md`.
+- **Client** — Auth (phone + OTP), this client's own Session (client
+  tokens), and **Onboarding** (IPPIS number linking, BVN/NIN identity
+  submission, and selfie face-match, walking the client from
+  `PHONE_VERIFIED` to `Client.status = VERIFIED`/`MANUAL_REVIEW`). In this
+  codebase an IPPIS civil servant is onboarded and logs in *as* a Client —
+  see `docs/specs/2026-09-09-public-sector-backend-spec.md`.
 
 ## Setup
 
