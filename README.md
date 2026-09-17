@@ -111,6 +111,8 @@ Roles and permissions can now be managed via the API — previously only
 | `GET /admin/admins` | `roles:manage` | Lists admins with their roles |
 | `POST /admin/admins/:id/roles` | `roles:manage` | `{ roleId }` |
 | `DELETE /admin/admins/:id/roles/:roleId` | `roles:manage` | Blocked (409) if it would leave zero admins holding `SUPER_ADMIN` |
+| `POST /admin/admins/:id/deactivate` | `roles:manage` | 409 if targeting your own account or an already-inactive admin; force-revokes the admin's sessions |
+| `POST /admin/admins/:id/reactivate` | `roles:manage` | 409 if the admin is already active |
 
 `GET /admin/roles/ping` no longer exists — it was a Phase 1 placeholder,
 superseded by the real endpoints above.

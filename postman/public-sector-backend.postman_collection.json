@@ -95,6 +95,10 @@
       "value": ""
     },
     {
+      "key": "target_admin_id",
+      "value": ""
+    },
+    {
       "key": "invite_email",
       "value": "invited-admin@example.com"
     },
@@ -2215,6 +2219,112 @@
                   "script": {
                     "exec": [
                       "pm.test('status 409 (or 200 if other SUPER_ADMIN holders exist)', () => pm.expect([200,409]).to.include(pm.response.code));"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "POST /admin/admins/:id/deactivate - Self-deactivation blocked (409)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/admins/{{admin_id}}/deactivate",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "admins",
+                    "{{admin_id}}",
+                    "deactivate"
+                  ]
+                },
+                "description": "admin_id must be set to the same admin currently logged in as admin_access_token for this 409 to occur."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 409', () => pm.response.to.have.status(409));"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "POST /admin/admins/:id/deactivate - Success",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/admins/{{target_admin_id}}/deactivate",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "admins",
+                    "{{target_admin_id}}",
+                    "deactivate"
+                  ]
+                },
+                "description": "target_admin_id must be a different admin from the one running this request."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));",
+                      "pm.test('deactivated true', () => pm.expect(pm.response.json().deactivated).to.eql(true));"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "POST /admin/admins/:id/reactivate - Success",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/admins/{{target_admin_id}}/reactivate",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "admins",
+                    "{{target_admin_id}}",
+                    "reactivate"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));",
+                      "pm.test('reactivated true', () => pm.expect(pm.response.json().reactivated).to.eql(true));"
                     ]
                   }
                 }

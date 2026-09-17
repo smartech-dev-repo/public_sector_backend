@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import * as request from 'supertest';
+import * as bcrypt from 'bcrypt';
 import { AppModule } from '../src/app.module';
 import { PrismaService } from '../src/prisma/prisma.service';
 
@@ -12,6 +13,8 @@ describe('Admin role assignment (e2e)', () => {
   let superAdminRoleId: string;
   const testRoleName = `TEST_ASSIGN_ROLE_${Date.now()}`;
   let testRoleId: string;
+  let secondAdminId: string;
+  let secondAdminRefreshToken: string;
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -41,11 +44,24 @@ describe('Admin role assignment (e2e)', () => {
 
     const testRole = await prisma.role.create({ data: { name: testRoleName } });
     testRoleId = testRole.id;
+
+    const secondAdminEmail = `e2e-deactivate-${Date.now()}@example.com`;
+    const secondAdminPasswordHash = await bcrypt.hash('Test-Password-123!', 12);
+    const secondAdmin = await prisma.adminUser.create({
+      data: { email: secondAdminEmail, passwordHash: secondAdminPasswordHash, fullName: 'E2E Deactivate Target' },
+    });
+    secondAdminId = secondAdmin.id;
+
+    const secondAdminLoginRes = await request(app.getHttpServer())
+      .post('/auth/admin/login')
+      .send({ email: secondAdminEmail, password: 'Test-Password-123!' });
+    secondAdminRefreshToken = secondAdminLoginRes.body.refreshToken;
   });
 
   afterAll(async () => {
     await prisma.adminUserRole.deleteMany({ where: { adminUserId: bootstrapAdminId, roleId: testRoleId } });
     await prisma.role.deleteMany({ where: { name: testRoleName } });
+    await prisma.adminUser.deleteMany({ where: { id: secondAdminId } });
     await app.close();
   });
 
@@ -90,5 +106,54 @@ describe('Admin role assignment (e2e)', () => {
       .delete(`/admin/admins/${bootstrapAdminId}/roles/${superAdminRoleId}`)
       .set('Authorization', `Bearer ${accessToken}`)
       .expect(409);
+  });
+
+  it('rejects an admin deactivating their own account (409)', () => {
+    return request(app.getHttpServer())
+      .post(`/admin/admins/${bootstrapAdminId}/deactivate`)
+      .set('Authorization', `Bearer ${accessToken}`)
+      .expect(409);
+  });
+
+  it('deactivates a different admin and revokes their sessions', async () => {
+    await request(app.getHttpServer())
+      .post(`/admin/admins/${secondAdminId}/deactivate`)
+      .set('Authorization', `Bearer ${accessToken}`)
+      .expect(200)
+      .expect({ deactivated: true });
+
+    const listRes = await request(app.getHttpServer())
+      .get('/admin/admins')
+      .set('Authorization', `Bearer ${accessToken}`)
+      .expect(200);
+    const deactivatedEntry = listRes.body.find((a: { id: string }) => a.id === secondAdminId);
+    expect(deactivatedEntry.isActive).toBe(false);
+
+    await request(app.getHttpServer())
+      .post('/auth/refresh')
+      .send({ refreshToken: secondAdminRefreshToken })
+      .expect(401);
+  });
+
+  it('rejects deactivating an already-deactivated admin (409)', () => {
+    return request(app.getHttpServer())
+      .post(`/admin/admins/${secondAdminId}/deactivate`)
+      .set('Authorization', `Bearer ${accessToken}`)
+      .expect(409);
+  });
+
+  it('reactivates the admin', async () => {
+    await request(app.getHttpServer())
+      .post(`/admin/admins/${secondAdminId}/reactivate`)
+      .set('Authorization', `Bearer ${accessToken}`)
+      .expect(200)
+      .expect({ reactivated: true });
+
+    const listRes = await request(app.getHttpServer())
+      .get('/admin/admins')
+      .set('Authorization', `Bearer ${accessToken}`)
+      .expect(200);
+    const reactivatedEntry = listRes.body.find((a: { id: string }) => a.id === secondAdminId);
+    expect(reactivatedEntry.isActive).toBe(true);
   });
 });

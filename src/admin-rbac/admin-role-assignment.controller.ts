@@ -63,4 +63,34 @@ export class AdminRoleAssignmentController {
     });
     return { removed: true };
   }
+
+  @Post(':id/deactivate')
+  @HttpCode(200)
+  @RequirePermissions('roles:manage')
+  async deactivate(@Param('id') id: string, @Req() req: { user: JwtPayload }) {
+    await this.adminRoleAssignmentService.deactivate(req.user.sub, id);
+    await this.auditLogService.record({
+      actorType: AuditActorType.ADMIN,
+      actorId: req.user.sub,
+      action: 'admin.deactivated',
+      targetType: 'AdminUser',
+      targetId: id,
+    });
+    return { deactivated: true };
+  }
+
+  @Post(':id/reactivate')
+  @HttpCode(200)
+  @RequirePermissions('roles:manage')
+  async reactivate(@Param('id') id: string, @Req() req: { user: JwtPayload }) {
+    await this.adminRoleAssignmentService.reactivate(id);
+    await this.auditLogService.record({
+      actorType: AuditActorType.ADMIN,
+      actorId: req.user.sub,
+      action: 'admin.reactivated',
+      targetType: 'AdminUser',
+      targetId: id,
+    });
+    return { reactivated: true };
+  }
 }

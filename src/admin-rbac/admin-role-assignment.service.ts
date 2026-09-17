@@ -1,11 +1,16 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { SessionService } from '../session/session.service';
+import { SessionPrincipalType } from '../generated/prisma/client';
 
 const SUPER_ADMIN_ROLE_NAME = 'SUPER_ADMIN';
 
 @Injectable()
 export class AdminRoleAssignmentService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly sessionService: SessionService,
+  ) {}
 
   async listAdmins() {
     return this.prisma.adminUser.findMany({
@@ -53,5 +58,33 @@ export class AdminRoleAssignmentService {
     }
 
     await this.prisma.adminUserRole.deleteMany({ where: { adminUserId: adminId, roleId } });
+  }
+
+  async deactivate(callerId: string, id: string): Promise<void> {
+    const admin = await this.prisma.adminUser.findUnique({ where: { id } });
+    if (!admin) {
+      throw new NotFoundException('Admin not found');
+    }
+    if (id === callerId) {
+      throw new ConflictException('Cannot deactivate your own account');
+    }
+    if (!admin.isActive) {
+      throw new ConflictException('Admin is already deactivated');
+    }
+
+    await this.prisma.adminUser.update({ where: { id }, data: { isActive: false } });
+    await this.sessionService.revokeAllForPrincipal(SessionPrincipalType.ADMIN, id, 'admin_deactivated');
+  }
+
+  async reactivate(id: string): Promise<void> {
+    const admin = await this.prisma.adminUser.findUnique({ where: { id } });
+    if (!admin) {
+      throw new NotFoundException('Admin not found');
+    }
+    if (admin.isActive) {
+      throw new ConflictException('Admin is already active');
+    }
+
+    await this.prisma.adminUser.update({ where: { id }, data: { isActive: true } });
   }
 }
