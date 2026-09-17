@@ -137,6 +137,10 @@
     {
       "key": "test_ippis_staff_id",
       "value": ""
+    },
+    {
+      "key": "review_client_id",
+      "value": ""
     }
   ],
   "item": [
@@ -2756,6 +2760,231 @@
                   "script": {
                     "exec": [
                       "pm.test('status 404', () => pm.response.to.have.status(404));"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Client Review",
+          "item": [
+            {
+              "name": "GET /admin/clients - Unauthenticated (401)",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/admin/clients",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "clients"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 401', () => pm.response.to.have.status(401));"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "GET /admin/clients - Filtered by status",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/clients?status=MANUAL_REVIEW",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "clients"
+                  ],
+                  "query": [
+                    {
+                      "key": "status",
+                      "value": "MANUAL_REVIEW"
+                    }
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));",
+                      "const json = pm.response.json();",
+                      "if (json.length > 0) { pm.collectionVariables.set('review_client_id', json[0].id); }"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "GET /admin/clients/:id - Success",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/clients/{{review_client_id}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "clients",
+                    "{{review_client_id}}"
+                  ]
+                },
+                "description": "Run 'GET /admin/clients - Filtered by status' first to populate review_client_id from a real MANUAL_REVIEW client."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "POST /admin/clients/:id/retry - Success",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"note\": \"Please retake your selfie in better lighting\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/admin/clients/{{review_client_id}}/retry",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "clients",
+                    "{{review_client_id}}",
+                    "retry"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "POST /admin/clients/:id/retry - Missing note (400)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/admin/clients/{{review_client_id}}/retry",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "clients",
+                    "{{review_client_id}}",
+                    "retry"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 400', () => pm.response.to.have.status(400));"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "POST /admin/clients/:id/approve - Blocked, not in MANUAL_REVIEW (409)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/clients/{{review_client_id}}/approve",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "clients",
+                    "{{review_client_id}}",
+                    "approve"
+                  ]
+                },
+                "description": "Returns 409 if review_client_id was already moved out of MANUAL_REVIEW by the retry request above (expected when running this folder top-to-bottom)."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 409', () => pm.response.to.have.status(409));"
                     ]
                   }
                 }

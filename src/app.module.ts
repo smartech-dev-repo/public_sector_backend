@@ -12,6 +12,7 @@ import { FileStorageModule } from './file-storage/file-storage.module';
 import { DocumentIngestionModule } from './document-ingestion/document-ingestion.module';
 import { AdminRbacModule } from './admin-rbac/admin-rbac.module';
 import { ClientOnboardingModule } from './client-onboarding/client-onboarding.module';
+import { AdminClientReviewModule } from './admin-client-review/admin-client-review.module';
 
 @Module({
   imports: [
@@ -51,6 +52,7 @@ import { ClientOnboardingModule } from './client-onboarding/client-onboarding.mo
     DocumentIngestionModule,
     AdminRbacModule,
     ClientOnboardingModule,
+    AdminClientReviewModule,
   ],
   controllers: [AppController],
   providers: [],
