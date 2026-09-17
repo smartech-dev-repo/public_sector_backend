@@ -8755,7 +8755,51 @@
                 "url": { "raw": "{{base_url}}/client/loan-requests", "host": ["{{base_url}}"], "path": ["client", "loan-requests"] },
                 "description": "Requires the client to already be VERIFIED with a linked IppisRecord that has a salary on file (see Client > Onboarding)."
               },
-              "event": [{ "listen": "test", "script": { "exec": ["pm.test('status 422', () => pm.response.to.have.status(422));"] } }]
+              "event": [{ "listen": "test", "script": { "exec": ["pm.test('status 422', () => pm.response.to.have.status(422));"] } }],
+              "response": [
+                {
+                  "name": "Eligibility failure - amount exceeds salary cap (422)",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      },
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{client_access_token}}"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"amount\": 999999999\n}"
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/client/loan-requests",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "client",
+                        "loan-requests"
+                      ]
+                    },
+                    "description": "Requires the client to already be VERIFIED with a linked IppisRecord that has a salary on file (see Client > Onboarding)."
+                  },
+                  "status": "Unprocessable Entity",
+                  "code": 422,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"statusCode\": 422,\n  \"message\": \"Requested amount exceeds the maximum of 450000 (3x salary)\",\n  \"error\": \"Unprocessable Entity\"\n}"
+                }
+              ]
             },
             {
               "name": "POST /client/loan-requests - Success",
@@ -8779,6 +8823,49 @@
                     ]
                   }
                 }
+              ],
+              "response": [
+                {
+                  "name": "Success (201)",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      },
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{client_access_token}}"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"amount\": 5000\n}"
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/client/loan-requests",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "client",
+                        "loan-requests"
+                      ]
+                    }
+                  },
+                  "status": "Created",
+                  "code": 201,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"id\": \"c7d8e9f0-1a2b-43c4-95d6-e7f8a9b0c1d2\",\n  \"clientId\": \"9f8e7d6c-5b4a-4392-8c1d-0e9f8a7b6c5d\",\n  \"amount\": \"5000\",\n  \"status\": \"PENDING\",\n  \"confirmationSmsSentAt\": \"2026-09-17T10:00:00.000Z\",\n  \"confirmedAt\": null,\n  \"expiresAt\": \"2026-09-18T10:00:00.000Z\",\n  \"createdAt\": \"2026-09-17T10:00:00.000Z\",\n  \"updatedAt\": \"2026-09-17T10:00:00.000Z\"\n}"
+                }
               ]
             },
             {
@@ -8792,7 +8879,44 @@
                   "path": ["client", "loan-requests", "{{loan_request_id}}", "resend"]
                 }
               },
-              "event": [{ "listen": "test", "script": { "exec": ["pm.test('status 200', () => pm.response.to.have.status(200));"] } }]
+              "event": [{ "listen": "test", "script": { "exec": ["pm.test('status 200', () => pm.response.to.have.status(200));"] } }],
+              "response": [
+                {
+                  "name": "Success (200)",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{client_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/client/loan-requests/{{loan_request_id}}/resend",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "client",
+                        "loan-requests",
+                        "{{loan_request_id}}",
+                        "resend"
+                      ]
+                    }
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"id\": \"c7d8e9f0-1a2b-43c4-95d6-e7f8a9b0c1d2\",\n  \"clientId\": \"9f8e7d6c-5b4a-4392-8c1d-0e9f8a7b6c5d\",\n  \"amount\": \"5000\",\n  \"status\": \"PENDING\",\n  \"confirmationSmsSentAt\": \"2026-09-17T11:00:00.000Z\",\n  \"confirmedAt\": null,\n  \"expiresAt\": \"2026-09-18T10:00:00.000Z\",\n  \"createdAt\": \"2026-09-17T10:00:00.000Z\",\n  \"updatedAt\": \"2026-09-17T11:00:00.000Z\"\n}"
+                }
+              ]
             },
             {
               "name": "POST /webhooks/sms/inbound - Confirm (no auth)",
@@ -8803,7 +8927,48 @@
                 "url": { "raw": "{{base_url}}/webhooks/sms/inbound", "host": ["{{base_url}}"], "path": ["webhooks", "sms", "inbound"] },
                 "description": "No Authorization header — this endpoint is public. client_phone must match the phone used to log in as the Client running this folder."
               },
-              "event": [{ "listen": "test", "script": { "exec": ["pm.test('status 200', () => pm.response.to.have.status(200));"] } }]
+              "event": [{ "listen": "test", "script": { "exec": ["pm.test('status 200', () => pm.response.to.have.status(200));"] } }],
+              "response": [
+                {
+                  "name": "Received (200)",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"phone\": \"{{client_phone}}\",\n  \"message\": \"YES\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/webhooks/sms/inbound",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "webhooks",
+                        "sms",
+                        "inbound"
+                      ]
+                    },
+                    "description": "No Authorization header — this endpoint is public. client_phone must match the phone used to log in as the Client running this folder."
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"received\": true\n}"
+                }
+              ]
             },
             {
               "name": "GET /client/loan-requests - Success",
@@ -8822,6 +8987,41 @@
                     ]
                   }
                 }
+              ],
+              "response": [
+                {
+                  "name": "Success (200)",
+                  "originalRequest": {
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{client_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/client/loan-requests",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "client",
+                        "loan-requests"
+                      ]
+                    }
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "[\n  {\n    \"id\": \"c7d8e9f0-1a2b-43c4-95d6-e7f8a9b0c1d2\",\n    \"clientId\": \"9f8e7d6c-5b4a-4392-8c1d-0e9f8a7b6c5d\",\n    \"amount\": \"5000\",\n    \"status\": \"CONFIRMED\",\n    \"confirmationSmsSentAt\": \"2026-09-17T11:00:00.000Z\",\n    \"confirmedAt\": \"2026-09-17T11:05:00.000Z\",\n    \"expiresAt\": \"2026-09-18T10:00:00.000Z\",\n    \"createdAt\": \"2026-09-17T10:00:00.000Z\",\n    \"updatedAt\": \"2026-09-17T11:05:00.000Z\"\n  }\n]"
+                }
               ]
             },
             {
@@ -8836,7 +9036,45 @@
                 },
                 "description": "Run the webhook confirm request above first so this request is no longer PENDING."
               },
-              "event": [{ "listen": "test", "script": { "exec": ["pm.test('status 409', () => pm.response.to.have.status(409));"] } }]
+              "event": [{ "listen": "test", "script": { "exec": ["pm.test('status 409', () => pm.response.to.have.status(409));"] } }],
+              "response": [
+                {
+                  "name": "Blocked - not PENDING (409)",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{client_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/client/loan-requests/{{loan_request_id}}/resend",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "client",
+                        "loan-requests",
+                        "{{loan_request_id}}",
+                        "resend"
+                      ]
+                    },
+                    "description": "Run the webhook confirm request above first so this request is no longer PENDING."
+                  },
+                  "status": "Conflict",
+                  "code": 409,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"statusCode\": 409,\n  \"message\": \"Loan request is not PENDING (currently CONFIRMED)\",\n  \"error\": \"Conflict\"\n}"
+                }
+              ]
             }
           ]
         },
@@ -8863,6 +9101,41 @@
                       "});"
                     ]
                   }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Success (200)",
+                  "originalRequest": {
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{client_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/client/loans",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "client",
+                        "loans"
+                      ]
+                    }
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"loans\": [\n    {\n      \"id\": \"11112222-3333-4444-5555-666677778888\",\n      \"customerId\": \"CUST-000123\",\n      \"customerName\": \"Adaeze Okafor\",\n      \"accountNumber\": \"0123456789\",\n      \"address\": \"12 Allen Avenue, Ikeja, Lagos\",\n      \"branch\": \"Ikeja Branch\",\n      \"gender\": \"Female\",\n      \"phone\": \"+2348012345678\",\n      \"ippisNumber\": \"IPPIS-445566\",\n      \"agency\": \"Federal Ministry of Education\",\n      \"loanAmount\": \"500000\",\n      \"principalBalance\": \"320000\",\n      \"disbursementDate\": \"2025-03-01T00:00:00.000Z\",\n      \"maturationDate\": \"2027-03-01T00:00:00.000Z\",\n      \"effectiveDate\": \"2025-03-01T00:00:00.000Z\",\n      \"moratoriumDays\": 30,\n      \"product\": \"Consolidated Salary Loan\",\n      \"linkedAccountNumber\": \"0123456789\",\n      \"bvn\": \"22334455667\",\n      \"interestRatePercent\": \"18.5\",\n      \"accountOfficer\": \"Chinedu Eze\",\n      \"hasPreviouslyTakenLoan\": false,\n      \"createdAt\": \"2025-03-01T09:00:00.000Z\",\n      \"updatedAt\": \"2025-03-01T09:00:00.000Z\"\n    }\n  ],\n  \"repayments\": [\n    {\n      \"id\": \"22223333-4444-5555-6666-777788889999\",\n      \"agency\": \"Federal Ministry of Education\",\n      \"staffId\": \"IPPIS-445566\",\n      \"period\": \"2026-08\",\n      \"elementName\": \"Loan Repayment\",\n      \"elementDetail\": \"Monthly salary deduction\",\n      \"amount\": \"25000\",\n      \"createdAt\": \"2026-08-25T00:00:00.000Z\"\n    }\n  ]\n}"
                 }
               ]
             }
