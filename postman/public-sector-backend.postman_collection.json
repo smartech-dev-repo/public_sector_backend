@@ -665,6 +665,46 @@
                     ]
                   }
                 }
+              ],
+              "response": [
+                {
+                  "name": "OK",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"refreshToken\": \"{{admin_refresh_token}}\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/auth/refresh",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "auth",
+                        "refresh"
+                      ]
+                    },
+                    "description": "Not role-namespaced \u2014 the Session row itself carries the principal type. Rotates the token: the old refresh token is revoked and a new one is returned."
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"accessToken\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhMWIyYzNkNC1lNWY2LTQ3YTgtOTBiMS1kMmUzZjRhNWI2YzciLCJ0eXBlIjoiYWRtaW4iLCJwZXJtaXNzaW9ucyI6WyJhZG1pbnM6Y3JlYXRlIl19.QbZ1F9m2QoVN8xJH0y7bT4wRZs6dC1pL5aG9nU2fXyA\",\n  \"refreshToken\": \"3f2c9a7e1d8b4f6a0c5e2d9b8a1f4c7e6d3b0a9f8e7d6c5b4a3f2e1d0c9b8a7f\"\n}"
+                }
               ]
             },
             {
@@ -701,6 +741,45 @@
                     ]
                   }
                 }
+              ],
+              "response": [
+                {
+                  "name": "401 Invalid refresh token",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"refreshToken\": \"not-a-real-token\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/auth/refresh",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "auth",
+                        "refresh"
+                      ]
+                    }
+                  },
+                  "status": "Unauthorized",
+                  "code": 401,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"statusCode\": 401,\n  \"message\": \"Invalid refresh token\",\n  \"error\": \"Unauthorized\"\n}"
+                }
               ]
             },
             {
@@ -736,6 +815,41 @@
                     ]
                   }
                 }
+              ],
+              "response": [
+                {
+                  "name": "OK",
+                  "originalRequest": {
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/auth/sessions",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "auth",
+                        "sessions"
+                      ]
+                    }
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "[\n  {\n    \"id\": \"b7e6d5c4-b3a2-41f0-9e8d-7c6b5a4f3e2d\",\n    \"userAgent\": \"PostmanRuntime/7.36.0\",\n    \"ip\": \"203.0.113.10\",\n    \"createdAt\": \"2026-09-10T09:15:00.000Z\",\n    \"lastUsedAt\": \"2026-09-17T08:42:00.000Z\",\n    \"expiresAt\": \"2026-09-24T09:15:00.000Z\"\n  }\n]"
+                }
               ]
             },
             {
@@ -762,6 +876,36 @@
                       "pm.test('status 401', () => pm.response.to.have.status(401));"
                     ]
                   }
+                }
+              ],
+              "response": [
+                {
+                  "name": "401 Unauthorized",
+                  "originalRequest": {
+                    "method": "GET",
+                    "header": [],
+                    "url": {
+                      "raw": "{{base_url}}/auth/sessions",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "auth",
+                        "sessions"
+                      ]
+                    }
+                  },
+                  "status": "Unauthorized",
+                  "code": 401,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"statusCode\": 401,\n  \"message\": \"Unauthorized\"\n}"
                 }
               ]
             },
@@ -798,6 +942,43 @@
                     ]
                   }
                 }
+              ],
+              "response": [
+                {
+                  "name": "OK",
+                  "originalRequest": {
+                    "method": "DELETE",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/auth/sessions/{{session_id}}",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "auth",
+                        "sessions",
+                        "{{session_id}}"
+                      ]
+                    },
+                    "description": "Run 'GET /auth/sessions - Success' first to populate session_id."
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"revoked\": true\n}"
+                }
               ]
             },
             {
@@ -830,6 +1011,42 @@
                       "pm.test('status 404', () => pm.response.to.have.status(404));"
                     ]
                   }
+                }
+              ],
+              "response": [
+                {
+                  "name": "404 Session not found",
+                  "originalRequest": {
+                    "method": "DELETE",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/auth/sessions/00000000-0000-0000-0000-000000000000",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "auth",
+                        "sessions",
+                        "00000000-0000-0000-0000-000000000000"
+                      ]
+                    }
+                  },
+                  "status": "Not Found",
+                  "code": 404,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"statusCode\": 404,\n  \"message\": \"Session not found\",\n  \"error\": \"Not Found\"\n}"
                 }
               ]
             },
@@ -869,6 +1086,46 @@
                     ]
                   }
                 }
+              ],
+              "response": [
+                {
+                  "name": "OK",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"refreshToken\": \"{{admin_refresh_token}}\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/auth/logout",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "auth",
+                        "logout"
+                      ]
+                    },
+                    "description": "Idempotent \u2014 also returns 200 on an already-revoked/unknown token."
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"loggedOut\": true\n}"
+                }
               ]
             },
             {
@@ -902,6 +1159,42 @@
                     ]
                   }
                 }
+              ],
+              "response": [
+                {
+                  "name": "OK",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/auth/logout-all",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "auth",
+                        "logout-all"
+                      ]
+                    },
+                    "description": "Revokes every session for the authenticated principal. Run 'Admin > Auth > POST /auth/admin/login - Success' again afterward to get a fresh usable token, since this one's session is now revoked."
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"loggedOut\": true\n}"
+                }
               ]
             },
             {
@@ -928,6 +1221,36 @@
                       "pm.test('status 401', () => pm.response.to.have.status(401));"
                     ]
                   }
+                }
+              ],
+              "response": [
+                {
+                  "name": "401 Unauthorized",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [],
+                    "url": {
+                      "raw": "{{base_url}}/auth/logout-all",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "auth",
+                        "logout-all"
+                      ]
+                    }
+                  },
+                  "status": "Unauthorized",
+                  "code": 401,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"statusCode\": 401,\n  \"message\": \"Unauthorized\"\n}"
                 }
               ]
             }
@@ -3736,6 +4059,46 @@
                     ]
                   }
                 }
+              ],
+              "response": [
+                {
+                  "name": "OK",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"refreshToken\": \"{{agent_refresh_token}}\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/auth/refresh",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "auth",
+                        "refresh"
+                      ]
+                    },
+                    "description": "Not role-namespaced \u2014 the Session row itself carries the principal type. Rotates the token: the old refresh token is revoked and a new one is returned."
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"accessToken\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJmNmU1ZDRjMy1iMmExLTQ5ZjgtODc2NS00MzIxMGZlZGNiYTkiLCJ0eXBlIjoiYWdlbnQifQ.RmT8k2N5vXoQz1jH9y0bC4wSz6eD2pM5bH0nV3gYzB\",\n  \"refreshToken\": \"7a1b2c3d4e5f60718293a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5\"\n}"
+                }
               ]
             },
             {
@@ -3772,6 +4135,45 @@
                     ]
                   }
                 }
+              ],
+              "response": [
+                {
+                  "name": "401 Invalid refresh token",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"refreshToken\": \"not-a-real-token\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/auth/refresh",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "auth",
+                        "refresh"
+                      ]
+                    }
+                  },
+                  "status": "Unauthorized",
+                  "code": 401,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"statusCode\": 401,\n  \"message\": \"Invalid refresh token\",\n  \"error\": \"Unauthorized\"\n}"
+                }
               ]
             },
             {
@@ -3807,6 +4209,41 @@
                     ]
                   }
                 }
+              ],
+              "response": [
+                {
+                  "name": "OK",
+                  "originalRequest": {
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{agent_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/auth/sessions",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "auth",
+                        "sessions"
+                      ]
+                    }
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "[\n  {\n    \"id\": \"d2c1b0a9-f8e7-46d5-9c4b-3a2f1e0d9c8b\",\n    \"userAgent\": \"PostmanRuntime/7.36.0\",\n    \"ip\": \"198.51.100.23\",\n    \"createdAt\": \"2026-09-12T11:30:00.000Z\",\n    \"lastUsedAt\": \"2026-09-17T07:05:00.000Z\",\n    \"expiresAt\": \"2026-09-19T11:30:00.000Z\"\n  }\n]"
+                }
               ]
             },
             {
@@ -3833,6 +4270,36 @@
                       "pm.test('status 401', () => pm.response.to.have.status(401));"
                     ]
                   }
+                }
+              ],
+              "response": [
+                {
+                  "name": "401 Unauthorized",
+                  "originalRequest": {
+                    "method": "GET",
+                    "header": [],
+                    "url": {
+                      "raw": "{{base_url}}/auth/sessions",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "auth",
+                        "sessions"
+                      ]
+                    }
+                  },
+                  "status": "Unauthorized",
+                  "code": 401,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"statusCode\": 401,\n  \"message\": \"Unauthorized\"\n}"
                 }
               ]
             },
@@ -3869,6 +4336,43 @@
                     ]
                   }
                 }
+              ],
+              "response": [
+                {
+                  "name": "OK",
+                  "originalRequest": {
+                    "method": "DELETE",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{agent_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/auth/sessions/{{agent_session_id}}",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "auth",
+                        "sessions",
+                        "{{agent_session_id}}"
+                      ]
+                    },
+                    "description": "Run 'GET /auth/sessions - Success' first to populate agent_session_id."
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"revoked\": true\n}"
+                }
               ]
             },
             {
@@ -3901,6 +4405,42 @@
                       "pm.test('status 404', () => pm.response.to.have.status(404));"
                     ]
                   }
+                }
+              ],
+              "response": [
+                {
+                  "name": "404 Session not found",
+                  "originalRequest": {
+                    "method": "DELETE",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{agent_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/auth/sessions/00000000-0000-0000-0000-000000000000",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "auth",
+                        "sessions",
+                        "00000000-0000-0000-0000-000000000000"
+                      ]
+                    }
+                  },
+                  "status": "Not Found",
+                  "code": 404,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"statusCode\": 404,\n  \"message\": \"Session not found\",\n  \"error\": \"Not Found\"\n}"
                 }
               ]
             },
@@ -3940,6 +4480,46 @@
                     ]
                   }
                 }
+              ],
+              "response": [
+                {
+                  "name": "OK",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"refreshToken\": \"{{agent_refresh_token}}\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/auth/logout",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "auth",
+                        "logout"
+                      ]
+                    },
+                    "description": "Idempotent \u2014 also returns 200 on an already-revoked/unknown token."
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"loggedOut\": true\n}"
+                }
               ]
             },
             {
@@ -3973,6 +4553,42 @@
                     ]
                   }
                 }
+              ],
+              "response": [
+                {
+                  "name": "OK",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{agent_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/auth/logout-all",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "auth",
+                        "logout-all"
+                      ]
+                    },
+                    "description": "Revokes every session for the authenticated principal. Run 'Agent > Auth > POST /auth/agent/login - Success' again afterward to get a fresh usable token, since this one's session is now revoked."
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"loggedOut\": true\n}"
+                }
               ]
             },
             {
@@ -3999,6 +4615,36 @@
                       "pm.test('status 401', () => pm.response.to.have.status(401));"
                     ]
                   }
+                }
+              ],
+              "response": [
+                {
+                  "name": "401 Unauthorized",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [],
+                    "url": {
+                      "raw": "{{base_url}}/auth/logout-all",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "auth",
+                        "logout-all"
+                      ]
+                    }
+                  },
+                  "status": "Unauthorized",
+                  "code": 401,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"statusCode\": 401,\n  \"message\": \"Unauthorized\"\n}"
                 }
               ]
             }
@@ -4258,6 +4904,46 @@
                     ]
                   }
                 }
+              ],
+              "response": [
+                {
+                  "name": "OK",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"refreshToken\": \"{{client_refresh_token}}\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/auth/refresh",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "auth",
+                        "refresh"
+                      ]
+                    },
+                    "description": "Not role-namespaced \u2014 the Session row itself carries the principal type. Rotates the token: the old refresh token is revoked and a new one is returned."
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"accessToken\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJjOWQ4ZTdmNi1hNWI0LTQzYzItOTFkMC04NzY1NDMyMTBmZWQiLCJ0eXBlIjoiY2xpZW50In0.SnU9l3O6wYpRz2kI0z1cD5xTz7fE3qN6cI1oW4hZzC\",\n  \"refreshToken\": \"c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5\"\n}"
+                }
               ]
             },
             {
@@ -4294,6 +4980,45 @@
                     ]
                   }
                 }
+              ],
+              "response": [
+                {
+                  "name": "401 Invalid refresh token",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"refreshToken\": \"not-a-real-token\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/auth/refresh",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "auth",
+                        "refresh"
+                      ]
+                    }
+                  },
+                  "status": "Unauthorized",
+                  "code": 401,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"statusCode\": 401,\n  \"message\": \"Invalid refresh token\",\n  \"error\": \"Unauthorized\"\n}"
+                }
               ]
             },
             {
@@ -4329,6 +5054,41 @@
                     ]
                   }
                 }
+              ],
+              "response": [
+                {
+                  "name": "OK",
+                  "originalRequest": {
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{client_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/auth/sessions",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "auth",
+                        "sessions"
+                      ]
+                    }
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "[\n  {\n    \"id\": \"e5f4a3b2-c1d0-49e8-8f7a-6b5c4d3e2f1a\",\n    \"userAgent\": \"okhttp/4.12.0\",\n    \"ip\": \"192.0.2.55\",\n    \"createdAt\": \"2026-09-15T06:00:00.000Z\",\n    \"lastUsedAt\": \"2026-09-17T06:45:00.000Z\",\n    \"expiresAt\": \"2026-09-22T06:00:00.000Z\"\n  }\n]"
+                }
               ]
             },
             {
@@ -4355,6 +5115,36 @@
                       "pm.test('status 401', () => pm.response.to.have.status(401));"
                     ]
                   }
+                }
+              ],
+              "response": [
+                {
+                  "name": "401 Unauthorized",
+                  "originalRequest": {
+                    "method": "GET",
+                    "header": [],
+                    "url": {
+                      "raw": "{{base_url}}/auth/sessions",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "auth",
+                        "sessions"
+                      ]
+                    }
+                  },
+                  "status": "Unauthorized",
+                  "code": 401,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"statusCode\": 401,\n  \"message\": \"Unauthorized\"\n}"
                 }
               ]
             },
@@ -4391,6 +5181,43 @@
                     ]
                   }
                 }
+              ],
+              "response": [
+                {
+                  "name": "OK",
+                  "originalRequest": {
+                    "method": "DELETE",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{client_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/auth/sessions/{{client_session_id}}",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "auth",
+                        "sessions",
+                        "{{client_session_id}}"
+                      ]
+                    },
+                    "description": "Run 'GET /auth/sessions - Success' first to populate client_session_id."
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"revoked\": true\n}"
+                }
               ]
             },
             {
@@ -4423,6 +5250,42 @@
                       "pm.test('status 404', () => pm.response.to.have.status(404));"
                     ]
                   }
+                }
+              ],
+              "response": [
+                {
+                  "name": "404 Session not found",
+                  "originalRequest": {
+                    "method": "DELETE",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{client_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/auth/sessions/00000000-0000-0000-0000-000000000000",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "auth",
+                        "sessions",
+                        "00000000-0000-0000-0000-000000000000"
+                      ]
+                    }
+                  },
+                  "status": "Not Found",
+                  "code": 404,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"statusCode\": 404,\n  \"message\": \"Session not found\",\n  \"error\": \"Not Found\"\n}"
                 }
               ]
             },
@@ -4462,6 +5325,46 @@
                     ]
                   }
                 }
+              ],
+              "response": [
+                {
+                  "name": "OK",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"refreshToken\": \"{{client_refresh_token}}\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/auth/logout",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "auth",
+                        "logout"
+                      ]
+                    },
+                    "description": "Idempotent \u2014 also returns 200 on an already-revoked/unknown token."
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"loggedOut\": true\n}"
+                }
               ]
             },
             {
@@ -4495,6 +5398,42 @@
                     ]
                   }
                 }
+              ],
+              "response": [
+                {
+                  "name": "OK",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{client_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/auth/logout-all",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "auth",
+                        "logout-all"
+                      ]
+                    },
+                    "description": "Revokes every session for the authenticated principal. Run 'Client > Auth > POST /auth/client/otp/verify - Success' again afterward to get a fresh usable token, since this one's session is now revoked."
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"loggedOut\": true\n}"
+                }
               ]
             },
             {
@@ -4521,6 +5460,36 @@
                       "pm.test('status 401', () => pm.response.to.have.status(401));"
                     ]
                   }
+                }
+              ],
+              "response": [
+                {
+                  "name": "401 Unauthorized",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [],
+                    "url": {
+                      "raw": "{{base_url}}/auth/logout-all",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "auth",
+                        "logout-all"
+                      ]
+                    }
+                  },
+                  "status": "Unauthorized",
+                  "code": 401,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"statusCode\": 401,\n  \"message\": \"Unauthorized\"\n}"
                 }
               ]
             }
