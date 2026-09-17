@@ -8126,6 +8126,37 @@
                     ]
                   }
                 }
+              ],
+              "response": [
+                {
+                  "name": "401 Unauthorized",
+                  "originalRequest": {
+                    "method": "GET",
+                    "header": [],
+                    "url": {
+                      "raw": "{{base_url}}/client/onboarding/status",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "client",
+                        "onboarding",
+                        "status"
+                      ]
+                    }
+                  },
+                  "status": "Unauthorized",
+                  "code": 401,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"statusCode\": 401,\n  \"message\": \"Unauthorized\"\n}"
+                }
               ]
             },
             {
@@ -8159,6 +8190,43 @@
                       "pm.test('status 200', () => pm.response.to.have.status(200));"
                     ]
                   }
+                }
+              ],
+              "response": [
+                {
+                  "name": "OK - no onboarding record yet",
+                  "originalRequest": {
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{client_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/client/onboarding/status",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "client",
+                        "onboarding",
+                        "status"
+                      ]
+                    },
+                    "description": "Run 'Client > Auth > POST /auth/client/otp/verify - Success' first to populate client_access_token."
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"step\": \"PHONE_VERIFIED\",\n  \"clientStatus\": \"PHONE_VERIFIED\",\n  \"onboarding\": null\n}"
                 }
               ]
             },
@@ -8203,6 +8271,51 @@
                     ]
                   }
                 }
+              ],
+              "response": [
+                {
+                  "name": "Created - IPPIS record linked",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      },
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{client_access_token}}"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"ippisNumber\": \"{{test_ippis_staff_id}}\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/client/onboarding/ippis-link",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "client",
+                        "onboarding",
+                        "ippis-link"
+                      ]
+                    },
+                    "description": "test_ippis_staff_id must be a Staff ID that exists in IppisRecord (e.g. from a prior IPPIS Broadsheet upload) and isn't already linked to another client."
+                  },
+                  "status": "Created",
+                  "code": 201,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"id\": \"e1f2a3b4-5c6d-4e7f-8091-a2b3c4d5e6f7\",\n  \"clientId\": \"d4e5f6a7-8b9c-4d1e-af23-4b5c6d7e8f90\",\n  \"ippisRecordId\": \"f6a7b8c9-1d2e-4f3a-9b4c-5d6e7f8a9b0c\",\n  \"employeeName\": \"Chinedu Okafor\",\n  \"agency\": \"NPF\",\n  \"bankName\": \"First Bank of Nigeria\",\n  \"accountNumber\": \"3012345678\",\n  \"bvn\": null,\n  \"nin\": null,\n  \"bvnSelfie\": null,\n  \"ninSelfie\": null,\n  \"liveSelfieKey\": null,\n  \"identityVerified\": null,\n  \"faceMatchBvnScore\": null,\n  \"faceMatchNinScore\": null,\n  \"faceMatchPassed\": null,\n  \"step\": \"IPPIS_LINKED\",\n  \"failureReasons\": null,\n  \"reviewedBy\": null,\n  \"reviewedAt\": null,\n  \"reviewNote\": null,\n  \"createdAt\": \"2026-09-17T10:00:00.000Z\",\n  \"updatedAt\": \"2026-09-17T10:00:00.000Z\"\n}"
+                }
               ]
             },
             {
@@ -8243,6 +8356,50 @@
                       "pm.test('status 404', () => pm.response.to.have.status(404));"
                     ]
                   }
+                }
+              ],
+              "response": [
+                {
+                  "name": "404 Not Found",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      },
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{client_access_token}}"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"ippisNumber\": \"DOES-NOT-EXIST\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/client/onboarding/ippis-link",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "client",
+                        "onboarding",
+                        "ippis-link"
+                      ]
+                    }
+                  },
+                  "status": "Not Found",
+                  "code": 404,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"statusCode\": 404,\n  \"message\": \"IPPIS number not found\",\n  \"error\": \"Not Found\"\n}"
                 }
               ]
             },
@@ -8287,6 +8444,51 @@
                     ]
                   }
                 }
+              ],
+              "response": [
+                {
+                  "name": "Created - identity verified",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      },
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{client_access_token}}"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"bvn\": \"12345678901\",\n  \"nin\": \"98765432109\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/client/onboarding/identity",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "client",
+                        "onboarding",
+                        "identity"
+                      ]
+                    },
+                    "description": "Uses the mock IdentityVerificationProvider by default (IDENTITY_VERIFICATION_PROVIDER=mock) — any 11-digit values work."
+                  },
+                  "status": "Created",
+                  "code": 201,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"id\": \"e1f2a3b4-5c6d-4e7f-8091-a2b3c4d5e6f7\",\n  \"clientId\": \"d4e5f6a7-8b9c-4d1e-af23-4b5c6d7e8f90\",\n  \"ippisRecordId\": \"f6a7b8c9-1d2e-4f3a-9b4c-5d6e7f8a9b0c\",\n  \"employeeName\": \"Chinedu Okafor\",\n  \"agency\": \"NPF\",\n  \"bankName\": \"First Bank of Nigeria\",\n  \"accountNumber\": \"3012345678\",\n  \"bvn\": \"12345678901\",\n  \"nin\": \"98765432109\",\n  \"bvnSelfie\": \"client-onboarding/d4e5f6a7-8b9c-4d1e-af23-4b5c6d7e8f90/bvn-selfie.jpg\",\n  \"ninSelfie\": \"client-onboarding/d4e5f6a7-8b9c-4d1e-af23-4b5c6d7e8f90/nin-selfie.jpg\",\n  \"liveSelfieKey\": null,\n  \"identityVerified\": true,\n  \"faceMatchBvnScore\": null,\n  \"faceMatchNinScore\": null,\n  \"faceMatchPassed\": null,\n  \"step\": \"IDENTITY_SUBMITTED\",\n  \"failureReasons\": null,\n  \"reviewedBy\": null,\n  \"reviewedAt\": null,\n  \"reviewNote\": null,\n  \"createdAt\": \"2026-09-17T10:00:00.000Z\",\n  \"updatedAt\": \"2026-09-17T10:05:00.000Z\"\n}"
+                }
               ]
             },
             {
@@ -8327,6 +8529,50 @@
                       "pm.test('status 400', () => pm.response.to.have.status(400));"
                     ]
                   }
+                }
+              ],
+              "response": [
+                {
+                  "name": "400 Bad Request - invalid bvn format",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      },
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{client_access_token}}"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"bvn\": \"123\",\n  \"nin\": \"98765432109\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/client/onboarding/identity",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "client",
+                        "onboarding",
+                        "identity"
+                      ]
+                    }
+                  },
+                  "status": "Bad Request",
+                  "code": 400,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"statusCode\": 400,\n  \"message\": [\n    \"bvn must be an 11-digit number\"\n  ],\n  \"error\": \"Bad Request\"\n}"
                 }
               ]
             },
@@ -8373,6 +8619,53 @@
                     ]
                   }
                 }
+              ],
+              "response": [
+                {
+                  "name": "Created - face match passed, onboarding completed",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{client_access_token}}"
+                      }
+                    ],
+                    "body": {
+                      "mode": "formdata",
+                      "formdata": [
+                        {
+                          "key": "selfie",
+                          "type": "file",
+                          "src": []
+                        }
+                      ]
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/client/onboarding/face-match",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "client",
+                        "onboarding",
+                        "face-match"
+                      ]
+                    },
+                    "description": "Attach any image file — the mock FaceVerificationProvider always passes. Run the identity request above first."
+                  },
+                  "status": "Created",
+                  "code": 201,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"id\": \"e1f2a3b4-5c6d-4e7f-8091-a2b3c4d5e6f7\",\n  \"clientId\": \"d4e5f6a7-8b9c-4d1e-af23-4b5c6d7e8f90\",\n  \"ippisRecordId\": \"f6a7b8c9-1d2e-4f3a-9b4c-5d6e7f8a9b0c\",\n  \"employeeName\": \"Chinedu Okafor\",\n  \"agency\": \"NPF\",\n  \"bankName\": \"First Bank of Nigeria\",\n  \"accountNumber\": \"3012345678\",\n  \"bvn\": \"12345678901\",\n  \"nin\": \"98765432109\",\n  \"bvnSelfie\": \"client-onboarding/d4e5f6a7-8b9c-4d1e-af23-4b5c6d7e8f90/bvn-selfie.jpg\",\n  \"ninSelfie\": \"client-onboarding/d4e5f6a7-8b9c-4d1e-af23-4b5c6d7e8f90/nin-selfie.jpg\",\n  \"liveSelfieKey\": \"client-onboarding/d4e5f6a7-8b9c-4d1e-af23-4b5c6d7e8f90/live-selfie.jpg\",\n  \"identityVerified\": true,\n  \"faceMatchBvnScore\": 0.97,\n  \"faceMatchNinScore\": 0.95,\n  \"faceMatchPassed\": true,\n  \"step\": \"COMPLETED\",\n  \"failureReasons\": null,\n  \"reviewedBy\": null,\n  \"reviewedAt\": null,\n  \"reviewNote\": null,\n  \"createdAt\": \"2026-09-17T10:00:00.000Z\",\n  \"updatedAt\": \"2026-09-17T10:10:00.000Z\"\n}"
+                }
               ]
             },
             {
@@ -8406,6 +8699,42 @@
                       "pm.test('step is COMPLETED', () => pm.expect(pm.response.json().step).to.eql('COMPLETED'));"
                     ]
                   }
+                }
+              ],
+              "response": [
+                {
+                  "name": "OK - onboarding completed",
+                  "originalRequest": {
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{client_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/client/onboarding/status",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "client",
+                        "onboarding",
+                        "status"
+                      ]
+                    }
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"step\": \"COMPLETED\",\n  \"clientStatus\": \"VERIFIED\",\n  \"onboarding\": {\n    \"id\": \"e1f2a3b4-5c6d-4e7f-8091-a2b3c4d5e6f7\",\n    \"clientId\": \"d4e5f6a7-8b9c-4d1e-af23-4b5c6d7e8f90\",\n    \"ippisRecordId\": \"f6a7b8c9-1d2e-4f3a-9b4c-5d6e7f8a9b0c\",\n    \"employeeName\": \"Chinedu Okafor\",\n    \"agency\": \"NPF\",\n    \"bankName\": \"First Bank of Nigeria\",\n    \"accountNumber\": \"3012345678\",\n    \"bvn\": \"12345678901\",\n    \"nin\": \"98765432109\",\n    \"bvnSelfie\": \"client-onboarding/d4e5f6a7-8b9c-4d1e-af23-4b5c6d7e8f90/bvn-selfie.jpg\",\n    \"ninSelfie\": \"client-onboarding/d4e5f6a7-8b9c-4d1e-af23-4b5c6d7e8f90/nin-selfie.jpg\",\n    \"liveSelfieKey\": \"client-onboarding/d4e5f6a7-8b9c-4d1e-af23-4b5c6d7e8f90/live-selfie.jpg\",\n    \"identityVerified\": true,\n    \"faceMatchBvnScore\": 0.97,\n    \"faceMatchNinScore\": 0.95,\n    \"faceMatchPassed\": true,\n    \"step\": \"COMPLETED\",\n    \"failureReasons\": null,\n    \"reviewedBy\": null,\n    \"reviewedAt\": null,\n    \"reviewNote\": null,\n    \"createdAt\": \"2026-09-17T10:00:00.000Z\",\n    \"updatedAt\": \"2026-09-17T10:10:00.000Z\"\n  }\n}"
                 }
               ]
             }
