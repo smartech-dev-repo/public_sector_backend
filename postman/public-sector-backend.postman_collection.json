@@ -2667,6 +2667,49 @@
                     ]
                   }
                 }
+              ],
+              "response": [
+                {
+                  "name": "Success - permission created (201)",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      },
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"key\": \"{{test_permission_key}}\",\n  \"description\": \"Export financial reports\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/admin/permissions",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "permissions"
+                      ]
+                    }
+                  },
+                  "status": "Created",
+                  "code": 201,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"id\": \"550e8400-e29b-41d4-a716-446655440010\",\n  \"key\": \"reports:export\",\n  \"description\": \"Export financial reports\",\n  \"createdAt\": \"2026-09-17T10:00:00.000Z\"\n}"
+                }
               ]
             },
             {
@@ -2706,6 +2749,49 @@
                       "pm.test('status 400', () => pm.response.to.have.status(400));"
                     ]
                   }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Validation error - invalid key format (400)",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      },
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"key\": \"Not A Valid Key!\",\n  \"description\": \"bad\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/admin/permissions",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "permissions"
+                      ]
+                    }
+                  },
+                  "status": "Bad Request",
+                  "code": 400,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"statusCode\": 400,\n  \"message\": [\n    \"key must look like resource:action (e.g. reports:export), lowercase, colon-separated\"\n  ],\n  \"error\": \"Bad Request\"\n}"
                 }
               ]
             },
@@ -2748,6 +2834,50 @@
                     ]
                   }
                 }
+              ],
+              "response": [
+                {
+                  "name": "Conflict - duplicate key (409)",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      },
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"key\": \"{{test_permission_key}}\",\n  \"description\": \"duplicate\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/admin/permissions",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "permissions"
+                      ]
+                    },
+                    "description": "Run 'POST /admin/permissions - Success' first so this key already exists."
+                  },
+                  "status": "Conflict",
+                  "code": 409,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"statusCode\": 409,\n  \"message\": \"A permission with key \\\"reports:export\\\" already exists\",\n  \"error\": \"Conflict\"\n}"
+                }
               ]
             },
             {
@@ -2780,6 +2910,41 @@
                       "pm.test('is array', () => pm.expect(pm.response.json()).to.be.an('array'));"
                     ]
                   }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Success - list all permissions (200)",
+                  "originalRequest": {
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/permissions",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "permissions"
+                      ]
+                    }
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "[\n  {\n    \"id\": \"550e8400-e29b-41d4-a716-446655440001\",\n    \"key\": \"loans:manage\",\n    \"description\": \"Manage loan records\",\n    \"createdAt\": \"2026-09-10T09:00:00.000Z\"\n  },\n  {\n    \"id\": \"550e8400-e29b-41d4-a716-446655440010\",\n    \"key\": \"reports:export\",\n    \"description\": \"Export financial reports\",\n    \"createdAt\": \"2026-09-17T10:00:00.000Z\"\n  },\n  {\n    \"id\": \"550e8400-e29b-41d4-a716-446655440002\",\n    \"key\": \"roles:manage\",\n    \"description\": \"Manage roles and permissions\",\n    \"createdAt\": \"2026-09-10T09:00:00.000Z\"\n  }\n]"
                 }
               ]
             },
@@ -2814,6 +2979,43 @@
                       "pm.test('status 200', () => pm.response.to.have.status(200));"
                     ]
                   }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Success - get permission by id (200)",
+                  "originalRequest": {
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/permissions/{{permission_id}}",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "permissions",
+                        "{{permission_id}}"
+                      ]
+                    },
+                    "description": "Run 'POST /admin/permissions - Success' first to populate permission_id."
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"id\": \"550e8400-e29b-41d4-a716-446655440010\",\n  \"key\": \"reports:export\",\n  \"description\": \"Export financial reports\",\n  \"createdAt\": \"2026-09-17T10:00:00.000Z\"\n}"
                 }
               ]
             },
@@ -2860,6 +3062,51 @@
                     ]
                   }
                 }
+              ],
+              "response": [
+                {
+                  "name": "Success - description updated (200)",
+                  "originalRequest": {
+                    "method": "PATCH",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      },
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"description\": \"Updated description\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/admin/permissions/{{permission_id}}",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "permissions",
+                        "{{permission_id}}"
+                      ]
+                    },
+                    "description": "key is immutable — only description can change."
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"id\": \"550e8400-e29b-41d4-a716-446655440010\",\n  \"key\": \"reports:export\",\n  \"description\": \"Updated description\",\n  \"createdAt\": \"2026-09-17T10:00:00.000Z\"\n}"
+                }
               ]
             },
             {
@@ -2893,6 +3140,43 @@
                       "pm.test('status 409', () => pm.response.to.have.status(409));"
                     ]
                   }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Conflict - permission in use by a role (409)",
+                  "originalRequest": {
+                    "method": "DELETE",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/permissions/{{permission_id}}",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "permissions",
+                        "{{permission_id}}"
+                      ]
+                    },
+                    "description": "Run 'Admin > Roles > POST /admin/roles/:id/permissions - Success' first to assign this permission to a role."
+                  },
+                  "status": "Conflict",
+                  "code": 409,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"statusCode\": 409,\n  \"message\": \"Cannot delete a permission that is currently assigned to one or more roles\",\n  \"error\": \"Conflict\"\n}"
                 }
               ]
             },
@@ -2928,6 +3212,43 @@
                       "pm.test('deleted true', () => pm.expect(pm.response.json().deleted).to.eql(true));"
                     ]
                   }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Success - permission deleted (200)",
+                  "originalRequest": {
+                    "method": "DELETE",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/permissions/{{permission_id}}",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "permissions",
+                        "{{permission_id}}"
+                      ]
+                    },
+                    "description": "Run 'Admin > Roles > DELETE /admin/roles/:id/permissions/:permissionId - Success' first so it's no longer in use."
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"deleted\": true\n}"
                 }
               ]
             }
@@ -2976,6 +3297,49 @@
                     ]
                   }
                 }
+              ],
+              "response": [
+                {
+                  "name": "Success - role created (201)",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      },
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"name\": \"{{test_role_name}}\",\n  \"description\": \"Can export financial reports\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/admin/roles",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "roles"
+                      ]
+                    }
+                  },
+                  "status": "Created",
+                  "code": 201,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"id\": \"550e8400-e29b-41d4-a716-446655440020\",\n  \"name\": \"REPORTS_ANALYST\",\n  \"description\": \"Can export financial reports\",\n  \"createdAt\": \"2026-09-17T10:00:00.000Z\"\n}"
+                }
               ]
             },
             {
@@ -3016,6 +3380,49 @@
                     ]
                   }
                 }
+              ],
+              "response": [
+                {
+                  "name": "Conflict - duplicate role name (409)",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      },
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"name\": \"SUPER_ADMIN\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/admin/roles",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "roles"
+                      ]
+                    }
+                  },
+                  "status": "Conflict",
+                  "code": 409,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"statusCode\": 409,\n  \"message\": \"A role named \\\"SUPER_ADMIN\\\" already exists\",\n  \"error\": \"Conflict\"\n}"
+                }
               ]
             },
             {
@@ -3051,6 +3458,41 @@
                     ]
                   }
                 }
+              ],
+              "response": [
+                {
+                  "name": "Success - list all roles with permissions (200)",
+                  "originalRequest": {
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/roles",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "roles"
+                      ]
+                    }
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "[\n  {\n    \"id\": \"550e8400-e29b-41d4-a716-446655440099\",\n    \"name\": \"SUPER_ADMIN\",\n    \"description\": null,\n    \"createdAt\": \"2026-09-01T08:00:00.000Z\",\n    \"permissions\": [\n      {\n        \"roleId\": \"550e8400-e29b-41d4-a716-446655440099\",\n        \"permissionId\": \"550e8400-e29b-41d4-a716-446655440002\",\n        \"permission\": {\n          \"id\": \"550e8400-e29b-41d4-a716-446655440002\",\n          \"key\": \"roles:manage\",\n          \"description\": \"Manage roles and permissions\",\n          \"createdAt\": \"2026-09-10T09:00:00.000Z\"\n        }\n      }\n    ]\n  },\n  {\n    \"id\": \"550e8400-e29b-41d4-a716-446655440020\",\n    \"name\": \"REPORTS_ANALYST\",\n    \"description\": \"Can export financial reports\",\n    \"createdAt\": \"2026-09-17T10:00:00.000Z\",\n    \"permissions\": [\n      {\n        \"roleId\": \"550e8400-e29b-41d4-a716-446655440020\",\n        \"permissionId\": \"550e8400-e29b-41d4-a716-446655440010\",\n        \"permission\": {\n          \"id\": \"550e8400-e29b-41d4-a716-446655440010\",\n          \"key\": \"reports:export\",\n          \"description\": \"Export financial reports\",\n          \"createdAt\": \"2026-09-17T10:00:00.000Z\"\n        }\n      }\n    ]\n  }\n]"
+                }
               ]
             },
             {
@@ -3085,6 +3527,43 @@
                       "pm.test('has permissions array', () => pm.expect(pm.response.json().permissions).to.be.an('array'));"
                     ]
                   }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Success - get role by id with permissions (200)",
+                  "originalRequest": {
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/roles/{{role_id}}",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "roles",
+                        "{{role_id}}"
+                      ]
+                    },
+                    "description": "Run 'POST /admin/roles - Success' first to populate role_id."
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"id\": \"550e8400-e29b-41d4-a716-446655440020\",\n  \"name\": \"REPORTS_ANALYST\",\n  \"description\": \"Can export financial reports\",\n  \"createdAt\": \"2026-09-17T10:00:00.000Z\",\n  \"permissions\": [\n    {\n      \"roleId\": \"550e8400-e29b-41d4-a716-446655440020\",\n      \"permissionId\": \"550e8400-e29b-41d4-a716-446655440010\",\n      \"permission\": {\n        \"id\": \"550e8400-e29b-41d4-a716-446655440010\",\n        \"key\": \"reports:export\",\n        \"description\": \"Export financial reports\",\n        \"createdAt\": \"2026-09-17T10:00:00.000Z\"\n      }\n    }\n  ]\n}"
                 }
               ]
             },
@@ -3126,6 +3605,50 @@
                       "pm.test('status 200', () => pm.response.to.have.status(200));"
                     ]
                   }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Success - role description updated (200)",
+                  "originalRequest": {
+                    "method": "PATCH",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      },
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"description\": \"Updated role description\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/admin/roles/{{role_id}}",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "roles",
+                        "{{role_id}}"
+                      ]
+                    }
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"id\": \"550e8400-e29b-41d4-a716-446655440020\",\n  \"name\": \"REPORTS_ANALYST\",\n  \"description\": \"Updated role description\",\n  \"createdAt\": \"2026-09-17T10:00:00.000Z\"\n}"
                 }
               ]
             },
@@ -3169,6 +3692,51 @@
                     ]
                   }
                 }
+              ],
+              "response": [
+                {
+                  "name": "Conflict - cannot rename SUPER_ADMIN (409)",
+                  "originalRequest": {
+                    "method": "PATCH",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      },
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"name\": \"NOT_SUPER_ADMIN\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/admin/roles/{{super_admin_role_id}}",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "roles",
+                        "{{super_admin_role_id}}"
+                      ]
+                    },
+                    "description": "super_admin_role_id is captured automatically by 'Admin > Roles > GET /admin/roles - Success (all)' - run that first."
+                  },
+                  "status": "Conflict",
+                  "code": 409,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"statusCode\": 409,\n  \"message\": \"The SUPER_ADMIN role cannot be renamed\",\n  \"error\": \"Conflict\"\n}"
+                }
               ]
             },
             {
@@ -3201,6 +3769,42 @@
                       "pm.test('status 409', () => pm.response.to.have.status(409));"
                     ]
                   }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Conflict - cannot delete SUPER_ADMIN (409)",
+                  "originalRequest": {
+                    "method": "DELETE",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/roles/{{super_admin_role_id}}",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "roles",
+                        "{{super_admin_role_id}}"
+                      ]
+                    }
+                  },
+                  "status": "Conflict",
+                  "code": 409,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"statusCode\": 409,\n  \"message\": \"The SUPER_ADMIN role cannot be deleted\",\n  \"error\": \"Conflict\"\n}"
                 }
               ]
             },
@@ -3246,6 +3850,52 @@
                     ]
                   }
                 }
+              ],
+              "response": [
+                {
+                  "name": "Success - permission assigned to role (200)",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      },
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"permissionId\": \"{{permission_id}}\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/admin/roles/{{role_id}}/permissions",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "roles",
+                        "{{role_id}}",
+                        "permissions"
+                      ]
+                    },
+                    "description": "Run 'Admin > Permissions > POST /admin/permissions - Success' and this folder's 'POST /admin/roles - Success' first."
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"assigned\": true\n}"
+                }
               ]
             },
             {
@@ -3282,6 +3932,44 @@
                     ]
                   }
                 }
+              ],
+              "response": [
+                {
+                  "name": "Success - permission removed from role (200)",
+                  "originalRequest": {
+                    "method": "DELETE",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/roles/{{role_id}}/permissions/{{permission_id}}",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "roles",
+                        "{{role_id}}",
+                        "permissions",
+                        "{{permission_id}}"
+                      ]
+                    }
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"removed\": true\n}"
+                }
               ]
             },
             {
@@ -3316,6 +4004,43 @@
                       "pm.test('deleted true', () => pm.expect(pm.response.json().deleted).to.eql(true));"
                     ]
                   }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Success - role deleted (200)",
+                  "originalRequest": {
+                    "method": "DELETE",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/roles/{{role_id}}",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "roles",
+                        "{{role_id}}"
+                      ]
+                    },
+                    "description": "Run the permission-removal request above first, and make sure no admin has this role assigned."
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"deleted\": true\n}"
                 }
               ]
             }
