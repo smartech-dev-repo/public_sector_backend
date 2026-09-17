@@ -42,7 +42,7 @@ export class ClientOnboardingService {
       throw new ConflictException('This IPPIS record is already linked to another client');
     }
 
-    return this.prisma.clientOnboarding.create({
+    const onboarding = await this.prisma.clientOnboarding.create({
       data: {
         clientId,
         ippisRecordId: ippisRecord.id,
@@ -53,6 +53,13 @@ export class ClientOnboardingService {
         step: OnboardingStep.IPPIS_LINKED,
       },
     });
+
+    await this.prisma.client.update({
+      where: { id: clientId },
+      data: { status: ClientStatus.PENDING_IPPIS },
+    });
+
+    return onboarding;
   }
 
   async submitIdentity(clientId: string, bvn: string, nin: string) {

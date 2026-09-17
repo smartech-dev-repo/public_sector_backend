@@ -79,6 +79,25 @@ describe('ClientOnboardingService', () => {
         }),
       });
     });
+
+    it('sets Client.status to PENDING_IPPIS once linked', async () => {
+      prisma.clientOnboarding.findUnique.mockResolvedValueOnce(null).mockResolvedValueOnce(null);
+      prisma.ippisRecord.findFirst.mockResolvedValue({
+        id: 'ippis-1',
+        employeeName: 'Jane Doe',
+        agency: 'NPF',
+        bankName: 'GTBank',
+        accountNumber: '0123456789',
+      });
+      prisma.clientOnboarding.create.mockResolvedValue({ id: 'onboarding-1' });
+
+      await service.linkIppis('client-1', 'NPF/1');
+
+      expect(prisma.client.update).toHaveBeenCalledWith({
+        where: { id: 'client-1' },
+        data: { status: 'PENDING_IPPIS' },
+      });
+    });
   });
 
   describe('submitIdentity', () => {
