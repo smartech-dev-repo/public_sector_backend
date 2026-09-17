@@ -182,6 +182,24 @@ and no docker-compose (this is a one-service deployment).
 5. Point Dokploy's health check at `GET /health` (also used by the
    image's own `HEALTHCHECK`).
 
+## Client/IPPIS onboarding
+
+After phone/OTP login, a Client links their IPPIS number, submits BVN/NIN
+for lookup (via a pluggable `IdentityVerificationProvider` — mock by
+default, `DojahIdentityVerificationProvider` when
+`IDENTITY_VERIFICATION_PROVIDER=dojah` and `DOJAH_APP_ID`/`DOJAH_SECRET_KEY`
+are set), then submits a live selfie compared against both the BVN and NIN
+reference photos via a pluggable `FaceVerificationProvider` (mock only for
+now). Passing both auto-verifies the client; any failure routes to
+`MANUAL_REVIEW` (existing `clients:review` permission covers visibility).
+
+| Endpoint | Auth | Notes |
+|---|---|---|
+| `POST /client/onboarding/ippis-link` | Client JWT | `{ ippisNumber }` |
+| `POST /client/onboarding/identity` | Client JWT | `{ bvn, nin }` |
+| `POST /client/onboarding/face-match` | Client JWT | multipart, field `selfie` |
+| `GET /client/onboarding/status` | Client JWT | resumability — `step` says exactly where to continue |
+
 ## Roadmap
 
 See `docs/specs/2026-09-09-public-sector-backend-spec.md` for the full
