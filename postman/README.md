@@ -25,7 +25,9 @@ standalone Health check:
   **Documents** (the ippis-broadsheet/disbursed-loans/repayment-schedule
   upload + batch + file-download endpoints — admin-authenticated, so it
   lives here rather than under its own group; there's no separate "IPPIS"
-  principal type in the JWT system).
+  principal type in the JWT system), and **Client Review** (list/inspect
+  clients stuck at `Client.status = MANUAL_REVIEW` and approve or retry
+  them, gated by `clients:review`).
 - **Agent** — Auth and this agent's own Session (agent tokens).
 - **Client** — Auth (phone + OTP), this client's own Session (client
   tokens), and **Onboarding** (IPPIS number linking, BVN/NIN identity

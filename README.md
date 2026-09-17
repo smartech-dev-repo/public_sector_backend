@@ -182,6 +182,23 @@ and no docker-compose (this is a one-service deployment).
 5. Point Dokploy's health check at `GET /health` (also used by the
    image's own `HEALTHCHECK`).
 
+## Admin client review
+
+Clients that fail identity or face-match verification land at
+`Client.status = MANUAL_REVIEW` with `ClientOnboarding.failureReasons`
+populated. Admins holding `clients:review` can list/inspect them and
+either `approve` (overrides straight to `VERIFIED`) or `retry` — which
+auto-resets the client to the right earlier onboarding step based on
+*which* check failed, rather than requiring the admin to pick a step
+manually.
+
+| Endpoint | Permission | Notes |
+|---|---|---|
+| `GET /admin/clients` | `clients:review` | Filterable by `status` |
+| `GET /admin/clients/:id` | `clients:review` | Full detail incl. `ClientOnboarding` — selfie images are downloaded separately via `GET /admin/documents/files/:key` (`documents:read`) |
+| `POST /admin/clients/:id/approve` | `clients:review` | Only valid from `MANUAL_REVIEW` |
+| `POST /admin/clients/:id/retry` | `clients:review` | `{ note }`. Resets to `IPPIS_LINKED` if identity verification itself failed, or `IDENTITY_SUBMITTED` if only the face match failed |
+
 ## Client/IPPIS onboarding
 
 After phone/OTP login, a Client links their IPPIS number, submits BVN/NIN
