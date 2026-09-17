@@ -92,6 +92,8 @@ model Client {
   status    ClientStatus @default(PHONE_VERIFIED)
   createdAt DateTime     @default(now())
   updatedAt DateTime     @updatedAt
+
+  onboarding ClientOnboarding?
 }
 
 enum OtpPurpose {
@@ -256,6 +258,41 @@ model IppisRecord {
   updatedAt       DateTime  @updatedAt
 
   @@unique([agency, staffId])
+
+  clientOnboarding ClientOnboarding?
+}
+
+enum OnboardingStep {
+  PHONE_VERIFIED
+  IPPIS_LINKED
+  IDENTITY_SUBMITTED
+  FACE_MATCH_PENDING
+  COMPLETED
+}
+
+model ClientOnboarding {
+  id                String         @id @default(uuid())
+  clientId          String         @unique
+  client            Client         @relation(fields: [clientId], references: [id])
+  ippisRecordId     String         @unique
+  ippisRecord       IppisRecord    @relation(fields: [ippisRecordId], references: [id])
+  employeeName      String
+  agency            String
+  bankName          String?
+  accountNumber     String?
+  bvn               String?
+  nin               String?
+  bvnSelfie         String?
+  ninSelfie         String?
+  liveSelfieKey     String?
+  identityVerified  Boolean?
+  faceMatchBvnScore Float?
+  faceMatchNinScore Float?
+  faceMatchPassed   Boolean?
+  step              OnboardingStep @default(PHONE_VERIFIED)
+  failureReasons    Json?
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
 }
 
 model Loan {
