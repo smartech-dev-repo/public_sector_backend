@@ -180,6 +180,35 @@
                 ]
               }
             }
+          ],
+          "response": [
+            {
+              "name": "OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/health",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "health"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"status\": \"ok\"\n}"
+            }
           ]
         }
       ]
@@ -231,6 +260,47 @@
                     ]
                   }
                 }
+              ],
+              "response": [
+                {
+                  "name": "OK",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"email\": \"{{admin_email}}\",\n  \"password\": \"{{admin_password}}\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/auth/admin/login",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "auth",
+                        "admin",
+                        "login"
+                      ]
+                    },
+                    "description": "Logs in the seeded bootstrap admin (BOOTSTRAP_ADMIN_EMAIL/PASSWORD from .env)."
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"accessToken\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI5ZjhjMmQ3YS1hYjEyLTQzZGYtOTQ1Ni0xMjNhYmM0NTZkZWYiLCJ0eXBlIjoiYWRtaW4iLCJwZXJtaXNzaW9ucyI6WyJhdWRpdDpyZWFkIl19.fake-signature-do-not-use\",\n  \"refreshToken\": \"N2QwYjNlZmMtZmFrZS1yZWZyZXNoLXRva2VuLWV4YW1wbGUtb25seQ\"\n}"
+                }
               ]
             },
             {
@@ -268,6 +338,46 @@
                     ]
                   }
                 }
+              ],
+              "response": [
+                {
+                  "name": "401 Unauthorized",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"email\": \"{{admin_email}}\",\n  \"password\": \"wrong-password\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/auth/admin/login",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "auth",
+                        "admin",
+                        "login"
+                      ]
+                    }
+                  },
+                  "status": "Unauthorized",
+                  "code": 401,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"statusCode\": 401,\n  \"message\": \"Invalid credentials\",\n  \"error\": \"Unauthorized\"\n}"
+                }
               ]
             },
             {
@@ -304,6 +414,46 @@
                       "pm.test('status 400', () => pm.response.to.have.status(400));"
                     ]
                   }
+                }
+              ],
+              "response": [
+                {
+                  "name": "400 Bad Request",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"email\": \"not-an-email\",\n  \"password\": \"short\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/auth/admin/login",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "auth",
+                        "admin",
+                        "login"
+                      ]
+                    }
+                  },
+                  "status": "Bad Request",
+                  "code": 400,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"statusCode\": 400,\n  \"message\": [\n    \"email must be an email\",\n    \"password must be longer than or equal to 8 characters\"\n  ],\n  \"error\": \"Bad Request\"\n}"
                 }
               ]
             },
@@ -350,6 +500,47 @@
                     ]
                   }
                 }
+              ],
+              "response": [
+                {
+                  "name": "OK",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"token\": \"{{invite_token}}\",\n  \"password\": \"Invited123!Strong\",\n  \"fullName\": \"Invited Admin\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/auth/admin/accept-invite",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "auth",
+                        "admin",
+                        "accept-invite"
+                      ]
+                    },
+                    "description": "The token is only ever sent via the (mock console) email provider, never returned by any API response \u2014 it's never captured automatically by this collection. Check the running server's console log after 'Admin > Invites > POST /admin/invites - Success' for a line like 'Email to ... Use this token to accept: <token>', then paste it into the invite_token collection variable before running this request."
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"accessToken\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhMWIyYzNkNC1lNWY2LTQ3YTgtOTBiMS1kMmUzZjRhNWI2YzciLCJ0eXBlIjoiYWRtaW4iLCJwZXJtaXNzaW9ucyI6W119.fake-signature-do-not-use\",\n  \"refreshToken\": \"YzNkNGU1ZjYtZmFrZS1yZWZyZXNoLXRva2VuLWV4YW1wbGUtb25seQ\"\n}"
+                }
               ]
             },
             {
@@ -386,6 +577,46 @@
                       "pm.test('status 401', () => pm.response.to.have.status(401));"
                     ]
                   }
+                }
+              ],
+              "response": [
+                {
+                  "name": "401 Unauthorized",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"token\": \"not-a-real-token\",\n  \"password\": \"Invited123!Strong\",\n  \"fullName\": \"Invited Admin\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/auth/admin/accept-invite",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "auth",
+                        "admin",
+                        "accept-invite"
+                      ]
+                    }
+                  },
+                  "status": "Unauthorized",
+                  "code": 401,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"statusCode\": 401,\n  \"message\": \"Invalid or expired invitation\",\n  \"error\": \"Unauthorized\"\n}"
                 }
               ]
             }
@@ -737,6 +968,41 @@
                     ]
                   }
                 }
+              ],
+              "response": [
+                {
+                  "name": "OK",
+                  "originalRequest": {
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/me",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "me"
+                      ]
+                    }
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"id\": \"a1b2c3d4-e5f6-47a8-90b1-d2e3f4a5b6c7\",\n  \"type\": \"admin\",\n  \"permissions\": [\n    \"admins:create\",\n    \"roles:manage\",\n    \"agents:read\",\n    \"agents:review\",\n    \"clients:review\",\n    \"ippis:upload\",\n    \"agents:sessions:revoke\",\n    \"clients:sessions:revoke\",\n    \"audit:read\",\n    \"loans:upload\",\n    \"repayments:upload\",\n    \"documents:read\",\n    \"permissions:manage\"\n  ]\n}"
+                }
               ]
             },
             {
@@ -763,6 +1029,36 @@
                       "pm.test('status 401', () => pm.response.to.have.status(401));"
                     ]
                   }
+                }
+              ],
+              "response": [
+                {
+                  "name": "401 Unauthorized",
+                  "originalRequest": {
+                    "method": "GET",
+                    "header": [],
+                    "url": {
+                      "raw": "{{base_url}}/admin/me",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "me"
+                      ]
+                    }
+                  },
+                  "status": "Unauthorized",
+                  "code": 401,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"statusCode\": 401,\n  \"message\": \"Unauthorized\"\n}"
                 }
               ]
             }
@@ -1074,6 +1370,41 @@
                     ]
                   }
                 }
+              ],
+              "response": [
+                {
+                  "name": "OK",
+                  "originalRequest": {
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/audit-logs",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "audit-logs"
+                      ]
+                    }
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "[\n  {\n    \"id\": \"3f2a9c10-6b1d-4e3a-9f2b-1a2b3c4d5e6f\",\n    \"actorType\": \"ADMIN\",\n    \"actorId\": \"a1b2c3d4-e5f6-47a8-90b1-d2e3f4a5b6c7\",\n    \"action\": \"admin.invite.created\",\n    \"targetType\": \"AdminInvite\",\n    \"targetId\": \"b2c3d4e5-f6a7-48b9-a1c2-d3e4f5a6b7c8\",\n    \"metadata\": { \"email\": \"newadmin@example.com\" },\n    \"ip\": \"127.0.0.1\",\n    \"userAgent\": \"PostmanRuntime/7.36.0\",\n    \"createdAt\": \"2026-09-17T10:00:00.000Z\"\n  },\n  {\n    \"id\": \"4a3b8d21-7c2e-4f4b-8a3c-2b3c4d5e6f7a\",\n    \"actorType\": \"AGENT\",\n    \"actorId\": \"c3d4e5f6-a7b8-49c1-b2d3-e4f5a6b7c8d9\",\n    \"action\": \"agent.session.created\",\n    \"targetType\": null,\n    \"targetId\": null,\n    \"metadata\": null,\n    \"ip\": \"127.0.0.1\",\n    \"userAgent\": \"PostmanRuntime/7.36.0\",\n    \"createdAt\": \"2026-09-17T09:58:00.000Z\"\n  }\n]"
+                }
               ]
             },
             {
@@ -1117,6 +1448,52 @@
                     ]
                   }
                 }
+              ],
+              "response": [
+                {
+                  "name": "OK",
+                  "originalRequest": {
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/audit-logs?actorType=ADMIN&action=admin.invite.created",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "audit-logs"
+                      ],
+                      "query": [
+                        {
+                          "key": "actorType",
+                          "value": "ADMIN",
+                          "description": "ADMIN | AGENT | CLIENT | SYSTEM"
+                        },
+                        {
+                          "key": "action",
+                          "value": "admin.invite.created"
+                        }
+                      ]
+                    }
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "[\n  {\n    \"id\": \"3f2a9c10-6b1d-4e3a-9f2b-1a2b3c4d5e6f\",\n    \"actorType\": \"ADMIN\",\n    \"actorId\": \"a1b2c3d4-e5f6-47a8-90b1-d2e3f4a5b6c7\",\n    \"action\": \"admin.invite.created\",\n    \"targetType\": \"AdminInvite\",\n    \"targetId\": \"b2c3d4e5-f6a7-48b9-a1c2-d3e4f5a6b7c8\",\n    \"metadata\": { \"email\": \"newadmin@example.com\" },\n    \"ip\": \"127.0.0.1\",\n    \"userAgent\": \"PostmanRuntime/7.36.0\",\n    \"createdAt\": \"2026-09-17T10:00:00.000Z\"\n  }\n]"
+                }
               ]
             },
             {
@@ -1159,6 +1536,51 @@
                     ]
                   }
                 }
+              ],
+              "response": [
+                {
+                  "name": "OK",
+                  "originalRequest": {
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/audit-logs?targetType=AdminInvite&targetId={{invite_id}}",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "audit-logs"
+                      ],
+                      "query": [
+                        {
+                          "key": "targetType",
+                          "value": "AdminInvite"
+                        },
+                        {
+                          "key": "targetId",
+                          "value": "{{invite_id}}"
+                        }
+                      ]
+                    }
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "[\n  {\n    \"id\": \"3f2a9c10-6b1d-4e3a-9f2b-1a2b3c4d5e6f\",\n    \"actorType\": \"ADMIN\",\n    \"actorId\": \"a1b2c3d4-e5f6-47a8-90b1-d2e3f4a5b6c7\",\n    \"action\": \"admin.invite.created\",\n    \"targetType\": \"AdminInvite\",\n    \"targetId\": \"b2c3d4e5-f6a7-48b9-a1c2-d3e4f5a6b7c8\",\n    \"metadata\": { \"email\": \"newadmin@example.com\" },\n    \"ip\": \"127.0.0.1\",\n    \"userAgent\": \"PostmanRuntime/7.36.0\",\n    \"createdAt\": \"2026-09-17T10:00:00.000Z\"\n  }\n]"
+                }
               ]
             },
             {
@@ -1190,6 +1612,41 @@
                       "pm.test('status 401 or 403', () => pm.expect([401,403]).to.include(pm.response.code));"
                     ]
                   }
+                }
+              ],
+              "response": [
+                {
+                  "name": "403 Forbidden",
+                  "originalRequest": {
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{agent_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/audit-logs",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "audit-logs"
+                      ]
+                    }
+                  },
+                  "status": "Forbidden",
+                  "code": 403,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"statusCode\": 403,\n  \"message\": \"Insufficient permissions\",\n  \"error\": \"Forbidden\"\n}"
                 }
               ]
             }
