@@ -14,6 +14,7 @@ import { AdminRbacModule } from './admin-rbac/admin-rbac.module';
 import { ClientOnboardingModule } from './client-onboarding/client-onboarding.module';
 import { AdminClientReviewModule } from './admin-client-review/admin-client-review.module';
 import { LoanRequestModule } from './loan-request/loan-request.module';
+import { ClientLoansModule } from './client-loans/client-loans.module';
 
 @Module({
   imports: [
@@ -55,6 +56,7 @@ import { LoanRequestModule } from './loan-request/loan-request.module';
     ClientOnboardingModule,
     AdminClientReviewModule,
     LoanRequestModule,
+    ClientLoansModule,
   ],
   controllers: [AppController],
   providers: [],

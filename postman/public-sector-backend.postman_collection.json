@@ -4483,6 +4483,34 @@
               "event": [{ "listen": "test", "script": { "exec": ["pm.test('status 409', () => pm.response.to.have.status(409));"] } }]
             }
           ]
+        },
+        {
+          "name": "Loans",
+          "item": [
+            {
+              "name": "GET /client/loans - Success",
+              "request": {
+                "method": "GET",
+                "header": [{ "key": "Authorization", "value": "Bearer {{client_access_token}}" }],
+                "url": { "raw": "{{base_url}}/client/loans", "host": ["{{base_url}}"], "path": ["client", "loans"] }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));",
+                      "pm.test('has loans and repayments arrays', () => {",
+                      "  const body = pm.response.json();",
+                      "  pm.expect(body.loans).to.be.an('array');",
+                      "  pm.expect(body.repayments).to.be.an('array');",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
         }
       ]
     }

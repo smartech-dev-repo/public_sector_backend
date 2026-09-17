@@ -222,6 +222,23 @@ into an actual `Loan` record) is not built — a separate future concern.
 | `GET /client/loan-requests` | Client JWT | The calling client's own requests |
 | `POST /webhooks/sms/inbound` | None (public) | `{ phone, message }` — mocked shape standing in for a real vendor's payload |
 
+## Client loan dashboard
+
+`GET /client/loans` (Client JWT) returns the calling client's pre-existing
+loan history — real disbursed loans and repayment activity ingested from
+bank reports, which predate this platform and have no direct database
+link to `Client`. Matched via the client's linked `IppisRecord`'s
+`agency`+`staffId` (the same pairing `Loan.agency`/`.ippisNumber` and
+`LoanRepaymentRecord.agency`/`.staffId` already carry from ingestion),
+with a BVN cross-check against `Loan.bvn` (comparing the client's own
+Dojah-verified BVN from onboarding, not the IPPIS broadsheet's BVN) to
+guard against an agency+staffId collision showing one client someone
+else's loan. Returns `{ loans: [], repayments: [] }` (empty, not an
+error) if the client hasn't linked IPPIS yet or has no matching history.
+This is deliberately separate from `GET /client/loan-requests` — that
+endpoint is the client's own in-platform loan applications; this one is
+historical/external data.
+
 ## Client/IPPIS onboarding
 
 After phone/OTP login, a Client links their IPPIS number, submits BVN/NIN
