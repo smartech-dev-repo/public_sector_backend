@@ -199,6 +199,27 @@ manually.
 | `POST /admin/clients/:id/approve` | `clients:review` | Only valid from `MANUAL_REVIEW` |
 | `POST /admin/clients/:id/retry` | `clients:review` | `{ note }`. Resets to `IPPIS_LINKED` if identity verification itself failed, or `IDENTITY_SUBMITTED` if only the face match failed |
 
+## Loan requests
+
+A `VERIFIED` client can request a loan; eligibility (currently: must be
+`VERIFIED`, amount within `LOAN_SALARY_MULTIPLE_CAP` × their IPPIS salary
+— both env-var-provisional pending real business criteria) is checked
+before a `PENDING` `LoanRequest` is created and a confirmation SMS sent
+via a pluggable `TwoWaySmsProvider` (mock-only for now). The client
+confirms by replying "YES"/"1", forwarded to
+`POST /webhooks/sms/inbound` by whatever SMS vendor is eventually wired
+in — that endpoint has no auth guard since there's no vendor credential
+to check yet. An unconfirmed request auto-expires to `FAILED` after 24
+hours (a BullMQ-delayed job). Disbursement (turning a `CONFIRMED` request
+into an actual `Loan` record) is not built — a separate future concern.
+
+| Endpoint | Auth | Notes |
+|---|---|---|
+| `POST /client/loan-requests` | Client JWT | `{ amount }`; `422` on eligibility failure |
+| `POST /client/loan-requests/:id/resend` | Client JWT | Only valid while `PENDING`; doesn't reset the 24h expiry |
+| `GET /client/loan-requests` | Client JWT | The calling client's own requests |
+| `POST /webhooks/sms/inbound` | None (public) | `{ phone, message }` — mocked shape standing in for a real vendor's payload |
+
 ## Client/IPPIS onboarding
 
 After phone/OTP login, a Client links their IPPIS number, submits BVN/NIN

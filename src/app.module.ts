@@ -13,6 +13,7 @@ import { DocumentIngestionModule } from './document-ingestion/document-ingestion
 import { AdminRbacModule } from './admin-rbac/admin-rbac.module';
 import { ClientOnboardingModule } from './client-onboarding/client-onboarding.module';
 import { AdminClientReviewModule } from './admin-client-review/admin-client-review.module';
+import { LoanRequestModule } from './loan-request/loan-request.module';
 
 @Module({
   imports: [
@@ -53,6 +54,7 @@ import { AdminClientReviewModule } from './admin-client-review/admin-client-revi
     AdminRbacModule,
     ClientOnboardingModule,
     AdminClientReviewModule,
+    LoanRequestModule,
   ],
   controllers: [AppController],
   providers: [],

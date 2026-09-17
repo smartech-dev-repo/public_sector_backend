@@ -141,6 +141,10 @@
     {
       "key": "review_client_id",
       "value": ""
+    },
+    {
+      "key": "loan_request_id",
+      "value": ""
     }
   ],
   "item": [
@@ -4267,6 +4271,106 @@
                   }
                 }
               ]
+            }
+          ]
+        },
+        {
+          "name": "Loan Requests",
+          "item": [
+            {
+              "name": "POST /client/loan-requests - Eligibility failure (422)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" },
+                  { "key": "Authorization", "value": "Bearer {{client_access_token}}" }
+                ],
+                "body": { "mode": "raw", "raw": "{\n  \"amount\": 999999999\n}" },
+                "url": { "raw": "{{base_url}}/client/loan-requests", "host": ["{{base_url}}"], "path": ["client", "loan-requests"] },
+                "description": "Requires the client to already be VERIFIED with a linked IppisRecord that has a salary on file (see Client > Onboarding)."
+              },
+              "event": [{ "listen": "test", "script": { "exec": ["pm.test('status 422', () => pm.response.to.have.status(422));"] } }]
+            },
+            {
+              "name": "POST /client/loan-requests - Success",
+              "request": {
+                "method": "POST",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" },
+                  { "key": "Authorization", "value": "Bearer {{client_access_token}}" }
+                ],
+                "body": { "mode": "raw", "raw": "{\n  \"amount\": 5000\n}" },
+                "url": { "raw": "{{base_url}}/client/loan-requests", "host": ["{{base_url}}"], "path": ["client", "loan-requests"] }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 201', () => pm.response.to.have.status(201));",
+                      "pm.test('status is PENDING', () => pm.expect(pm.response.json().status).to.eql('PENDING'));",
+                      "pm.collectionVariables.set('loan_request_id', pm.response.json().id);"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "POST /client/loan-requests/:id/resend - Success",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Authorization", "value": "Bearer {{client_access_token}}" }],
+                "url": {
+                  "raw": "{{base_url}}/client/loan-requests/{{loan_request_id}}/resend",
+                  "host": ["{{base_url}}"],
+                  "path": ["client", "loan-requests", "{{loan_request_id}}", "resend"]
+                }
+              },
+              "event": [{ "listen": "test", "script": { "exec": ["pm.test('status 200', () => pm.response.to.have.status(200));"] } }]
+            },
+            {
+              "name": "POST /webhooks/sms/inbound - Confirm (no auth)",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": { "mode": "raw", "raw": "{\n  \"phone\": \"{{client_phone}}\",\n  \"message\": \"YES\"\n}" },
+                "url": { "raw": "{{base_url}}/webhooks/sms/inbound", "host": ["{{base_url}}"], "path": ["webhooks", "sms", "inbound"] },
+                "description": "No Authorization header — this endpoint is public. client_phone must match the phone used to log in as the Client running this folder."
+              },
+              "event": [{ "listen": "test", "script": { "exec": ["pm.test('status 200', () => pm.response.to.have.status(200));"] } }]
+            },
+            {
+              "name": "GET /client/loan-requests - Success",
+              "request": {
+                "method": "GET",
+                "header": [{ "key": "Authorization", "value": "Bearer {{client_access_token}}" }],
+                "url": { "raw": "{{base_url}}/client/loan-requests", "host": ["{{base_url}}"], "path": ["client", "loan-requests"] }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));",
+                      "pm.test('is array', () => pm.expect(pm.response.json()).to.be.an('array'));"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "POST /client/loan-requests/:id/resend - Blocked, not PENDING (409)",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Authorization", "value": "Bearer {{client_access_token}}" }],
+                "url": {
+                  "raw": "{{base_url}}/client/loan-requests/{{loan_request_id}}/resend",
+                  "host": ["{{base_url}}"],
+                  "path": ["client", "loan-requests", "{{loan_request_id}}", "resend"]
+                },
+                "description": "Run the webhook confirm request above first so this request is no longer PENDING."
+              },
+              "event": [{ "listen": "test", "script": { "exec": ["pm.test('status 409', () => pm.response.to.have.status(409));"] } }]
             }
           ]
         }

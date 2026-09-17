@@ -30,9 +30,11 @@ standalone Health check:
   them, gated by `clients:review`).
 - **Agent** — Auth and this agent's own Session (agent tokens).
 - **Client** — Auth (phone + OTP), this client's own Session (client
-  tokens), and **Onboarding** (IPPIS number linking, BVN/NIN identity
+  tokens), **Onboarding** (IPPIS number linking, BVN/NIN identity
   submission, and selfie face-match, walking the client from
-  `PHONE_VERIFIED` to `Client.status = VERIFIED`/`MANUAL_REVIEW`). In this
+  `PHONE_VERIFIED` to `Client.status = VERIFIED`/`MANUAL_REVIEW`), and
+  **Loan Requests** (a `VERIFIED` client requesting a loan, confirming via
+  the inbound SMS webhook, resend, and listing their own requests). In this
   codebase an IPPIS civil servant is onboarded and logs in *as* a Client —
   see `docs/specs/2026-09-09-public-sector-backend-spec.md`.
 
