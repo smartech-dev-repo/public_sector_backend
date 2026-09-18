@@ -69,14 +69,22 @@ enum AgentStatus {
 }
 
 model Agent {
-  id           String      @id @default(uuid())
-  email        String      @unique
-  phone        String
-  fullName     String
-  passwordHash String?
-  status       AgentStatus @default(PENDING_REVIEW)
-  createdAt    DateTime    @default(now())
-  updatedAt    DateTime    @updatedAt
+  id                     String      @id @default(uuid())
+  email                  String      @unique
+  phone                  String
+  fullName               String
+  address                String
+  passwordHash           String?
+  status                 AgentStatus @default(PENDING_REVIEW)
+  cvKey                  String
+  supportingDocumentKeys String[]    @default([])
+  mustChangePassword     Boolean     @default(true)
+  hasLoggedIn            Boolean     @default(false)
+  reviewedBy             String?
+  reviewedAt             DateTime?
+  rejectionReason        String?
+  createdAt              DateTime    @default(now())
+  updatedAt              DateTime    @updatedAt
 }
 
 enum ClientStatus {
