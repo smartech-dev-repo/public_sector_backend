@@ -23,11 +23,11 @@ Harden the API surface against abuse and make production behavior observable, wi
 
 ## 2. Rate limiting
 
-`@nestjs/throttler` (`^6.4.0`, compatible with this project's NestJS 10), backed by `nestjs-throttler-storage-redis` reusing the existing `ioredis` connection.
+`@nestjs/throttler` (`^6.4.0`, compatible with this project's NestJS 10), backed by `@nest-lab/throttler-storage-redis` (the actively-maintained Redis storage adapter — the more commonly-suggested `nestjs-throttler-storage-redis` package is marked deprecated on npm, so it's not used here) reusing the existing Redis connection.
 
-Two named throttle profiles, both env-var-configurable:
-- **`default`** — applied globally via `APP_GUARD`: `THROTTLE_DEFAULT_LIMIT` (default `100`) requests per `THROTTLE_DEFAULT_TTL_SECONDS` (default `60`) per IP.
-- **`sensitive`** — applied via `@Throttle({ sensitive: { limit, ttl } })` override on six specific routes: `THROTTLE_SENSITIVE_LIMIT` (default `5`) requests per `THROTTLE_SENSITIVE_TTL_SECONDS` (default `900`, i.e. 15 minutes) per IP.
+**A single named throttler (`default`), not two separate ones.** `@nestjs/throttler` applies *every* throttler defined in its global `throttlers` array to *every* guarded route unless explicitly skipped — so defining a second, stricter named throttler (e.g. `sensitive`) globally would apply that strict limit to *every* route in the app, not just the six intended ones, which is the opposite of what's wanted. Instead:
+- **Global default**, applied everywhere via `APP_GUARD`: `THROTTLE_DEFAULT_LIMIT` (default `100`) requests per `THROTTLE_DEFAULT_TTL_SECONDS` (default `60`) per IP.
+- **Six specific routes** override that same `default` throttler's numbers via `@Throttle({ default: { limit: THROTTLE_SENSITIVE_LIMIT, ttl: THROTTLE_SENSITIVE_TTL_SECONDS * 1000 } })` — `THROTTLE_SENSITIVE_LIMIT` (default `5`) requests per `THROTTLE_SENSITIVE_TTL_SECONDS` (default `900`, i.e. 15 minutes), scoped only to that route via the decorator, not leaked to any other route.
 
 The six `sensitive`-throttled routes:
 1. `POST /auth/client/otp/request` — prevents SMS-bombing a phone number.
