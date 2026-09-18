@@ -15,6 +15,7 @@ import { ClientOnboardingModule } from './client-onboarding/client-onboarding.mo
 import { AdminClientReviewModule } from './admin-client-review/admin-client-review.module';
 import { LoanRequestModule } from './loan-request/loan-request.module';
 import { ClientLoansModule } from './client-loans/client-loans.module';
+import { AgentEnrollmentModule } from './agent-enrollment/agent-enrollment.module';
 
 @Module({
   imports: [
@@ -57,6 +58,7 @@ import { ClientLoansModule } from './client-loans/client-loans.module';
     AdminClientReviewModule,
     LoanRequestModule,
     ClientLoansModule,
+    AgentEnrollmentModule,
   ],
   controllers: [AppController],
   providers: [],
