@@ -1,7 +1,12 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { BullModule } from '@nestjs/bullmq';
+import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { ThrottlerStorageRedisService } from '@nest-lab/throttler-storage-redis';
+import { LoggerModule } from 'nestjs-pino';
 import { AppController } from './app.controller';
+import { RequestIdInterceptor } from './observability/request-id.interceptor';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
 import { AdminModule } from './admin/admin.module';
@@ -13,10 +18,30 @@ import { DocumentIngestionModule } from './document-ingestion/document-ingestion
 import { AdminRbacModule } from './admin-rbac/admin-rbac.module';
 import { ClientOnboardingModule } from './client-onboarding/client-onboarding.module';
 import { AdminClientReviewModule } from './admin-client-review/admin-client-review.module';
+import { LoanRequestModule } from './loan-request/loan-request.module';
+import { ClientLoansModule } from './client-loans/client-loans.module';
+import { AgentEnrollmentModule } from './agent-enrollment/agent-enrollment.module';
+import { AdminAgentReviewModule } from './admin-agent-review/admin-agent-review.module';
+import { ReconciliationModule } from './reconciliation/reconciliation.module';
+import { AdminCatalogModule } from './admin-catalog/admin-catalog.module';
+import { ErrorTrackingModule } from './error-tracking/error-tracking.module';
+import { HealthModule } from './health/health.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    LoggerModule.forRootAsync({
+      useFactory: (configService: ConfigService) => ({
+        pinoHttp: {
+          level: configService.get<string>('LOG_LEVEL', 'info'),
+          transport:
+            configService.get<string>('NODE_ENV') !== 'production'
+              ? { target: 'pino-pretty', options: { singleLine: true } }
+              : undefined,
+        },
+      }),
+      inject: [ConfigService],
+    }),
     BullModule.forRootAsync({
       // Pass connection *options*, not a live ioredis instance -- BullMQ
       // then owns creating/closing its own connections, which is what
@@ -42,6 +67,20 @@ import { AdminClientReviewModule } from './admin-client-review/admin-client-revi
       },
       inject: [ConfigService],
     }),
+    ThrottlerModule.forRootAsync({
+      useFactory: (configService: ConfigService) => ({
+        skipIf: () => configService.get<string>('RATE_LIMITING_ENABLED', 'true') !== 'true',
+        throttlers: [
+          {
+            name: 'default',
+            limit: Number(configService.get<string>('THROTTLE_DEFAULT_LIMIT', '100')),
+            ttl: Number(configService.get<string>('THROTTLE_DEFAULT_TTL_SECONDS', '60')) * 1000,
+          },
+        ],
+        storage: new ThrottlerStorageRedisService(configService.getOrThrow<string>('REDIS_URL')),
+      }),
+      inject: [ConfigService],
+    }),
     PrismaModule,
     AuthModule,
     AdminModule,
@@ -53,8 +92,19 @@ import { AdminClientReviewModule } from './admin-client-review/admin-client-revi
     AdminRbacModule,
     ClientOnboardingModule,
     AdminClientReviewModule,
+    LoanRequestModule,
+    ClientLoansModule,
+    AgentEnrollmentModule,
+    AdminAgentReviewModule,
+    ReconciliationModule,
+    AdminCatalogModule,
+    ErrorTrackingModule,
+    HealthModule,
   ],
   controllers: [AppController],
-  providers: [],
+  providers: [
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
+    { provide: APP_INTERCEPTOR, useClass: RequestIdInterceptor },
+  ],
 })
 export class AppModule {}

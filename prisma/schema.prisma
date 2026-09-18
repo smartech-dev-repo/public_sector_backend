@@ -69,14 +69,22 @@ enum AgentStatus {
 }
 
 model Agent {
-  id           String      @id @default(uuid())
-  email        String      @unique
-  phone        String
-  fullName     String
-  passwordHash String?
-  status       AgentStatus @default(PENDING_REVIEW)
-  createdAt    DateTime    @default(now())
-  updatedAt    DateTime    @updatedAt
+  id                     String      @id @default(uuid())
+  email                  String      @unique
+  phone                  String
+  fullName               String
+  address                String
+  passwordHash           String?
+  status                 AgentStatus @default(PENDING_REVIEW)
+  cvKey                  String
+  supportingDocumentKeys String[]    @default([])
+  mustChangePassword     Boolean     @default(true)
+  hasLoggedIn            Boolean     @default(false)
+  reviewedBy             String?
+  reviewedAt             DateTime?
+  rejectionReason        String?
+  createdAt              DateTime    @default(now())
+  updatedAt              DateTime    @updatedAt
 }
 
 enum ClientStatus {
@@ -94,6 +102,7 @@ model Client {
   updatedAt DateTime     @updatedAt
 
   onboarding ClientOnboarding?
+  loanRequests LoanRequest[]
 }
 
 enum OtpPurpose {
@@ -324,6 +333,7 @@ model Loan {
   rawFields              Json?
   createdAt              DateTime  @default(now())
   updatedAt              DateTime  @updatedAt
+  repaymentVariances     RepaymentVariance[]
 
   @@index([ippisNumber])
 }
@@ -340,4 +350,44 @@ model LoanRepaymentRecord {
   createdAt     DateTime  @default(now())
 
   @@unique([agency, staffId, period, elementName])
+}
+
+enum LoanRequestStatus {
+  PENDING
+  CONFIRMED
+  FAILED
+}
+
+model LoanRequest {
+  id                    String            @id @default(uuid())
+  clientId              String
+  client                Client            @relation(fields: [clientId], references: [id])
+  amount                Decimal
+  status                LoanRequestStatus @default(PENDING)
+  confirmationSmsSentAt DateTime?
+  confirmedAt           DateTime?
+  expiresAt             DateTime
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+}
+
+enum VarianceStatus {
+  MATCHED
+  UNDER_PAID
+  OVER_PAID
+  NO_DEDUCTION_FOUND
+}
+
+model RepaymentVariance {
+  id             String         @id @default(uuid())
+  loanId         String
+  loan           Loan           @relation(fields: [loanId], references: [id])
+  period         String
+  expectedAmount Decimal
+  actualAmount   Decimal
+  variance       Decimal
+  status         VarianceStatus
+  generatedAt    DateTime       @default(now())
+
+  @@unique([loanId, period])
 }

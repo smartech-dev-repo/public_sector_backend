@@ -35,6 +35,8 @@ describe('Admin-forced session revocation (e2e)', () => {
         email: agentEmail,
         phone: '+2348044444444',
         fullName: 'Session Revoke Agent',
+        address: '1 Example Street, Lagos',
+        cvKey: 'agent-documents/session-revoke-agent/cv.pdf',
         passwordHash,
         status: 'APPROVED',
       },

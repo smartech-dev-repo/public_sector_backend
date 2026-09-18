@@ -73,7 +73,8 @@ Upload endpoints for the three source documents exist and are fully wired
 `agency`+`staffId`+`period`+`elementName`, one small hardcoded mapper per
 agency sheet since those six sheets share almost no column names) — see
 `src/document-ingestion/parsers/`. Reconciliation (comparing expected vs.
-actual repayments) is not built yet.
+actual repayments) runs automatically after ingestion — see the
+"Reconciliation" section below.
 
 | Endpoint | Permission | Notes |
 |---|---|---|
@@ -95,6 +96,24 @@ Dokploy with no file mount; `FILE` wins if both are set), plus optional
 regardless of this setting. Background processing uses BullMQ against the
 `REDIS_URL`/`REDIS_KEY_PREFIX` already configured in your environment.
 
+## Reconciliation
+
+After a `disbursed-loans` or `repayment-schedule` upload completes, the
+system recomputes reconciliation across every `Loan` and its matching
+`LoanRepaymentRecord` rows (matched via `agency`+IPPIS number, same as
+the client loan dashboard) — a full idempotent recompute rather than one
+scoped to the triggering upload, upserted by `(loanId, period)`. For each
+period within a loan's disbursement-to-maturation range, the expected
+installment (standard reducing-balance amortization from `loanAmount`,
+`interestRatePercent`, and the loan term) is compared against the actual
+summed deductions for that period: `MATCHED` (within a ₦1 tolerance),
+`UNDER_PAID`, `OVER_PAID`, or `NO_DEDUCTION_FOUND` (no matching repayment
+rows at all for that period). `GET /admin/reconciliation`
+(`reconciliation:read`) lists variances, filterable by `agency`/`status`/
+`period`. `GET /admin/loans` (`loans:upload`) and
+`GET /admin/ippis-records` (`ippis:upload`) provide basic
+listing/filtering by `agency` over the underlying ingested tables.
+
 ## RBAC management
 
 Roles and permissions can now be managed via the API — previously only
@@ -111,6 +130,8 @@ Roles and permissions can now be managed via the API — previously only
 | `GET /admin/admins` | `roles:manage` | Lists admins with their roles |
 | `POST /admin/admins/:id/roles` | `roles:manage` | `{ roleId }` |
 | `DELETE /admin/admins/:id/roles/:roleId` | `roles:manage` | Blocked (409) if it would leave zero admins holding `SUPER_ADMIN` |
+| `POST /admin/admins/:id/deactivate` | `roles:manage` | 409 if targeting your own account or an already-inactive admin; force-revokes the admin's sessions |
+| `POST /admin/admins/:id/reactivate` | `roles:manage` | 409 if the admin is already active |
 
 `GET /admin/roles/ping` no longer exists — it was a Phase 1 placeholder,
 superseded by the real endpoints above.
@@ -151,6 +172,30 @@ without a code change.
   `skills-lock.json` were auto-installed by `prisma init` — they're
   reference docs for AI coding assistants working on this repo, not
   application code.
+
+## Hardening: rate limiting & observability
+
+Every route is rate-limited globally (`THROTTLE_DEFAULT_LIMIT` per
+`THROTTLE_DEFAULT_TTL_SECONDS`, per IP, Redis-backed so limits are shared
+across horizontally-scaled instances); six abuse-prone routes (OTP
+request/verify, all three login endpoints, agent registration, agent
+password change) get a stricter hardcoded override (5 requests per 15
+minutes). `RATE_LIMITING_ENABLED=false` in this repo's own dev/test
+config disables the guard entirely — almost every e2e test logs in as
+admin in its own `beforeAll`, which would otherwise exhaust both limits
+within minutes of a full suite run.
+
+Logging is structured JSON via `nestjs-pino` (pretty-printed outside
+production), with a per-request correlation id echoed back as
+`X-Request-Id` on every response. A pluggable `ErrorTrackingProvider`
+(no-op for now — logs a warning instead of reporting anywhere) is wired
+into a global exception filter that reports every unhandled exception
+without changing what the client actually receives; a real Sentry (or
+similar) provider slots in later behind an env var, matching every other
+external integration in this project.
+
+`GET /health` checks Postgres and Redis connectivity, returning `503`
+(instead of a static `200`) if either is down.
 
 ## Deploying to Dokploy
 
@@ -198,6 +243,65 @@ manually.
 | `GET /admin/clients/:id` | `clients:review` | Full detail incl. `ClientOnboarding` — selfie images are downloaded separately via `GET /admin/documents/files/:key` (`documents:read`) |
 | `POST /admin/clients/:id/approve` | `clients:review` | Only valid from `MANUAL_REVIEW` |
 | `POST /admin/clients/:id/retry` | `clients:review` | `{ note }`. Resets to `IPPIS_LINKED` if identity verification itself failed, or `IDENTITY_SUBMITTED` if only the face match failed |
+
+## Loan requests
+
+A `VERIFIED` client can request a loan; eligibility (currently: must be
+`VERIFIED`, amount within `LOAN_SALARY_MULTIPLE_CAP` × their IPPIS salary
+— both env-var-provisional pending real business criteria) is checked
+before a `PENDING` `LoanRequest` is created and a confirmation SMS sent
+via a pluggable `TwoWaySmsProvider` (mock-only for now). The client
+confirms by replying "YES"/"1", forwarded to
+`POST /webhooks/sms/inbound` by whatever SMS vendor is eventually wired
+in — that endpoint has no auth guard since there's no vendor credential
+to check yet. An unconfirmed request auto-expires to `FAILED` after 24
+hours (a BullMQ-delayed job). Disbursement (turning a `CONFIRMED` request
+into an actual `Loan` record) is not built — a separate future concern.
+
+| Endpoint | Auth | Notes |
+|---|---|---|
+| `POST /client/loan-requests` | Client JWT | `{ amount }`; `422` on eligibility failure |
+| `POST /client/loan-requests/:id/resend` | Client JWT | Only valid while `PENDING`; doesn't reset the 24h expiry |
+| `GET /client/loan-requests` | Client JWT | The calling client's own requests |
+| `POST /webhooks/sms/inbound` | None (public) | `{ phone, message }` — mocked shape standing in for a real vendor's payload |
+
+## Client loan dashboard
+
+`GET /client/loans` (Client JWT) returns the calling client's pre-existing
+loan history — real disbursed loans and repayment activity ingested from
+bank reports, which predate this platform and have no direct database
+link to `Client`. Matched via the client's linked `IppisRecord`'s
+`agency`+`staffId` (the same pairing `Loan.agency`/`.ippisNumber` and
+`LoanRepaymentRecord.agency`/`.staffId` already carry from ingestion),
+with a BVN cross-check against `Loan.bvn` (comparing the client's own
+Dojah-verified BVN from onboarding, not the IPPIS broadsheet's BVN) to
+guard against an agency+staffId collision showing one client someone
+else's loan. Returns `{ loans: [], repayments: [] }` (empty, not an
+error) if the client hasn't linked IPPIS yet or has no matching history.
+This is deliberately separate from `GET /client/loan-requests` — that
+endpoint is the client's own in-platform loan applications; this one is
+historical/external data.
+
+## Agent enrollment
+
+`POST /agents/register` (public, multipart: `fullName`/`email`/`phone`/
+`address` fields, `cv` file required, up to 5 `supportingDocuments` files
+optional) creates an `Agent` at `PENDING_REVIEW`. Admins holding
+`agents:read`/`agents:review` list/inspect/approve/reject submissions
+(`GET /admin/agents`, `GET /admin/agents/:id`,
+`POST /admin/agents/:id/approve`, `POST /admin/agents/:id/reject` with a
+required `reason`). Approving generates a temporary password, emails it
+to the agent (with an optional app-download link from
+`AGENT_APP_DOWNLOAD_URL`) via the existing `EmailService`, and requires
+the agent to change it before their JWT stops carrying
+`mustChangePassword: true` — `POST /auth/agent/change-password` is the
+one route reachable regardless of that flag.
+`POST /admin/agents/:id/resend-credentials` regenerates and re-sends the
+credentials, but only until the agent has logged in once
+(`Agent.hasLoggedIn`), after which it's permanently disabled.
+`POST /auth/refresh` re-derives `mustChangePassword` fresh from the
+database on every agent token refresh, the same way it already
+re-derives `permissions` fresh for admin tokens.
 
 ## Client/IPPIS onboarding
 

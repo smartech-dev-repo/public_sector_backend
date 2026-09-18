@@ -13,12 +13,14 @@ import { FileStorageModule } from '../file-storage/file-storage.module';
 import { AuditModule } from '../audit/audit.module';
 import { DocumentType } from '../generated/prisma/client';
 import { AdminDocumentsController } from './admin-documents.controller';
+import { ReconciliationModule } from '../reconciliation/reconciliation.module';
 
 @Module({
   imports: [
     BullModule.registerQueue({ name: DOCUMENT_INGESTION_QUEUE }),
     FileStorageModule,
     AuditModule,
+    ReconciliationModule,
   ],
   controllers: [AdminDocumentsController],
   providers: [

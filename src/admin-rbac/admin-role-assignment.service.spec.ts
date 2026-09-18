@@ -1,22 +1,25 @@
 import { ConflictException, NotFoundException } from '@nestjs/common';
 import { AdminRoleAssignmentService } from './admin-role-assignment.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { SessionService } from '../session/session.service';
 
 describe('AdminRoleAssignmentService', () => {
   let service: AdminRoleAssignmentService;
   let prisma: {
-    adminUser: { findMany: jest.Mock; findUnique: jest.Mock };
+    adminUser: { findMany: jest.Mock; findUnique: jest.Mock; update: jest.Mock };
     role: { findUnique: jest.Mock };
     adminUserRole: { upsert: jest.Mock; deleteMany: jest.Mock; count: jest.Mock; findUnique: jest.Mock };
   };
+  let sessionService: { revokeAllForPrincipal: jest.Mock };
 
   beforeEach(() => {
     prisma = {
-      adminUser: { findMany: jest.fn(), findUnique: jest.fn() },
+      adminUser: { findMany: jest.fn(), findUnique: jest.fn(), update: jest.fn() },
       role: { findUnique: jest.fn() },
       adminUserRole: { upsert: jest.fn(), deleteMany: jest.fn(), count: jest.fn(), findUnique: jest.fn() },
     };
-    service = new AdminRoleAssignmentService(prisma as unknown as PrismaService);
+    sessionService = { revokeAllForPrincipal: jest.fn().mockResolvedValue(undefined) };
+    service = new AdminRoleAssignmentService(prisma as unknown as PrismaService, sessionService as unknown as SessionService);
   });
 
   it('listAdmins returns admins with roles included', async () => {
@@ -76,5 +79,60 @@ describe('AdminRoleAssignmentService', () => {
     prisma.adminUserRole.findUnique.mockResolvedValue(null);
     await service.removeRole('admin-1', 'role-1');
     expect(prisma.adminUserRole.deleteMany).toHaveBeenCalled();
+  });
+
+  describe('deactivate', () => {
+    it('throws NotFoundException when the admin does not exist', async () => {
+      prisma.adminUser.findUnique.mockResolvedValue(null);
+      await expect(service.deactivate('caller-1', 'missing-id')).rejects.toThrow(NotFoundException);
+    });
+
+    it('throws ConflictException when deactivating your own account', async () => {
+      prisma.adminUser.findUnique.mockResolvedValue({ id: 'caller-1', isActive: true });
+      await expect(service.deactivate('caller-1', 'caller-1')).rejects.toThrow(ConflictException);
+    });
+
+    it('throws ConflictException when the admin is already inactive', async () => {
+      prisma.adminUser.findUnique.mockResolvedValue({ id: 'admin-2', isActive: false });
+      await expect(service.deactivate('caller-1', 'admin-2')).rejects.toThrow(ConflictException);
+    });
+
+    it('deactivates the admin and revokes their sessions', async () => {
+      prisma.adminUser.findUnique.mockResolvedValue({ id: 'admin-2', isActive: true });
+      prisma.adminUser.update.mockResolvedValue({ id: 'admin-2', isActive: false });
+
+      await service.deactivate('caller-1', 'admin-2');
+
+      expect(prisma.adminUser.update).toHaveBeenCalledWith({
+        where: { id: 'admin-2' },
+        data: { isActive: false },
+      });
+      expect(sessionService.revokeAllForPrincipal).toHaveBeenCalledWith('ADMIN', 'admin-2', 'admin_deactivated');
+    });
+  });
+
+  describe('reactivate', () => {
+    it('throws NotFoundException when the admin does not exist', async () => {
+      prisma.adminUser.findUnique.mockResolvedValue(null);
+      await expect(service.reactivate('missing-id')).rejects.toThrow(NotFoundException);
+    });
+
+    it('throws ConflictException when the admin is already active', async () => {
+      prisma.adminUser.findUnique.mockResolvedValue({ id: 'admin-2', isActive: true });
+      await expect(service.reactivate('admin-2')).rejects.toThrow(ConflictException);
+    });
+
+    it('reactivates the admin without touching sessions', async () => {
+      prisma.adminUser.findUnique.mockResolvedValue({ id: 'admin-2', isActive: false });
+      prisma.adminUser.update.mockResolvedValue({ id: 'admin-2', isActive: true });
+
+      await service.reactivate('admin-2');
+
+      expect(prisma.adminUser.update).toHaveBeenCalledWith({
+        where: { id: 'admin-2' },
+        data: { isActive: true },
+      });
+      expect(sessionService.revokeAllForPrincipal).not.toHaveBeenCalled();
+    });
   });
 });

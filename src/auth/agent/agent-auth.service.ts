@@ -25,7 +25,9 @@ export class AgentAuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    const payload = { sub: agent.id, type: 'agent' as const };
+    await this.prisma.agent.update({ where: { id: agent.id }, data: { hasLoggedIn: true } });
+
+    const payload = { sub: agent.id, type: 'agent' as const, mustChangePassword: agent.mustChangePassword };
 
     const refreshToken = await this.sessionService.createSession({
       principalType: SessionPrincipalType.AGENT,
@@ -38,5 +40,25 @@ export class AgentAuthService {
       accessToken: this.tokenService.signAccessToken(payload),
       refreshToken,
     };
+  }
+
+  async getMustChangePasswordForAgent(agentId: string): Promise<boolean> {
+    const agent = await this.prisma.agent.findUnique({ where: { id: agentId } });
+    return agent?.mustChangePassword ?? false;
+  }
+
+  async changePassword(agentId: string, currentPassword: string, newPassword: string): Promise<void> {
+    const agent = await this.prisma.agent.findUniqueOrThrow({ where: { id: agentId } });
+
+    const passwordMatches = await bcrypt.compare(currentPassword, agent.passwordHash!);
+    if (!passwordMatches) {
+      throw new UnauthorizedException('Current password is incorrect');
+    }
+
+    const passwordHash = await bcrypt.hash(newPassword, 12);
+    await this.prisma.agent.update({
+      where: { id: agentId },
+      data: { passwordHash, mustChangePassword: false },
+    });
   }
 }

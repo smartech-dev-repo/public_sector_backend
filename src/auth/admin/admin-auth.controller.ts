@@ -1,4 +1,5 @@
 import { Body, Controller, HttpCode, Post, Req } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { Request } from 'express';
 import { AdminAuthService } from './admin-auth.service';
 import { AdminLoginDto } from './dto/admin-login.dto';
@@ -9,6 +10,7 @@ import { getRequestMetadata } from '../../common/request-metadata.util';
 export class AdminAuthController {
   constructor(private readonly adminAuthService: AdminAuthService) {}
 
+  @Throttle({ default: { limit: 5, ttl: 900000 } })
   @Post('login')
   @HttpCode(200)
   login(@Body() dto: AdminLoginDto, @Req() req: Request) {

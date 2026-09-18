@@ -34,6 +34,14 @@ call it, in the sub-folder matching its controller; create a new
 sub-folder for a new controller/module within that group. Only add a new
 top-level group if a genuinely new principal type is introduced.
 
+Every request — new or existing — must carry a saved response example
+(Postman's `response` array on the request item) matching the scenario in
+its name, authored from the actual controller/DTO/service code (Nest's
+default exception shape is `{ "statusCode": N, "message": "...", "error":
+"..." }`, with `message` as an array of strings for `ValidationPipe`
+failures). This applies to every request added from here on, in addition
+to the full one-time retrofit of the pre-existing collection.
+
 For a **changed** endpoint: find its existing request(s) by searching the
 collection JSON for the route path, and update the body/params/test
 script to match — don't leave a stale request that no longer reflects
