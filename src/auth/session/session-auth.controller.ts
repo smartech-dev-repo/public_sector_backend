@@ -3,6 +3,7 @@ import { Request } from 'express';
 import { SessionService } from '../../session/session.service';
 import { TokenService } from '../token.service';
 import { AdminAuthService } from '../admin/admin-auth.service';
+import { AgentAuthService } from '../agent/agent-auth.service';
 import { JwtAuthGuard } from '../jwt-auth.guard';
 import { JwtPayload } from '../jwt-payload.interface';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
@@ -16,6 +17,7 @@ export class SessionAuthController {
     private readonly sessionService: SessionService,
     private readonly tokenService: TokenService,
     private readonly adminAuthService: AdminAuthService,
+    private readonly agentAuthService: AgentAuthService,
   ) {}
 
   @Post('refresh')
@@ -28,10 +30,16 @@ export class SessionAuthController {
         ? await this.adminAuthService.getPermissionsForAdmin(result.principalId)
         : undefined;
 
+    const mustChangePassword =
+      result.principalType === SessionPrincipalType.AGENT
+        ? await this.agentAuthService.getMustChangePasswordForAgent(result.principalId)
+        : undefined;
+
     const payload: JwtPayload = {
       sub: result.principalId,
       type: toJwtPrincipalType(result.principalType),
       permissions,
+      mustChangePassword,
     };
 
     return {
