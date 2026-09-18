@@ -26,6 +26,8 @@ describe('Agent auth (e2e)', () => {
         email,
         phone: '+2348022222222',
         fullName: 'Test Agent',
+        address: '1 Example Street, Lagos',
+        cvKey: 'agent-documents/test-agent/cv.pdf',
         passwordHash,
         status: 'APPROVED',
       },
