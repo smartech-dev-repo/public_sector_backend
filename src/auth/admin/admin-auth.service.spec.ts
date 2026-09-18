@@ -5,28 +5,43 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { TokenService } from '../token.service';
 import { SessionService } from '../../session/session.service';
 import { AdminInviteService } from '../../admin-invite/admin-invite.service';
+import { EmailService } from '../../email/email.service';
 
 describe('AdminAuthService', () => {
   let service: AdminAuthService;
   let prisma: {
-    adminUser: { findUnique: jest.Mock; create: jest.Mock };
+    adminUser: { findUnique: jest.Mock; findUniqueOrThrow: jest.Mock; findFirst: jest.Mock; create: jest.Mock; update: jest.Mock };
   };
   let tokenService: TokenService;
-  let sessionService: { createSession: jest.Mock };
+  let sessionService: { createSession: jest.Mock; revokeAllForPrincipal: jest.Mock };
   let adminInviteService: { findValidByToken: jest.Mock; markAccepted: jest.Mock };
+  let emailService: { send: jest.Mock };
 
   beforeEach(() => {
-    prisma = { adminUser: { findUnique: jest.fn(), create: jest.fn() } };
+    prisma = {
+      adminUser: {
+        findUnique: jest.fn(),
+        findUniqueOrThrow: jest.fn(),
+        findFirst: jest.fn(),
+        create: jest.fn(),
+        update: jest.fn().mockResolvedValue(undefined),
+      },
+    };
     tokenService = {
       signAccessToken: jest.fn().mockReturnValue('access-token'),
     } as unknown as TokenService;
-    sessionService = { createSession: jest.fn().mockResolvedValue('refresh-token') };
+    sessionService = {
+      createSession: jest.fn().mockResolvedValue('refresh-token'),
+      revokeAllForPrincipal: jest.fn().mockResolvedValue(undefined),
+    };
     adminInviteService = { findValidByToken: jest.fn(), markAccepted: jest.fn() };
+    emailService = { send: jest.fn().mockResolvedValue(undefined) };
     service = new AdminAuthService(
       prisma as unknown as PrismaService,
       tokenService,
       sessionService as unknown as SessionService,
       adminInviteService as unknown as AdminInviteService,
+      emailService as unknown as EmailService,
     );
   });
 
@@ -121,5 +136,101 @@ describe('AdminAuthService', () => {
     });
     expect(adminInviteService.markAccepted).toHaveBeenCalledWith('invite-1');
     expect(result).toEqual({ accessToken: 'access-token', refreshToken: 'refresh-token' });
+  });
+
+  describe('forgotPassword', () => {
+    it('does nothing observable when the email does not match an active admin', async () => {
+      prisma.adminUser.findUnique.mockResolvedValue(null);
+
+      await service.forgotPassword('nobody@example.com');
+
+      expect(prisma.adminUser.update).not.toHaveBeenCalled();
+      expect(emailService.send).not.toHaveBeenCalled();
+    });
+
+    it('does nothing observable for a deactivated admin', async () => {
+      prisma.adminUser.findUnique.mockResolvedValue({ id: 'admin-1', email: 'a@example.com', isActive: false });
+
+      await service.forgotPassword('a@example.com');
+
+      expect(prisma.adminUser.update).not.toHaveBeenCalled();
+      expect(emailService.send).not.toHaveBeenCalled();
+    });
+
+    it('generates a reset token, stores its hash, and emails it', async () => {
+      prisma.adminUser.findUnique.mockResolvedValue({ id: 'admin-1', email: 'a@example.com', isActive: true });
+
+      await service.forgotPassword('a@example.com');
+
+      expect(prisma.adminUser.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'admin-1' },
+          data: expect.objectContaining({
+            passwordResetTokenHash: expect.any(String),
+            passwordResetTokenExpiresAt: expect.any(Date),
+          }),
+        }),
+      );
+      expect(emailService.send).toHaveBeenCalledWith(expect.objectContaining({ to: 'a@example.com' }));
+    });
+  });
+
+  describe('resetPassword', () => {
+    it('rejects an unknown or expired token', async () => {
+      prisma.adminUser.findFirst.mockResolvedValue(null);
+      await expect(service.resetPassword('bad-token', 'new-password-123')).rejects.toThrow(UnauthorizedException);
+    });
+
+    it('rejects a token past its expiry', async () => {
+      prisma.adminUser.findFirst.mockResolvedValue({
+        id: 'admin-1',
+        passwordResetTokenExpiresAt: new Date(Date.now() - 1000),
+      });
+      await expect(service.resetPassword('expired-token', 'new-password-123')).rejects.toThrow(UnauthorizedException);
+    });
+
+    it('hashes the new password, clears the token, and revokes all sessions', async () => {
+      prisma.adminUser.findFirst.mockResolvedValue({
+        id: 'admin-1',
+        passwordResetTokenExpiresAt: new Date(Date.now() + 1000 * 60 * 60),
+      });
+
+      await service.resetPassword('good-token', 'new-password-123');
+
+      expect(prisma.adminUser.update).toHaveBeenCalledWith({
+        where: { id: 'admin-1' },
+        data: {
+          passwordHash: expect.any(String),
+          passwordResetTokenHash: null,
+          passwordResetTokenExpiresAt: null,
+        },
+      });
+      expect(sessionService.revokeAllForPrincipal).toHaveBeenCalledWith('ADMIN', 'admin-1', 'password_reset');
+    });
+  });
+
+  describe('changePassword', () => {
+    it('rejects an incorrect current password', async () => {
+      const passwordHash = await bcrypt.hash('correct-password', 12);
+      prisma.adminUser.findUniqueOrThrow.mockResolvedValue({ id: 'admin-1', passwordHash });
+
+      await expect(
+        service.changePassword('admin-1', 'wrong-password', 'new-password-123'),
+      ).rejects.toThrow(UnauthorizedException);
+      expect(prisma.adminUser.update).not.toHaveBeenCalled();
+      expect(sessionService.revokeAllForPrincipal).not.toHaveBeenCalled();
+    });
+
+    it('hashes the new password without revoking sessions', async () => {
+      const passwordHash = await bcrypt.hash('correct-password', 12);
+      prisma.adminUser.findUniqueOrThrow.mockResolvedValue({ id: 'admin-1', passwordHash });
+
+      await service.changePassword('admin-1', 'correct-password', 'new-password-123');
+
+      const updateCall = prisma.adminUser.update.mock.calls[0][0];
+      expect(updateCall.where).toEqual({ id: 'admin-1' });
+      expect(updateCall.data.passwordHash).not.toBe(passwordHash);
+      expect(sessionService.revokeAllForPrincipal).not.toHaveBeenCalled();
+    });
   });
 });

@@ -4,6 +4,7 @@ import { PassportModule } from '@nestjs/passport';
 import { OtpModule } from '../otp/otp.module';
 import { SessionModule } from '../session/session.module';
 import { AdminInviteModule } from '../admin-invite/admin-invite.module';
+import { EmailModule } from '../email/email.module';
 import { TokenService } from './token.service';
 import { JwtStrategy } from './jwt.strategy';
 import { AdminAuthController } from './admin/admin-auth.controller';
@@ -15,7 +16,7 @@ import { AgentAuthService } from './agent/agent-auth.service';
 import { SessionAuthController } from './session/session-auth.controller';
 
 @Module({
-  imports: [PassportModule, JwtModule.register({}), OtpModule, SessionModule, AdminInviteModule],
+  imports: [PassportModule, JwtModule.register({}), OtpModule, SessionModule, AdminInviteModule, EmailModule],
   controllers: [AdminAuthController, ClientAuthController, AgentAuthController, SessionAuthController],
   providers: [
     TokenService,

@@ -51,6 +51,8 @@ model AdminUser {
   uploadedDocumentBatches DocumentUploadBatch[]
   createdAt    DateTime        @default(now())
   updatedAt    DateTime        @updatedAt
+  passwordResetTokenHash      String?
+  passwordResetTokenExpiresAt DateTime?
 }
 
 model AdminUserRole {
