@@ -5703,6 +5703,316 @@
           ]
         },
         {
+          "name": "Reconciliation & Catalog",
+          "item": [
+            {
+              "name": "GET /admin/reconciliation - Success",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/reconciliation?agency=NSCDC&status=MATCHED&period=2026-08",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "reconciliation"
+                  ],
+                  "query": [
+                    {
+                      "key": "agency",
+                      "value": "NSCDC",
+                      "description": "Filter by the loan's agency"
+                    },
+                    {
+                      "key": "status",
+                      "value": "MATCHED",
+                      "description": "MATCHED | UNDER_PAID | OVER_PAID | NO_DEDUCTION_FOUND"
+                    },
+                    {
+                      "key": "period",
+                      "value": "2026-08",
+                      "description": "YYYY-MM"
+                    }
+                  ]
+                },
+                "description": "Lists RepaymentVariance rows (recomputed after every disbursed-loans/repayment-schedule upload), each including its Loan. Requires reconciliation:read."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Success - variances with loan included (200)",
+                  "originalRequest": {
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/reconciliation?agency=NSCDC&status=MATCHED&period=2026-08",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "reconciliation"
+                      ],
+                      "query": [
+                        {
+                          "key": "agency",
+                          "value": "NSCDC",
+                          "description": "Filter by the loan's agency"
+                        },
+                        {
+                          "key": "status",
+                          "value": "MATCHED",
+                          "description": "MATCHED | UNDER_PAID | OVER_PAID | NO_DEDUCTION_FOUND"
+                        },
+                        {
+                          "key": "period",
+                          "value": "2026-08",
+                          "description": "YYYY-MM"
+                        }
+                      ]
+                    }
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "[\n  {\n    \"id\": \"d1e2f3a4-1111-4b5c-8d9e-0f1a2b3c4d5e\",\n    \"loanId\": \"c9d8e7f6-2222-4a5b-9c8d-7e6f5a4b3c2d\",\n    \"period\": \"2026-08\",\n    \"expectedAmount\": \"45833.33\",\n    \"actualAmount\": \"45833.33\",\n    \"variance\": \"0\",\n    \"status\": \"MATCHED\",\n    \"generatedAt\": \"2026-09-17T10:05:00.000Z\",\n    \"loan\": {\n      \"id\": \"c9d8e7f6-2222-4a5b-9c8d-7e6f5a4b3c2d\",\n      \"customerId\": \"CUST-100234\",\n      \"customerName\": \"Chinedu Balogun\",\n      \"accountNumber\": \"0123456789\",\n      \"address\": null,\n      \"branch\": \"Abuja Main\",\n      \"gender\": \"M\",\n      \"phone\": null,\n      \"ippisNumber\": \"CD7038686\",\n      \"agency\": \"NSCDC\",\n      \"loanAmount\": \"500000\",\n      \"principalBalance\": \"312500\",\n      \"disbursementDate\": \"2026-01-15T00:00:00.000Z\",\n      \"maturationDate\": \"2027-01-15T00:00:00.000Z\",\n      \"effectiveDate\": null,\n      \"moratoriumDays\": null,\n      \"product\": \"SALARY ADVANCE\",\n      \"linkedAccountNumber\": null,\n      \"bvn\": null,\n      \"interestRatePercent\": \"24\",\n      \"accountOfficer\": null,\n      \"hasPreviouslyTakenLoan\": false,\n      \"rawFields\": null,\n      \"createdAt\": \"2026-08-10T09:00:00.000Z\",\n      \"updatedAt\": \"2026-09-17T10:05:00.000Z\"\n    }\n  }\n]"
+                }
+              ]
+            },
+            {
+              "name": "GET /admin/reconciliation - Missing permission (403)",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{agent_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/reconciliation",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "reconciliation"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 401 or 403', () => pm.expect([401,403]).to.include(pm.response.code));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Forbidden - missing reconciliation:read permission (403)",
+                  "originalRequest": {
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{agent_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/reconciliation",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "reconciliation"
+                      ]
+                    }
+                  },
+                  "status": "Forbidden",
+                  "code": 403,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"statusCode\": 403,\n  \"message\": \"Insufficient permissions\",\n  \"error\": \"Forbidden\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "GET /admin/loans - Success",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/loans",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "loans"
+                  ]
+                },
+                "description": "Basic listing over the ingested Loan table, optionally filtered by ?agency=. Requires loans:upload."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Success - loans list (200)",
+                  "originalRequest": {
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/loans",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "loans"
+                      ]
+                    }
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "[\n  {\n    \"id\": \"c9d8e7f6-2222-4a5b-9c8d-7e6f5a4b3c2d\",\n    \"customerId\": \"CUST-100234\",\n    \"customerName\": \"Chinedu Balogun\",\n    \"accountNumber\": \"0123456789\",\n    \"address\": null,\n    \"branch\": \"Abuja Main\",\n    \"gender\": \"M\",\n    \"phone\": null,\n    \"ippisNumber\": \"CD7038686\",\n    \"agency\": \"NSCDC\",\n    \"loanAmount\": \"500000\",\n    \"principalBalance\": \"312500\",\n    \"disbursementDate\": \"2026-01-15T00:00:00.000Z\",\n    \"maturationDate\": \"2027-01-15T00:00:00.000Z\",\n    \"effectiveDate\": null,\n    \"moratoriumDays\": null,\n    \"product\": \"SALARY ADVANCE\",\n    \"linkedAccountNumber\": null,\n    \"bvn\": null,\n    \"interestRatePercent\": \"24\",\n    \"accountOfficer\": null,\n    \"hasPreviouslyTakenLoan\": false,\n    \"rawFields\": null,\n    \"createdAt\": \"2026-08-10T09:00:00.000Z\",\n    \"updatedAt\": \"2026-09-17T10:05:00.000Z\"\n  }\n]"
+                }
+              ]
+            },
+            {
+              "name": "GET /admin/ippis-records - Success",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/ippis-records",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "ippis-records"
+                  ]
+                },
+                "description": "Basic listing over the ingested IppisRecord table, optionally filtered by ?agency=. Requires ippis:upload."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Success - IPPIS records list (200)",
+                  "originalRequest": {
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/ippis-records",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "ippis-records"
+                      ]
+                    }
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "[\n  {\n    \"id\": \"e5f6a7b8-3333-4c6d-9e0f-1a2b3c4d5e6f\",\n    \"agency\": \"NSCDC\",\n    \"staffId\": \"CD7038686\",\n    \"employeeName\": \"Chinedu Balogun\",\n    \"employeeStatus\": \"ACTIVE\",\n    \"hireDate\": \"2015-03-01T00:00:00.000Z\",\n    \"dateOfBirth\": \"1988-06-12T00:00:00.000Z\",\n    \"maritalStatus\": \"MARRIED\",\n    \"gender\": \"M\",\n    \"jobTitle\": \"ASSISTANT SUPERINTENDENT\",\n    \"department\": \"OPERATIONS\",\n    \"subOrganization\": null,\n    \"grade\": \"08\",\n    \"step\": \"03\",\n    \"salary\": \"185000\",\n    \"phone\": null,\n    \"bankName\": null,\n    \"accountNumber\": null,\n    \"pfaName\": null,\n    \"pinNumber\": null,\n    \"dateTerminated\": null,\n    \"bvn\": null,\n    \"legacyId\": null,\n    \"rawFields\": null,\n    \"createdAt\": \"2026-08-01T09:00:00.000Z\",\n    \"updatedAt\": \"2026-08-01T09:00:00.000Z\"\n  }\n]"
+                }
+              ]
+            }
+          ]
+        },
+        {
           "name": "Client Review",
           "item": [
             {

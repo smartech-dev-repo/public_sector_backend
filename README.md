@@ -73,7 +73,8 @@ Upload endpoints for the three source documents exist and are fully wired
 `agency`+`staffId`+`period`+`elementName`, one small hardcoded mapper per
 agency sheet since those six sheets share almost no column names) — see
 `src/document-ingestion/parsers/`. Reconciliation (comparing expected vs.
-actual repayments) is not built yet.
+actual repayments) runs automatically after ingestion — see the
+"Reconciliation" section below.
 
 | Endpoint | Permission | Notes |
 |---|---|---|
@@ -94,6 +95,24 @@ Dokploy with no file mount; `FILE` wins if both are set), plus optional
 `GCP_SUB_PATH`. Automated tests always run against the local provider
 regardless of this setting. Background processing uses BullMQ against the
 `REDIS_URL`/`REDIS_KEY_PREFIX` already configured in your environment.
+
+## Reconciliation
+
+After a `disbursed-loans` or `repayment-schedule` upload completes, the
+system recomputes reconciliation across every `Loan` and its matching
+`LoanRepaymentRecord` rows (matched via `agency`+IPPIS number, same as
+the client loan dashboard) — a full idempotent recompute rather than one
+scoped to the triggering upload, upserted by `(loanId, period)`. For each
+period within a loan's disbursement-to-maturation range, the expected
+installment (standard reducing-balance amortization from `loanAmount`,
+`interestRatePercent`, and the loan term) is compared against the actual
+summed deductions for that period: `MATCHED` (within a ₦1 tolerance),
+`UNDER_PAID`, `OVER_PAID`, or `NO_DEDUCTION_FOUND` (no matching repayment
+rows at all for that period). `GET /admin/reconciliation`
+(`reconciliation:read`) lists variances, filterable by `agency`/`status`/
+`period`. `GET /admin/loans` (`loans:upload`) and
+`GET /admin/ippis-records` (`ippis:upload`) provide basic
+listing/filtering by `agency` over the underlying ingested tables.
 
 ## RBAC management
 

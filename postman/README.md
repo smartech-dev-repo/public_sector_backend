@@ -25,7 +25,12 @@ standalone Health check:
   **Documents** (the ippis-broadsheet/disbursed-loans/repayment-schedule
   upload + batch + file-download endpoints — admin-authenticated, so it
   lives here rather than under its own group; there's no separate "IPPIS"
-  principal type in the JWT system), **Client Review** (list/inspect
+  principal type in the JWT system), **Reconciliation & Catalog**
+  (`GET /admin/reconciliation` listing expected-vs-actual repayment
+  variances produced after every disbursed-loans/repayment-schedule
+  upload, plus `GET /admin/loans` and `GET /admin/ippis-records` basic
+  agency-filterable listings over the underlying ingested tables — closely
+  related to Documents but its own controllers), **Client Review** (list/inspect
   clients stuck at `Client.status = MANUAL_REVIEW` and approve or retry
   them, gated by `clients:review`), and **Review** (agents) (list/inspect
   Agent submissions stuck at `Agent.status = PENDING_REVIEW` and
