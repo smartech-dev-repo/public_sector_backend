@@ -173,6 +173,30 @@ without a code change.
   reference docs for AI coding assistants working on this repo, not
   application code.
 
+## Hardening: rate limiting & observability
+
+Every route is rate-limited globally (`THROTTLE_DEFAULT_LIMIT` per
+`THROTTLE_DEFAULT_TTL_SECONDS`, per IP, Redis-backed so limits are shared
+across horizontally-scaled instances); six abuse-prone routes (OTP
+request/verify, all three login endpoints, agent registration, agent
+password change) get a stricter hardcoded override (5 requests per 15
+minutes). `RATE_LIMITING_ENABLED=false` in this repo's own dev/test
+config disables the guard entirely — almost every e2e test logs in as
+admin in its own `beforeAll`, which would otherwise exhaust both limits
+within minutes of a full suite run.
+
+Logging is structured JSON via `nestjs-pino` (pretty-printed outside
+production), with a per-request correlation id echoed back as
+`X-Request-Id` on every response. A pluggable `ErrorTrackingProvider`
+(no-op for now — logs a warning instead of reporting anywhere) is wired
+into a global exception filter that reports every unhandled exception
+without changing what the client actually receives; a real Sentry (or
+similar) provider slots in later behind an env var, matching every other
+external integration in this project.
+
+`GET /health` checks Postgres and Redis connectivity, returning `503`
+(instead of a static `200`) if either is down.
+
 ## Deploying to Dokploy
 
 The `Dockerfile` builds a single, self-contained production image — no

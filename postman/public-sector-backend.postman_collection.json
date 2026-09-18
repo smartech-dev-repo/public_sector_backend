@@ -211,7 +211,34 @@
                 }
               ],
               "cookie": [],
-              "body": "{\n  \"status\": \"ok\"\n}"
+              "body": "{\n  \"status\": \"ok\",\n  \"database\": \"ok\",\n  \"redis\": \"ok\"\n}"
+            },
+            {
+              "name": "Degraded (503)",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/health",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "health"
+                  ]
+                }
+              },
+              "status": "Service Unavailable",
+              "code": 503,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"status\": \"error\",\n  \"database\": \"error\",\n  \"redis\": \"ok\"\n}"
             }
           ]
         }
