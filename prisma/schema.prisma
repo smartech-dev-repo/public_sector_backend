@@ -333,6 +333,7 @@ model Loan {
   rawFields              Json?
   createdAt              DateTime  @default(now())
   updatedAt              DateTime  @updatedAt
+  repaymentVariances     RepaymentVariance[]
 
   @@index([ippisNumber])
 }
@@ -368,4 +369,25 @@ model LoanRequest {
   expiresAt             DateTime
   createdAt             DateTime          @default(now())
   updatedAt             DateTime          @updatedAt
+}
+
+enum VarianceStatus {
+  MATCHED
+  UNDER_PAID
+  OVER_PAID
+  NO_DEDUCTION_FOUND
+}
+
+model RepaymentVariance {
+  id             String         @id @default(uuid())
+  loanId         String
+  loan           Loan           @relation(fields: [loanId], references: [id])
+  period         String
+  expectedAmount Decimal
+  actualAmount   Decimal
+  variance       Decimal
+  status         VarianceStatus
+  generatedAt    DateTime       @default(now())
+
+  @@unique([loanId, period])
 }

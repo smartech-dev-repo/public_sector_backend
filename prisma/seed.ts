@@ -21,6 +21,7 @@ const BOOTSTRAP_PERMISSIONS: Array<{ key: string; description: string }> = [
   { key: 'repayments:upload', description: 'Upload IPPIS repayment schedule reports' },
   { key: 'documents:read', description: 'View document upload batches and snapshot exports' },
   { key: 'permissions:manage', description: 'Create, edit, and delete permission definitions' },
+  { key: 'reconciliation:read', description: 'View loan repayment reconciliation variances' },
 ];
 
 async function main() {
