@@ -1,10 +1,12 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { BullModule } from '@nestjs/bullmq';
-import { APP_GUARD } from '@nestjs/core';
+import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { ThrottlerStorageRedisService } from '@nest-lab/throttler-storage-redis';
+import { LoggerModule } from 'nestjs-pino';
 import { AppController } from './app.controller';
+import { RequestIdInterceptor } from './observability/request-id.interceptor';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
 import { AdminModule } from './admin/admin.module';
@@ -26,6 +28,18 @@ import { AdminCatalogModule } from './admin-catalog/admin-catalog.module';
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    LoggerModule.forRootAsync({
+      useFactory: (configService: ConfigService) => ({
+        pinoHttp: {
+          level: configService.get<string>('LOG_LEVEL', 'info'),
+          transport:
+            configService.get<string>('NODE_ENV') !== 'production'
+              ? { target: 'pino-pretty', options: { singleLine: true } }
+              : undefined,
+        },
+      }),
+      inject: [ConfigService],
+    }),
     BullModule.forRootAsync({
       // Pass connection *options*, not a live ioredis instance -- BullMQ
       // then owns creating/closing its own connections, which is what
@@ -84,6 +98,9 @@ import { AdminCatalogModule } from './admin-catalog/admin-catalog.module';
     AdminCatalogModule,
   ],
   controllers: [AppController],
-  providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
+  providers: [
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
+    { provide: APP_INTERCEPTOR, useClass: RequestIdInterceptor },
+  ],
 })
 export class AppModule {}
