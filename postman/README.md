@@ -25,10 +25,17 @@ standalone Health check:
   **Documents** (the ippis-broadsheet/disbursed-loans/repayment-schedule
   upload + batch + file-download endpoints — admin-authenticated, so it
   lives here rather than under its own group; there's no separate "IPPIS"
-  principal type in the JWT system), and **Client Review** (list/inspect
+  principal type in the JWT system), **Client Review** (list/inspect
   clients stuck at `Client.status = MANUAL_REVIEW` and approve or retry
-  them, gated by `clients:review`).
-- **Agent** — Auth and this agent's own Session (agent tokens).
+  them, gated by `clients:review`), and **Review** (agents) (list/inspect
+  Agent submissions stuck at `Agent.status = PENDING_REVIEW` and
+  approve/reject/resend-credentials them, gated by `agents:read`/
+  `agents:review` — it lives under Admin, not Agent, because an Admin is
+  the one authenticating to call it).
+- **Agent** — Auth, this agent's own Session (agent tokens), and
+  **Enrollment** (the public `POST /agents/register` and the
+  `POST /auth/agent/change-password` an agent uses to clear a
+  `mustChangePassword: true` JWT after being approved).
 - **Client** — Auth (phone + OTP), this client's own Session (client
   tokens), **Onboarding** (IPPIS number linking, BVN/NIN identity
   submission, and selfie face-match, walking the client from

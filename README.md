@@ -239,6 +239,27 @@ This is deliberately separate from `GET /client/loan-requests` — that
 endpoint is the client's own in-platform loan applications; this one is
 historical/external data.
 
+## Agent enrollment
+
+`POST /agents/register` (public, multipart: `fullName`/`email`/`phone`/
+`address` fields, `cv` file required, up to 5 `supportingDocuments` files
+optional) creates an `Agent` at `PENDING_REVIEW`. Admins holding
+`agents:read`/`agents:review` list/inspect/approve/reject submissions
+(`GET /admin/agents`, `GET /admin/agents/:id`,
+`POST /admin/agents/:id/approve`, `POST /admin/agents/:id/reject` with a
+required `reason`). Approving generates a temporary password, emails it
+to the agent (with an optional app-download link from
+`AGENT_APP_DOWNLOAD_URL`) via the existing `EmailService`, and requires
+the agent to change it before their JWT stops carrying
+`mustChangePassword: true` — `POST /auth/agent/change-password` is the
+one route reachable regardless of that flag.
+`POST /admin/agents/:id/resend-credentials` regenerates and re-sends the
+credentials, but only until the agent has logged in once
+(`Agent.hasLoggedIn`), after which it's permanently disabled.
+`POST /auth/refresh` re-derives `mustChangePassword` fresh from the
+database on every agent token refresh, the same way it already
+re-derives `permissions` fresh for admin tokens.
+
 ## Client/IPPIS onboarding
 
 After phone/OTP login, a Client links their IPPIS number, submits BVN/NIN

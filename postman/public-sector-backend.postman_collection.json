@@ -149,6 +149,10 @@
     {
       "key": "loan_request_id",
       "value": ""
+    },
+    {
+      "key": "target_agent_id",
+      "value": ""
     }
   ],
   "item": [
@@ -6158,6 +6162,622 @@
               ]
             }
           ]
+        },
+        {
+          "name": "Review",
+          "item": [
+            {
+              "name": "GET /admin/agents - Success",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/agents",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "agents"
+                  ]
+                },
+                "description": "Optionally filter with ?status=PENDING_REVIEW (or any AgentStatus)."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));",
+                      "const json = pm.response.json();",
+                      "const pending = json.find((a) => a.status === 'PENDING_REVIEW');",
+                      "if (pending) { pm.collectionVariables.set('target_agent_id', pending.id); }"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Success - list agents (200)",
+                  "originalRequest": {
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/agents",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "agents"
+                      ]
+                    },
+                    "description": "Optionally filter with ?status=PENDING_REVIEW (or any AgentStatus)."
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "[\n  {\n    \"id\": \"b7c1a2d3-4e5f-4a6b-8c9d-0e1f2a3b4c5d\",\n    \"email\": \"priscilla.agent@example.com\",\n    \"phone\": \"+2348012345678\",\n    \"fullName\": \"Priscilla Okafor\",\n    \"address\": \"14 Adeyemi Street, Ikeja, Lagos\",\n    \"passwordHash\": null,\n    \"status\": \"PENDING_REVIEW\",\n    \"cvKey\": \"agent-documents/b7c1a2d3-4e5f-4a6b-8c9d-0e1f2a3b4c5d/cv-1.pdf\",\n    \"supportingDocumentKeys\": [],\n    \"mustChangePassword\": true,\n    \"hasLoggedIn\": false,\n    \"reviewedBy\": null,\n    \"reviewedAt\": null,\n    \"rejectionReason\": null,\n    \"createdAt\": \"2026-09-17T09:00:00.000Z\",\n    \"updatedAt\": \"2026-09-17T09:05:00.000Z\"\n  },\n  {\n    \"id\": \"9e0f1a2b-3c4d-45e6-8f70-1a2b3c4d5e6f\",\n    \"email\": \"tunde.agent@example.com\",\n    \"phone\": \"+2348023456789\",\n    \"fullName\": \"Tunde Bakare\",\n    \"address\": \"22 Herbert Macaulay Way, Yaba, Lagos\",\n    \"passwordHash\": null,\n    \"status\": \"APPROVED\",\n    \"cvKey\": \"agent-documents/9e0f1a2b-3c4d-45e6-8f70-1a2b3c4d5e6f/cv-1.pdf\",\n    \"supportingDocumentKeys\": [],\n    \"mustChangePassword\": true,\n    \"hasLoggedIn\": false,\n    \"reviewedBy\": \"a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d\",\n    \"reviewedAt\": \"2026-09-17T10:00:00.000Z\",\n    \"rejectionReason\": null,\n    \"createdAt\": \"2026-09-17T09:00:00.000Z\",\n    \"updatedAt\": \"2026-09-17T09:05:00.000Z\"\n  }\n]"
+                }
+              ]
+            },
+            {
+              "name": "GET /admin/agents/:id - Success",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/agents/{{target_agent_id}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "agents",
+                    "{{target_agent_id}}"
+                  ]
+                },
+                "description": "Run 'GET /admin/agents - Success' above first (or register a new agent via Agent > Enrollment) to populate target_agent_id."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Success - agent detail (200)",
+                  "originalRequest": {
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/agents/{{target_agent_id}}",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "agents",
+                        "{{target_agent_id}}"
+                      ]
+                    },
+                    "description": "Run 'GET /admin/agents - Success' above first (or register a new agent via Agent > Enrollment) to populate target_agent_id."
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"id\": \"b7c1a2d3-4e5f-4a6b-8c9d-0e1f2a3b4c5d\",\n  \"email\": \"priscilla.agent@example.com\",\n  \"phone\": \"+2348012345678\",\n  \"fullName\": \"Priscilla Okafor\",\n  \"address\": \"14 Adeyemi Street, Ikeja, Lagos\",\n  \"passwordHash\": null,\n  \"status\": \"PENDING_REVIEW\",\n  \"cvKey\": \"agent-documents/b7c1a2d3-4e5f-4a6b-8c9d-0e1f2a3b4c5d/cv-1.pdf\",\n  \"supportingDocumentKeys\": [],\n  \"mustChangePassword\": true,\n  \"hasLoggedIn\": false,\n  \"reviewedBy\": null,\n  \"reviewedAt\": null,\n  \"rejectionReason\": null,\n  \"createdAt\": \"2026-09-17T09:00:00.000Z\",\n  \"updatedAt\": \"2026-09-17T09:05:00.000Z\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "POST /admin/agents/:id/approve - Success",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/agents/{{target_agent_id}}/approve",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "agents",
+                    "{{target_agent_id}}",
+                    "approve"
+                  ]
+                },
+                "description": "Generates a temporary password, marks the agent APPROVED, and emails the credentials via EmailService."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Success - agent approved (200)",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/agents/{{target_agent_id}}/approve",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "agents",
+                        "{{target_agent_id}}",
+                        "approve"
+                      ]
+                    },
+                    "description": "Generates a temporary password, marks the agent APPROVED, and emails the credentials via EmailService."
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"approved\": true\n}"
+                }
+              ]
+            },
+            {
+              "name": "POST /admin/agents/:id/approve - Blocked, not PENDING_REVIEW (409)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/agents/{{target_agent_id}}/approve",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "agents",
+                    "{{target_agent_id}}",
+                    "approve"
+                  ]
+                },
+                "description": "Returns 409 if target_agent_id was already approved by the request above (expected when running this folder top-to-bottom)."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 409', () => pm.response.to.have.status(409));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Conflict - agent not PENDING_REVIEW (409)",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/agents/{{target_agent_id}}/approve",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "agents",
+                        "{{target_agent_id}}",
+                        "approve"
+                      ]
+                    },
+                    "description": "Returns 409 if target_agent_id was already approved by the request above (expected when running this folder top-to-bottom)."
+                  },
+                  "status": "Conflict",
+                  "code": 409,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"statusCode\": 409,\n  \"message\": \"Agent is not PENDING_REVIEW (currently APPROVED)\",\n  \"error\": \"Conflict\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "POST /admin/agents/:id/reject - Success",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"reason\": \"CV did not match the stated qualifications\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/admin/agents/{{target_agent_id}}/reject",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "agents",
+                    "{{target_agent_id}}",
+                    "reject"
+                  ]
+                },
+                "description": "Needs a PENDING_REVIEW agent, so this uses a different agent than the one approved above \u2014 register another one via Agent > Enrollment > POST /agents/register - Success (that overwrites target_agent_id) before running this, or substitute any real PENDING_REVIEW agent id in the URL."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Success - agent rejected (200)",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      },
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"reason\": \"CV did not match the stated qualifications\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/admin/agents/{{target_agent_id}}/reject",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "agents",
+                        "{{target_agent_id}}",
+                        "reject"
+                      ]
+                    },
+                    "description": "Needs a PENDING_REVIEW agent, so this uses a different agent than the one approved above \u2014 register another one via Agent > Enrollment > POST /agents/register - Success (that overwrites target_agent_id) before running this, or substitute any real PENDING_REVIEW agent id in the URL."
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"rejected\": true\n}"
+                }
+              ]
+            },
+            {
+              "name": "POST /admin/agents/:id/reject - Missing reason (400)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/admin/agents/{{target_agent_id}}/reject",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "agents",
+                    "{{target_agent_id}}",
+                    "reject"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 400', () => pm.response.to.have.status(400));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Validation error - missing reason (400)",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      },
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{}"
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/admin/agents/{{target_agent_id}}/reject",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "agents",
+                        "{{target_agent_id}}",
+                        "reject"
+                      ]
+                    }
+                  },
+                  "status": "Bad Request",
+                  "code": 400,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"statusCode\": 400,\n  \"message\": [\n    \"reason must be a string\",\n    \"reason must be longer than or equal to 1 characters\"\n  ],\n  \"error\": \"Bad Request\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "POST /admin/agents/:id/resend-credentials - Success",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/agents/{{target_agent_id}}/resend-credentials",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "agents",
+                    "{{target_agent_id}}",
+                    "resend-credentials"
+                  ]
+                },
+                "description": "Uses the agent approved above (target_agent_id) \u2014 must be APPROVED and not yet logged in. Regenerates and re-emails the temporary password."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Success - credentials resent (200)",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/agents/{{target_agent_id}}/resend-credentials",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "agents",
+                        "{{target_agent_id}}",
+                        "resend-credentials"
+                      ]
+                    },
+                    "description": "Uses the agent approved above (target_agent_id) \u2014 must be APPROVED and not yet logged in. Regenerates and re-emails the temporary password."
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"resent\": true\n}"
+                }
+              ]
+            },
+            {
+              "name": "POST /admin/agents/:id/resend-credentials - Blocked, already logged in (409)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/agents/{{target_agent_id}}/resend-credentials",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "agents",
+                    "{{target_agent_id}}",
+                    "resend-credentials"
+                  ]
+                },
+                "description": "Returns 409 once target_agent_id has logged in at least once. After resend-credentials above, check the server console log for 'Temporary password: ...' and log in via Agent > Auth > POST /auth/agent/login - Success with that email/password (this sets Agent.hasLoggedIn = true), then re-run this request."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 409', () => pm.response.to.have.status(409));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Conflict - credentials already used (409)",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/agents/{{target_agent_id}}/resend-credentials",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "agents",
+                        "{{target_agent_id}}",
+                        "resend-credentials"
+                      ]
+                    },
+                    "description": "Returns 409 once target_agent_id has logged in at least once. After resend-credentials above, check the server console log for 'Temporary password: ...' and log in via Agent > Auth > POST /auth/agent/login - Success with that email/password (this sets Agent.hasLoggedIn = true), then re-run this request."
+                  },
+                  "status": "Conflict",
+                  "code": 409,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"statusCode\": 409,\n  \"message\": \"Credentials have already been used and can no longer be resent\",\n  \"error\": \"Conflict\"\n}"
+                }
+              ]
+            }
+          ]
         }
       ]
     },
@@ -7039,6 +7659,535 @@
                   ],
                   "cookie": [],
                   "body": "{\n  \"statusCode\": 401,\n  \"message\": \"Unauthorized\"\n}"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Enrollment",
+          "item": [
+            {
+              "name": "POST /agents/register - Success",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "fullName",
+                      "value": "Priscilla Okafor",
+                      "type": "text"
+                    },
+                    {
+                      "key": "email",
+                      "value": "priscilla.agent@example.com",
+                      "type": "text"
+                    },
+                    {
+                      "key": "phone",
+                      "value": "+2348012345678",
+                      "type": "text"
+                    },
+                    {
+                      "key": "address",
+                      "value": "14 Adeyemi Street, Ikeja, Lagos",
+                      "type": "text"
+                    },
+                    {
+                      "key": "cv",
+                      "type": "file",
+                      "src": []
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "{{base_url}}/agents/register",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "agents",
+                    "register"
+                  ]
+                },
+                "description": "Public endpoint, multipart form-data. Attach any file as the CV (not validated by file type) and optionally up to 5 files under supportingDocuments. Sets target_agent_id from the response for the Admin > Review requests below."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 201', () => pm.response.to.have.status(201));",
+                      "const json = pm.response.json();",
+                      "pm.test('status is PENDING_REVIEW', () => pm.expect(json.status).to.eql('PENDING_REVIEW'));",
+                      "pm.collectionVariables.set('target_agent_id', json.id);"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Success - agent created, pending review (201)",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [],
+                    "body": {
+                      "mode": "formdata",
+                      "formdata": [
+                        {
+                          "key": "fullName",
+                          "value": "Priscilla Okafor",
+                          "type": "text"
+                        },
+                        {
+                          "key": "email",
+                          "value": "priscilla.agent@example.com",
+                          "type": "text"
+                        },
+                        {
+                          "key": "phone",
+                          "value": "+2348012345678",
+                          "type": "text"
+                        },
+                        {
+                          "key": "address",
+                          "value": "14 Adeyemi Street, Ikeja, Lagos",
+                          "type": "text"
+                        },
+                        {
+                          "key": "cv",
+                          "type": "file",
+                          "src": []
+                        }
+                      ]
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/agents/register",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "agents",
+                        "register"
+                      ]
+                    },
+                    "description": "Public endpoint, multipart form-data. Attach any file as the CV (not validated by file type) and optionally up to 5 files under supportingDocuments. Sets target_agent_id from the response for the Admin > Review requests below."
+                  },
+                  "status": "Created",
+                  "code": 201,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"id\": \"b7c1a2d3-4e5f-4a6b-8c9d-0e1f2a3b4c5d\",\n  \"email\": \"priscilla.agent@example.com\",\n  \"phone\": \"+2348012345678\",\n  \"fullName\": \"Priscilla Okafor\",\n  \"address\": \"14 Adeyemi Street, Ikeja, Lagos\",\n  \"passwordHash\": null,\n  \"status\": \"PENDING_REVIEW\",\n  \"cvKey\": \"agent-documents/b7c1a2d3-4e5f-4a6b-8c9d-0e1f2a3b4c5d/cv-3f4a5b6c-7d8e-49f0-a1b2-c3d4e5f6a7b8.pdf\",\n  \"supportingDocumentKeys\": [],\n  \"mustChangePassword\": true,\n  \"hasLoggedIn\": false,\n  \"reviewedBy\": null,\n  \"reviewedAt\": null,\n  \"rejectionReason\": null,\n  \"createdAt\": \"2026-09-17T09:00:00.000Z\",\n  \"updatedAt\": \"2026-09-17T09:05:00.000Z\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "POST /agents/register - Duplicate email (409)",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "fullName",
+                      "value": "Priscilla Okafor",
+                      "type": "text"
+                    },
+                    {
+                      "key": "email",
+                      "value": "priscilla.agent@example.com",
+                      "type": "text"
+                    },
+                    {
+                      "key": "phone",
+                      "value": "+2348012345678",
+                      "type": "text"
+                    },
+                    {
+                      "key": "address",
+                      "value": "14 Adeyemi Street, Ikeja, Lagos",
+                      "type": "text"
+                    },
+                    {
+                      "key": "cv",
+                      "type": "file",
+                      "src": []
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "{{base_url}}/agents/register",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "agents",
+                    "register"
+                  ]
+                },
+                "description": "Run 'POST /agents/register - Success' above first so this email is already registered."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 409', () => pm.response.to.have.status(409));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Conflict - email already registered (409)",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [],
+                    "body": {
+                      "mode": "formdata",
+                      "formdata": [
+                        {
+                          "key": "fullName",
+                          "value": "Priscilla Okafor",
+                          "type": "text"
+                        },
+                        {
+                          "key": "email",
+                          "value": "priscilla.agent@example.com",
+                          "type": "text"
+                        },
+                        {
+                          "key": "phone",
+                          "value": "+2348012345678",
+                          "type": "text"
+                        },
+                        {
+                          "key": "address",
+                          "value": "14 Adeyemi Street, Ikeja, Lagos",
+                          "type": "text"
+                        },
+                        {
+                          "key": "cv",
+                          "type": "file",
+                          "src": []
+                        }
+                      ]
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/agents/register",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "agents",
+                        "register"
+                      ]
+                    },
+                    "description": "Run 'POST /agents/register - Success' above first so this email is already registered."
+                  },
+                  "status": "Conflict",
+                  "code": 409,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"statusCode\": 409,\n  \"message\": \"Email already registered\",\n  \"error\": \"Conflict\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "POST /agents/register - Missing cv (400)",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "fullName",
+                      "value": "No CV Agent",
+                      "type": "text"
+                    },
+                    {
+                      "key": "email",
+                      "value": "missing.cv.agent@example.com",
+                      "type": "text"
+                    },
+                    {
+                      "key": "phone",
+                      "value": "+2348012345680",
+                      "type": "text"
+                    },
+                    {
+                      "key": "address",
+                      "value": "1 Missing CV Way, Abuja",
+                      "type": "text"
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "{{base_url}}/agents/register",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "agents",
+                    "register"
+                  ]
+                },
+                "description": "No cv file field attached, so the controller rejects it before any DTO validation of the other fields."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 400', () => pm.response.to.have.status(400));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Bad Request - cv is required (400)",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [],
+                    "body": {
+                      "mode": "formdata",
+                      "formdata": [
+                        {
+                          "key": "fullName",
+                          "value": "No CV Agent",
+                          "type": "text"
+                        },
+                        {
+                          "key": "email",
+                          "value": "missing.cv.agent@example.com",
+                          "type": "text"
+                        },
+                        {
+                          "key": "phone",
+                          "value": "+2348012345680",
+                          "type": "text"
+                        },
+                        {
+                          "key": "address",
+                          "value": "1 Missing CV Way, Abuja",
+                          "type": "text"
+                        }
+                      ]
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/agents/register",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "agents",
+                        "register"
+                      ]
+                    },
+                    "description": "No cv file field attached, so the controller rejects it before any DTO validation of the other fields."
+                  },
+                  "status": "Bad Request",
+                  "code": 400,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"statusCode\": 400,\n  \"message\": \"cv is required\",\n  \"error\": \"Bad Request\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "POST /auth/agent/change-password - Success",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{agent_access_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"currentPassword\": \"{{agent_password}}\",\n  \"newPassword\": \"NewStrongPass123!\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/auth/agent/change-password",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "auth",
+                    "agent",
+                    "change-password"
+                  ]
+                },
+                "description": "Requires agent_access_token from an agent login where mustChangePassword is true (see Agent > Auth > POST /auth/agent/login - Success, after being approved via Admin > Review). Reachable regardless of the mustChangePassword flag. Clears the flag and returns a fresh access token."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));",
+                      "const json = pm.response.json();",
+                      "pm.collectionVariables.set('agent_access_token', json.accessToken);"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Success - password changed (200)",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      },
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{agent_access_token}}"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"currentPassword\": \"{{agent_password}}\",\n  \"newPassword\": \"NewStrongPass123!\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/auth/agent/change-password",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "auth",
+                        "agent",
+                        "change-password"
+                      ]
+                    },
+                    "description": "Requires agent_access_token from an agent login where mustChangePassword is true (see Agent > Auth > POST /auth/agent/login - Success, after being approved via Admin > Review). Reachable regardless of the mustChangePassword flag. Clears the flag and returns a fresh access token."
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"accessToken\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJiN2MxYTJkMy00ZTVmLTRhNmItOGM5ZC0wZTFmMmEzYjRjNWQiLCJ0eXBlIjoiYWdlbnQiLCJtdXN0Q2hhbmdlUGFzc3dvcmQiOmZhbHNlfQ.k3F8pQ2m1N7vXoQz9y0bC4wSz6eD2pM5bH0nV3gYzAB\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "POST /auth/agent/change-password - Wrong current password (401)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{agent_access_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"currentPassword\": \"wrong-password\",\n  \"newPassword\": \"NewStrongPass123!\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/auth/agent/change-password",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "auth",
+                    "agent",
+                    "change-password"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 401', () => pm.response.to.have.status(401));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "401 Unauthorized - wrong current password",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      },
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{agent_access_token}}"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"currentPassword\": \"wrong-password\",\n  \"newPassword\": \"NewStrongPass123!\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/auth/agent/change-password",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "auth",
+                        "agent",
+                        "change-password"
+                      ]
+                    }
+                  },
+                  "status": "Unauthorized",
+                  "code": 401,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"statusCode\": 401,\n  \"message\": \"Current password is incorrect\",\n  \"error\": \"Unauthorized\"\n}"
                 }
               ]
             }
