@@ -37,6 +37,17 @@
 OTP codes are logged to the console by the mock `ConsoleOtpProvider` in
 development — there is no real SMS vendor wired in yet.
 
+## Admin password self-service
+
+`POST /auth/admin/forgot-password` (`{ email }`, always `200` — never reveals
+whether the email exists) emails a one-hour opaque reset token via the
+same mechanism `AdminInvite` already uses. `POST /auth/admin/reset-password`
+(`{ token, newPassword }`) consumes it and force-revokes every existing
+session for that admin, since a reset implies the old password may be
+compromised. `POST /auth/admin/change-password` (Admin JWT,
+`{ currentPassword, newPassword }`) is the voluntary path — it does not
+revoke other sessions.
+
 ## Session endpoints
 
 | Endpoint | Auth | Notes |
