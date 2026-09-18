@@ -24,6 +24,7 @@ import { AgentEnrollmentModule } from './agent-enrollment/agent-enrollment.modul
 import { AdminAgentReviewModule } from './admin-agent-review/admin-agent-review.module';
 import { ReconciliationModule } from './reconciliation/reconciliation.module';
 import { AdminCatalogModule } from './admin-catalog/admin-catalog.module';
+import { ErrorTrackingModule } from './error-tracking/error-tracking.module';
 
 @Module({
   imports: [
@@ -96,6 +97,7 @@ import { AdminCatalogModule } from './admin-catalog/admin-catalog.module';
     AdminAgentReviewModule,
     ReconciliationModule,
     AdminCatalogModule,
+    ErrorTrackingModule,
   ],
   controllers: [AppController],
   providers: [
