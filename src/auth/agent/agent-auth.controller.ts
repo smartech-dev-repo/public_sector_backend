@@ -1,4 +1,5 @@
 import { Body, Controller, HttpCode, Post, Req, UseGuards } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { Request } from 'express';
 import { AgentAuthService } from './agent-auth.service';
 import { AgentLoginDto } from './dto/agent-login.dto';
@@ -16,12 +17,14 @@ export class AgentAuthController {
     private readonly tokenService: TokenService,
   ) {}
 
+  @Throttle({ default: { limit: 5, ttl: 900000 } })
   @Post('login')
   @HttpCode(200)
   login(@Body() dto: AgentLoginDto, @Req() req: Request) {
     return this.agentAuthService.login(dto.email, dto.password, getRequestMetadata(req));
   }
 
+  @Throttle({ default: { limit: 5, ttl: 900000 } })
   @Post('change-password')
   @HttpCode(200)
   @UseGuards(JwtAuthGuard, AgentOnlyGuard)

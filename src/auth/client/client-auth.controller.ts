@@ -1,4 +1,5 @@
 import { Body, Controller, HttpCode, Post, Req } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { Request } from 'express';
 import { ClientAuthService } from './client-auth.service';
 import { RequestOtpDto } from './dto/request-otp.dto';
@@ -9,6 +10,7 @@ import { getRequestMetadata } from '../../common/request-metadata.util';
 export class ClientAuthController {
   constructor(private readonly clientAuthService: ClientAuthService) {}
 
+  @Throttle({ default: { limit: 5, ttl: 900000 } })
   @Post('otp/request')
   @HttpCode(200)
   async requestOtp(@Body() dto: RequestOtpDto) {
@@ -16,6 +18,7 @@ export class ClientAuthController {
     return { sent: true };
   }
 
+  @Throttle({ default: { limit: 5, ttl: 900000 } })
   @Post('otp/verify')
   @HttpCode(200)
   verifyOtp(@Body() dto: VerifyOtpDto, @Req() req: Request) {

@@ -1,6 +1,9 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { BullModule } from '@nestjs/bullmq';
+import { APP_GUARD } from '@nestjs/core';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { ThrottlerStorageRedisService } from '@nest-lab/throttler-storage-redis';
 import { AppController } from './app.controller';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
@@ -48,6 +51,20 @@ import { AdminCatalogModule } from './admin-catalog/admin-catalog.module';
       },
       inject: [ConfigService],
     }),
+    ThrottlerModule.forRootAsync({
+      useFactory: (configService: ConfigService) => ({
+        skipIf: () => configService.get<string>('RATE_LIMITING_ENABLED', 'true') !== 'true',
+        throttlers: [
+          {
+            name: 'default',
+            limit: Number(configService.get<string>('THROTTLE_DEFAULT_LIMIT', '100')),
+            ttl: Number(configService.get<string>('THROTTLE_DEFAULT_TTL_SECONDS', '60')) * 1000,
+          },
+        ],
+        storage: new ThrottlerStorageRedisService(configService.getOrThrow<string>('REDIS_URL')),
+      }),
+      inject: [ConfigService],
+    }),
     PrismaModule,
     AuthModule,
     AdminModule,
@@ -67,6 +84,6 @@ import { AdminCatalogModule } from './admin-catalog/admin-catalog.module';
     AdminCatalogModule,
   ],
   controllers: [AppController],
-  providers: [],
+  providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })
 export class AppModule {}
