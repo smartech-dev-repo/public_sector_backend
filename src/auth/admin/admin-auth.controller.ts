@@ -1,16 +1,20 @@
-import { Body, Controller, HttpCode, Post, Req } from '@nestjs/common';
-import { Throttle } from '@nestjs/throttler';
+import { Body, Controller, HttpCode, Post, Req, UseGuards } from '@nestjs/common';
 import { Request } from 'express';
 import { AdminAuthService } from './admin-auth.service';
 import { AdminLoginDto } from './dto/admin-login.dto';
 import { AcceptInviteDto } from './dto/accept-invite.dto';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
 import { getRequestMetadata } from '../../common/request-metadata.util';
+import { JwtAuthGuard } from '../jwt-auth.guard';
+import { AdminOnlyGuard } from '../admin-only.guard';
+import { JwtPayload } from '../jwt-payload.interface';
 
 @Controller('auth/admin')
 export class AdminAuthController {
   constructor(private readonly adminAuthService: AdminAuthService) {}
 
-  @Throttle({ default: { limit: 5, ttl: 900000 } })
   @Post('login')
   @HttpCode(200)
   login(@Body() dto: AdminLoginDto, @Req() req: Request) {
@@ -26,5 +30,27 @@ export class AdminAuthController {
       dto.fullName,
       getRequestMetadata(req),
     );
+  }
+
+  @Post('forgot-password')
+  @HttpCode(200)
+  async forgotPassword(@Body() dto: ForgotPasswordDto) {
+    await this.adminAuthService.forgotPassword(dto.email);
+    return { sent: true };
+  }
+
+  @Post('reset-password')
+  @HttpCode(200)
+  async resetPassword(@Body() dto: ResetPasswordDto) {
+    await this.adminAuthService.resetPassword(dto.token, dto.newPassword);
+    return { reset: true };
+  }
+
+  @Post('change-password')
+  @HttpCode(200)
+  @UseGuards(JwtAuthGuard, AdminOnlyGuard)
+  async changePassword(@Body() dto: ChangePasswordDto, @Req() req: { user: JwtPayload }) {
+    await this.adminAuthService.changePassword(req.user.sub, dto.currentPassword, dto.newPassword);
+    return { changed: true };
   }
 }
