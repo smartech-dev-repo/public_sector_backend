@@ -15,9 +15,9 @@ export function computeExpectedInstallment(
 
   const monthlyRate = interestRatePercent / 100 / 12;
   if (monthlyRate === 0) {
-    return loanAmount / termMonths;
+    return Math.round((loanAmount / termMonths) * 100) / 100;
   }
 
   const factor = Math.pow(1 + monthlyRate, termMonths);
-  return (loanAmount * monthlyRate * factor) / (factor - 1);
+  return Math.round(((loanAmount * monthlyRate * factor) / (factor - 1)) * 100) / 100;
 }
