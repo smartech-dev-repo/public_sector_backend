@@ -5,11 +5,14 @@ import { DOCUMENT_INGESTION_QUEUE } from './document-ingestion-queue.constants';
 import { DocumentBatchService } from './document-batch.service';
 import { DOCUMENT_PARSERS, DocumentParser } from './document-parser.interface';
 import { FILE_STORAGE_PROVIDER, FileStorageProvider } from '../file-storage/file-storage-provider.interface';
+import { ReconciliationService } from '../reconciliation/reconciliation.service';
 import { DocumentType } from '../generated/prisma/client';
 
 export interface DocumentIngestionJobData {
   batchId: string;
 }
+
+const RECONCILIATION_TRIGGER_TYPES: DocumentType[] = [DocumentType.DISBURSED_LOANS, DocumentType.REPAYMENT_SCHEDULE];
 
 @Processor(DOCUMENT_INGESTION_QUEUE)
 export class DocumentIngestionProcessor extends WorkerHost {
@@ -19,6 +22,7 @@ export class DocumentIngestionProcessor extends WorkerHost {
     private readonly documentBatchService: DocumentBatchService,
     @Inject(FILE_STORAGE_PROVIDER) private readonly fileStorageProvider: FileStorageProvider,
     @Inject(DOCUMENT_PARSERS) private readonly parsers: Record<DocumentType, DocumentParser>,
+    private readonly reconciliationService: ReconciliationService,
   ) {
     super();
   }
@@ -38,6 +42,10 @@ export class DocumentIngestionProcessor extends WorkerHost {
       const fileBuffer = await this.fileStorageProvider.getObject(batch.storageKey);
       const parser = this.parsers[batch.documentType];
       const result = await parser.parse(batch, fileBuffer);
+
+      if (RECONCILIATION_TRIGGER_TYPES.includes(batch.documentType)) {
+        await this.reconciliationService.reconcileAll();
+      }
 
       await this.documentBatchService.markCompleted(batchId, result);
     } catch (error) {
