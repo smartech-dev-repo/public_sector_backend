@@ -25,6 +25,7 @@ import { AdminAgentReviewModule } from './admin-agent-review/admin-agent-review.
 import { ReconciliationModule } from './reconciliation/reconciliation.module';
 import { AdminCatalogModule } from './admin-catalog/admin-catalog.module';
 import { ErrorTrackingModule } from './error-tracking/error-tracking.module';
+import { HealthModule } from './health/health.module';
 
 @Module({
   imports: [
@@ -98,6 +99,7 @@ import { ErrorTrackingModule } from './error-tracking/error-tracking.module';
     ReconciliationModule,
     AdminCatalogModule,
     ErrorTrackingModule,
+    HealthModule,
   ],
   controllers: [AppController],
   providers: [
