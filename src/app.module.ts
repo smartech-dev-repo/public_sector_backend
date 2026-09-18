@@ -18,6 +18,7 @@ import { ClientLoansModule } from './client-loans/client-loans.module';
 import { AgentEnrollmentModule } from './agent-enrollment/agent-enrollment.module';
 import { AdminAgentReviewModule } from './admin-agent-review/admin-agent-review.module';
 import { ReconciliationModule } from './reconciliation/reconciliation.module';
+import { AdminCatalogModule } from './admin-catalog/admin-catalog.module';
 
 @Module({
   imports: [
@@ -63,6 +64,7 @@ import { ReconciliationModule } from './reconciliation/reconciliation.module';
     AgentEnrollmentModule,
     AdminAgentReviewModule,
     ReconciliationModule,
+    AdminCatalogModule,
   ],
   controllers: [AppController],
   providers: [],
