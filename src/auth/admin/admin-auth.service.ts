@@ -61,6 +61,10 @@ export class AdminAuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
+    if (admin.twoFactorEnabled) {
+      return this.beginTwoFactorLogin(admin);
+    }
+
     return this.issueTokens(admin.id, meta);
   }
 
@@ -252,6 +256,61 @@ export class AdminAuthService {
         twoFactorEmailCodeExpiresAt: null,
       },
     });
+  }
+
+  private async beginTwoFactorLogin(admin: { id: string; email: string; twoFactorMethod: TwoFactorMethod | null }) {
+    if (admin.twoFactorMethod === TwoFactorMethod.EMAIL) {
+      const code = generateEmailCode();
+      await this.prisma.adminUser.update({
+        where: { id: admin.id },
+        data: {
+          twoFactorEmailCodeHash: hashToken(code),
+          twoFactorEmailCodeExpiresAt: new Date(Date.now() + TWO_FACTOR_EMAIL_CODE_TTL_MS),
+        },
+      });
+      await this.emailService.send({
+        to: admin.email,
+        subject: 'Your login verification code',
+        html: `<p>Your verification code is: ${code}</p>`,
+        text: `Your verification code is: ${code}`,
+      });
+    }
+
+    const pendingToken = this.tokenService.signTwoFactorPendingToken(admin.id);
+    return { twoFactorRequired: true, method: admin.twoFactorMethod, pendingToken };
+  }
+
+  async verifyTwoFactorLogin(pendingToken: string, code: string, meta?: { userAgent?: string; ip?: string }) {
+    let payload: { sub: string };
+    try {
+      payload = this.tokenService.verifyTwoFactorPendingToken(pendingToken);
+    } catch {
+      throw new UnauthorizedException('Invalid or expired pending token');
+    }
+
+    const admin = await this.prisma.adminUser.findUniqueOrThrow({ where: { id: payload.sub } });
+
+    if (admin.twoFactorMethod === TwoFactorMethod.TOTP) {
+      const result = await verify({ secret: admin.twoFactorSecret!, token: code });
+      if (!result.valid) {
+        throw new UnauthorizedException('Invalid verification code');
+      }
+    } else {
+      if (
+        !admin.twoFactorEmailCodeHash ||
+        !admin.twoFactorEmailCodeExpiresAt ||
+        admin.twoFactorEmailCodeExpiresAt < new Date() ||
+        admin.twoFactorEmailCodeHash !== hashToken(code)
+      ) {
+        throw new UnauthorizedException('Invalid verification code');
+      }
+      await this.prisma.adminUser.update({
+        where: { id: admin.id },
+        data: { twoFactorEmailCodeHash: null, twoFactorEmailCodeExpiresAt: null },
+      });
+    }
+
+    return this.issueTokens(admin.id, meta);
   }
 
   private async issueTokens(adminId: string, meta?: { userAgent?: string; ip?: string }) {
