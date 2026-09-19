@@ -16,4 +16,20 @@ export class TokenService {
       expiresIn: this.configService.get<string>('JWT_ACCESS_TTL', '15m'),
     });
   }
+
+  signTwoFactorPendingToken(sub: string): string {
+    return this.jwtService.sign(
+      { sub },
+      {
+        secret: this.configService.getOrThrow<string>('JWT_TWO_FACTOR_PENDING_SECRET'),
+        expiresIn: '5m',
+      },
+    );
+  }
+
+  verifyTwoFactorPendingToken(token: string): { sub: string } {
+    return this.jwtService.verify(token, {
+      secret: this.configService.getOrThrow<string>('JWT_TWO_FACTOR_PENDING_SECRET'),
+    });
+  }
 }
