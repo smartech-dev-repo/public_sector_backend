@@ -7,6 +7,10 @@ import { AcceptInviteDto } from './dto/accept-invite.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
+import { SetupTwoFactorDto } from './dto/setup-two-factor.dto';
+import { ConfirmTwoFactorDto } from './dto/confirm-two-factor.dto';
+import { DisableTwoFactorDto } from './dto/disable-two-factor.dto';
+import { TwoFactorLoginVerifyDto } from './dto/two-factor-login-verify.dto';
 import { getRequestMetadata } from '../../common/request-metadata.util';
 import { JwtAuthGuard } from '../jwt-auth.guard';
 import { AdminOnlyGuard } from '../admin-only.guard';
@@ -57,5 +61,35 @@ export class AdminAuthController {
   async changePassword(@Body() dto: ChangePasswordDto, @Req() req: { user: JwtPayload }) {
     await this.adminAuthService.changePassword(req.user.sub, dto.currentPassword, dto.newPassword);
     return { changed: true };
+  }
+
+  @Post('2fa/setup')
+  @HttpCode(200)
+  @UseGuards(JwtAuthGuard, AdminOnlyGuard)
+  setupTwoFactor(@Body() dto: SetupTwoFactorDto, @Req() req: { user: JwtPayload }) {
+    return this.adminAuthService.setupTwoFactor(req.user.sub, dto.method);
+  }
+
+  @Post('2fa/confirm')
+  @HttpCode(200)
+  @UseGuards(JwtAuthGuard, AdminOnlyGuard)
+  async confirmTwoFactor(@Body() dto: ConfirmTwoFactorDto, @Req() req: { user: JwtPayload }) {
+    await this.adminAuthService.confirmTwoFactor(req.user.sub, dto.code);
+    return { enabled: true };
+  }
+
+  @Post('2fa/disable')
+  @HttpCode(200)
+  @UseGuards(JwtAuthGuard, AdminOnlyGuard)
+  async disableTwoFactor(@Body() dto: DisableTwoFactorDto, @Req() req: { user: JwtPayload }) {
+    await this.adminAuthService.disableTwoFactor(req.user.sub, dto.currentPassword);
+    return { disabled: true };
+  }
+
+  @Post('2fa/login-verify')
+  @HttpCode(200)
+  @Throttle({ default: { limit: 5, ttl: 900000 } })
+  verifyTwoFactorLogin(@Body() dto: TwoFactorLoginVerifyDto, @Req() req: Request) {
+    return this.adminAuthService.verifyTwoFactorLogin(dto.pendingToken, dto.code, getRequestMetadata(req));
   }
 }
