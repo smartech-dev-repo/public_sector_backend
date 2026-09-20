@@ -4,6 +4,8 @@ import { Request } from 'express';
 import { AgentAuthService } from './agent-auth.service';
 import { AgentLoginDto } from './dto/agent-login.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
 import { getRequestMetadata } from '../../common/request-metadata.util';
 import { JwtAuthGuard } from '../jwt-auth.guard';
 import { AgentOnlyGuard } from '../agent-only.guard';
@@ -22,6 +24,22 @@ export class AgentAuthController {
   @HttpCode(200)
   login(@Body() dto: AgentLoginDto, @Req() req: Request) {
     return this.agentAuthService.login(dto.email, dto.password, getRequestMetadata(req));
+  }
+
+  @Throttle({ default: { limit: 5, ttl: 900000 } })
+  @Post('forgot-password')
+  @HttpCode(200)
+  async forgotPassword(@Body() dto: ForgotPasswordDto) {
+    await this.agentAuthService.forgotPassword(dto.email);
+    return { sent: true };
+  }
+
+  @Throttle({ default: { limit: 5, ttl: 900000 } })
+  @Post('reset-password')
+  @HttpCode(200)
+  async resetPassword(@Body() dto: ResetPasswordDto) {
+    await this.agentAuthService.resetPassword(dto.token, dto.newPassword);
+    return { reset: true };
   }
 
   @Throttle({ default: { limit: 5, ttl: 900000 } })
