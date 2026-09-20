@@ -3,8 +3,12 @@ import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../../prisma/prisma.service';
 import { TokenService } from '../token.service';
 import { SessionService } from '../../session/session.service';
-import { SessionPrincipalType } from '../../generated/prisma/client';
+import { AgentStatus, SessionPrincipalType } from '../../generated/prisma/client';
 import { hashPassword } from '../../common/password-hash.util';
+import { EmailService } from '../../email/email.service';
+import { generateOpaqueToken, hashToken } from '../../common/opaque-token.util';
+
+const PASSWORD_RESET_TTL_MS = 60 * 60 * 1000;
 
 @Injectable()
 export class AgentAuthService {
@@ -12,6 +16,7 @@ export class AgentAuthService {
     private readonly prisma: PrismaService,
     private readonly tokenService: TokenService,
     private readonly sessionService: SessionService,
+    private readonly emailService: EmailService,
   ) {}
 
   async login(email: string, password: string, meta?: { userAgent?: string; ip?: string }) {
@@ -61,5 +66,51 @@ export class AgentAuthService {
       where: { id: agentId },
       data: { passwordHash, mustChangePassword: false },
     });
+  }
+
+  async forgotPassword(email: string): Promise<void> {
+    const agent = await this.prisma.agent.findUnique({ where: { email } });
+    if (!agent || agent.status !== AgentStatus.APPROVED) {
+      return;
+    }
+
+    const token = generateOpaqueToken();
+    await this.prisma.agent.update({
+      where: { id: agent.id },
+      data: {
+        passwordResetTokenHash: hashToken(token),
+        passwordResetTokenExpiresAt: new Date(Date.now() + PASSWORD_RESET_TTL_MS),
+      },
+    });
+
+    await this.emailService.send({
+      to: agent.email,
+      subject: 'Reset your password',
+      html: `<p>Use this token to reset your password: ${token}</p>`,
+      text: `Use this token to reset your password: ${token}`,
+    });
+  }
+
+  async resetPassword(token: string, newPassword: string): Promise<void> {
+    const agent = await this.prisma.agent.findFirst({
+      where: { passwordResetTokenHash: hashToken(token) },
+    });
+
+    if (!agent || !agent.passwordResetTokenExpiresAt || agent.passwordResetTokenExpiresAt < new Date()) {
+      throw new UnauthorizedException('Invalid or expired reset token');
+    }
+
+    const passwordHash = await hashPassword(newPassword);
+    await this.prisma.agent.update({
+      where: { id: agent.id },
+      data: {
+        passwordHash,
+        mustChangePassword: false,
+        passwordResetTokenHash: null,
+        passwordResetTokenExpiresAt: null,
+      },
+    });
+
+    await this.sessionService.revokeAllForPrincipal(SessionPrincipalType.AGENT, agent.id, 'password_reset');
   }
 }

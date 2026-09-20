@@ -4,29 +4,39 @@ import { AgentAuthService } from './agent-auth.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { TokenService } from '../token.service';
 import { SessionService } from '../../session/session.service';
+import { EmailService } from '../../email/email.service';
 
 describe('AgentAuthService', () => {
   let service: AgentAuthService;
-  let prisma: { agent: { findUnique: jest.Mock; findUniqueOrThrow: jest.Mock; update: jest.Mock } };
+  let prisma: {
+    agent: { findUnique: jest.Mock; findUniqueOrThrow: jest.Mock; findFirst: jest.Mock; update: jest.Mock };
+  };
   let tokenService: TokenService;
-  let sessionService: { createSession: jest.Mock };
+  let sessionService: { createSession: jest.Mock; revokeAllForPrincipal: jest.Mock };
+  let emailService: { send: jest.Mock };
 
   beforeEach(() => {
     prisma = {
       agent: {
         findUnique: jest.fn(),
         findUniqueOrThrow: jest.fn(),
+        findFirst: jest.fn(),
         update: jest.fn().mockResolvedValue(undefined),
       },
     };
     tokenService = {
       signAccessToken: jest.fn().mockReturnValue('access-token'),
     } as unknown as TokenService;
-    sessionService = { createSession: jest.fn().mockResolvedValue('refresh-token') };
+    sessionService = {
+      createSession: jest.fn().mockResolvedValue('refresh-token'),
+      revokeAllForPrincipal: jest.fn().mockResolvedValue(undefined),
+    };
+    emailService = { send: jest.fn().mockResolvedValue(undefined) };
     service = new AgentAuthService(
       prisma as unknown as PrismaService,
       tokenService,
       sessionService as unknown as SessionService,
+      emailService as unknown as EmailService,
     );
   });
 
@@ -123,6 +133,78 @@ describe('AgentAuthService', () => {
       expect(updateCall.where).toEqual({ id: 'agent-1' });
       expect(updateCall.data.mustChangePassword).toBe(false);
       expect(updateCall.data.passwordHash).not.toBe(passwordHash);
+    });
+  });
+
+  describe('forgotPassword', () => {
+    it('does nothing observable when the email does not match an approved agent', async () => {
+      prisma.agent.findUnique.mockResolvedValue(null);
+
+      await service.forgotPassword('nobody@example.com');
+
+      expect(prisma.agent.update).not.toHaveBeenCalled();
+      expect(emailService.send).not.toHaveBeenCalled();
+    });
+
+    it('does nothing observable for a non-approved agent', async () => {
+      prisma.agent.findUnique.mockResolvedValue({ id: 'agent-1', email: 'a@example.com', status: 'PENDING_REVIEW' });
+
+      await service.forgotPassword('a@example.com');
+
+      expect(prisma.agent.update).not.toHaveBeenCalled();
+      expect(emailService.send).not.toHaveBeenCalled();
+    });
+
+    it('generates a reset token, stores its hash, and emails it', async () => {
+      prisma.agent.findUnique.mockResolvedValue({ id: 'agent-1', email: 'a@example.com', status: 'APPROVED' });
+
+      await service.forgotPassword('a@example.com');
+
+      expect(prisma.agent.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'agent-1' },
+          data: expect.objectContaining({
+            passwordResetTokenHash: expect.any(String),
+            passwordResetTokenExpiresAt: expect.any(Date),
+          }),
+        }),
+      );
+      expect(emailService.send).toHaveBeenCalledWith(expect.objectContaining({ to: 'a@example.com' }));
+    });
+  });
+
+  describe('resetPassword', () => {
+    it('rejects an unknown or expired token', async () => {
+      prisma.agent.findFirst.mockResolvedValue(null);
+      await expect(service.resetPassword('bad-token', 'new-password-123')).rejects.toThrow(UnauthorizedException);
+    });
+
+    it('rejects a token past its expiry', async () => {
+      prisma.agent.findFirst.mockResolvedValue({
+        id: 'agent-1',
+        passwordResetTokenExpiresAt: new Date(Date.now() - 1000),
+      });
+      await expect(service.resetPassword('expired-token', 'new-password-123')).rejects.toThrow(UnauthorizedException);
+    });
+
+    it('hashes the new password, clears mustChangePassword and the token, and revokes all sessions', async () => {
+      prisma.agent.findFirst.mockResolvedValue({
+        id: 'agent-1',
+        passwordResetTokenExpiresAt: new Date(Date.now() + 1000 * 60 * 60),
+      });
+
+      await service.resetPassword('good-token', 'new-password-123');
+
+      expect(prisma.agent.update).toHaveBeenCalledWith({
+        where: { id: 'agent-1' },
+        data: {
+          passwordHash: expect.any(String),
+          mustChangePassword: false,
+          passwordResetTokenHash: null,
+          passwordResetTokenExpiresAt: null,
+        },
+      });
+      expect(sessionService.revokeAllForPrincipal).toHaveBeenCalledWith('AGENT', 'agent-1', 'password_reset');
     });
   });
 });
