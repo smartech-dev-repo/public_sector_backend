@@ -1,5 +1,5 @@
 import { UnauthorizedException } from '@nestjs/common';
-import * as bcrypt from 'bcrypt';
+import { hashPassword } from '../../common/password-hash.util';
 import { AgentAuthService } from './agent-auth.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { TokenService } from '../token.service';
@@ -32,7 +32,7 @@ describe('AgentAuthService', () => {
 
   describe('login', () => {
     it('rejects an agent that is still PENDING_REVIEW', async () => {
-      const passwordHash = await bcrypt.hash('secret-password', 12);
+      const passwordHash = await hashPassword('secret-password');
       prisma.agent.findUnique.mockResolvedValue({
         id: 'agent-1',
         email: 'agent@example.com',
@@ -59,7 +59,7 @@ describe('AgentAuthService', () => {
     });
 
     it('issues tokens, marks hasLoggedIn, and includes mustChangePassword in the payload', async () => {
-      const passwordHash = await bcrypt.hash('secret-password', 12);
+      const passwordHash = await hashPassword('secret-password');
       prisma.agent.findUnique.mockResolvedValue({
         id: 'agent-1',
         email: 'agent@example.com',
@@ -104,7 +104,7 @@ describe('AgentAuthService', () => {
 
   describe('changePassword', () => {
     it('rejects an incorrect current password', async () => {
-      const passwordHash = await bcrypt.hash('correct-password', 12);
+      const passwordHash = await hashPassword('correct-password');
       prisma.agent.findUniqueOrThrow.mockResolvedValue({ id: 'agent-1', passwordHash });
 
       await expect(
@@ -114,7 +114,7 @@ describe('AgentAuthService', () => {
     });
 
     it('hashes the new password and clears mustChangePassword', async () => {
-      const passwordHash = await bcrypt.hash('correct-password', 12);
+      const passwordHash = await hashPassword('correct-password');
       prisma.agent.findUniqueOrThrow.mockResolvedValue({ id: 'agent-1', passwordHash });
 
       await service.changePassword('agent-1', 'correct-password', 'new-password-123');

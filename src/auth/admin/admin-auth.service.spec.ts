@@ -1,5 +1,5 @@
 import { ConflictException, UnauthorizedException } from '@nestjs/common';
-import * as bcrypt from 'bcrypt';
+import { hashPassword } from '../../common/password-hash.util';
 import { verify as otplibVerify } from 'otplib';
 import { AdminAuthService } from './admin-auth.service';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -59,7 +59,7 @@ describe('AdminAuthService', () => {
   });
 
   it('rejects a wrong password', async () => {
-    const passwordHash = await bcrypt.hash('correct-password', 12);
+    const passwordHash = await hashPassword('correct-password');
     prisma.adminUser.findUnique.mockResolvedValue({
       id: 'admin-1',
       email: 'admin@example.com',
@@ -73,7 +73,7 @@ describe('AdminAuthService', () => {
   });
 
   it('issues tokens via SessionService with flattened permissions on a correct login', async () => {
-    const passwordHash = await bcrypt.hash('correct-password', 12);
+    const passwordHash = await hashPassword('correct-password');
     prisma.adminUser.findUnique
       .mockResolvedValueOnce({ id: 'admin-1', email: 'admin@example.com', passwordHash, isActive: true })
       .mockResolvedValueOnce({
@@ -217,7 +217,7 @@ describe('AdminAuthService', () => {
 
   describe('changePassword', () => {
     it('rejects an incorrect current password', async () => {
-      const passwordHash = await bcrypt.hash('correct-password', 12);
+      const passwordHash = await hashPassword('correct-password');
       prisma.adminUser.findUniqueOrThrow.mockResolvedValue({ id: 'admin-1', passwordHash });
 
       await expect(
@@ -228,7 +228,7 @@ describe('AdminAuthService', () => {
     });
 
     it('hashes the new password without revoking sessions', async () => {
-      const passwordHash = await bcrypt.hash('correct-password', 12);
+      const passwordHash = await hashPassword('correct-password');
       prisma.adminUser.findUniqueOrThrow.mockResolvedValue({ id: 'admin-1', passwordHash });
 
       await service.changePassword('admin-1', 'correct-password', 'new-password-123');
@@ -368,7 +368,7 @@ describe('AdminAuthService', () => {
 
   describe('disableTwoFactor', () => {
     it('rejects an incorrect current password', async () => {
-      const passwordHash = await bcrypt.hash('correct-password', 12);
+      const passwordHash = await hashPassword('correct-password');
       prisma.adminUser.findUniqueOrThrow.mockResolvedValue({ id: 'admin-1', passwordHash, twoFactorEnabled: true });
 
       await expect(service.disableTwoFactor('admin-1', 'wrong-password')).rejects.toThrow(UnauthorizedException);
@@ -376,14 +376,14 @@ describe('AdminAuthService', () => {
     });
 
     it('throws ConflictException when 2FA is not enabled', async () => {
-      const passwordHash = await bcrypt.hash('correct-password', 12);
+      const passwordHash = await hashPassword('correct-password');
       prisma.adminUser.findUniqueOrThrow.mockResolvedValue({ id: 'admin-1', passwordHash, twoFactorEnabled: false });
 
       await expect(service.disableTwoFactor('admin-1', 'correct-password')).rejects.toThrow(ConflictException);
     });
 
     it('clears all two-factor fields on success', async () => {
-      const passwordHash = await bcrypt.hash('correct-password', 12);
+      const passwordHash = await hashPassword('correct-password');
       prisma.adminUser.findUniqueOrThrow.mockResolvedValue({ id: 'admin-1', passwordHash, twoFactorEnabled: true });
 
       await service.disableTwoFactor('admin-1', 'correct-password');
@@ -405,7 +405,7 @@ describe('AdminAuthService', () => {
 
   describe('login with 2FA enabled', () => {
     it('returns a pending token instead of real tokens for a TOTP admin, without sending email', async () => {
-      const passwordHash = await bcrypt.hash('correct-password', 12);
+      const passwordHash = await hashPassword('correct-password');
       prisma.adminUser.findUnique.mockResolvedValue({
         id: 'admin-1',
         email: 'admin@example.com',
@@ -426,7 +426,7 @@ describe('AdminAuthService', () => {
     });
 
     it('emails a code and returns a pending token for an EMAIL admin', async () => {
-      const passwordHash = await bcrypt.hash('correct-password', 12);
+      const passwordHash = await hashPassword('correct-password');
       prisma.adminUser.findUnique.mockResolvedValue({
         id: 'admin-1',
         email: 'admin@example.com',

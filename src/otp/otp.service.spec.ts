@@ -2,6 +2,7 @@ import { InternalServerErrorException } from '@nestjs/common';
 import { OtpService } from './otp.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { OtpProvider } from './otp-provider.interface';
+import { hashPassword } from '../common/password-hash.util';
 
 function fakeProvider(name: string, send: jest.Mock): OtpProvider {
   return { name, send };
@@ -89,8 +90,7 @@ describe('OtpService', () => {
     service = new OtpService(prisma as unknown as PrismaService, [
       fakeProvider('primary', jest.fn()),
     ]);
-    const bcrypt = await import('bcrypt');
-    const codeHash = await bcrypt.hash('123456', 12);
+    const codeHash = await hashPassword('123456');
     prisma.otpCode.findFirst.mockResolvedValue({
       id: 'otp-1',
       codeHash,
