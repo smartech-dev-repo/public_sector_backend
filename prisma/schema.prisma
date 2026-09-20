@@ -99,6 +99,8 @@ model Agent {
   rejectionReason        String?
   createdAt              DateTime    @default(now())
   updatedAt              DateTime    @updatedAt
+  passwordResetTokenHash      String?
+  passwordResetTokenExpiresAt DateTime?
 }
 
 enum ClientStatus {
