@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import * as request from 'supertest';
-import * as bcrypt from 'bcrypt';
+import { hashPassword } from '../src/common/password-hash.util';
 import { AppModule } from '../src/app.module';
 import { PrismaService } from '../src/prisma/prisma.service';
 import { EMAIL_PROVIDERS, EmailMessage } from '../src/email/email-provider.interface';
@@ -34,7 +34,7 @@ describe('Admin password self-service (e2e)', () => {
     await app.init();
     prisma = moduleFixture.get(PrismaService);
 
-    const passwordHash = await bcrypt.hash(originalPassword, 12);
+    const passwordHash = await hashPassword(originalPassword);
     const admin = await prisma.adminUser.create({
       data: { email, passwordHash, fullName: 'E2E Password Test Admin' },
     });

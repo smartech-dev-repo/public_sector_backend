@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import * as request from 'supertest';
-import * as bcrypt from 'bcrypt';
+import { hashPassword } from '../src/common/password-hash.util';
 import { generateSecret, generate } from 'otplib';
 import { AppModule } from '../src/app.module';
 import { PrismaService } from '../src/prisma/prisma.service';
@@ -39,7 +39,7 @@ describe('Admin two-factor authentication (e2e)', () => {
   });
 
   async function createAdminAndLogin(email: string) {
-    const passwordHash = await bcrypt.hash(password, 12);
+    const passwordHash = await hashPassword(password);
     const admin = await prisma.adminUser.create({
       data: { email, passwordHash, fullName: 'E2E 2FA Test Admin' },
     });

@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import * as request from 'supertest';
-import * as bcrypt from 'bcrypt';
+import { hashPassword } from '../src/common/password-hash.util';
 import { AppModule } from '../src/app.module';
 import { PrismaService } from '../src/prisma/prisma.service';
 
@@ -46,7 +46,7 @@ describe('Admin role assignment (e2e)', () => {
     testRoleId = testRole.id;
 
     const secondAdminEmail = `e2e-deactivate-${Date.now()}@example.com`;
-    const secondAdminPasswordHash = await bcrypt.hash('Test-Password-123!', 12);
+    const secondAdminPasswordHash = await hashPassword('Test-Password-123!');
     const secondAdmin = await prisma.adminUser.create({
       data: { email: secondAdminEmail, passwordHash: secondAdminPasswordHash, fullName: 'E2E Deactivate Target' },
     });
