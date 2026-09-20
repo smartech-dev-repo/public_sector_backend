@@ -1,9 +1,9 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
 import { generateOpaqueToken } from '../common/opaque-token.util';
+import { hashPassword } from '../common/password-hash.util';
 import { Agent, AgentStatus } from '../generated/prisma/client';
 
 @Injectable()
@@ -76,7 +76,7 @@ export class AdminAgentReviewService {
 
   private async issueCredentials(agent: Agent, options: { reviewerId?: string }): Promise<void> {
     const temporaryPassword = generateOpaqueToken();
-    const passwordHash = await bcrypt.hash(temporaryPassword, 12);
+    const passwordHash = await hashPassword(temporaryPassword);
 
     await this.prisma.agent.update({
       where: { id: agent.id },

@@ -4,6 +4,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { TokenService } from '../token.service';
 import { SessionService } from '../../session/session.service';
 import { SessionPrincipalType } from '../../generated/prisma/client';
+import { hashPassword } from '../../common/password-hash.util';
 
 @Injectable()
 export class AgentAuthService {
@@ -55,7 +56,7 @@ export class AgentAuthService {
       throw new UnauthorizedException('Current password is incorrect');
     }
 
-    const passwordHash = await bcrypt.hash(newPassword, 12);
+    const passwordHash = await hashPassword(newPassword);
     await this.prisma.agent.update({
       where: { id: agentId },
       data: { passwordHash, mustChangePassword: false },

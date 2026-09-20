@@ -7,6 +7,7 @@ import { SessionService } from '../../session/session.service';
 import { AdminInviteService } from '../../admin-invite/admin-invite.service';
 import { EmailService } from '../../email/email.service';
 import { generateOpaqueToken, hashToken } from '../../common/opaque-token.util';
+import { hashPassword } from '../../common/password-hash.util';
 import { generateEmailCode } from '../../common/generate-email-code.util';
 import { JwtPayload } from '../jwt-payload.interface';
 import { SessionPrincipalType, TwoFactorMethod } from '../../generated/prisma/client';
@@ -75,7 +76,7 @@ export class AdminAuthService {
     meta?: { userAgent?: string; ip?: string },
   ) {
     const invite = await this.adminInviteService.findValidByToken(token);
-    const passwordHash = await bcrypt.hash(password, 12);
+    const passwordHash = await hashPassword(password);
 
     const admin = await this.prisma.adminUser.create({
       data: {
@@ -123,7 +124,7 @@ export class AdminAuthService {
       throw new UnauthorizedException('Invalid or expired reset token');
     }
 
-    const passwordHash = await bcrypt.hash(newPassword, 12);
+    const passwordHash = await hashPassword(newPassword);
     await this.prisma.adminUser.update({
       where: { id: admin.id },
       data: {
@@ -144,7 +145,7 @@ export class AdminAuthService {
       throw new UnauthorizedException('Current password is incorrect');
     }
 
-    const passwordHash = await bcrypt.hash(newPassword, 12);
+    const passwordHash = await hashPassword(newPassword);
     await this.prisma.adminUser.update({
       where: { id: adminId },
       data: { passwordHash },
