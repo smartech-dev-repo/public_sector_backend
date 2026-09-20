@@ -157,6 +157,18 @@
     {
       "key": "target_agent_id",
       "value": ""
+    },
+    {
+      "key": "admin_2fa_secret",
+      "value": ""
+    },
+    {
+      "key": "admin_2fa_pending_token",
+      "value": ""
+    },
+    {
+      "key": "admin_2fa_code",
+      "value": ""
     }
   ],
   "item": [
@@ -1066,6 +1078,794 @@
                   ],
                   "cookie": [],
                   "body": "{\n  \"statusCode\": 401,\n  \"message\": \"Current password is incorrect\",\n  \"error\": \"Unauthorized\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "POST /auth/admin/2fa/setup - TOTP",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"method\": \"TOTP\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/auth/admin/2fa/setup",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "auth",
+                    "admin",
+                    "2fa",
+                    "setup"
+                  ]
+                },
+                "description": "Begins TOTP enrollment for the currently logged-in admin (admin_access_token) — returns a base32 secret and an otpauth:// URI to enter into an authenticator app. Nothing is enabled yet until a real generated code is confirmed via 'POST /auth/admin/2fa/confirm - Success'. 409 if this admin already has 2FA enabled (see 'POST /auth/admin/2fa/setup - Already enabled (409)'). On success, captures the secret into the admin_2fa_secret collection variable."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));",
+                      "const json = pm.response.json();",
+                      "pm.test('returns TOTP secret and otpauth URL', () => { pm.expect(json.method).to.eql('TOTP'); pm.expect(json.secret).to.be.a('string'); pm.expect(json.otpauthUrl).to.be.a('string'); });",
+                      "pm.collectionVariables.set('admin_2fa_secret', json.secret);"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "OK",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      },
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"method\": \"TOTP\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/auth/admin/2fa/setup",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "auth",
+                        "admin",
+                        "2fa",
+                        "setup"
+                      ]
+                    },
+                    "description": "Begins TOTP enrollment for the currently logged-in admin (admin_access_token) — returns a base32 secret and an otpauth:// URI to enter into an authenticator app. Nothing is enabled yet until a real generated code is confirmed via 'POST /auth/admin/2fa/confirm - Success'. 409 if this admin already has 2FA enabled (see 'POST /auth/admin/2fa/setup - Already enabled (409)'). On success, captures the secret into the admin_2fa_secret collection variable."
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"method\": \"TOTP\",\n  \"secret\": \"JBSWY3DPEHPK3PXP\",\n  \"otpauthUrl\": \"otpauth://totp/Public%20Sector%20Backend:admin%40example.com?secret=JBSWY3DPEHPK3PXP&issuer=Public%20Sector%20Backend\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "POST /auth/admin/2fa/setup - EMAIL",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"method\": \"EMAIL\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/auth/admin/2fa/setup",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "auth",
+                    "admin",
+                    "2fa",
+                    "setup"
+                  ]
+                },
+                "description": "Begins EMAIL 2FA enrollment — emails a 6-digit verification code via the (mock console) email provider. Check the running server's console log for a line like 'Email to ... — Your two-factor setup code\\nYour verification code is: <code>', then paste it into the admin_2fa_code collection variable before running 'POST /auth/admin/2fa/confirm - Success'."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));",
+                      "pm.test('reports EMAIL method', () => { pm.expect(pm.response.json()).to.eql({ method: 'EMAIL' }); });"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "OK",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      },
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"method\": \"EMAIL\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/auth/admin/2fa/setup",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "auth",
+                        "admin",
+                        "2fa",
+                        "setup"
+                      ]
+                    },
+                    "description": "Begins EMAIL 2FA enrollment — emails a 6-digit verification code via the (mock console) email provider. Check the running server's console log for a line like 'Email to ... — Your two-factor setup code\\nYour verification code is: <code>', then paste it into the admin_2fa_code collection variable before running 'POST /auth/admin/2fa/confirm - Success'."
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"method\": \"EMAIL\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "POST /auth/admin/2fa/setup - Already enabled (409)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"method\": \"TOTP\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/auth/admin/2fa/setup",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "auth",
+                    "admin",
+                    "2fa",
+                    "setup"
+                  ]
+                },
+                "description": "Run this after 2FA has already been confirmed as enabled for admin_access_token's admin (e.g. after 'POST /auth/admin/2fa/confirm - Success') — setup is rejected once 2FA is already active, regardless of which method is requested."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 409', () => pm.response.to.have.status(409));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Conflict",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      },
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"method\": \"TOTP\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/auth/admin/2fa/setup",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "auth",
+                        "admin",
+                        "2fa",
+                        "setup"
+                      ]
+                    },
+                    "description": "Run this after 2FA has already been confirmed as enabled for admin_access_token's admin (e.g. after 'POST /auth/admin/2fa/confirm - Success') — setup is rejected once 2FA is already active, regardless of which method is requested."
+                  },
+                  "status": "Conflict",
+                  "code": 409,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"statusCode\": 409,\n  \"message\": \"Two-factor authentication is already enabled\",\n  \"error\": \"Conflict\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "POST /auth/admin/2fa/confirm - Success",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"code\": \"{{admin_2fa_code}}\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/auth/admin/2fa/confirm",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "auth",
+                    "admin",
+                    "2fa",
+                    "confirm"
+                  ]
+                },
+                "description": "Activates 2FA using a real code — for TOTP, generate one from the admin_2fa_secret collection variable (an authenticator app, or 'otplib'/'generate({ secret })'); for EMAIL, use the code captured from the console-logged setup email. Paste the code into the admin_2fa_code collection variable first. Only activates on a real, successfully-verified code, so a botched setup never locks anyone out."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));",
+                      "pm.test('reports enabled', () => { pm.expect(pm.response.json()).to.eql({ enabled: true }); });"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "OK",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      },
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"code\": \"{{admin_2fa_code}}\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/auth/admin/2fa/confirm",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "auth",
+                        "admin",
+                        "2fa",
+                        "confirm"
+                      ]
+                    },
+                    "description": "Activates 2FA using a real code — for TOTP, generate one from the admin_2fa_secret collection variable (an authenticator app, or 'otplib'/'generate({ secret })'); for EMAIL, use the code captured from the console-logged setup email. Paste the code into the admin_2fa_code collection variable first. Only activates on a real, successfully-verified code, so a botched setup never locks anyone out."
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"enabled\": true\n}"
+                }
+              ]
+            },
+            {
+              "name": "POST /auth/admin/2fa/confirm - Invalid code (401)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"code\": \"000000\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/auth/admin/2fa/confirm",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "auth",
+                    "admin",
+                    "2fa",
+                    "confirm"
+                  ]
+                },
+                "description": "Run this while a TOTP setup is pending (right after 'POST /auth/admin/2fa/setup - TOTP') — a wrong code is rejected without enabling 2FA."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 401', () => pm.response.to.have.status(401));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Unauthorized",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      },
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"code\": \"000000\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/auth/admin/2fa/confirm",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "auth",
+                        "admin",
+                        "2fa",
+                        "confirm"
+                      ]
+                    },
+                    "description": "Run this while a TOTP setup is pending (right after 'POST /auth/admin/2fa/setup - TOTP') — a wrong code is rejected without enabling 2FA."
+                  },
+                  "status": "Unauthorized",
+                  "code": 401,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"statusCode\": 401,\n  \"message\": \"Invalid verification code\",\n  \"error\": \"Unauthorized\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "POST /auth/admin/2fa/disable - Success",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"currentPassword\": \"{{admin_password}}\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/auth/admin/2fa/disable",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "auth",
+                    "admin",
+                    "2fa",
+                    "disable"
+                  ]
+                },
+                "description": "Disables 2FA for the currently logged-in admin (admin_access_token) once it's enabled — requires re-confirming the current password. Unlike reset-password, this does not revoke other sessions."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));",
+                      "pm.test('reports disabled', () => { pm.expect(pm.response.json()).to.eql({ disabled: true }); });"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "OK",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      },
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"currentPassword\": \"{{admin_password}}\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/auth/admin/2fa/disable",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "auth",
+                        "admin",
+                        "2fa",
+                        "disable"
+                      ]
+                    },
+                    "description": "Disables 2FA for the currently logged-in admin (admin_access_token) once it's enabled — requires re-confirming the current password. Unlike reset-password, this does not revoke other sessions."
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"disabled\": true\n}"
+                }
+              ]
+            },
+            {
+              "name": "POST /auth/admin/login - Two-factor required",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"{{admin_email}}\",\n  \"password\": \"{{admin_password}}\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/auth/admin/login",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "auth",
+                    "admin",
+                    "login"
+                  ]
+                },
+                "description": "A variant of 'POST /auth/admin/login - Success' showing the response shape once 2FA is enabled for this admin — real tokens are withheld and a short-lived pendingToken is returned instead. Run this after 2FA has been confirmed as enabled (e.g. via the TOTP setup+confirm requests above). On success, captures the pendingToken into the admin_2fa_pending_token collection variable for 'POST /auth/admin/2fa/login-verify - Success'."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));",
+                      "const json = pm.response.json();",
+                      "pm.test('reports two-factor required', () => { pm.expect(json.twoFactorRequired).to.eql(true); pm.expect(json.pendingToken).to.be.a('string'); });",
+                      "pm.collectionVariables.set('admin_2fa_pending_token', json.pendingToken);"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "OK",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"email\": \"{{admin_email}}\",\n  \"password\": \"{{admin_password}}\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/auth/admin/login",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "auth",
+                        "admin",
+                        "login"
+                      ]
+                    },
+                    "description": "A variant of 'POST /auth/admin/login - Success' showing the response shape once 2FA is enabled for this admin — real tokens are withheld and a short-lived pendingToken is returned instead. Run this after 2FA has been confirmed as enabled (e.g. via the TOTP setup+confirm requests above). On success, captures the pendingToken into the admin_2fa_pending_token collection variable for 'POST /auth/admin/2fa/login-verify - Success'."
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"twoFactorRequired\": true,\n  \"method\": \"TOTP\",\n  \"pendingToken\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI5ZjhjMmQ3YS1hYjEyLTQzZGYtOTQ1Ni0xMjNhYmM0NTZkZWYifQ.fake-signature-do-not-use\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "POST /auth/admin/2fa/login-verify - Success",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"pendingToken\": \"{{admin_2fa_pending_token}}\",\n  \"code\": \"{{admin_2fa_code}}\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/auth/admin/2fa/login-verify",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "auth",
+                    "admin",
+                    "2fa",
+                    "login-verify"
+                  ]
+                },
+                "description": "Completes a 2FA-gated login using the pendingToken captured from 'POST /auth/admin/login - Two-factor required' and a fresh real code (generate a new one from admin_2fa_secret for TOTP, since a previously-used code may already be stale) — issues real tokens exactly like a normal login. pendingToken is signed with a separate secret (JWT_TWO_FACTOR_PENDING_SECRET), so it cannot be used as a real Bearer token anywhere."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));",
+                      "const json = pm.response.json();",
+                      "pm.test('has tokens', () => { pm.expect(json.accessToken).to.be.a('string'); pm.expect(json.refreshToken).to.be.a('string'); });",
+                      "pm.collectionVariables.set('admin_access_token', json.accessToken);",
+                      "pm.collectionVariables.set('admin_refresh_token', json.refreshToken);"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "OK",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"pendingToken\": \"{{admin_2fa_pending_token}}\",\n  \"code\": \"{{admin_2fa_code}}\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/auth/admin/2fa/login-verify",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "auth",
+                        "admin",
+                        "2fa",
+                        "login-verify"
+                      ]
+                    },
+                    "description": "Completes a 2FA-gated login using the pendingToken captured from 'POST /auth/admin/login - Two-factor required' and a fresh real code (generate a new one from admin_2fa_secret for TOTP, since a previously-used code may already be stale) — issues real tokens exactly like a normal login. pendingToken is signed with a separate secret (JWT_TWO_FACTOR_PENDING_SECRET), so it cannot be used as a real Bearer token anywhere."
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"accessToken\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI5ZjhjMmQ3YS1hYjEyLTQzZGYtOTQ1Ni0xMjNhYmM0NTZkZWYiLCJ0eXBlIjoiYWRtaW4iLCJwZXJtaXNzaW9ucyI6WyJhdWRpdDpyZWFkIl19.fake-signature-do-not-use\",\n  \"refreshToken\": \"N2QwYjNlZmMtZmFrZS1yZWZyZXNoLXRva2VuLWV4YW1wbGUtb25seQ\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "POST /auth/admin/2fa/login-verify - Invalid code (401)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"pendingToken\": \"{{admin_2fa_pending_token}}\",\n  \"code\": \"000000\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/auth/admin/2fa/login-verify",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "auth",
+                    "admin",
+                    "2fa",
+                    "login-verify"
+                  ]
+                },
+                "description": "A wrong code is rejected without invalidating the pending token — admin_2fa_pending_token can still be retried with a correct code afterward (see 'POST /auth/admin/2fa/login-verify - Success')."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 401', () => pm.response.to.have.status(401));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Unauthorized",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"pendingToken\": \"{{admin_2fa_pending_token}}\",\n  \"code\": \"000000\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/auth/admin/2fa/login-verify",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "auth",
+                        "admin",
+                        "2fa",
+                        "login-verify"
+                      ]
+                    },
+                    "description": "A wrong code is rejected without invalidating the pending token — admin_2fa_pending_token can still be retried with a correct code afterward (see 'POST /auth/admin/2fa/login-verify - Success')."
+                  },
+                  "status": "Unauthorized",
+                  "code": 401,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"statusCode\": 401,\n  \"message\": \"Invalid verification code\",\n  \"error\": \"Unauthorized\"\n}"
                 }
               ]
             }

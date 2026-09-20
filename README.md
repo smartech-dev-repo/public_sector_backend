@@ -48,6 +48,20 @@ compromised. `POST /auth/admin/change-password` (Admin JWT,
 `{ currentPassword, newPassword }`) is the voluntary path — it does not
 revoke other sessions.
 
+## Admin two-factor authentication
+
+An admin can enable 2FA via `POST /auth/admin/2fa/setup` (`{ method: 'TOTP' | 'EMAIL' }`,
+`409` if already enabled), confirm it via `POST /auth/admin/2fa/confirm`
+(`{ code }` — only activates on a real, successfully-verified code, so a
+botched setup never locks anyone out), and turn it off via
+`POST /auth/admin/2fa/disable` (`{ currentPassword }`, requires
+re-confirming the password). Once enabled, `POST /auth/admin/login`
+returns `{ twoFactorRequired: true, method, pendingToken }` instead of
+real tokens — `pendingToken` is signed with a **separate secret**
+(`JWT_TWO_FACTOR_PENDING_SECRET`), so it's cryptographically incapable of
+being used as a real Bearer token anywhere. `POST /auth/admin/2fa/login-verify`
+(`{ pendingToken, code }`) completes the login and issues real tokens.
+
 ## Session endpoints
 
 | Endpoint | Auth | Notes |

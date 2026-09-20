@@ -8,6 +8,7 @@ import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
 import { OTP_PROVIDERS, OtpProvider } from './otp-provider.interface';
+import { hashPassword } from '../common/password-hash.util';
 
 function generateCode(): string {
   return Math.floor(100000 + Math.random() * 900000).toString();
@@ -48,7 +49,7 @@ export class OtpService {
 
   async request(phone: string): Promise<void> {
     const code = generateCode();
-    const codeHash = await bcrypt.hash(code, 12);
+    const codeHash = await hashPassword(code);
     const expiresAt = new Date(Date.now() + this.ttlSeconds() * 1000);
 
     await this.prisma.otpCode.create({

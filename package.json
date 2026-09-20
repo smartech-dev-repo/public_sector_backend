@@ -42,6 +42,7 @@
     "exceljs": "^4.4.0",
     "ioredis": "^6.0.0",
     "nestjs-pino": "^4.6.1",
+    "otplib": "^13.5.0",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
     "pg": "^8.23.0",
@@ -94,7 +95,7 @@
       "^.+\\.(t|j)s$": "ts-jest"
     },
     "transformIgnorePatterns": [
-      "node_modules/(?!(@nestjs/bullmq|@nestjs/bull-shared)/)"
+      "node_modules/(?!(@nestjs/bullmq|@nestjs/bull-shared|otplib|@otplib|@scure|@noble)/)"
     ],
     "collectCoverageFrom": [
       "**/*.(t|j)s"

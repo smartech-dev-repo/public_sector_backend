@@ -1,11 +1,17 @@
-import { UnauthorizedException } from '@nestjs/common';
-import * as bcrypt from 'bcrypt';
+import { ConflictException, UnauthorizedException } from '@nestjs/common';
+import { hashPassword } from '../../common/password-hash.util';
+import { verify as otplibVerify } from 'otplib';
 import { AdminAuthService } from './admin-auth.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { TokenService } from '../token.service';
 import { SessionService } from '../../session/session.service';
 import { AdminInviteService } from '../../admin-invite/admin-invite.service';
 import { EmailService } from '../../email/email.service';
+
+jest.mock('otplib', () => ({
+  ...jest.requireActual('otplib'),
+  verify: jest.fn(),
+}));
 
 describe('AdminAuthService', () => {
   let service: AdminAuthService;
@@ -53,7 +59,7 @@ describe('AdminAuthService', () => {
   });
 
   it('rejects a wrong password', async () => {
-    const passwordHash = await bcrypt.hash('correct-password', 12);
+    const passwordHash = await hashPassword('correct-password');
     prisma.adminUser.findUnique.mockResolvedValue({
       id: 'admin-1',
       email: 'admin@example.com',
@@ -67,7 +73,7 @@ describe('AdminAuthService', () => {
   });
 
   it('issues tokens via SessionService with flattened permissions on a correct login', async () => {
-    const passwordHash = await bcrypt.hash('correct-password', 12);
+    const passwordHash = await hashPassword('correct-password');
     prisma.adminUser.findUnique
       .mockResolvedValueOnce({ id: 'admin-1', email: 'admin@example.com', passwordHash, isActive: true })
       .mockResolvedValueOnce({
@@ -211,7 +217,7 @@ describe('AdminAuthService', () => {
 
   describe('changePassword', () => {
     it('rejects an incorrect current password', async () => {
-      const passwordHash = await bcrypt.hash('correct-password', 12);
+      const passwordHash = await hashPassword('correct-password');
       prisma.adminUser.findUniqueOrThrow.mockResolvedValue({ id: 'admin-1', passwordHash });
 
       await expect(
@@ -222,7 +228,7 @@ describe('AdminAuthService', () => {
     });
 
     it('hashes the new password without revoking sessions', async () => {
-      const passwordHash = await bcrypt.hash('correct-password', 12);
+      const passwordHash = await hashPassword('correct-password');
       prisma.adminUser.findUniqueOrThrow.mockResolvedValue({ id: 'admin-1', passwordHash });
 
       await service.changePassword('admin-1', 'correct-password', 'new-password-123');
@@ -231,6 +237,295 @@ describe('AdminAuthService', () => {
       expect(updateCall.where).toEqual({ id: 'admin-1' });
       expect(updateCall.data.passwordHash).not.toBe(passwordHash);
       expect(sessionService.revokeAllForPrincipal).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('setupTwoFactor', () => {
+    it('throws ConflictException when 2FA is already enabled', async () => {
+      prisma.adminUser.findUniqueOrThrow.mockResolvedValue({ id: 'admin-1', twoFactorEnabled: true });
+      await expect(service.setupTwoFactor('admin-1', 'TOTP')).rejects.toThrow(ConflictException);
+    });
+
+    it('generates a TOTP secret and otpauth URL, storing the secret as pending', async () => {
+      prisma.adminUser.findUniqueOrThrow.mockResolvedValue({
+        id: 'admin-1',
+        email: 'admin@example.com',
+        twoFactorEnabled: false,
+      });
+
+      const result = await service.setupTwoFactor('admin-1', 'TOTP');
+
+      expect(result.method).toBe('TOTP');
+      expect(result.secret).toEqual(expect.any(String));
+      expect(result.otpauthUrl).toContain('otpauth://totp/');
+      expect(prisma.adminUser.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'admin-1' },
+          data: expect.objectContaining({ twoFactorPendingMethod: 'TOTP', twoFactorPendingSecret: result.secret }),
+        }),
+      );
+      expect(emailService.send).not.toHaveBeenCalled();
+    });
+
+    it('generates and emails a code for the email method, without returning a secret', async () => {
+      prisma.adminUser.findUniqueOrThrow.mockResolvedValue({
+        id: 'admin-1',
+        email: 'admin@example.com',
+        twoFactorEnabled: false,
+      });
+
+      const result = await service.setupTwoFactor('admin-1', 'EMAIL');
+
+      expect(result).toEqual({ method: 'EMAIL' });
+      expect(prisma.adminUser.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'admin-1' },
+          data: expect.objectContaining({
+            twoFactorPendingMethod: 'EMAIL',
+            twoFactorEmailCodeHash: expect.any(String),
+            twoFactorEmailCodeExpiresAt: expect.any(Date),
+          }),
+        }),
+      );
+      expect(emailService.send).toHaveBeenCalledWith(expect.objectContaining({ to: 'admin@example.com' }));
+    });
+  });
+
+  describe('confirmTwoFactor', () => {
+    it('throws ConflictException when no setup is in progress', async () => {
+      prisma.adminUser.findUniqueOrThrow.mockResolvedValue({ id: 'admin-1', twoFactorPendingMethod: null });
+      await expect(service.confirmTwoFactor('admin-1', '123456')).rejects.toThrow(ConflictException);
+    });
+
+    it('rejects an invalid TOTP code without enabling 2FA', async () => {
+      prisma.adminUser.findUniqueOrThrow.mockResolvedValue({
+        id: 'admin-1',
+        twoFactorPendingMethod: 'TOTP',
+        twoFactorPendingSecret: 'SOMESECRET',
+      });
+      (otplibVerify as jest.Mock).mockResolvedValue({ valid: false });
+
+      await expect(service.confirmTwoFactor('admin-1', 'wrong')).rejects.toThrow(UnauthorizedException);
+      expect(prisma.adminUser.update).not.toHaveBeenCalled();
+    });
+
+    it('activates TOTP on a valid code', async () => {
+      prisma.adminUser.findUniqueOrThrow.mockResolvedValue({
+        id: 'admin-1',
+        twoFactorPendingMethod: 'TOTP',
+        twoFactorPendingSecret: 'SOMESECRET',
+      });
+      (otplibVerify as jest.Mock).mockResolvedValue({ valid: true });
+
+      await service.confirmTwoFactor('admin-1', '123456');
+
+      expect(prisma.adminUser.update).toHaveBeenCalledWith({
+        where: { id: 'admin-1' },
+        data: {
+          twoFactorEnabled: true,
+          twoFactorMethod: 'TOTP',
+          twoFactorSecret: 'SOMESECRET',
+          twoFactorPendingSecret: null,
+          twoFactorPendingMethod: null,
+        },
+      });
+    });
+
+    it('rejects an invalid/expired email code', async () => {
+      prisma.adminUser.findUniqueOrThrow.mockResolvedValue({
+        id: 'admin-1',
+        twoFactorPendingMethod: 'EMAIL',
+        twoFactorEmailCodeHash: 'a-different-hash',
+        twoFactorEmailCodeExpiresAt: new Date(Date.now() + 1000 * 60 * 10),
+      });
+
+      await expect(service.confirmTwoFactor('admin-1', '123456')).rejects.toThrow(UnauthorizedException);
+    });
+
+    it('activates email 2FA on a matching code', async () => {
+      const { hashToken } = jest.requireActual('../../common/opaque-token.util');
+      prisma.adminUser.findUniqueOrThrow.mockResolvedValue({
+        id: 'admin-1',
+        twoFactorPendingMethod: 'EMAIL',
+        twoFactorEmailCodeHash: hashToken('123456'),
+        twoFactorEmailCodeExpiresAt: new Date(Date.now() + 1000 * 60 * 10),
+      });
+
+      await service.confirmTwoFactor('admin-1', '123456');
+
+      expect(prisma.adminUser.update).toHaveBeenCalledWith({
+        where: { id: 'admin-1' },
+        data: {
+          twoFactorEnabled: true,
+          twoFactorMethod: 'EMAIL',
+          twoFactorPendingMethod: null,
+          twoFactorEmailCodeHash: null,
+          twoFactorEmailCodeExpiresAt: null,
+        },
+      });
+    });
+  });
+
+  describe('disableTwoFactor', () => {
+    it('rejects an incorrect current password', async () => {
+      const passwordHash = await hashPassword('correct-password');
+      prisma.adminUser.findUniqueOrThrow.mockResolvedValue({ id: 'admin-1', passwordHash, twoFactorEnabled: true });
+
+      await expect(service.disableTwoFactor('admin-1', 'wrong-password')).rejects.toThrow(UnauthorizedException);
+      expect(prisma.adminUser.update).not.toHaveBeenCalled();
+    });
+
+    it('throws ConflictException when 2FA is not enabled', async () => {
+      const passwordHash = await hashPassword('correct-password');
+      prisma.adminUser.findUniqueOrThrow.mockResolvedValue({ id: 'admin-1', passwordHash, twoFactorEnabled: false });
+
+      await expect(service.disableTwoFactor('admin-1', 'correct-password')).rejects.toThrow(ConflictException);
+    });
+
+    it('clears all two-factor fields on success', async () => {
+      const passwordHash = await hashPassword('correct-password');
+      prisma.adminUser.findUniqueOrThrow.mockResolvedValue({ id: 'admin-1', passwordHash, twoFactorEnabled: true });
+
+      await service.disableTwoFactor('admin-1', 'correct-password');
+
+      expect(prisma.adminUser.update).toHaveBeenCalledWith({
+        where: { id: 'admin-1' },
+        data: {
+          twoFactorEnabled: false,
+          twoFactorMethod: null,
+          twoFactorSecret: null,
+          twoFactorPendingSecret: null,
+          twoFactorPendingMethod: null,
+          twoFactorEmailCodeHash: null,
+          twoFactorEmailCodeExpiresAt: null,
+        },
+      });
+    });
+  });
+
+  describe('login with 2FA enabled', () => {
+    it('returns a pending token instead of real tokens for a TOTP admin, without sending email', async () => {
+      const passwordHash = await hashPassword('correct-password');
+      prisma.adminUser.findUnique.mockResolvedValue({
+        id: 'admin-1',
+        email: 'admin@example.com',
+        passwordHash,
+        isActive: true,
+        twoFactorEnabled: true,
+        twoFactorMethod: 'TOTP',
+      });
+      (tokenService as unknown as { signTwoFactorPendingToken: jest.Mock }).signTwoFactorPendingToken = jest
+        .fn()
+        .mockReturnValue('pending-token');
+
+      const result = await service.login('admin@example.com', 'correct-password');
+
+      expect(result).toEqual({ twoFactorRequired: true, method: 'TOTP', pendingToken: 'pending-token' });
+      expect(emailService.send).not.toHaveBeenCalled();
+      expect(sessionService.createSession).not.toHaveBeenCalled();
+    });
+
+    it('emails a code and returns a pending token for an EMAIL admin', async () => {
+      const passwordHash = await hashPassword('correct-password');
+      prisma.adminUser.findUnique.mockResolvedValue({
+        id: 'admin-1',
+        email: 'admin@example.com',
+        passwordHash,
+        isActive: true,
+        twoFactorEnabled: true,
+        twoFactorMethod: 'EMAIL',
+      });
+      (tokenService as unknown as { signTwoFactorPendingToken: jest.Mock }).signTwoFactorPendingToken = jest
+        .fn()
+        .mockReturnValue('pending-token');
+
+      const result = await service.login('admin@example.com', 'correct-password');
+
+      expect(result).toEqual({ twoFactorRequired: true, method: 'EMAIL', pendingToken: 'pending-token' });
+      expect(emailService.send).toHaveBeenCalledWith(expect.objectContaining({ to: 'admin@example.com' }));
+      expect(prisma.adminUser.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'admin-1' },
+          data: expect.objectContaining({ twoFactorEmailCodeHash: expect.any(String) }),
+        }),
+      );
+    });
+  });
+
+  describe('verifyTwoFactorLogin', () => {
+    it('rejects an invalid or expired pending token', async () => {
+      (tokenService as unknown as { verifyTwoFactorPendingToken: jest.Mock }).verifyTwoFactorPendingToken = jest
+        .fn()
+        .mockImplementation(() => {
+          throw new Error('expired');
+        });
+
+      await expect(service.verifyTwoFactorLogin('bad-token', '123456')).rejects.toThrow(UnauthorizedException);
+    });
+
+    it('rejects an invalid TOTP code', async () => {
+      (tokenService as unknown as { verifyTwoFactorPendingToken: jest.Mock }).verifyTwoFactorPendingToken = jest
+        .fn()
+        .mockReturnValue({ sub: 'admin-1' });
+      prisma.adminUser.findUniqueOrThrow.mockResolvedValue({
+        id: 'admin-1',
+        twoFactorMethod: 'TOTP',
+        twoFactorSecret: 'SOMESECRET',
+      });
+      (otplibVerify as jest.Mock).mockResolvedValue({ valid: false });
+
+      await expect(service.verifyTwoFactorLogin('good-pending-token', 'wrong')).rejects.toThrow(UnauthorizedException);
+      expect(sessionService.createSession).not.toHaveBeenCalled();
+    });
+
+    it('issues real tokens on a valid TOTP code', async () => {
+      (tokenService as unknown as { verifyTwoFactorPendingToken: jest.Mock }).verifyTwoFactorPendingToken = jest
+        .fn()
+        .mockReturnValue({ sub: 'admin-1' });
+      prisma.adminUser.findUniqueOrThrow.mockResolvedValue({
+        id: 'admin-1',
+        twoFactorMethod: 'TOTP',
+        twoFactorSecret: 'SOMESECRET',
+      });
+      (otplibVerify as jest.Mock).mockResolvedValue({ valid: true });
+      prisma.adminUser.findUnique.mockResolvedValue({
+        id: 'admin-1',
+        roles: [{ role: { permissions: [] } }],
+      });
+
+      const result = await service.verifyTwoFactorLogin('good-pending-token', '123456', {
+        userAgent: 'jest',
+        ip: '127.0.0.1',
+      });
+
+      expect(result).toEqual({ accessToken: 'access-token', refreshToken: 'refresh-token' });
+      expect(sessionService.createSession).toHaveBeenCalledWith(
+        expect.objectContaining({ principalId: 'admin-1' }),
+      );
+    });
+
+    it('rejects an invalid or expired email code, and clears it on a valid one', async () => {
+      const { hashToken: realHashToken } = jest.requireActual('../../common/opaque-token.util');
+      (tokenService as unknown as { verifyTwoFactorPendingToken: jest.Mock }).verifyTwoFactorPendingToken = jest
+        .fn()
+        .mockReturnValue({ sub: 'admin-1' });
+      prisma.adminUser.findUniqueOrThrow.mockResolvedValue({
+        id: 'admin-1',
+        twoFactorMethod: 'EMAIL',
+        twoFactorEmailCodeHash: realHashToken('123456'),
+        twoFactorEmailCodeExpiresAt: new Date(Date.now() + 1000 * 60 * 10),
+      });
+      prisma.adminUser.findUnique.mockResolvedValue({
+        id: 'admin-1',
+        roles: [{ role: { permissions: [] } }],
+      });
+
+      await service.verifyTwoFactorLogin('good-pending-token', '123456');
+
+      expect(prisma.adminUser.update).toHaveBeenCalledWith({
+        where: { id: 'admin-1' },
+        data: { twoFactorEmailCodeHash: null, twoFactorEmailCodeExpiresAt: null },
+      });
     });
   });
 });
