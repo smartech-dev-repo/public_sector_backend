@@ -307,6 +307,25 @@ This is deliberately separate from `GET /client/loan-requests` — that
 endpoint is the client's own in-platform loan applications; this one is
 historical/external data.
 
+Each loan in the response carries a computed (not persisted) `status`:
+`CLOSED` if `principalBalance <= 0`; else `DEFAULT` if `maturationDate`
+has passed with a balance still owed, or the loan's most recent
+`RepaymentVariance` row is `UNDER_PAID`/`NO_DEDUCTION_FOUND`; else
+`ACTIVE`. `GET /client/loans` accepts optional `status`/`product`/
+`disbursedFrom`/`disbursedTo` query params to filter the `loans` array —
+`repayments` is never filtered by these, since those rows aren't tied to
+a specific loan in the schema.
+
+`GET /client/loans/:loanId/repayment-plan` (Client JWT) returns one
+loan's full month-by-month schedule from disbursement to maturity, reusing
+the reconciliation module's `computeExpectedInstallment()` for the
+expected amount (the same value reconciliation stores as
+`RepaymentVariance.expectedAmount`) and overlaying real `RepaymentVariance`
+rows where they exist. Periods with no row yet are returned with
+`status: "UPCOMING"` and null `actualAmount`/`variance`. Requesting a
+`loanId` that isn't the caller's own (or doesn't exist) returns `404`,
+matching this codebase's never-leak-existence convention elsewhere.
+
 ## Agent enrollment
 
 `POST /agents/register` (public, multipart: `fullName`/`email`/`phone`/
