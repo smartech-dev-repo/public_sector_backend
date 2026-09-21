@@ -376,4 +376,119 @@ describe('AgentAuthService', () => {
       });
     });
   });
+
+  describe('login with 2FA enabled', () => {
+    it('returns a pending token instead of real tokens for a TOTP agent, without sending email', async () => {
+      const passwordHash = await hashPassword('correct-password');
+      prisma.agent.findUnique.mockResolvedValue({
+        id: 'agent-1',
+        email: 'agent@example.com',
+        passwordHash,
+        status: 'APPROVED',
+        twoFactorEnabled: true,
+        twoFactorMethod: 'TOTP',
+      });
+      (tokenService as unknown as { signTwoFactorPendingToken: jest.Mock }).signTwoFactorPendingToken = jest
+        .fn()
+        .mockReturnValue('pending-token');
+
+      const result = await service.login('agent@example.com', 'correct-password');
+
+      expect(result).toEqual({ twoFactorRequired: true, method: 'TOTP', pendingToken: 'pending-token' });
+      expect(emailService.send).not.toHaveBeenCalled();
+      expect(sessionService.createSession).not.toHaveBeenCalled();
+      expect(prisma.agent.update).toHaveBeenCalledWith({ where: { id: 'agent-1' }, data: { hasLoggedIn: true } });
+    });
+
+    it('emails a code and returns a pending token for an EMAIL agent', async () => {
+      const passwordHash = await hashPassword('correct-password');
+      prisma.agent.findUnique.mockResolvedValue({
+        id: 'agent-1',
+        email: 'agent@example.com',
+        passwordHash,
+        status: 'APPROVED',
+        twoFactorEnabled: true,
+        twoFactorMethod: 'EMAIL',
+      });
+      (tokenService as unknown as { signTwoFactorPendingToken: jest.Mock }).signTwoFactorPendingToken = jest
+        .fn()
+        .mockReturnValue('pending-token');
+
+      const result = await service.login('agent@example.com', 'correct-password');
+
+      expect(result).toEqual({ twoFactorRequired: true, method: 'EMAIL', pendingToken: 'pending-token' });
+      expect(emailService.send).toHaveBeenCalledWith(expect.objectContaining({ to: 'agent@example.com' }));
+    });
+  });
+
+  describe('verifyTwoFactorLogin', () => {
+    it('rejects an invalid or expired pending token', async () => {
+      (tokenService as unknown as { verifyTwoFactorPendingToken: jest.Mock }).verifyTwoFactorPendingToken = jest
+        .fn()
+        .mockImplementation(() => {
+          throw new Error('expired');
+        });
+
+      await expect(service.verifyTwoFactorLogin('bad-token', '123456')).rejects.toThrow(UnauthorizedException);
+    });
+
+    it('rejects an invalid TOTP code', async () => {
+      (tokenService as unknown as { verifyTwoFactorPendingToken: jest.Mock }).verifyTwoFactorPendingToken = jest
+        .fn()
+        .mockReturnValue({ sub: 'agent-1' });
+      prisma.agent.findUniqueOrThrow.mockResolvedValue({
+        id: 'agent-1',
+        twoFactorMethod: 'TOTP',
+        twoFactorSecret: 'SOMESECRET',
+      });
+      (otplibVerify as jest.Mock).mockResolvedValue({ valid: false });
+
+      await expect(service.verifyTwoFactorLogin('good-pending-token', 'wrong')).rejects.toThrow(UnauthorizedException);
+      expect(sessionService.createSession).not.toHaveBeenCalled();
+    });
+
+    it('issues real tokens on a valid TOTP code', async () => {
+      (tokenService as unknown as { verifyTwoFactorPendingToken: jest.Mock }).verifyTwoFactorPendingToken = jest
+        .fn()
+        .mockReturnValue({ sub: 'agent-1' });
+      prisma.agent.findUniqueOrThrow.mockResolvedValue({
+        id: 'agent-1',
+        twoFactorMethod: 'TOTP',
+        twoFactorSecret: 'SOMESECRET',
+        mustChangePassword: false,
+      });
+      (otplibVerify as jest.Mock).mockResolvedValue({ valid: true });
+
+      const result = await service.verifyTwoFactorLogin('good-pending-token', '123456', {
+        userAgent: 'jest',
+        ip: '127.0.0.1',
+      });
+
+      expect(result).toEqual({ accessToken: 'access-token', refreshToken: 'refresh-token' });
+      expect(sessionService.createSession).toHaveBeenCalledWith(
+        expect.objectContaining({ principalId: 'agent-1' }),
+      );
+    });
+
+    it('rejects an invalid or expired email code, and clears it on a valid one', async () => {
+      const { hashToken: realHashToken } = jest.requireActual('../../common/opaque-token.util');
+      (tokenService as unknown as { verifyTwoFactorPendingToken: jest.Mock }).verifyTwoFactorPendingToken = jest
+        .fn()
+        .mockReturnValue({ sub: 'agent-1' });
+      prisma.agent.findUniqueOrThrow.mockResolvedValue({
+        id: 'agent-1',
+        twoFactorMethod: 'EMAIL',
+        twoFactorEmailCodeHash: realHashToken('123456'),
+        twoFactorEmailCodeExpiresAt: new Date(Date.now() + 1000 * 60 * 10),
+        mustChangePassword: false,
+      });
+
+      await service.verifyTwoFactorLogin('good-pending-token', '123456');
+
+      expect(prisma.agent.update).toHaveBeenCalledWith({
+        where: { id: 'agent-1' },
+        data: { twoFactorEmailCodeHash: null, twoFactorEmailCodeExpiresAt: null },
+      });
+    });
+  });
 });

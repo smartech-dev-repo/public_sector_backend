@@ -36,19 +36,11 @@ export class AgentAuthService {
 
     await this.prisma.agent.update({ where: { id: agent.id }, data: { hasLoggedIn: true } });
 
-    const payload = { sub: agent.id, type: 'agent' as const, mustChangePassword: agent.mustChangePassword };
+    if (agent.twoFactorEnabled) {
+      return this.beginTwoFactorLogin(agent);
+    }
 
-    const refreshToken = await this.sessionService.createSession({
-      principalType: SessionPrincipalType.AGENT,
-      principalId: agent.id,
-      userAgent: meta?.userAgent,
-      ip: meta?.ip,
-    });
-
-    return {
-      accessToken: this.tokenService.signAccessToken(payload),
-      refreshToken,
-    };
+    return this.issueTokens(agent, meta);
   }
 
   async getMustChangePasswordForAgent(agentId: string): Promise<boolean> {
@@ -222,5 +214,76 @@ export class AgentAuthService {
         twoFactorEmailCodeExpiresAt: null,
       },
     });
+  }
+
+  private async beginTwoFactorLogin(agent: { id: string; email: string; twoFactorMethod: TwoFactorMethod | null }) {
+    if (agent.twoFactorMethod === TwoFactorMethod.EMAIL) {
+      const code = generateEmailCode();
+      await this.prisma.agent.update({
+        where: { id: agent.id },
+        data: {
+          twoFactorEmailCodeHash: hashToken(code),
+          twoFactorEmailCodeExpiresAt: new Date(Date.now() + TWO_FACTOR_EMAIL_CODE_TTL_MS),
+        },
+      });
+      await this.emailService.send({
+        to: agent.email,
+        subject: 'Your login verification code',
+        html: `<p>Your verification code is: ${code}</p>`,
+        text: `Your verification code is: ${code}`,
+      });
+    }
+
+    const pendingToken = this.tokenService.signTwoFactorPendingToken(agent.id);
+    return { twoFactorRequired: true, method: agent.twoFactorMethod, pendingToken };
+  }
+
+  async verifyTwoFactorLogin(pendingToken: string, code: string, meta?: { userAgent?: string; ip?: string }) {
+    let payload: { sub: string };
+    try {
+      payload = this.tokenService.verifyTwoFactorPendingToken(pendingToken);
+    } catch {
+      throw new UnauthorizedException('Invalid or expired pending token');
+    }
+
+    const agent = await this.prisma.agent.findUniqueOrThrow({ where: { id: payload.sub } });
+
+    if (agent.twoFactorMethod === TwoFactorMethod.TOTP) {
+      const result = await verify({ secret: agent.twoFactorSecret!, token: code });
+      if (!result.valid) {
+        throw new UnauthorizedException('Invalid verification code');
+      }
+    } else {
+      if (
+        !agent.twoFactorEmailCodeHash ||
+        !agent.twoFactorEmailCodeExpiresAt ||
+        agent.twoFactorEmailCodeExpiresAt < new Date() ||
+        agent.twoFactorEmailCodeHash !== hashToken(code)
+      ) {
+        throw new UnauthorizedException('Invalid verification code');
+      }
+      await this.prisma.agent.update({
+        where: { id: agent.id },
+        data: { twoFactorEmailCodeHash: null, twoFactorEmailCodeExpiresAt: null },
+      });
+    }
+
+    return this.issueTokens(agent, meta);
+  }
+
+  private async issueTokens(agent: { id: string; mustChangePassword: boolean }, meta?: { userAgent?: string; ip?: string }) {
+    const payload = { sub: agent.id, type: 'agent' as const, mustChangePassword: agent.mustChangePassword };
+
+    const refreshToken = await this.sessionService.createSession({
+      principalType: SessionPrincipalType.AGENT,
+      principalId: agent.id,
+      userAgent: meta?.userAgent,
+      ip: meta?.ip,
+    });
+
+    return {
+      accessToken: this.tokenService.signAccessToken(payload),
+      refreshToken,
+    };
   }
 }
