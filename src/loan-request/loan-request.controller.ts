@@ -12,7 +12,7 @@ export class LoanRequestController {
 
   @Post()
   create(@Body() dto: CreateLoanRequestDto, @Req() req: { user: JwtPayload }) {
-    return this.loanRequestService.create(req.user.sub, dto.amount);
+    return this.loanRequestService.create(req.user.sub, dto.amount, dto.tenorMonths);
   }
 
   @Post(':id/resend')

@@ -11,6 +11,7 @@ describe('LoanRequestService', () => {
     client: { findUniqueOrThrow: jest.Mock; findUnique: jest.Mock };
     clientOnboarding: { findUnique: jest.Mock };
     loanRequest: { create: jest.Mock; findUnique: jest.Mock; findFirst: jest.Mock; update: jest.Mock; findMany: jest.Mock };
+    loanTermOption: { findUnique: jest.Mock };
   };
   let eligibilityService: { check: jest.Mock };
   let smsProvider: { send: jest.Mock };
@@ -21,6 +22,7 @@ describe('LoanRequestService', () => {
       client: { findUniqueOrThrow: jest.fn(), findUnique: jest.fn() },
       clientOnboarding: { findUnique: jest.fn() },
       loanRequest: { create: jest.fn(), findUnique: jest.fn(), findFirst: jest.fn(), update: jest.fn(), findMany: jest.fn() },
+      loanTermOption: { findUnique: jest.fn() },
     };
     eligibilityService = { check: jest.fn() };
     smsProvider = { send: jest.fn().mockResolvedValue(undefined) };
@@ -38,28 +40,56 @@ describe('LoanRequestService', () => {
     it('rejects when the client has no onboarding record', async () => {
       prisma.client.findUniqueOrThrow.mockResolvedValue({ id: 'c1', phone: '+2348000000000', status: 'VERIFIED' });
       prisma.clientOnboarding.findUnique.mockResolvedValue(null);
-      await expect(service.create('c1', 1000)).rejects.toThrow(ConflictException);
+      await expect(service.create('c1', 1000, 6)).rejects.toThrow(ConflictException);
     });
 
     it('rejects when eligibility fails, without sending any SMS', async () => {
       prisma.client.findUniqueOrThrow.mockResolvedValue({ id: 'c1', phone: '+2348000000000', status: 'VERIFIED' });
       prisma.clientOnboarding.findUnique.mockResolvedValue({ ippisRecord: { salary: 1000 } });
-      eligibilityService.check.mockReturnValue({ eligible: false, reason: 'too much' });
-      await expect(service.create('c1', 1000000)).rejects.toThrow(UnprocessableEntityException);
+      eligibilityService.check.mockResolvedValue({ eligible: false, reason: 'too much' });
+      await expect(service.create('c1', 1000000, 6)).rejects.toThrow(UnprocessableEntityException);
       expect(smsProvider.send).not.toHaveBeenCalled();
     });
 
     it('sends the SMS, creates the request, and enqueues the expiry job on success', async () => {
       prisma.client.findUniqueOrThrow.mockResolvedValue({ id: 'c1', phone: '+2348000000000', status: 'VERIFIED' });
-      prisma.clientOnboarding.findUnique.mockResolvedValue({ ippisRecord: { salary: 1000000 } });
-      eligibilityService.check.mockReturnValue({ eligible: true });
+      prisma.clientOnboarding.findUnique.mockResolvedValue({ ippisRecord: { salary: 1000000, agency: 'NPF' } });
+      eligibilityService.check.mockResolvedValue({ eligible: true });
+      prisma.loanTermOption.findUnique.mockResolvedValue({
+        interestRatePercent: 5,
+        managementChargeType: 'PERCENTAGE',
+        managementChargeValue: 2,
+        managementChargeApplication: 'DEDUCT_FROM_DISBURSEMENT',
+        isActive: true,
+      });
       prisma.loanRequest.create.mockResolvedValue({ id: 'lr1' });
 
-      await service.create('c1', 5000);
+      await service.create('c1', 5000, 6);
 
       expect(smsProvider.send).toHaveBeenCalledWith('+2348000000000', expect.stringContaining('5000'));
-      expect(prisma.loanRequest.create).toHaveBeenCalled();
+      expect(prisma.loanRequest.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          clientId: 'c1',
+          amount: 5000,
+          tenorMonths: 6,
+          interestRatePercent: 5,
+          managementChargeType: 'PERCENTAGE',
+          managementChargeValue: 2,
+          managementChargeApplication: 'DEDUCT_FROM_DISBURSEMENT',
+          managementChargeAmount: 100,
+        }),
+      });
       expect(expiryQueue.add).toHaveBeenCalledWith('expire', { loanRequestId: 'lr1' }, { delay: 24 * 60 * 60 * 1000 });
+    });
+
+    it('rejects when there is no active loan term for the requested tenor', async () => {
+      prisma.client.findUniqueOrThrow.mockResolvedValue({ id: 'c1', phone: '+2348000000000', status: 'VERIFIED' });
+      prisma.clientOnboarding.findUnique.mockResolvedValue({ ippisRecord: { salary: 1000000, agency: 'NPF' } });
+      eligibilityService.check.mockResolvedValue({ eligible: true });
+      prisma.loanTermOption.findUnique.mockResolvedValue(null);
+
+      await expect(service.create('c1', 5000, 99)).rejects.toThrow(UnprocessableEntityException);
+      expect(smsProvider.send).not.toHaveBeenCalled();
     });
   });
 

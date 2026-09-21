@@ -5,7 +5,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { EligibilityService } from './eligibility/eligibility.service';
 import { TWO_WAY_SMS_PROVIDER, TwoWaySmsProvider } from '../two-way-sms/two-way-sms-provider.interface';
 import { LOAN_REQUEST_EXPIRY_QUEUE } from './loan-request-queue.constants';
-import { LoanRequestStatus } from '../generated/prisma/client';
+import { LoanRequestStatus, ManagementChargeType } from '../generated/prisma/client';
 
 const EXPIRY_MS = 24 * 60 * 60 * 1000;
 
@@ -26,7 +26,7 @@ export class LoanRequestService {
     return `Reply YES to confirm your loan request of ₦${amount}`;
   }
 
-  async create(clientId: string, amount: number) {
+  async create(clientId: string, amount: number, tenorMonths: number) {
     const client = await this.prisma.client.findUniqueOrThrow({ where: { id: clientId } });
     const onboarding = await this.prisma.clientOnboarding.findUnique({
       where: { clientId },
@@ -36,10 +36,22 @@ export class LoanRequestService {
       throw new ConflictException('Client has not completed onboarding');
     }
 
-    const eligibility = this.eligibilityService.check(client, onboarding.ippisRecord, amount);
+    const eligibility = await this.eligibilityService.check(client, onboarding.ippisRecord, amount);
     if (!eligibility.eligible) {
       throw new UnprocessableEntityException(eligibility.reason);
     }
+
+    const termOption = await this.prisma.loanTermOption.findUnique({
+      where: { agency_tenorMonths: { agency: onboarding.ippisRecord.agency, tenorMonths } },
+    });
+    if (!termOption || !termOption.isActive) {
+      throw new UnprocessableEntityException(`No active loan term available for ${tenorMonths} months`);
+    }
+
+    const managementChargeAmount =
+      termOption.managementChargeType === ManagementChargeType.PERCENTAGE
+        ? (amount * Number(termOption.managementChargeValue)) / 100
+        : Number(termOption.managementChargeValue);
 
     await this.smsProvider.send(client.phone, this.confirmationMessage(amount));
 
@@ -47,6 +59,12 @@ export class LoanRequestService {
       data: {
         clientId,
         amount,
+        tenorMonths,
+        interestRatePercent: termOption.interestRatePercent,
+        managementChargeType: termOption.managementChargeType,
+        managementChargeValue: termOption.managementChargeValue,
+        managementChargeApplication: termOption.managementChargeApplication,
+        managementChargeAmount,
         expiresAt: new Date(Date.now() + EXPIRY_MS),
         confirmationSmsSentAt: new Date(),
       },
