@@ -4,6 +4,7 @@ import { DocumentBatchService } from './document-batch.service';
 import { FileStorageProvider } from '../file-storage/file-storage-provider.interface';
 import { DocumentParser } from './document-parser.interface';
 import { ReconciliationService } from '../reconciliation/reconciliation.service';
+import { ClientLoanReconciliationService } from '../reconciliation/client-loan-reconciliation.service';
 import { DocumentType } from '../generated/prisma/client';
 
 describe('DocumentIngestionProcessor', () => {
@@ -17,6 +18,7 @@ describe('DocumentIngestionProcessor', () => {
   let fileStorageProvider: { getObject: jest.Mock };
   let parsers: Record<string, { parse: jest.Mock }>;
   let reconciliationService: { reconcileAll: jest.Mock };
+  let clientLoanReconciliationService: { reconcileAll: jest.Mock };
 
   beforeEach(() => {
     documentBatchService = {
@@ -32,11 +34,13 @@ describe('DocumentIngestionProcessor', () => {
       [DocumentType.REPAYMENT_SCHEDULE]: { parse: jest.fn() },
     };
     reconciliationService = { reconcileAll: jest.fn().mockResolvedValue(undefined) };
+    clientLoanReconciliationService = { reconcileAll: jest.fn().mockResolvedValue(undefined) };
     processor = new DocumentIngestionProcessor(
       documentBatchService as unknown as DocumentBatchService,
       fileStorageProvider as unknown as FileStorageProvider,
       parsers as unknown as Record<DocumentType, DocumentParser>,
       reconciliationService as unknown as ReconciliationService,
+      clientLoanReconciliationService as unknown as ClientLoanReconciliationService,
     );
   });
 
@@ -69,6 +73,7 @@ describe('DocumentIngestionProcessor', () => {
       Buffer.from('fake-file'),
     );
     expect(reconciliationService.reconcileAll).not.toHaveBeenCalled();
+    expect(clientLoanReconciliationService.reconcileAll).not.toHaveBeenCalled();
     expect(documentBatchService.markCompleted).toHaveBeenCalledWith('batch-1', {
       rowsProcessed: 0,
       rowsCreated: 0,
@@ -96,6 +101,7 @@ describe('DocumentIngestionProcessor', () => {
     await processor.process({ data: { batchId: 'batch-2' } } as Job<DocumentIngestionJobData>);
 
     expect(reconciliationService.reconcileAll).toHaveBeenCalledTimes(1);
+    expect(clientLoanReconciliationService.reconcileAll).toHaveBeenCalledTimes(1);
     expect(documentBatchService.markCompleted).toHaveBeenCalled();
   });
 
@@ -117,6 +123,7 @@ describe('DocumentIngestionProcessor', () => {
     await processor.process({ data: { batchId: 'batch-3' } } as Job<DocumentIngestionJobData>);
 
     expect(reconciliationService.reconcileAll).toHaveBeenCalledTimes(1);
+    expect(clientLoanReconciliationService.reconcileAll).toHaveBeenCalledTimes(1);
   });
 
   it('marks failed with the error message when the parser throws, without running reconciliation', async () => {
@@ -132,5 +139,6 @@ describe('DocumentIngestionProcessor', () => {
 
     expect(documentBatchService.markFailed).toHaveBeenCalledWith('batch-1', 'bad file');
     expect(reconciliationService.reconcileAll).not.toHaveBeenCalled();
+    expect(clientLoanReconciliationService.reconcileAll).not.toHaveBeenCalled();
   });
 });

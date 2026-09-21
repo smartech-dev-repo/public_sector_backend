@@ -8,5 +8,6 @@ import { AdminWalletController } from './admin-wallet.controller';
   imports: [AuditModule],
   controllers: [ClientWalletController, AdminWalletController],
   providers: [WalletService],
+  exports: [WalletService],
 })
 export class WalletModule {}

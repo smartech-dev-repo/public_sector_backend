@@ -6,6 +6,7 @@ import { DocumentBatchService } from './document-batch.service';
 import { DOCUMENT_PARSERS, DocumentParser } from './document-parser.interface';
 import { FILE_STORAGE_PROVIDER, FileStorageProvider } from '../file-storage/file-storage-provider.interface';
 import { ReconciliationService } from '../reconciliation/reconciliation.service';
+import { ClientLoanReconciliationService } from '../reconciliation/client-loan-reconciliation.service';
 import { DocumentType } from '../generated/prisma/client';
 
 export interface DocumentIngestionJobData {
@@ -23,6 +24,7 @@ export class DocumentIngestionProcessor extends WorkerHost {
     @Inject(FILE_STORAGE_PROVIDER) private readonly fileStorageProvider: FileStorageProvider,
     @Inject(DOCUMENT_PARSERS) private readonly parsers: Record<DocumentType, DocumentParser>,
     private readonly reconciliationService: ReconciliationService,
+    private readonly clientLoanReconciliationService: ClientLoanReconciliationService,
   ) {
     super();
   }
@@ -45,6 +47,7 @@ export class DocumentIngestionProcessor extends WorkerHost {
 
       if (RECONCILIATION_TRIGGER_TYPES.includes(batch.documentType)) {
         await this.reconciliationService.reconcileAll();
+        await this.clientLoanReconciliationService.reconcileAll();
       }
 
       await this.documentBatchService.markCompleted(batchId, result);
