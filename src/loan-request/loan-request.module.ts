@@ -11,6 +11,9 @@ import { EligibilityService } from './eligibility/eligibility.service';
 import { ClientMustBeVerifiedRule } from './eligibility/client-must-be-verified.rule';
 import { AmountWithinSalaryCapRule } from './eligibility/amount-within-salary-cap.rule';
 import { NoActiveLoanRule } from './eligibility/no-active-loan.rule';
+import { HasActiveLoanRule } from './eligibility/has-active-loan.rule';
+import { NoTopupInProgressRule } from './eligibility/no-topup-in-progress.rule';
+import { TopupEligibilityService } from './eligibility/topup-eligibility.service';
 import { TwoWaySmsModule } from '../two-way-sms/two-way-sms.module';
 import { ClientLoansModule } from '../client-loans/client-loans.module';
 import { AuditModule } from '../audit/audit.module';
@@ -35,6 +38,9 @@ import { AuditModule } from '../audit/audit.module';
     ClientMustBeVerifiedRule,
     AmountWithinSalaryCapRule,
     NoActiveLoanRule,
+    HasActiveLoanRule,
+    NoTopupInProgressRule,
+    TopupEligibilityService,
   ],
 })
 export class LoanRequestModule {}
