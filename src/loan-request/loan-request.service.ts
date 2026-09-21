@@ -1,11 +1,17 @@
 import { ConflictException, Inject, Injectable, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
+import { ConfigService } from '@nestjs/config';
 import { Queue } from 'bullmq';
 import { PrismaService } from '../prisma/prisma.service';
 import { EligibilityService } from './eligibility/eligibility.service';
 import { TWO_WAY_SMS_PROVIDER, TwoWaySmsProvider } from '../two-way-sms/two-way-sms-provider.interface';
 import { LOAN_REQUEST_EXPIRY_QUEUE } from './loan-request-queue.constants';
-import { LoanRequestStatus, ManagementChargeType } from '../generated/prisma/client';
+import {
+  ClientLoanStatus,
+  LoanRequestStatus,
+  ManagementChargeApplication,
+  ManagementChargeType,
+} from '../generated/prisma/client';
 
 const EXPIRY_MS = 24 * 60 * 60 * 1000;
 
@@ -20,10 +26,50 @@ export class LoanRequestService {
     private readonly eligibilityService: EligibilityService,
     @Inject(TWO_WAY_SMS_PROVIDER) private readonly smsProvider: TwoWaySmsProvider,
     @InjectQueue(LOAN_REQUEST_EXPIRY_QUEUE) private readonly expiryQueue: Queue<LoanRequestExpiryJobData>,
+    private readonly configService?: ConfigService,
   ) {}
 
   private confirmationMessage(amount: number): string {
     return `Reply YES to confirm your loan request of ₦${amount}`;
+  }
+
+  private async createClientLoanFromRequest(loanRequestId: string): Promise<void> {
+    const loanRequest = await this.prisma.loanRequest.findUniqueOrThrow({ where: { id: loanRequestId } });
+    const onboarding = await this.prisma.clientOnboarding.findUniqueOrThrow({
+      where: { clientId: loanRequest.clientId },
+      include: { ippisRecord: true },
+    });
+
+    const principalAmount = Number(loanRequest.amount);
+    const managementChargeAmount = Number(loanRequest.managementChargeAmount);
+    const disbursedAmount =
+      loanRequest.managementChargeApplication === ManagementChargeApplication.DEDUCT_FROM_DISBURSEMENT
+        ? principalAmount - managementChargeAmount
+        : principalAmount;
+
+    const disbursementDate = new Date();
+    const maturationDate = new Date(disbursementDate);
+    maturationDate.setMonth(maturationDate.getMonth() + loanRequest.tenorMonths);
+
+    await this.prisma.clientLoan.create({
+      data: {
+        clientId: loanRequest.clientId,
+        loanRequestId: loanRequest.id,
+        agency: onboarding.ippisRecord.agency,
+        staffId: onboarding.ippisRecord.staffId,
+        principalAmount,
+        disbursedAmount,
+        principalBalance: principalAmount,
+        tenorMonths: loanRequest.tenorMonths,
+        interestRatePercent: loanRequest.interestRatePercent,
+        managementChargeType: loanRequest.managementChargeType,
+        managementChargeValue: loanRequest.managementChargeValue,
+        managementChargeApplication: loanRequest.managementChargeApplication,
+        managementChargeAmount: loanRequest.managementChargeAmount,
+        disbursementDate,
+        maturationDate,
+      },
+    });
   }
 
   async create(clientId: string, amount: number, tenorMonths: number) {
@@ -112,10 +158,58 @@ export class LoanRequestService {
       return;
     }
 
-    await this.prisma.loanRequest.update({
+    const confirmed = await this.prisma.loanRequest.update({
       where: { id: pending.id },
       data: { status: LoanRequestStatus.CONFIRMED, confirmedAt: new Date() },
     });
+
+    const threshold = Number(this.configService?.get('LOAN_AUTO_APPROVE_THRESHOLD') ?? 0);
+    if (Number(confirmed.amount) < threshold) {
+      await this.prisma.loanRequest.update({
+        where: { id: confirmed.id },
+        data: { status: LoanRequestStatus.DISBURSED, approvedAt: new Date(), disbursedAt: new Date() },
+      });
+      await this.createClientLoanFromRequest(confirmed.id);
+    }
+  }
+
+  async approve(id: string) {
+    const loanRequest = await this.prisma.loanRequest.findUnique({ where: { id } });
+    if (!loanRequest || loanRequest.status !== LoanRequestStatus.CONFIRMED) {
+      throw new ConflictException('Loan request must be CONFIRMED to approve');
+    }
+    return this.prisma.loanRequest.update({
+      where: { id },
+      data: { status: LoanRequestStatus.APPROVED, approvedAt: new Date() },
+    });
+  }
+
+  async reject(id: string, reason: string) {
+    const loanRequest = await this.prisma.loanRequest.findUnique({ where: { id } });
+    if (!loanRequest || loanRequest.status !== LoanRequestStatus.CONFIRMED) {
+      throw new ConflictException('Loan request must be CONFIRMED to reject');
+    }
+    return this.prisma.loanRequest.update({
+      where: { id },
+      data: { status: LoanRequestStatus.REJECTED, rejectionReason: reason },
+    });
+  }
+
+  async disburse(id: string) {
+    const loanRequest = await this.prisma.loanRequest.findUnique({ where: { id } });
+    if (!loanRequest || loanRequest.status !== LoanRequestStatus.APPROVED) {
+      throw new ConflictException('Loan request must be APPROVED to disburse');
+    }
+    const updated = await this.prisma.loanRequest.update({
+      where: { id },
+      data: { status: LoanRequestStatus.DISBURSED, disbursedAt: new Date() },
+    });
+    await this.createClientLoanFromRequest(id);
+    return updated;
+  }
+
+  async listAll(status?: LoanRequestStatus) {
+    return this.prisma.loanRequest.findMany({ where: { status }, orderBy: { createdAt: 'desc' } });
   }
 
   async expire(loanRequestId: string): Promise<void> {
