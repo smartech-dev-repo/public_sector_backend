@@ -411,6 +411,11 @@ enum LoanRequestStatus {
   FAILED
 }
 
+enum LoanRequestType {
+  ORIGINATION
+  TOPUP
+}
+
 model LoanRequest {
   id                    String            @id @default(uuid())
   clientId              String
@@ -431,7 +436,10 @@ model LoanRequest {
   rejectionReason               String?
   approvedAt                    DateTime?
   disbursedAt                   DateTime?
-  clientLoan                    ClientLoan?
+  type            LoanRequestType @default(ORIGINATION)
+  clientLoan      ClientLoan?     @relation("OriginatingRequest")
+  topupTargetId   String?
+  topupTarget     ClientLoan?     @relation("TopupRequests", fields: [topupTargetId], references: [id])
 }
 
 enum ClientLoanStatus {
@@ -445,7 +453,8 @@ model ClientLoan {
   clientId                      String
   client                        Client                       @relation(fields: [clientId], references: [id])
   loanRequestId                 String                       @unique
-  loanRequest                   LoanRequest                  @relation(fields: [loanRequestId], references: [id])
+  loanRequest                   LoanRequest                  @relation("OriginatingRequest", fields: [loanRequestId], references: [id])
+  topupRequests                 LoanRequest[]                @relation("TopupRequests")
   agency                        String
   staffId                       String
   principalAmount                Decimal
