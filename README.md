@@ -310,6 +310,22 @@ their ingested bank history. `GET /admin/client-loans/disbursement-summary
 ?month=YYYY-MM` (`client-loans:read`) streams a CSV of that month's
 disbursed loans.
 
+### Topup
+
+`POST /client/loan-requests/topup` (`{ amount, tenorMonths }`, Client JWT)
+adds more funds to the client's existing single active `ClientLoan` — no
+loan ID in the request; the service looks up the client's one `ACTIVE`
+loan itself. Reuses the exact same request→confirm→approve/auto-approve→
+disburse pipeline as origination (`LoanRequest.type` is now `ORIGINATION`
+or `TOPUP`), gated by a separate eligibility chain requiring an active
+loan to exist and no other request already in progress. On disbursement,
+instead of creating a new loan, the existing `ClientLoan`'s
+`principalAmount`/`principalBalance`/`disbursedAmount` increase by the
+topup's own amount, and `maturationDate` extends to
+`max(current, topup disbursement date + topup's own tenor)` — a topup
+never shortens the loan's remaining term. `GET /admin/loan-requests` now
+also accepts an optional `?type=` filter (`ORIGINATION`/`TOPUP`).
+
 ## Client loan dashboard
 
 `GET /client/loans` (Client JWT) returns the calling client's pre-existing

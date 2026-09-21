@@ -159,6 +159,10 @@
       "value": ""
     },
     {
+      "key": "topup_loan_request_id",
+      "value": ""
+    },
+    {
       "key": "loan_term_option_id",
       "value": ""
     },
@@ -8682,6 +8686,75 @@
               ]
             },
             {
+              "name": "GET /admin/loan-requests - Filtered by type=TOPUP",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/loan-requests?type=TOPUP",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "loan-requests"
+                  ],
+                  "query": [
+                    {
+                      "key": "type",
+                      "value": "TOPUP"
+                    }
+                  ]
+                }
+              },
+              "response": [
+                {
+                  "name": "Success (200)",
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "[\n  {\n    \"id\": \"a1b2c3d4-5e6f-4708-8192-a3b4c5d6e7f8\",\n    \"clientId\": \"9f8e7d6c-5b4a-4392-8c1d-0e9f8a7b6c5d\",\n    \"amount\": \"5000\",\n    \"status\": \"CONFIRMED\",\n    \"confirmationSmsSentAt\": \"2026-09-22T10:00:00.000Z\",\n    \"confirmedAt\": \"2026-09-22T10:05:00.000Z\",\n    \"expiresAt\": \"2026-09-23T10:00:00.000Z\",\n    \"createdAt\": \"2026-09-22T10:00:00.000Z\",\n    \"updatedAt\": \"2026-09-22T10:05:00.000Z\",\n    \"tenorMonths\": 6,\n    \"interestRatePercent\": \"5\",\n    \"managementChargeType\": \"PERCENTAGE\",\n    \"managementChargeValue\": \"2\",\n    \"managementChargeApplication\": \"DEDUCT_FROM_DISBURSEMENT\",\n    \"managementChargeAmount\": \"100\",\n    \"rejectionReason\": null,\n    \"approvedAt\": null,\n    \"disbursedAt\": null,\n    \"type\": \"TOPUP\",\n    \"topupTargetId\": \"5b6c7d8e-9f0a-4b1c-8d2e-3f4a5b6c7d8e\"\n  }\n]",
+                  "originalRequest": {
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/loan-requests?type=TOPUP",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "loan-requests"
+                      ],
+                      "query": [
+                        {
+                          "key": "type",
+                          "value": "TOPUP"
+                        }
+                      ]
+                    }
+                  }
+                }
+              ]
+            },
+            {
               "name": "GET /admin/loan-requests - Missing permission (403)",
               "request": {
                 "method": "GET",
@@ -14765,6 +14838,269 @@
                   ],
                   "cookie": [],
                   "body": "{\n  \"statusCode\": 409,\n  \"message\": \"Loan request is not PENDING (currently CONFIRMED)\",\n  \"error\": \"Conflict\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "POST /client/loan-requests/topup - Success",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{client_access_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"amount\": 5000,\n  \"tenorMonths\": 6\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/client/loan-requests/topup",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "client",
+                    "loan-requests",
+                    "topup"
+                  ]
+                },
+                "description": "Requires the client to already have an ACTIVE ClientLoan (i.e. a prior origination request that was confirmed, approved, and disbursed — see Client > Loan Requests > POST /client/loan-requests - Success) and no other non-terminal LoanRequest. No loan ID is sent; the server looks up the client's one ACTIVE ClientLoan itself."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 201', () => pm.response.to.have.status(201));",
+                      "pm.test('type is TOPUP', () => pm.expect(pm.response.json().type).to.eql('TOPUP'));",
+                      "pm.collectionVariables.set('topup_loan_request_id', pm.response.json().id);"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Success (201)",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      },
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{client_access_token}}"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"amount\": 5000,\n  \"tenorMonths\": 6\n}"
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/client/loan-requests/topup",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "client",
+                        "loan-requests",
+                        "topup"
+                      ]
+                    },
+                    "description": "Requires the client to already have an ACTIVE ClientLoan (i.e. a prior origination request that was confirmed, approved, and disbursed — see Client > Loan Requests > POST /client/loan-requests - Success) and no other non-terminal LoanRequest. No loan ID is sent; the server looks up the client's one ACTIVE ClientLoan itself."
+                  },
+                  "status": "Created",
+                  "code": 201,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"id\": \"a1b2c3d4-5e6f-4708-8192-a3b4c5d6e7f8\",\n  \"clientId\": \"9f8e7d6c-5b4a-4392-8c1d-0e9f8a7b6c5d\",\n  \"amount\": \"5000\",\n  \"status\": \"PENDING\",\n  \"confirmationSmsSentAt\": \"2026-09-22T10:00:00.000Z\",\n  \"confirmedAt\": null,\n  \"expiresAt\": \"2026-09-23T10:00:00.000Z\",\n  \"createdAt\": \"2026-09-22T10:00:00.000Z\",\n  \"updatedAt\": \"2026-09-22T10:00:00.000Z\",\n  \"tenorMonths\": 6,\n  \"interestRatePercent\": \"5\",\n  \"managementChargeType\": \"PERCENTAGE\",\n  \"managementChargeValue\": \"2\",\n  \"managementChargeApplication\": \"DEDUCT_FROM_DISBURSEMENT\",\n  \"managementChargeAmount\": \"100\",\n  \"rejectionReason\": null,\n  \"approvedAt\": null,\n  \"disbursedAt\": null,\n  \"type\": \"TOPUP\",\n  \"topupTargetId\": \"5b6c7d8e-9f0a-4b1c-8d2e-3f4a5b6c7d8e\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "POST /client/loan-requests/topup - No active loan (422)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{client_access_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"amount\": 5000,\n  \"tenorMonths\": 6\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/client/loan-requests/topup",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "client",
+                    "loan-requests",
+                    "topup"
+                  ]
+                },
+                "description": "Run against a VERIFIED client that has never had a loan originated (so has no ACTIVE ClientLoan) — rejected by HasActiveLoanRule."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 422', () => pm.response.to.have.status(422));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "No active loan (422)",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      },
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{client_access_token}}"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"amount\": 5000,\n  \"tenorMonths\": 6\n}"
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/client/loan-requests/topup",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "client",
+                        "loan-requests",
+                        "topup"
+                      ]
+                    },
+                    "description": "Run against a VERIFIED client that has never had a loan originated (so has no ACTIVE ClientLoan) — rejected by HasActiveLoanRule."
+                  },
+                  "status": "Unprocessable Entity",
+                  "code": 422,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"statusCode\": 422,\n  \"message\": \"Client has no active loan to top up\",\n  \"error\": \"Unprocessable Entity\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "POST /client/loan-requests/topup - Topup already in progress (422)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{client_access_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"amount\": 5000,\n  \"tenorMonths\": 6\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/client/loan-requests/topup",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "client",
+                    "loan-requests",
+                    "topup"
+                  ]
+                },
+                "description": "Run this a second time immediately after 'POST /client/loan-requests/topup - Success', without confirming/approving/disbursing the first topup — rejected by NoTopupInProgressRule since a non-terminal (PENDING/CONFIRMED/APPROVED) LoanRequest already exists for this client."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 422', () => pm.response.to.have.status(422));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Topup already in progress (422)",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      },
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{client_access_token}}"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"amount\": 5000,\n  \"tenorMonths\": 6\n}"
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/client/loan-requests/topup",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "client",
+                        "loan-requests",
+                        "topup"
+                      ]
+                    },
+                    "description": "Run this a second time immediately after 'POST /client/loan-requests/topup - Success', without confirming/approving/disbursing the first topup — rejected by NoTopupInProgressRule since a non-terminal (PENDING/CONFIRMED/APPROVED) LoanRequest already exists for this client."
+                  },
+                  "status": "Unprocessable Entity",
+                  "code": 422,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"statusCode\": 422,\n  \"message\": \"A previous loan request is still in progress\",\n  \"error\": \"Unprocessable Entity\"\n}"
                 }
               ]
             }
