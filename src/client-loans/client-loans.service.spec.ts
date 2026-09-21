@@ -1,3 +1,4 @@
+import { NotFoundException } from '@nestjs/common';
 import { ClientLoansService } from './client-loans.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { VarianceStatus } from '../generated/prisma/client';
@@ -130,6 +131,68 @@ describe('ClientLoansService', () => {
       const result = await service.getDashboard('c1', { status: 'DEFAULT' });
 
       expect(result.loans.map((loan: { id: string }) => loan.id)).toEqual(['loan-default']);
+    });
+  });
+
+  describe('getRepaymentPlan', () => {
+    it('throws NotFoundException when the client has no ClientOnboarding row', async () => {
+      prisma.clientOnboarding.findUnique.mockResolvedValue(null);
+
+      await expect(service.getRepaymentPlan('c1', 'loan-1')).rejects.toThrow(NotFoundException);
+    });
+
+    it('throws NotFoundException when the loan does not match the client agency+staffId', async () => {
+      prisma.clientOnboarding.findUnique.mockResolvedValue({
+        bvn: null,
+        ippisRecord: { agency: 'NPF', staffId: 'NPF-001' },
+      });
+      prisma.loan.findFirst.mockResolvedValue(null);
+
+      await expect(service.getRepaymentPlan('c1', 'loan-1')).rejects.toThrow(NotFoundException);
+      expect(prisma.loan.findFirst).toHaveBeenCalledWith({
+        where: { id: 'loan-1', agency: 'NPF', ippisNumber: 'NPF-001' },
+      });
+    });
+
+    it('throws NotFoundException when the loan fails the bvn cross-check', async () => {
+      prisma.clientOnboarding.findUnique.mockResolvedValue({
+        bvn: '11111111111',
+        ippisRecord: { agency: 'NPF', staffId: 'NPF-001' },
+      });
+      prisma.loan.findFirst.mockResolvedValue({ id: 'loan-1', bvn: '99999999999' });
+
+      await expect(service.getRepaymentPlan('c1', 'loan-1')).rejects.toThrow(NotFoundException);
+    });
+
+    it('builds the full period range, overlaying actual variance data and marking unreconciled periods UPCOMING', async () => {
+      prisma.clientOnboarding.findUnique.mockResolvedValue({
+        bvn: null,
+        ippisRecord: { agency: 'NPF', staffId: 'NPF-001' },
+      });
+      prisma.loan.findFirst.mockResolvedValue({
+        id: 'loan-1',
+        bvn: null,
+        loanAmount: 100000,
+        interestRatePercent: 12,
+        disbursementDate: new Date(2026, 0, 1),
+        maturationDate: new Date(2026, 2, 1),
+      });
+      prisma.repaymentVariance.findMany.mockResolvedValue([
+        { period: '2026-01', actualAmount: 34000, variance: 0, status: VarianceStatus.MATCHED },
+      ]);
+
+      const result = await service.getRepaymentPlan('c1', 'loan-1');
+
+      expect(prisma.repaymentVariance.findMany).toHaveBeenCalledWith({ where: { loanId: 'loan-1' } });
+      expect(result.loanId).toBe('loan-1');
+      expect(result.schedule.map((row: { period: string }) => row.period)).toEqual(['2026-01', '2026-02', '2026-03']);
+      expect(result.schedule[0]).toEqual(
+        expect.objectContaining({ period: '2026-01', actualAmount: 34000, variance: 0, status: VarianceStatus.MATCHED }),
+      );
+      expect(result.schedule[1]).toEqual(
+        expect.objectContaining({ period: '2026-02', actualAmount: null, variance: null, status: 'UPCOMING' }),
+      );
+      expect(result.schedule.every((row: { expectedAmount: number }) => row.expectedAmount === result.schedule[0].expectedAmount)).toBe(true);
     });
   });
 });

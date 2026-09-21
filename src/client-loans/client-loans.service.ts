@@ -1,7 +1,9 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { VarianceStatus } from '../generated/prisma/client';
 import { computeLoanStatus, LoanStatus } from './loan-status.util';
+import { generatePeriodRange } from '../reconciliation/period.util';
+import { computeExpectedInstallment } from '../reconciliation/amortization.util';
 
 const LOAN_SELECT = {
   id: true,
@@ -97,6 +99,52 @@ export class ClientLoansService {
     });
 
     return { loans, repayments };
+  }
+
+  async getRepaymentPlan(clientId: string, loanId: string) {
+    const onboarding = await this.prisma.clientOnboarding.findUnique({
+      where: { clientId },
+      include: { ippisRecord: true },
+    });
+    if (!onboarding) {
+      throw new NotFoundException('Loan not found');
+    }
+
+    const { agency, staffId } = onboarding.ippisRecord;
+
+    const loan = await this.prisma.loan.findFirst({
+      where: { id: loanId, agency, ippisNumber: staffId },
+    });
+    if (!loan || !this.loanMatchesOnboarding(loan, onboarding)) {
+      throw new NotFoundException('Loan not found');
+    }
+
+    const periods = generatePeriodRange(loan.disbursementDate, loan.maturationDate);
+    const expectedAmount = computeExpectedInstallment(
+      Number(loan.loanAmount),
+      Number(loan.interestRatePercent),
+      loan.disbursementDate,
+      loan.maturationDate,
+    );
+
+    const varianceRows = await this.prisma.repaymentVariance.findMany({ where: { loanId: loan.id } });
+    const varianceByPeriod = new Map(varianceRows.map((row) => [row.period, row]));
+
+    const schedule = periods.map((period) => {
+      const varianceRow = varianceByPeriod.get(period);
+      if (!varianceRow) {
+        return { period, expectedAmount, actualAmount: null, variance: null, status: 'UPCOMING' as const };
+      }
+      return {
+        period,
+        expectedAmount,
+        actualAmount: Number(varianceRow.actualAmount),
+        variance: Number(varianceRow.variance),
+        status: varianceRow.status,
+      };
+    });
+
+    return { loanId: loan.id, schedule };
   }
 
   private loanMatchesOnboarding(loan: { bvn: string | null }, onboarding: { bvn: string | null }): boolean {
