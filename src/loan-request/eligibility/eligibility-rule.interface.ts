@@ -6,5 +6,9 @@ export interface EligibilityCheckResult {
 }
 
 export interface EligibilityRule {
-  check(client: Client, ippisRecord: IppisRecord, amount: number): EligibilityCheckResult;
+  check(
+    client: Client,
+    ippisRecord: IppisRecord,
+    amount: number,
+  ): Promise<EligibilityCheckResult> | EligibilityCheckResult;
 }

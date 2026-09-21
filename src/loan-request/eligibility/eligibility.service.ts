@@ -3,6 +3,7 @@ import { Client, IppisRecord } from '../../generated/prisma/client';
 import { EligibilityCheckResult, EligibilityRule } from './eligibility-rule.interface';
 import { ClientMustBeVerifiedRule } from './client-must-be-verified.rule';
 import { AmountWithinSalaryCapRule } from './amount-within-salary-cap.rule';
+import { NoActiveLoanRule } from './no-active-loan.rule';
 
 @Injectable()
 export class EligibilityService {
@@ -11,13 +12,14 @@ export class EligibilityService {
   constructor(
     clientMustBeVerifiedRule: ClientMustBeVerifiedRule,
     amountWithinSalaryCapRule: AmountWithinSalaryCapRule,
+    noActiveLoanRule: NoActiveLoanRule,
   ) {
-    this.rules = [clientMustBeVerifiedRule, amountWithinSalaryCapRule];
+    this.rules = [clientMustBeVerifiedRule, amountWithinSalaryCapRule, noActiveLoanRule];
   }
 
-  check(client: Client, ippisRecord: IppisRecord, amount: number): EligibilityCheckResult {
+  async check(client: Client, ippisRecord: IppisRecord, amount: number): Promise<EligibilityCheckResult> {
     for (const rule of this.rules) {
-      const result = rule.check(client, ippisRecord, amount);
+      const result = await rule.check(client, ippisRecord, amount);
       if (!result.eligible) {
         return result;
       }
