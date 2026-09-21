@@ -101,6 +101,13 @@ model Agent {
   updatedAt              DateTime    @updatedAt
   passwordResetTokenHash      String?
   passwordResetTokenExpiresAt DateTime?
+  twoFactorMethod             TwoFactorMethod?
+  twoFactorEnabled            Boolean          @default(false)
+  twoFactorSecret             String?
+  twoFactorPendingSecret      String?
+  twoFactorPendingMethod      TwoFactorMethod?
+  twoFactorEmailCodeHash      String?
+  twoFactorEmailCodeExpiresAt DateTime?
 }
 
 enum ClientStatus {
