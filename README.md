@@ -290,6 +290,26 @@ into an actual `Loan` record) is not built — a separate future concern.
 | `GET /client/loan-requests` | Client JWT | The calling client's own requests |
 | `POST /webhooks/sms/inbound` | None (public) | `{ phone, message }` — mocked shape standing in for a real vendor's payload |
 
+## Loan origination
+
+`LoanRequest` now carries a `tenorMonths` (chosen from
+`GET /client/loan-terms`, the active `LoanTermOption`s for the client's own
+agency) and a rate/management-charge snapshot taken at request time. After
+the existing SMS "YES" confirmation, a request below
+`LOAN_AUTO_APPROVE_THRESHOLD` auto-`APPROVED`s and auto-`DISBURSED`s in the
+same step; at or above it, an admin holding `loan-requests:review` calls
+`POST /admin/loan-requests/:id/approve` or `.../reject` (`{ reason }`),
+then separately `.../disburse` once the external transfer is confirmed —
+`DISBURSED` is always its own manual step for a manually-approved request.
+Either path creates exactly one `ClientLoan` (the client's single
+platform-native loan — topup and repayment tracking are still to come). A
+client can only have one loan in flight at a time: a new
+`POST /client/loan-requests` is rejected (`422`) while they have a
+non-terminal request, an `ACTIVE` `ClientLoan`, or an `ACTIVE` loan in
+their ingested bank history. `GET /admin/client-loans/disbursement-summary
+?month=YYYY-MM` (`client-loans:read`) streams a CSV of that month's
+disbursed loans.
+
 ## Client loan dashboard
 
 `GET /client/loans` (Client JWT) returns the calling client's pre-existing

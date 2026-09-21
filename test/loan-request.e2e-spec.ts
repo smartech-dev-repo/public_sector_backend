@@ -38,6 +38,17 @@ describe('Loan request workflow (e2e)', () => {
       },
     });
 
+    await prisma.loanTermOption.create({
+      data: {
+        agency: 'NPF',
+        tenorMonths: 6,
+        interestRatePercent: 5,
+        managementChargeType: 'PERCENTAGE',
+        managementChargeValue: 2,
+        managementChargeApplication: 'DEDUCT_FROM_DISBURSEMENT',
+      },
+    });
+
     const tokenService = moduleFixture.get(TokenService);
     accessToken = tokenService.signAccessToken({ sub: clientId, type: 'client' });
   });
@@ -47,6 +58,7 @@ describe('Loan request workflow (e2e)', () => {
     await prisma.clientOnboarding.deleteMany({ where: { clientId } });
     await prisma.ippisRecord.deleteMany({ where: { staffId } });
     await prisma.client.deleteMany({ where: { id: clientId } });
+    await prisma.loanTermOption.deleteMany({ where: { agency: 'NPF', tenorMonths: 6 } });
     await app.close();
   });
 
@@ -56,7 +68,7 @@ describe('Loan request workflow (e2e)', () => {
     await request(app.getHttpServer())
       .post('/client/loan-requests')
       .set('Authorization', `Bearer ${accessToken}`)
-      .send({ amount: 100000000 })
+      .send({ amount: 100000000, tenorMonths: 6 })
       .expect(422);
   });
 
@@ -64,7 +76,7 @@ describe('Loan request workflow (e2e)', () => {
     const createRes = await request(app.getHttpServer())
       .post('/client/loan-requests')
       .set('Authorization', `Bearer ${accessToken}`)
-      .send({ amount: 500000 })
+      .send({ amount: 500000, tenorMonths: 6 })
       .expect(201);
     expect(createRes.body.status).toBe('PENDING');
     loanRequestId = createRes.body.id;
