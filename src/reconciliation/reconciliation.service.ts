@@ -2,12 +2,9 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { computeExpectedInstallment } from './amortization.util';
 import { VarianceStatus } from '../generated/prisma/client';
+import { toPeriodKey } from './period.util';
 
 const MATCH_TOLERANCE = 1;
-
-function toPeriodKey(date: Date): string {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-}
 
 export interface ReconciliationFilters {
   agency?: string;
