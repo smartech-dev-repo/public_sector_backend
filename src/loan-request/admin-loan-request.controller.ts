@@ -5,7 +5,7 @@ import { RequirePermissions } from '../auth/permissions.decorator';
 import { AuditInterceptor } from '../audit/audit.interceptor';
 import { AuditLogService } from '../audit/audit-log.service';
 import { JwtPayload } from '../auth/jwt-payload.interface';
-import { AuditActorType, LoanRequestStatus } from '../generated/prisma/client';
+import { AuditActorType, LoanRequestStatus, LoanRequestType } from '../generated/prisma/client';
 import { LoanRequestService } from './loan-request.service';
 import { RejectLoanRequestDto } from './dto/reject-loan-request.dto';
 
@@ -20,8 +20,8 @@ export class AdminLoanRequestController {
   ) {}
 
   @Get()
-  list(@Query('status') status?: LoanRequestStatus) {
-    return this.loanRequestService.listAll(status);
+  list(@Query('status') status?: LoanRequestStatus, @Query('type') type?: LoanRequestType) {
+    return this.loanRequestService.listAll(status, type);
   }
 
   @Post(':id/approve')

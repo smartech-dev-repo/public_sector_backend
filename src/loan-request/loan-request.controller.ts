@@ -15,6 +15,11 @@ export class LoanRequestController {
     return this.loanRequestService.create(req.user.sub, dto.amount, dto.tenorMonths);
   }
 
+  @Post('topup')
+  createTopup(@Body() dto: CreateLoanRequestDto, @Req() req: { user: JwtPayload }) {
+    return this.loanRequestService.createTopup(req.user.sub, dto.amount, dto.tenorMonths);
+  }
+
   @Post(':id/resend')
   @HttpCode(200)
   resend(@Param('id') id: string, @Req() req: { user: JwtPayload }) {
