@@ -28,7 +28,10 @@ describe('LoanRequestService', () => {
       findUniqueOrThrow: jest.Mock;
       update: jest.Mock;
       findFirstOrThrow: jest.Mock;
+      findFirst: jest.Mock;
+      findUnique: jest.Mock;
     };
+    clientLoanRepaymentVariance: { findMany: jest.Mock };
   };
   let eligibilityService: { check: jest.Mock };
   let topupEligibilityService: { check: jest.Mock };
@@ -54,7 +57,10 @@ describe('LoanRequestService', () => {
         findUniqueOrThrow: jest.fn(),
         update: jest.fn(),
         findFirstOrThrow: jest.fn(),
+        findFirst: jest.fn(),
+        findUnique: jest.fn(),
       },
+      clientLoanRepaymentVariance: { findMany: jest.fn() },
     };
     eligibilityService = { check: jest.fn() };
     topupEligibilityService = { check: jest.fn() };
@@ -537,6 +543,65 @@ describe('LoanRequestService', () => {
         where: { id: 'lr1' },
         data: { status: 'FAILED' },
       });
+    });
+  });
+
+  describe('getMyLoan', () => {
+    it('returns null when the client has no ClientLoan', async () => {
+      prisma.clientLoan.findFirst.mockResolvedValue(null);
+      const result = await service.getMyLoan('c1');
+      expect(result).toBeNull();
+    });
+
+    it('returns the most recent ClientLoan with its schedule', async () => {
+      prisma.clientLoan.findFirst.mockResolvedValue({
+        id: 'cl1',
+        clientId: 'c1',
+        principalAmount: 90000,
+        interestRatePercent: 0,
+        disbursementDate: new Date(2026, 0, 1),
+        maturationDate: new Date(2026, 1, 1),
+      });
+      prisma.clientLoanRepaymentVariance.findMany.mockResolvedValue([
+        { period: '2026-01', actualAmount: 45000, variance: 0, status: 'MATCHED' },
+      ]);
+
+      const result = await service.getMyLoan('c1');
+
+      expect(prisma.clientLoan.findFirst).toHaveBeenCalledWith({
+        where: { clientId: 'c1' },
+        orderBy: { disbursementDate: 'desc' },
+      });
+      expect(result!.id).toBe('cl1');
+      expect(result!.schedule).toEqual([
+        { period: '2026-01', expectedAmount: 90000, actualAmount: 45000, variance: 0, status: 'MATCHED' },
+        { period: '2026-02', expectedAmount: 90000, actualAmount: null, variance: null, status: 'UPCOMING' },
+      ]);
+    });
+  });
+
+  describe('getRepaymentPlanById', () => {
+    it('throws NotFoundException when the loan does not exist', async () => {
+      prisma.clientLoan.findUnique.mockResolvedValue(null);
+      await expect(service.getRepaymentPlanById('missing')).rejects.toThrow(NotFoundException);
+    });
+
+    it('returns the loan with its schedule', async () => {
+      prisma.clientLoan.findUnique.mockResolvedValue({
+        id: 'cl1',
+        clientId: 'c1',
+        principalAmount: 90000,
+        interestRatePercent: 0,
+        disbursementDate: new Date(2026, 0, 1),
+        maturationDate: new Date(2026, 0, 1),
+      });
+      prisma.clientLoanRepaymentVariance.findMany.mockResolvedValue([]);
+
+      const result = await service.getRepaymentPlanById('cl1');
+
+      expect(result.schedule).toEqual([
+        { period: '2026-01', expectedAmount: 90000, actualAmount: null, variance: null, status: 'UPCOMING' },
+      ]);
     });
   });
 });

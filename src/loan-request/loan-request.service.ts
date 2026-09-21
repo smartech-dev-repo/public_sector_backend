@@ -14,6 +14,8 @@ import { EligibilityService } from './eligibility/eligibility.service';
 import { TopupEligibilityService } from './eligibility/topup-eligibility.service';
 import { TWO_WAY_SMS_PROVIDER, TwoWaySmsProvider } from '../two-way-sms/two-way-sms-provider.interface';
 import { LOAN_REQUEST_EXPIRY_QUEUE } from './loan-request-queue.constants';
+import { generatePeriodRange } from '../reconciliation/period.util';
+import { computeExpectedInstallment } from '../reconciliation/amortization.util';
 import {
   ClientLoan,
   ClientLoanStatus,
@@ -379,5 +381,55 @@ export class LoanRequestService {
       where: { clientId },
       orderBy: { createdAt: 'desc' },
     });
+  }
+
+  async getMyLoan(clientId: string) {
+    const clientLoan = await this.prisma.clientLoan.findFirst({
+      where: { clientId },
+      orderBy: { disbursementDate: 'desc' },
+    });
+    if (!clientLoan) {
+      return null;
+    }
+    return this.buildLoanWithSchedule(clientLoan);
+  }
+
+  async getRepaymentPlanById(clientLoanId: string) {
+    const clientLoan = await this.prisma.clientLoan.findUnique({ where: { id: clientLoanId } });
+    if (!clientLoan) {
+      throw new NotFoundException('Loan not found');
+    }
+    return this.buildLoanWithSchedule(clientLoan);
+  }
+
+  private async buildLoanWithSchedule(clientLoan: ClientLoan) {
+    const periods = generatePeriodRange(clientLoan.disbursementDate, clientLoan.maturationDate);
+    const expectedAmount = computeExpectedInstallment(
+      Number(clientLoan.principalAmount),
+      Number(clientLoan.interestRatePercent),
+      clientLoan.disbursementDate,
+      clientLoan.maturationDate,
+    );
+
+    const varianceRows = await this.prisma.clientLoanRepaymentVariance.findMany({
+      where: { clientLoanId: clientLoan.id },
+    });
+    const varianceByPeriod = new Map(varianceRows.map((row) => [row.period, row]));
+
+    const schedule = periods.map((period) => {
+      const varianceRow = varianceByPeriod.get(period);
+      if (!varianceRow) {
+        return { period, expectedAmount, actualAmount: null, variance: null, status: 'UPCOMING' as const };
+      }
+      return {
+        period,
+        expectedAmount,
+        actualAmount: Number(varianceRow.actualAmount),
+        variance: Number(varianceRow.variance),
+        status: varianceRow.status,
+      };
+    });
+
+    return { ...clientLoan, schedule };
   }
 }
