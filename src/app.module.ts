@@ -20,6 +20,7 @@ import { ClientOnboardingModule } from './client-onboarding/client-onboarding.mo
 import { AdminClientReviewModule } from './admin-client-review/admin-client-review.module';
 import { LoanRequestModule } from './loan-request/loan-request.module';
 import { ClientLoansModule } from './client-loans/client-loans.module';
+import { WalletModule } from './wallet/wallet.module';
 import { AgentEnrollmentModule } from './agent-enrollment/agent-enrollment.module';
 import { AdminAgentReviewModule } from './admin-agent-review/admin-agent-review.module';
 import { ReconciliationModule } from './reconciliation/reconciliation.module';
@@ -94,6 +95,7 @@ import { HealthModule } from './health/health.module';
     AdminClientReviewModule,
     LoanRequestModule,
     ClientLoansModule,
+    WalletModule,
     AgentEnrollmentModule,
     AdminAgentReviewModule,
     ReconciliationModule,
