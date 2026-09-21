@@ -1,4 +1,4 @@
-import { Controller, Get, Header, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Header, Param, Query, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { PermissionsGuard } from '../auth/permissions.guard';
 import { RequirePermissions } from '../auth/permissions.decorator';
@@ -15,5 +15,10 @@ export class AdminClientLoansController {
   @Header('Content-Disposition', 'attachment; filename="disbursement-summary.csv"')
   exportDisbursementSummary(@Query('month') month: string) {
     return this.loanRequestService.exportDisbursementSummaryCsv(month);
+  }
+
+  @Get(':id/repayment-plan')
+  getRepaymentPlan(@Param('id') id: string) {
+    return this.loanRequestService.getRepaymentPlanById(id);
   }
 }

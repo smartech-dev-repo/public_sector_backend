@@ -4,6 +4,7 @@ import { LoanRequestController } from './loan-request.controller';
 import { SmsWebhookController } from './sms-webhook.controller';
 import { AdminLoanRequestController } from './admin-loan-request.controller';
 import { AdminClientLoansController } from './admin-client-loans.controller';
+import { ClientLoanController } from './client-loan.controller';
 import { LoanRequestService } from './loan-request.service';
 import { LoanRequestExpiryProcessor } from './loan-request-expiry.processor';
 import { LOAN_REQUEST_EXPIRY_QUEUE } from './loan-request-queue.constants';
@@ -30,6 +31,7 @@ import { AuditModule } from '../audit/audit.module';
     SmsWebhookController,
     AdminLoanRequestController,
     AdminClientLoansController,
+    ClientLoanController,
   ],
   providers: [
     LoanRequestService,
