@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { BullModule } from '@nestjs/bullmq';
 import { LoanRequestController } from './loan-request.controller';
 import { SmsWebhookController } from './sms-webhook.controller';
+import { AdminLoanRequestController } from './admin-loan-request.controller';
 import { LoanRequestService } from './loan-request.service';
 import { LoanRequestExpiryProcessor } from './loan-request-expiry.processor';
 import { LOAN_REQUEST_EXPIRY_QUEUE } from './loan-request-queue.constants';
@@ -11,14 +12,16 @@ import { AmountWithinSalaryCapRule } from './eligibility/amount-within-salary-ca
 import { NoActiveLoanRule } from './eligibility/no-active-loan.rule';
 import { TwoWaySmsModule } from '../two-way-sms/two-way-sms.module';
 import { ClientLoansModule } from '../client-loans/client-loans.module';
+import { AuditModule } from '../audit/audit.module';
 
 @Module({
   imports: [
     BullModule.registerQueue({ name: LOAN_REQUEST_EXPIRY_QUEUE }),
     TwoWaySmsModule,
     ClientLoansModule,
+    AuditModule,
   ],
-  controllers: [LoanRequestController, SmsWebhookController],
+  controllers: [LoanRequestController, SmsWebhookController, AdminLoanRequestController],
   providers: [
     LoanRequestService,
     LoanRequestExpiryProcessor,
