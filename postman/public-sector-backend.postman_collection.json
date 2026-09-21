@@ -7739,6 +7739,270 @@
           ]
         },
         {
+          "name": "Wallet",
+          "item": [
+            {
+              "name": "GET /admin/clients/:clientId/wallet - Success",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/clients/{{client_id}}/wallet",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "clients",
+                    "{{client_id}}",
+                    "wallet"
+                  ]
+                },
+                "description": "Set client_id to a real Client row's id first (e.g. captured after a successful OTP verify, or from the database)."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Success - balance and entries (200)",
+                  "originalRequest": {
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/clients/{{client_id}}/wallet",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "clients",
+                        "{{client_id}}",
+                        "wallet"
+                      ]
+                    },
+                    "description": "Set client_id to a real Client row's id first (e.g. captured after a successful OTP verify, or from the database)."
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"balance\": 3000,\n  \"entries\": [\n    {\n      \"id\": \"b2c3d4e5-f6a7-4b8c-9d0e-1f2a3b4c5d6e\",\n      \"clientId\": \"f4a1b2c3-d4e5-4f67-8a9b-0c1d2e3f4a5b\",\n      \"amount\": \"2000\",\n      \"direction\": \"DEBIT\",\n      \"description\": \"Manual correction\",\n      \"actorType\": \"ADMIN\",\n      \"actorId\": \"9d8c7b6a-5e4f-4a3b-9c2d-1e0f9a8b7c6d\",\n      \"createdAt\": \"2026-09-21T10:30:00.000Z\"\n    },\n    {\n      \"id\": \"a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d\",\n      \"clientId\": \"f4a1b2c3-d4e5-4f67-8a9b-0c1d2e3f4a5b\",\n      \"amount\": \"5000\",\n      \"direction\": \"CREDIT\",\n      \"description\": \"Overpayment excess\",\n      \"actorType\": \"ADMIN\",\n      \"actorId\": \"9d8c7b6a-5e4f-4a3b-9c2d-1e0f9a8b7c6d\",\n      \"createdAt\": \"2026-09-20T09:15:00.000Z\"\n    }\n  ]\n}"
+                }
+              ]
+            },
+            {
+              "name": "POST /admin/clients/:clientId/wallet/credit - Success",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"amount\": 5000,\n  \"description\": \"Overpayment excess\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/admin/clients/{{client_id}}/wallet/credit",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "clients",
+                    "{{client_id}}",
+                    "wallet",
+                    "credit"
+                  ]
+                },
+                "description": "Requires the wallets:manage permission. Set client_id to a real Client row's id first."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));",
+                      "pm.test('created a CREDIT entry', () => {",
+                      "  const body = pm.response.json();",
+                      "  pm.expect(body.direction).to.eql('CREDIT');",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Success - credit entry created (200)",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      },
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"amount\": 5000,\n  \"description\": \"Overpayment excess\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/admin/clients/{{client_id}}/wallet/credit",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "clients",
+                        "{{client_id}}",
+                        "wallet",
+                        "credit"
+                      ]
+                    },
+                    "description": "Requires the wallets:manage permission. Set client_id to a real Client row's id first."
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"id\": \"a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d\",\n  \"clientId\": \"f4a1b2c3-d4e5-4f67-8a9b-0c1d2e3f4a5b\",\n  \"amount\": \"5000\",\n  \"direction\": \"CREDIT\",\n  \"description\": \"Overpayment excess\",\n  \"actorType\": \"ADMIN\",\n  \"actorId\": \"9d8c7b6a-5e4f-4a3b-9c2d-1e0f9a8b7c6d\",\n  \"createdAt\": \"2026-09-20T09:15:00.000Z\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "POST /admin/clients/:clientId/wallet/debit - Insufficient balance (422)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"amount\": 999999,\n  \"description\": \"Too much\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/admin/clients/{{client_id}}/wallet/debit",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "clients",
+                    "{{client_id}}",
+                    "wallet",
+                    "debit"
+                  ]
+                },
+                "description": "Requires the wallets:manage permission. A debit greater than the client's current balance is rejected with 422 and never writes an entry."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 422', () => pm.response.to.have.status(422));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Insufficient balance (422)",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      },
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"amount\": 999999,\n  \"description\": \"Too much\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/admin/clients/{{client_id}}/wallet/debit",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "clients",
+                        "{{client_id}}",
+                        "wallet",
+                        "debit"
+                      ]
+                    },
+                    "description": "Requires the wallets:manage permission. A debit greater than the client's current balance is rejected with 422 and never writes an entry."
+                  },
+                  "status": "Unprocessable Entity",
+                  "code": 422,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"statusCode\": 422,\n  \"message\": \"Insufficient wallet balance\",\n  \"error\": \"Unprocessable Entity\"\n}"
+                }
+              ]
+            }
+          ]
+        },
+        {
           "name": "Review",
           "item": [
             {
@@ -13344,6 +13608,83 @@
                   ],
                   "cookie": [],
                   "body": "{\n  \"message\": \"Loan not found\",\n  \"error\": \"Not Found\",\n  \"statusCode\": 404\n}"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Wallet",
+          "item": [
+            {
+              "name": "GET /client/wallet - Success",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{client_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/client/wallet",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "client",
+                    "wallet"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));",
+                      "pm.test('has balance and entries', () => {",
+                      "  const body = pm.response.json();",
+                      "  pm.expect(body.balance).to.be.a('number');",
+                      "  pm.expect(body.entries).to.be.an('array');",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Success - empty wallet (200)",
+                  "originalRequest": {
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{client_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/client/wallet",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "client",
+                        "wallet"
+                      ]
+                    }
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"balance\": 0,\n  \"entries\": []\n}"
                 }
               ]
             }

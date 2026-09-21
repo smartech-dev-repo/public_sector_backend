@@ -326,6 +326,26 @@ rows where they exist. Periods with no row yet are returned with
 `loanId` that isn't the caller's own (or doesn't exist) returns `404`,
 matching this codebase's never-leak-existence convention elsewhere.
 
+## Wallet
+
+Every client has a wallet backed by an append-only ledger of
+`WalletEntry` rows — there is no separate `Wallet` model; the balance is
+always the sum of a client's entries (`SUM(CREDIT) - SUM(DEBIT)`), so it
+can never drift out of sync with its own history. `GET /client/wallet`
+(Client JWT) returns the caller's own `{ balance, entries }`, empty/zero
+if they have no history yet. Admins holding `wallets:read`/
+`wallets:manage` can view any client's wallet
+(`GET /admin/clients/:clientId/wallet`) and credit or debit it
+(`POST .../wallet/credit`, `POST .../wallet/debit`, both `{ amount,
+description }`) — a debit that would take the balance below zero is
+rejected with `422`; the balance never goes negative. Both admin
+mutations are recorded through the existing `AuditLogService`, the same
+mechanism used for every other sensitive admin action on a client (e.g.
+approve/reject in `AdminClientReviewController`). This is the first of
+two sub-projects in a broader loan-lifecycle overhaul — a second,
+not-yet-built piece will let overpayment on a loan auto-credit this same
+wallet, and let a client spend their balance toward a payment.
+
 ## Agent enrollment
 
 `POST /agents/register` (public, multipart: `fullName`/`email`/`phone`/
