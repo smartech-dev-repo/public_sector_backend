@@ -198,6 +198,7 @@ git commit -m "feat: add computeClientLoanStatus"
 - Test: `src/reconciliation/client-loan-reconciliation.service.spec.ts`
 - Modify: `src/reconciliation/reconciliation.module.ts`
 - Modify: `src/document-ingestion/document-ingestion.processor.ts`
+- Modify: `src/document-ingestion/document-ingestion.processor.spec.ts`
 
 **Interfaces:**
 - Consumes: `computeExpectedInstallment` (existing, unchanged), `toPeriodKey` (existing, unchanged), `computeClientLoanStatus` (Task 2), `WalletService.credit` (existing, unchanged).
@@ -226,6 +227,14 @@ describe('ClientLoanReconciliationService', () => {
   };
   let walletService: { credit: jest.Mock };
 
+  // Date-relative (not hardcoded) so this fixture never drifts into the past — computeClientLoanStatus
+  // marks a loan DEFAULT once maturationDate has passed, so a fixed calendar date would eventually make
+  // every "should be ACTIVE" test below wrongly expect DEFAULT once real time caught up to it.
+  const now = new Date();
+  const disbursementDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const maturationDate = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+  const period = `${disbursementDate.getFullYear()}-${String(disbursementDate.getMonth() + 1).padStart(2, '0')}`;
+
   const baseLoan = {
     id: 'cl-1',
     clientId: 'client-1',
@@ -234,8 +243,8 @@ describe('ClientLoanReconciliationService', () => {
     principalAmount: 90000,
     interestRatePercent: 0,
     principalBalance: 90000,
-    disbursementDate: new Date(2026, 0, 1),
-    maturationDate: new Date(2026, 2, 1),
+    disbursementDate,
+    maturationDate,
   };
 
   beforeEach(() => {
@@ -268,7 +277,7 @@ describe('ClientLoanReconciliationService', () => {
   it('skips a period that already has a ClientLoanRepaymentVariance row (write-once)', async () => {
     prisma.clientLoan.findMany.mockResolvedValue([baseLoan]);
     prisma.loanRepaymentRecord.findMany.mockResolvedValue([
-      { agency: 'NPF', staffId: 'NPF-001', period: '2026-01', amount: 30000 },
+      { agency: 'NPF', staffId: 'NPF-001', period, amount: 30000 },
     ]);
     prisma.clientLoanRepaymentVariance.findUnique.mockResolvedValue({ id: 'existing-row' });
 
@@ -280,12 +289,13 @@ describe('ClientLoanReconciliationService', () => {
   });
 
   it('reduces the balance by the actual amount and does not credit the wallet on a MATCHED period', async () => {
-    // baseLoan is a 2-month term (Jan 1 -> Mar 1) with a flat 90000 principal at 0% interest, so
-    // computeExpectedInstallment resolves to 90000 / 2 = 45000 per period — the mocked repayment
-    // amount below must equal that for this to be a true MATCHED case.
+    // baseLoan is a 2-month term (1 month ago -> 1 month from now, computed relative to whenever the
+    // test runs) with a flat 90000 principal at 0% interest, so computeExpectedInstallment resolves to
+    // 90000 / 2 = 45000 per period — the mocked repayment amount below must equal that for this to be
+    // a true MATCHED case.
     prisma.clientLoan.findMany.mockResolvedValue([baseLoan]);
     prisma.loanRepaymentRecord.findMany.mockResolvedValue([
-      { agency: 'NPF', staffId: 'NPF-001', period: '2026-01', amount: 45000 },
+      { agency: 'NPF', staffId: 'NPF-001', period, amount: 45000 },
     ]);
     prisma.clientLoanRepaymentVariance.findFirst.mockResolvedValue({ status: VarianceStatus.MATCHED });
 
@@ -294,7 +304,7 @@ describe('ClientLoanReconciliationService', () => {
     expect(prisma.clientLoanRepaymentVariance.create).toHaveBeenCalledWith({
       data: expect.objectContaining({
         clientLoanId: 'cl-1',
-        period: '2026-01',
+        period,
         expectedAmount: 45000,
         actualAmount: 45000,
         variance: 0,
@@ -311,7 +321,7 @@ describe('ClientLoanReconciliationService', () => {
   it('reduces the balance by only the partial amount received on an UNDER_PAID period, with no wallet credit', async () => {
     prisma.clientLoan.findMany.mockResolvedValue([baseLoan]);
     prisma.loanRepaymentRecord.findMany.mockResolvedValue([
-      { agency: 'NPF', staffId: 'NPF-001', period: '2026-01', amount: 10000 },
+      { agency: 'NPF', staffId: 'NPF-001', period, amount: 10000 },
     ]);
     prisma.clientLoanRepaymentVariance.findFirst.mockResolvedValue({ status: VarianceStatus.UNDER_PAID });
 
@@ -331,7 +341,7 @@ describe('ClientLoanReconciliationService', () => {
     // Expected installment is 45000 (see the MATCHED test above) — 50000 actual gives a 5000 excess.
     prisma.clientLoan.findMany.mockResolvedValue([baseLoan]);
     prisma.loanRepaymentRecord.findMany.mockResolvedValue([
-      { agency: 'NPF', staffId: 'NPF-001', period: '2026-01', amount: 50000 },
+      { agency: 'NPF', staffId: 'NPF-001', period, amount: 50000 },
     ]);
     prisma.clientLoanRepaymentVariance.findFirst.mockResolvedValue({ status: VarianceStatus.OVER_PAID });
 
@@ -357,7 +367,7 @@ describe('ClientLoanReconciliationService', () => {
     // ever considers periods that appear in loanRepaymentRecord — so exercise it via a period that does
     // appear, with amount 0 (a real-world "deduction attempted, zero collected" row).
     prisma.loanRepaymentRecord.findMany.mockResolvedValue([
-      { agency: 'NPF', staffId: 'NPF-001', period: '2026-01', amount: 0 },
+      { agency: 'NPF', staffId: 'NPF-001', period, amount: 0 },
     ]);
     prisma.clientLoanRepaymentVariance.findFirst.mockResolvedValue({ status: VarianceStatus.NO_DEDUCTION_FOUND });
 
@@ -377,7 +387,7 @@ describe('ClientLoanReconciliationService', () => {
     // reconciled (and is UNDER_PAID) in a prior run.
     prisma.clientLoan.findMany.mockResolvedValue([baseLoan]);
     prisma.loanRepaymentRecord.findMany.mockResolvedValue([
-      { agency: 'NPF', staffId: 'NPF-001', period: '2026-01', amount: 30000 },
+      { agency: 'NPF', staffId: 'NPF-001', period, amount: 30000 },
     ]);
     prisma.clientLoanRepaymentVariance.findFirst.mockResolvedValue({ status: VarianceStatus.UNDER_PAID });
 
@@ -574,15 +584,25 @@ import { ClientLoanReconciliationService } from '../reconciliation/client-loan-r
       }
 ```
 
-- [ ] **Step 7: Type-check and run the reconciliation unit suite**
+- [ ] **Step 7: Update `document-ingestion.processor.spec.ts` for the new constructor parameter**
 
-Run: `npx tsc --noEmit && npx jest src/reconciliation`
-Expected: both clean — no type errors, all reconciliation suites (old and new) passing.
+`DocumentIngestionProcessor` now takes a 5th constructor argument, so its existing spec file (which constructs it directly, not through Nest's DI) needs updating or it won't compile. Read the file's current state first, then:
 
-- [ ] **Step 8: Commit**
+1. Add a new `let clientLoanReconciliationService: { reconcileAll: jest.Mock };` declaration alongside the existing `reconciliationService` one.
+2. In `beforeEach`, initialize it the same way: `clientLoanReconciliationService = { reconcileAll: jest.fn().mockResolvedValue(undefined) };`, and pass it as the 5th argument to `new DocumentIngestionProcessor(...)`.
+3. In the test `'marks processing, dispatches to the matching parser, and marks completed on success, without running reconciliation for IPPIS_BROADSHEET'`, add `expect(clientLoanReconciliationService.reconcileAll).not.toHaveBeenCalled();` alongside the existing `reconciliationService.reconcileAll` assertion.
+4. In `'runs reconciliation after a successful DISBURSED_LOANS parse'` and `'runs reconciliation after a successful REPAYMENT_SCHEDULE parse'`, add `expect(clientLoanReconciliationService.reconcileAll).toHaveBeenCalledTimes(1);` alongside the existing assertion in each.
+5. In `'marks failed with the error message when the parser throws, without running reconciliation'`, add `expect(clientLoanReconciliationService.reconcileAll).not.toHaveBeenCalled();` alongside the existing assertion.
+
+- [ ] **Step 8: Type-check and run the reconciliation and document-ingestion unit suites**
+
+Run: `npx tsc --noEmit && npx jest src/reconciliation src/document-ingestion/document-ingestion.processor.spec.ts`
+Expected: both clean — no type errors, all reconciliation suites (old and new) passing, and `document-ingestion.processor.spec.ts`'s 5 tests passing.
+
+- [ ] **Step 9: Commit**
 
 ```bash
-git add src/wallet/wallet.module.ts src/reconciliation/client-loan-reconciliation.service.ts src/reconciliation/client-loan-reconciliation.service.spec.ts src/reconciliation/reconciliation.module.ts src/document-ingestion/document-ingestion.processor.ts
+git add src/wallet/wallet.module.ts src/reconciliation/client-loan-reconciliation.service.ts src/reconciliation/client-loan-reconciliation.service.spec.ts src/reconciliation/reconciliation.module.ts src/document-ingestion/document-ingestion.processor.ts src/document-ingestion/document-ingestion.processor.spec.ts
 git commit -m "feat: add ClientLoanReconciliationService, wired into document ingestion"
 ```
 
