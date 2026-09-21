@@ -24,6 +24,9 @@ const BOOTSTRAP_PERMISSIONS: Array<{ key: string; description: string }> = [
   { key: 'reconciliation:read', description: 'View loan repayment reconciliation variances' },
   { key: 'wallets:read', description: "View a client's wallet balance and entries" },
   { key: 'wallets:manage', description: "Credit or debit a client's wallet" },
+  { key: 'loan-terms:manage', description: "Create/edit the agency-scoped loan terms catalog" },
+  { key: 'loan-requests:review', description: 'Approve, reject, or disburse client loan requests' },
+  { key: 'client-loans:read', description: "View client loans and disbursement reports" },
 ];
 
 async function main() {

@@ -127,6 +127,7 @@ model Client {
   onboarding ClientOnboarding?
   loanRequests LoanRequest[]
   walletEntries WalletEntry[]
+  clientLoans ClientLoan[]
 }
 
 enum OtpPurpose {
@@ -376,9 +377,37 @@ model LoanRepaymentRecord {
   @@unique([agency, staffId, period, elementName])
 }
 
+enum ManagementChargeType {
+  PERCENTAGE
+  FLAT
+}
+
+enum ManagementChargeApplication {
+  DEDUCT_FROM_DISBURSEMENT
+  ADD_TO_REPAYMENT
+}
+
+model LoanTermOption {
+  id                           String                       @id @default(uuid())
+  agency                       String
+  tenorMonths                  Int
+  interestRatePercent          Decimal
+  managementChargeType         ManagementChargeType
+  managementChargeValue        Decimal
+  managementChargeApplication  ManagementChargeApplication
+  isActive                     Boolean                      @default(true)
+  createdAt                    DateTime                     @default(now())
+  updatedAt                    DateTime                     @updatedAt
+
+  @@unique([agency, tenorMonths])
+}
+
 enum LoanRequestStatus {
   PENDING
   CONFIRMED
+  APPROVED
+  DISBURSED
+  REJECTED
   FAILED
 }
 
@@ -393,6 +422,46 @@ model LoanRequest {
   expiresAt             DateTime
   createdAt             DateTime          @default(now())
   updatedAt             DateTime          @updatedAt
+  tenorMonths                  Int
+  interestRatePercent          Decimal
+  managementChargeType         ManagementChargeType
+  managementChargeValue        Decimal
+  managementChargeApplication  ManagementChargeApplication
+  managementChargeAmount       Decimal
+  rejectionReason               String?
+  approvedAt                    DateTime?
+  disbursedAt                   DateTime?
+  clientLoan                    ClientLoan?
+}
+
+enum ClientLoanStatus {
+  ACTIVE
+  CLOSED
+  DEFAULT
+}
+
+model ClientLoan {
+  id                            String                       @id @default(uuid())
+  clientId                      String
+  client                        Client                       @relation(fields: [clientId], references: [id])
+  loanRequestId                 String                       @unique
+  loanRequest                   LoanRequest                  @relation(fields: [loanRequestId], references: [id])
+  agency                        String
+  staffId                       String
+  principalAmount                Decimal
+  disbursedAmount                Decimal
+  principalBalance                Decimal
+  tenorMonths                     Int
+  interestRatePercent             Decimal
+  managementChargeType            ManagementChargeType
+  managementChargeValue           Decimal
+  managementChargeApplication     ManagementChargeApplication
+  managementChargeAmount          Decimal
+  disbursementDate                 DateTime
+  maturationDate                    DateTime
+  status                            ClientLoanStatus            @default(ACTIVE)
+  createdAt                         DateTime                    @default(now())
+  updatedAt                         DateTime                    @updatedAt
 }
 
 enum VarianceStatus {
