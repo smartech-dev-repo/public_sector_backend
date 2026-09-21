@@ -11,11 +11,15 @@ import { ConfigService } from '@nestjs/config';
 import { Queue } from 'bullmq';
 import { PrismaService } from '../prisma/prisma.service';
 import { EligibilityService } from './eligibility/eligibility.service';
+import { TopupEligibilityService } from './eligibility/topup-eligibility.service';
 import { TWO_WAY_SMS_PROVIDER, TwoWaySmsProvider } from '../two-way-sms/two-way-sms-provider.interface';
 import { LOAN_REQUEST_EXPIRY_QUEUE } from './loan-request-queue.constants';
 import {
+  ClientLoan,
   ClientLoanStatus,
+  LoanRequest,
   LoanRequestStatus,
+  LoanRequestType,
   ManagementChargeApplication,
   ManagementChargeType,
 } from '../generated/prisma/client';
@@ -33,15 +37,24 @@ export class LoanRequestService {
     private readonly eligibilityService: EligibilityService,
     @Inject(TWO_WAY_SMS_PROVIDER) private readonly smsProvider: TwoWaySmsProvider,
     @InjectQueue(LOAN_REQUEST_EXPIRY_QUEUE) private readonly expiryQueue: Queue<LoanRequestExpiryJobData>,
+    private readonly topupEligibilityService: TopupEligibilityService,
     private readonly configService?: ConfigService,
   ) {}
 
-  private confirmationMessage(amount: number): string {
-    return `Reply YES to confirm your loan request of ₦${amount}`;
+  private confirmationMessage(amount: number, type: LoanRequestType = LoanRequestType.ORIGINATION): string {
+    return type === LoanRequestType.TOPUP
+      ? `Reply YES to confirm your loan top-up of ₦${amount}`
+      : `Reply YES to confirm your loan request of ₦${amount}`;
   }
 
   private async createClientLoanFromRequest(loanRequestId: string): Promise<void> {
     const loanRequest = await this.prisma.loanRequest.findUniqueOrThrow({ where: { id: loanRequestId } });
+
+    if (loanRequest.type === LoanRequestType.TOPUP) {
+      await this.applyTopupToClientLoan(loanRequest);
+      return;
+    }
+
     const onboarding = await this.prisma.clientOnboarding.findUniqueOrThrow({
       where: { clientId: loanRequest.clientId },
       include: { ippisRecord: true },
@@ -75,6 +88,38 @@ export class LoanRequestService {
         managementChargeAmount: loanRequest.managementChargeAmount,
         disbursementDate,
         maturationDate,
+      },
+    });
+  }
+
+  private async applyTopupToClientLoan(loanRequest: LoanRequest): Promise<void> {
+    const clientLoan = await this.prisma.clientLoan.findUniqueOrThrow({
+      where: { id: loanRequest.topupTargetId! },
+    });
+
+    const topupAmount = Number(loanRequest.amount);
+    const managementChargeAmount = Number(loanRequest.managementChargeAmount);
+    const topupDisbursedAmount =
+      loanRequest.managementChargeApplication === ManagementChargeApplication.DEDUCT_FROM_DISBURSEMENT
+        ? topupAmount - managementChargeAmount
+        : topupAmount;
+
+    const disbursementDate = new Date();
+    const topupMaturationDate = new Date(disbursementDate);
+    topupMaturationDate.setMonth(topupMaturationDate.getMonth() + loanRequest.tenorMonths);
+
+    const newMaturationDate =
+      topupMaturationDate.getTime() > clientLoan.maturationDate.getTime()
+        ? topupMaturationDate
+        : clientLoan.maturationDate;
+
+    await this.prisma.clientLoan.update({
+      where: { id: clientLoan.id },
+      data: {
+        principalAmount: Number(clientLoan.principalAmount) + topupAmount,
+        principalBalance: Number(clientLoan.principalBalance) + topupAmount,
+        disbursedAmount: Number(clientLoan.disbursedAmount) + topupDisbursedAmount,
+        maturationDate: newMaturationDate,
       },
     });
   }
@@ -113,6 +158,61 @@ export class LoanRequestService {
         clientId,
         amount,
         tenorMonths,
+        interestRatePercent: termOption.interestRatePercent,
+        managementChargeType: termOption.managementChargeType,
+        managementChargeValue: termOption.managementChargeValue,
+        managementChargeApplication: termOption.managementChargeApplication,
+        managementChargeAmount,
+        expiresAt: new Date(Date.now() + EXPIRY_MS),
+        confirmationSmsSentAt: new Date(),
+      },
+    });
+
+    await this.expiryQueue.add('expire', { loanRequestId: loanRequest.id }, { delay: EXPIRY_MS });
+
+    return loanRequest;
+  }
+
+  async createTopup(clientId: string, amount: number, tenorMonths: number) {
+    const client = await this.prisma.client.findUniqueOrThrow({ where: { id: clientId } });
+    const onboarding = await this.prisma.clientOnboarding.findUnique({
+      where: { clientId },
+      include: { ippisRecord: true },
+    });
+    if (!onboarding) {
+      throw new ConflictException('Client has not completed onboarding');
+    }
+
+    const eligibility = await this.topupEligibilityService.check(client, onboarding.ippisRecord, amount);
+    if (!eligibility.eligible) {
+      throw new UnprocessableEntityException(eligibility.reason);
+    }
+
+    const activeLoan = await this.prisma.clientLoan.findFirstOrThrow({
+      where: { clientId, status: ClientLoanStatus.ACTIVE },
+    });
+
+    const termOption = await this.prisma.loanTermOption.findUnique({
+      where: { agency_tenorMonths: { agency: onboarding.ippisRecord.agency, tenorMonths } },
+    });
+    if (!termOption || !termOption.isActive) {
+      throw new UnprocessableEntityException(`No active loan term available for ${tenorMonths} months`);
+    }
+
+    const managementChargeAmount =
+      termOption.managementChargeType === ManagementChargeType.PERCENTAGE
+        ? (amount * Number(termOption.managementChargeValue)) / 100
+        : Number(termOption.managementChargeValue);
+
+    await this.smsProvider.send(client.phone, this.confirmationMessage(amount, LoanRequestType.TOPUP));
+
+    const loanRequest = await this.prisma.loanRequest.create({
+      data: {
+        clientId,
+        amount,
+        tenorMonths,
+        type: LoanRequestType.TOPUP,
+        topupTargetId: activeLoan.id,
         interestRatePercent: termOption.interestRatePercent,
         managementChargeType: termOption.managementChargeType,
         managementChargeValue: termOption.managementChargeValue,
@@ -215,8 +315,8 @@ export class LoanRequestService {
     return updated;
   }
 
-  async listAll(status?: LoanRequestStatus) {
-    return this.prisma.loanRequest.findMany({ where: { status }, orderBy: { createdAt: 'desc' } });
+  async listAll(status?: LoanRequestStatus, type?: LoanRequestType) {
+    return this.prisma.loanRequest.findMany({ where: { status, type }, orderBy: { createdAt: 'desc' } });
   }
 
   async exportDisbursementSummaryCsv(month: string): Promise<string> {
