@@ -22,6 +22,8 @@ const BOOTSTRAP_PERMISSIONS: Array<{ key: string; description: string }> = [
   { key: 'documents:read', description: 'View document upload batches and snapshot exports' },
   { key: 'permissions:manage', description: 'Create, edit, and delete permission definitions' },
   { key: 'reconciliation:read', description: 'View loan repayment reconciliation variances' },
+  { key: 'wallets:read', description: "View a client's wallet balance and entries" },
+  { key: 'wallets:manage', description: "Credit or debit a client's wallet" },
 ];
 
 async function main() {

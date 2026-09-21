@@ -126,6 +126,7 @@ model Client {
 
   onboarding ClientOnboarding?
   loanRequests LoanRequest[]
+  walletEntries WalletEntry[]
 }
 
 enum OtpPurpose {
@@ -413,4 +414,23 @@ model RepaymentVariance {
   generatedAt    DateTime       @default(now())
 
   @@unique([loanId, period])
+}
+
+enum WalletEntryDirection {
+  CREDIT
+  DEBIT
+}
+
+model WalletEntry {
+  id          String               @id @default(uuid())
+  clientId    String
+  client      Client               @relation(fields: [clientId], references: [id])
+  amount      Decimal
+  direction   WalletEntryDirection
+  description String
+  actorType   AuditActorType
+  actorId     String?
+  createdAt   DateTime             @default(now())
+
+  @@index([clientId])
 }
