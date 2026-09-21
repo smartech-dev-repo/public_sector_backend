@@ -1,14 +1,17 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { ConflictException, Injectable, UnauthorizedException } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
+import { generateSecret, generateURI, verify } from 'otplib';
 import { PrismaService } from '../../prisma/prisma.service';
 import { TokenService } from '../token.service';
 import { SessionService } from '../../session/session.service';
-import { AgentStatus, SessionPrincipalType } from '../../generated/prisma/client';
+import { AgentStatus, SessionPrincipalType, TwoFactorMethod } from '../../generated/prisma/client';
 import { hashPassword } from '../../common/password-hash.util';
 import { EmailService } from '../../email/email.service';
 import { generateOpaqueToken, hashToken } from '../../common/opaque-token.util';
+import { generateEmailCode } from '../../common/generate-email-code.util';
 
 const PASSWORD_RESET_TTL_MS = 60 * 60 * 1000;
+const TWO_FACTOR_EMAIL_CODE_TTL_MS = 10 * 60 * 1000;
 
 @Injectable()
 export class AgentAuthService {
@@ -112,5 +115,112 @@ export class AgentAuthService {
     });
 
     await this.sessionService.revokeAllForPrincipal(SessionPrincipalType.AGENT, agent.id, 'password_reset');
+  }
+
+  async setupTwoFactor(agentId: string, method: TwoFactorMethod) {
+    const agent = await this.prisma.agent.findUniqueOrThrow({ where: { id: agentId } });
+    if (agent.twoFactorEnabled) {
+      throw new ConflictException('Two-factor authentication is already enabled');
+    }
+
+    if (method === TwoFactorMethod.TOTP) {
+      const secret = generateSecret();
+      await this.prisma.agent.update({
+        where: { id: agentId },
+        data: { twoFactorPendingMethod: TwoFactorMethod.TOTP, twoFactorPendingSecret: secret },
+      });
+      const otpauthUrl = generateURI({ issuer: 'Public Sector Backend', label: agent.email, secret });
+      return { method: TwoFactorMethod.TOTP, secret, otpauthUrl };
+    }
+
+    const code = generateEmailCode();
+    await this.prisma.agent.update({
+      where: { id: agentId },
+      data: {
+        twoFactorPendingMethod: TwoFactorMethod.EMAIL,
+        twoFactorEmailCodeHash: hashToken(code),
+        twoFactorEmailCodeExpiresAt: new Date(Date.now() + TWO_FACTOR_EMAIL_CODE_TTL_MS),
+      },
+    });
+    await this.emailService.send({
+      to: agent.email,
+      subject: 'Your two-factor setup code',
+      html: `<p>Your verification code is: ${code}</p>`,
+      text: `Your verification code is: ${code}`,
+    });
+    return { method: TwoFactorMethod.EMAIL };
+  }
+
+  async confirmTwoFactor(agentId: string, code: string): Promise<void> {
+    const agent = await this.prisma.agent.findUniqueOrThrow({ where: { id: agentId } });
+
+    if (!agent.twoFactorPendingMethod) {
+      throw new ConflictException('No two-factor setup in progress');
+    }
+
+    if (agent.twoFactorPendingMethod === TwoFactorMethod.TOTP) {
+      const result = await verify({ secret: agent.twoFactorPendingSecret!, token: code });
+      if (!result.valid) {
+        throw new UnauthorizedException('Invalid verification code');
+      }
+
+      await this.prisma.agent.update({
+        where: { id: agentId },
+        data: {
+          twoFactorEnabled: true,
+          twoFactorMethod: TwoFactorMethod.TOTP,
+          twoFactorSecret: agent.twoFactorPendingSecret,
+          twoFactorPendingSecret: null,
+          twoFactorPendingMethod: null,
+        },
+      });
+      return;
+    }
+
+    if (
+      !agent.twoFactorEmailCodeHash ||
+      !agent.twoFactorEmailCodeExpiresAt ||
+      agent.twoFactorEmailCodeExpiresAt < new Date() ||
+      agent.twoFactorEmailCodeHash !== hashToken(code)
+    ) {
+      throw new UnauthorizedException('Invalid or expired verification code');
+    }
+
+    await this.prisma.agent.update({
+      where: { id: agentId },
+      data: {
+        twoFactorEnabled: true,
+        twoFactorMethod: TwoFactorMethod.EMAIL,
+        twoFactorPendingMethod: null,
+        twoFactorEmailCodeHash: null,
+        twoFactorEmailCodeExpiresAt: null,
+      },
+    });
+  }
+
+  async disableTwoFactor(agentId: string, currentPassword: string): Promise<void> {
+    const agent = await this.prisma.agent.findUniqueOrThrow({ where: { id: agentId } });
+
+    const passwordMatches = await bcrypt.compare(currentPassword, agent.passwordHash!);
+    if (!passwordMatches) {
+      throw new UnauthorizedException('Current password is incorrect');
+    }
+
+    if (!agent.twoFactorEnabled) {
+      throw new ConflictException('Two-factor authentication is not enabled');
+    }
+
+    await this.prisma.agent.update({
+      where: { id: agentId },
+      data: {
+        twoFactorEnabled: false,
+        twoFactorMethod: null,
+        twoFactorSecret: null,
+        twoFactorPendingSecret: null,
+        twoFactorPendingMethod: null,
+        twoFactorEmailCodeHash: null,
+        twoFactorEmailCodeExpiresAt: null,
+      },
+    });
   }
 }
