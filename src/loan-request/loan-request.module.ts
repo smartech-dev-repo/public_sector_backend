@@ -3,6 +3,7 @@ import { BullModule } from '@nestjs/bullmq';
 import { LoanRequestController } from './loan-request.controller';
 import { SmsWebhookController } from './sms-webhook.controller';
 import { AdminLoanRequestController } from './admin-loan-request.controller';
+import { AdminClientLoansController } from './admin-client-loans.controller';
 import { LoanRequestService } from './loan-request.service';
 import { LoanRequestExpiryProcessor } from './loan-request-expiry.processor';
 import { LOAN_REQUEST_EXPIRY_QUEUE } from './loan-request-queue.constants';
@@ -21,7 +22,12 @@ import { AuditModule } from '../audit/audit.module';
     ClientLoansModule,
     AuditModule,
   ],
-  controllers: [LoanRequestController, SmsWebhookController, AdminLoanRequestController],
+  controllers: [
+    LoanRequestController,
+    SmsWebhookController,
+    AdminLoanRequestController,
+    AdminClientLoansController,
+  ],
   providers: [
     LoanRequestService,
     LoanRequestExpiryProcessor,

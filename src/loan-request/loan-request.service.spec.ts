@@ -1,4 +1,4 @@
-import { ConflictException, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
+import { BadRequestException, ConflictException, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Queue } from 'bullmq';
 import { LoanRequestService } from './loan-request.service';
@@ -20,7 +20,7 @@ describe('LoanRequestService', () => {
       findMany: jest.Mock;
     };
     loanTermOption: { findUnique: jest.Mock };
-    clientLoan: { create: jest.Mock };
+    clientLoan: { create: jest.Mock; findMany: jest.Mock };
   };
   let eligibilityService: { check: jest.Mock };
   let smsProvider: { send: jest.Mock };
@@ -39,7 +39,7 @@ describe('LoanRequestService', () => {
         findMany: jest.fn(),
       },
       loanTermOption: { findUnique: jest.fn() },
-      clientLoan: { create: jest.fn() },
+      clientLoan: { create: jest.fn(), findMany: jest.fn() },
     };
     eligibilityService = { check: jest.fn() };
     smsProvider = { send: jest.fn().mockResolvedValue(undefined) };
@@ -322,6 +322,37 @@ describe('LoanRequestService', () => {
         where: { status: 'CONFIRMED' },
         orderBy: { createdAt: 'desc' },
       });
+    });
+  });
+
+  describe('exportDisbursementSummaryCsv', () => {
+    it('throws BadRequestException for a malformed month', async () => {
+      await expect(service.exportDisbursementSummaryCsv('not-a-month')).rejects.toThrow(BadRequestException);
+    });
+
+    it('builds a CSV with one row per ClientLoan disbursed in that month', async () => {
+      prisma.clientLoan.findMany.mockResolvedValue([
+        {
+          agency: 'NPF',
+          principalAmount: 5000,
+          disbursedAmount: 4900,
+          tenorMonths: 6,
+          interestRatePercent: 5,
+          managementChargeAmount: 100,
+          disbursementDate: new Date('2026-09-15T00:00:00.000Z'),
+          client: { phone: '+2348000000000', onboarding: { employeeName: 'Jane Doe' } },
+        },
+      ]);
+
+      const csv = await service.exportDisbursementSummaryCsv('2026-09');
+
+      expect(prisma.clientLoan.findMany).toHaveBeenCalledWith({
+        where: { disbursementDate: { gte: new Date(2026, 8, 1), lt: new Date(2026, 9, 1) } },
+        include: { client: { include: { onboarding: true } } },
+        orderBy: { disbursementDate: 'asc' },
+      });
+      expect(csv).toContain('clientPhone,clientName,agency,principalAmount,disbursedAmount,tenorMonths,interestRatePercent,managementChargeAmount,disbursementDate');
+      expect(csv).toContain('+2348000000000,Jane Doe,NPF,5000,4900,6,5,100,2026-09-15T00:00:00.000Z');
     });
   });
 

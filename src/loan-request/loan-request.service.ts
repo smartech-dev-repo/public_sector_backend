@@ -1,4 +1,11 @@
-import { ConflictException, Inject, Injectable, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Inject,
+  Injectable,
+  NotFoundException,
+  UnprocessableEntityException,
+} from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import { ConfigService } from '@nestjs/config';
 import { Queue } from 'bullmq';
@@ -210,6 +217,50 @@ export class LoanRequestService {
 
   async listAll(status?: LoanRequestStatus) {
     return this.prisma.loanRequest.findMany({ where: { status }, orderBy: { createdAt: 'desc' } });
+  }
+
+  async exportDisbursementSummaryCsv(month: string): Promise<string> {
+    const match = /^(\d{4})-(\d{2})$/.exec(month);
+    if (!match) {
+      throw new BadRequestException('month must be in YYYY-MM format');
+    }
+    const year = Number(match[1]);
+    const monthIndex = Number(match[2]) - 1;
+    const start = new Date(year, monthIndex, 1);
+    const end = new Date(year, monthIndex + 1, 1);
+
+    const loans = await this.prisma.clientLoan.findMany({
+      where: { disbursementDate: { gte: start, lt: end } },
+      include: { client: { include: { onboarding: true } } },
+      orderBy: { disbursementDate: 'asc' },
+    });
+
+    const header = [
+      'clientPhone',
+      'clientName',
+      'agency',
+      'principalAmount',
+      'disbursedAmount',
+      'tenorMonths',
+      'interestRatePercent',
+      'managementChargeAmount',
+      'disbursementDate',
+    ];
+    const rows = loans.map((loan) =>
+      [
+        loan.client.phone,
+        loan.client.onboarding?.employeeName ?? '',
+        loan.agency,
+        Number(loan.principalAmount),
+        Number(loan.disbursedAmount),
+        loan.tenorMonths,
+        Number(loan.interestRatePercent),
+        Number(loan.managementChargeAmount),
+        loan.disbursementDate.toISOString(),
+      ].join(','),
+    );
+
+    return [header.join(','), ...rows].join('\n') + '\n';
   }
 
   async expire(loanRequestId: string): Promise<void> {
