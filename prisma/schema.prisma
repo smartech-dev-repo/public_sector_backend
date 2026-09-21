@@ -471,6 +471,7 @@ model ClientLoan {
   status                            ClientLoanStatus            @default(ACTIVE)
   createdAt                         DateTime                    @default(now())
   updatedAt                         DateTime                    @updatedAt
+  repaymentVariances ClientLoanRepaymentVariance[]
 }
 
 enum VarianceStatus {
@@ -492,6 +493,20 @@ model RepaymentVariance {
   generatedAt    DateTime       @default(now())
 
   @@unique([loanId, period])
+}
+
+model ClientLoanRepaymentVariance {
+  id             String         @id @default(uuid())
+  clientLoanId   String
+  clientLoan     ClientLoan     @relation(fields: [clientLoanId], references: [id])
+  period         String
+  expectedAmount Decimal
+  actualAmount   Decimal
+  variance       Decimal
+  status         VarianceStatus
+  generatedAt    DateTime       @default(now())
+
+  @@unique([clientLoanId, period])
 }
 
 enum WalletEntryDirection {
