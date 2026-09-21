@@ -51,6 +51,10 @@
       "value": ""
     },
     {
+      "key": "agent_password_reset_token",
+      "value": ""
+    },
+    {
       "key": "client_phone",
       "value": "+2348011111111"
     },
@@ -9569,6 +9573,245 @@
                   ],
                   "cookie": [],
                   "body": "{\n  \"statusCode\": 400,\n  \"message\": \"cv is required\",\n  \"error\": \"Bad Request\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "POST /auth/agent/forgot-password - Success (200, always)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"{{agent_email}}\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/auth/agent/forgot-password",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "auth",
+                    "agent",
+                    "forgot-password"
+                  ]
+                },
+                "description": "Always returns 200 with { sent: true }, whether or not the email belongs to a real, APPROVED agent — this never reveals whether an account exists. The reset token is only ever sent via the (mock console) email provider, never returned by any API response. Check the running server's console log for a line like 'Email to ... — Reset your password\\nUse this token to reset your password: <token>', then paste it into the agent_password_reset_token collection variable before running 'POST /auth/agent/reset-password - Success'."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));",
+                      "pm.test('always reports sent', () => { pm.expect(pm.response.json()).to.eql({ sent: true }); });"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "OK",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"email\": \"{{agent_email}}\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/auth/agent/forgot-password",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "auth",
+                        "agent",
+                        "forgot-password"
+                      ]
+                    }
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"sent\": true\n}"
+                }
+              ]
+            },
+            {
+              "name": "POST /auth/agent/reset-password - Success",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"token\": \"{{agent_password_reset_token}}\",\n  \"newPassword\": \"Reset-Agent-Password-1!\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/auth/agent/reset-password",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "auth",
+                    "agent",
+                    "reset-password"
+                  ]
+                },
+                "description": "Requires agent_password_reset_token to be set from the server console log after running 'POST /auth/agent/forgot-password - Success (200, always)' (see that request's description) — it's never captured automatically by this collection. On success, force-revokes every existing session for that agent (so agent_access_token/agent_refresh_token from a prior login will stop working) and clears mustChangePassword."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "if (pm.response.code === 200) {",
+                      "  pm.collectionVariables.set('agent_password', 'Reset-Agent-Password-1!');",
+                      "}",
+                      "pm.test('status 200 or 401 (401 if agent_password_reset_token was not set from server logs)', () => {",
+                      "  pm.expect([200, 401]).to.include(pm.response.code);",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "OK",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"token\": \"{{agent_password_reset_token}}\",\n  \"newPassword\": \"Reset-Agent-Password-1!\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/auth/agent/reset-password",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "auth",
+                        "agent",
+                        "reset-password"
+                      ]
+                    }
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"reset\": true\n}"
+                }
+              ]
+            },
+            {
+              "name": "POST /auth/agent/reset-password - Invalid/expired token (401)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"token\": \"not-a-real-token\",\n  \"newPassword\": \"Reset-Agent-Password-1!\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/auth/agent/reset-password",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "auth",
+                    "agent",
+                    "reset-password"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 401', () => pm.response.to.have.status(401));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "401 Unauthorized",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"token\": \"not-a-real-token\",\n  \"newPassword\": \"Reset-Agent-Password-1!\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/auth/agent/reset-password",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "auth",
+                        "agent",
+                        "reset-password"
+                      ]
+                    }
+                  },
+                  "status": "Unauthorized",
+                  "code": 401,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"statusCode\": 401,\n  \"message\": \"Invalid or expired reset token\",\n  \"error\": \"Unauthorized\"\n}"
                 }
               ]
             },

@@ -328,6 +328,18 @@ credentials, but only until the agent has logged in once
 database on every agent token refresh, the same way it already
 re-derives `permissions` fresh for admin tokens.
 
+## Agent password self-service
+
+`POST /auth/agent/forgot-password` (`{ email }`, always `200`, gated on
+`status === APPROVED`) emails a one-hour opaque reset token via the same
+mechanism Admin's own password reset uses. `POST /auth/agent/reset-password`
+(`{ token, newPassword }`) consumes it, clears `mustChangePassword` (a
+reset via a verified email token counts as establishing a real password
+of the agent's own choosing), and force-revokes every existing session
+for that agent. `POST /auth/agent/change-password` (the voluntary,
+already-authenticated path) already existed from the enrollment work and
+is unchanged.
+
 ## Client/IPPIS onboarding
 
 After phone/OTP login, a Client links their IPPIS number, submits BVN/NIN
