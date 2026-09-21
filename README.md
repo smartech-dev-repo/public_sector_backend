@@ -340,6 +340,17 @@ for that agent. `POST /auth/agent/change-password` (the voluntary,
 already-authenticated path) already existed from the enrollment work and
 is unchanged.
 
+## Agent two-factor authentication
+
+Identical shape to Admin's 2FA (see "Admin two-factor authentication"
+above) — `POST /auth/agent/2fa/setup` (`{ method: 'TOTP' | 'EMAIL' }`),
+`POST /auth/agent/2fa/confirm` (`{ code }`), `POST /auth/agent/2fa/disable`
+(`{ currentPassword }`), and `POST /auth/agent/login` returning
+`{ twoFactorRequired: true, method, pendingToken }` when enabled, completed
+via `POST /auth/agent/2fa/login-verify` (`{ pendingToken, code }`). Agent
+was originally scoped to email-OTP-only given its mobile-app context, but
+that was revised to give Agent the same TOTP option Admin has.
+
 ## Client/IPPIS onboarding
 
 After phone/OTP login, a Client links their IPPIS number, submits BVN/NIN

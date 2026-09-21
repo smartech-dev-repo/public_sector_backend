@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "7b1e4c2a-4f3e-4a2b-9c1d-3a7e2f8b6d10",
     "name": "Public Sector Backend",
-    "description": "Full API coverage for the public-sector-backend NestJS app: Phase 1 auth (Admin/Agent/Client), the Governance Bundle (sessions, invites, audit log), and Document Ingestion Infrastructure.\n\nOrganized into four top-level groups (Admin, Agent, IPPIS, Client) plus a standalone Health check. Each group is self-contained: it has its own Auth (where applicable) and its own Session sub-folder using that group's own tokens, so you can run a whole group top-to-bottom without reaching into another group. Admin's 'Force-Revoke Sessions' (which targets an Agent's or a Client's sessions) stays under Admin since it's an admin-performed action, even though its target is an Agent/Client \u2014 it does not change how Agent/Client manage their own sessions.\n\nEach endpoint has multiple requests: at least one success scenario and the meaningful failure scenarios (validation, auth, permission, not-found). Success requests have test scripts that capture tokens/ids into collection variables so later requests in the same folder (or run via Collection Runner) chain automatically.\n\nMAINTENANCE: this collection must be kept in sync with the codebase. See ../CLAUDE.md and postman/README.md for the standing rule \u2014 any change to a controller, DTO, or permission key must be reflected here in the same change.",
+    "description": "Full API coverage for the public-sector-backend NestJS app: Phase 1 auth (Admin/Agent/Client), the Governance Bundle (sessions, invites, audit log), and Document Ingestion Infrastructure.\n\nOrganized into four top-level groups (Admin, Agent, IPPIS, Client) plus a standalone Health check. Each group is self-contained: it has its own Auth (where applicable) and its own Session sub-folder using that group's own tokens, so you can run a whole group top-to-bottom without reaching into another group. Admin's 'Force-Revoke Sessions' (which targets an Agent's or a Client's sessions) stays under Admin since it's an admin-performed action, even though its target is an Agent/Client — it does not change how Agent/Client manage their own sessions.\n\nEach endpoint has multiple requests: at least one success scenario and the meaningful failure scenarios (validation, auth, permission, not-found). Success requests have test scripts that capture tokens/ids into collection variables so later requests in the same folder (or run via Collection Runner) chain automatically.\n\nMAINTENANCE: this collection must be kept in sync with the codebase. See ../CLAUDE.md and postman/README.md for the standing rule — any change to a controller, DTO, or permission key must be reflected here in the same change.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -172,6 +172,18 @@
     },
     {
       "key": "admin_2fa_code",
+      "value": ""
+    },
+    {
+      "key": "agent_2fa_secret",
+      "value": ""
+    },
+    {
+      "key": "agent_2fa_pending_token",
+      "value": ""
+    },
+    {
+      "key": "agent_2fa_code",
       "value": ""
     }
   ],
@@ -533,7 +545,7 @@
                     "accept-invite"
                   ]
                 },
-                "description": "The token is only ever sent via the (mock console) email provider, never returned by any API response \u2014 it's never captured automatically by this collection. Check the running server's console log after 'Admin > Invites > POST /admin/invites - Success' for a line like 'Email to ... Use this token to accept: <token>', then paste it into the invite_token collection variable before running this request."
+                "description": "The token is only ever sent via the (mock console) email provider, never returned by any API response — it's never captured automatically by this collection. Check the running server's console log after 'Admin > Invites > POST /admin/invites - Success' for a line like 'Email to ... Use this token to accept: <token>', then paste it into the invite_token collection variable before running this request."
               },
               "event": [
                 {
@@ -578,7 +590,7 @@
                         "accept-invite"
                       ]
                     },
-                    "description": "The token is only ever sent via the (mock console) email provider, never returned by any API response \u2014 it's never captured automatically by this collection. Check the running server's console log after 'Admin > Invites > POST /admin/invites - Success' for a line like 'Email to ... Use this token to accept: <token>', then paste it into the invite_token collection variable before running this request."
+                    "description": "The token is only ever sent via the (mock console) email provider, never returned by any API response — it's never captured automatically by this collection. Check the running server's console log after 'Admin > Invites > POST /admin/invites - Success' for a line like 'Email to ... Use this token to accept: <token>', then paste it into the invite_token collection variable before running this request."
                   },
                   "status": "OK",
                   "code": 200,
@@ -1903,7 +1915,7 @@
                     "refresh"
                   ]
                 },
-                "description": "Not role-namespaced \u2014 the Session row itself carries the principal type. Rotates the token: the old refresh token is revoked and a new one is returned."
+                "description": "Not role-namespaced — the Session row itself carries the principal type. Rotates the token: the old refresh token is revoked and a new one is returned."
               },
               "event": [
                 {
@@ -1944,7 +1956,7 @@
                         "refresh"
                       ]
                     },
-                    "description": "Not role-namespaced \u2014 the Session row itself carries the principal type. Rotates the token: the old refresh token is revoked and a new one is returned."
+                    "description": "Not role-namespaced — the Session row itself carries the principal type. Rotates the token: the old refresh token is revoked and a new one is returned."
                   },
                   "status": "OK",
                   "code": 200,
@@ -2327,7 +2339,7 @@
                     "logout"
                   ]
                 },
-                "description": "Idempotent \u2014 also returns 200 on an already-revoked/unknown token."
+                "description": "Idempotent — also returns 200 on an already-revoked/unknown token."
               },
               "event": [
                 {
@@ -2365,7 +2377,7 @@
                         "logout"
                       ]
                     },
-                    "description": "Idempotent \u2014 also returns 200 on an already-revoked/unknown token."
+                    "description": "Idempotent — also returns 200 on an already-revoked/unknown token."
                   },
                   "status": "OK",
                   "code": 200,
@@ -4301,7 +4313,7 @@
                     "{{permission_id}}"
                   ]
                 },
-                "description": "key is immutable \u2014 only description can change."
+                "description": "key is immutable — only description can change."
               },
               "event": [
                 {
@@ -5400,7 +5412,7 @@
                     "roles"
                   ]
                 },
-                "description": "admin_id is set by 'Admin > Reference > GET /admin/me - Success'. role_id is set by 'Admin > Roles > POST /admin/roles - Success' \u2014 run that again first if you already deleted it in this run."
+                "description": "admin_id is set by 'Admin > Reference > GET /admin/me - Success'. role_id is set by 'Admin > Roles > POST /admin/roles - Success' — run that again first if you already deleted it in this run."
               },
               "event": [
                 {
@@ -5444,7 +5456,7 @@
                         "roles"
                       ]
                     },
-                    "description": "admin_id is set by 'Admin > Reference > GET /admin/me - Success'. role_id is set by 'Admin > Roles > POST /admin/roles - Success' \u2014 run that again first if you already deleted it in this run."
+                    "description": "admin_id is set by 'Admin > Reference > GET /admin/me - Success'. role_id is set by 'Admin > Roles > POST /admin/roles - Success' — run that again first if you already deleted it in this run."
                   },
                   "status": "OK",
                   "code": 200,
@@ -5865,7 +5877,7 @@
                     "upload"
                   ]
                 },
-                "description": "Attach an .xlsx file with one sheet per agency (NPF/NSCDC/IMMIGRATION/CORRECTIONAL), each with a header row containing at least \"Staff ID\" and \"Employee Name\" \u2014 rows are upserted into IppisRecord by (agency, staffId). Do NOT attach the real sample files under docs/added/ to a shared workspace \u2014 those contain real BVNs/bank data and are gitignored for that reason."
+                "description": "Attach an .xlsx file with one sheet per agency (NPF/NSCDC/IMMIGRATION/CORRECTIONAL), each with a header row containing at least \"Staff ID\" and \"Employee Name\" — rows are upserted into IppisRecord by (agency, staffId). Do NOT attach the real sample files under docs/added/ to a shared workspace — those contain real BVNs/bank data and are gitignored for that reason."
               },
               "event": [
                 {
@@ -6042,7 +6054,7 @@
                     "upload"
                   ]
                 },
-                "description": "Attach an .xlsx file with a report-header block (any number of rows) followed by a row containing both \"Customer ID\" and \"IPPIS\" column headers \u2014 rows below that are upserted into Loan by customerId. Do NOT attach the real sample files under docs/added/ to a shared workspace \u2014 those contain real BVNs/bank data and are gitignored for that reason."
+                "description": "Attach an .xlsx file with a report-header block (any number of rows) followed by a row containing both \"Customer ID\" and \"IPPIS\" column headers — rows below that are upserted into Loan by customerId. Do NOT attach the real sample files under docs/added/ to a shared workspace — those contain real BVNs/bank data and are gitignored for that reason."
               },
               "event": [
                 {
@@ -6234,7 +6246,7 @@
                     "upload"
                   ]
                 },
-                "description": "Attach an .xlsx file with one sheet per agency (NPF/NSCDC/IMMIGRATION/CORRECTIONAL/CUSTOM/LASG) \u2014 column layouts differ per agency; see src/document-ingestion/parsers/repayment-row-mapper.ts for each sheet's expected headers. Rows are upserted into LoanRepaymentRecord by (agency, staffId, period, elementName). Do NOT attach the real sample files under docs/added/ to a shared workspace \u2014 those contain real BVNs/bank data and are gitignored for that reason."
+                "description": "Attach an .xlsx file with one sheet per agency (NPF/NSCDC/IMMIGRATION/CORRECTIONAL/CUSTOM/LASG) — column layouts differ per agency; see src/document-ingestion/parsers/repayment-row-mapper.ts for each sheet's expected headers. Rows are upserted into LoanRepaymentRecord by (agency, staffId, period, elementName). Do NOT attach the real sample files under docs/added/ to a shared workspace — those contain real BVNs/bank data and are gitignored for that reason."
               },
               "event": [
                 {
@@ -6286,7 +6298,7 @@
                         "upload"
                       ]
                     },
-                    "description": "Attach an .xlsx file with one sheet per agency (NPF/NSCDC/IMMIGRATION/CORRECTIONAL/CUSTOM/LASG) \u2014 column layouts differ per agency; see src/document-ingestion/parsers/repayment-row-mapper.ts for each sheet's expected headers. Rows are upserted into LoanRepaymentRecord by (agency, staffId, period, elementName). Do NOT attach the real sample files under docs/added/ to a shared workspace \u2014 those contain real BVNs/bank data and are gitignored for that reason."
+                    "description": "Attach an .xlsx file with one sheet per agency (NPF/NSCDC/IMMIGRATION/CORRECTIONAL/CUSTOM/LASG) — column layouts differ per agency; see src/document-ingestion/parsers/repayment-row-mapper.ts for each sheet's expected headers. Rows are upserted into LoanRepaymentRecord by (agency, staffId, period, elementName). Do NOT attach the real sample files under docs/added/ to a shared workspace — those contain real BVNs/bank data and are gitignored for that reason."
                   },
                   "status": "Created",
                   "code": 201,
@@ -6415,7 +6427,7 @@
                       "key": "period",
                       "value": "2024-13",
                       "type": "text",
-                      "description": "Month 13 does not exist \u2014 must match YYYY-MM with month 01-12"
+                      "description": "Month 13 does not exist — must match YYYY-MM with month 01-12"
                     }
                   ]
                 },
@@ -6465,7 +6477,7 @@
                           "key": "period",
                           "value": "2024-13",
                           "type": "text",
-                          "description": "Month 13 does not exist \u2014 must match YYYY-MM with month 01-12"
+                          "description": "Month 13 does not exist — must match YYYY-MM with month 01-12"
                         }
                       ]
                     },
@@ -6681,7 +6693,7 @@
                     "{{ippis_batch_id}}"
                   ]
                 },
-                "description": "Run 'POST /admin/documents/ippis-broadsheet/upload - Success' first to populate ippis_batch_id. Note the batch reaches COMPLETED asynchronously via the BullMQ worker \u2014 if you run this immediately, status may still show PENDING/PROCESSING; wait a second and retry if so."
+                "description": "Run 'POST /admin/documents/ippis-broadsheet/upload - Success' first to populate ippis_batch_id. Note the batch reaches COMPLETED asynchronously via the BullMQ worker — if you run this immediately, status may still show PENDING/PROCESSING; wait a second and retry if so."
               },
               "event": [
                 {
@@ -6827,7 +6839,7 @@
                     "{{file_storage_key}}"
                   ]
                 },
-                "description": "file_storage_key must be URL-encoded (storage keys contain '/', e.g. 'uploads/ippis_broadsheet/171...-broadsheet.xlsx') \u2014 Postman encodes path variables automatically, but if pasting manually into the raw URL, encode '/' as %2F. Populated automatically by 'GET /admin/documents/batches/:id - Success'."
+                "description": "file_storage_key must be URL-encoded (storage keys contain '/', e.g. 'uploads/ippis_broadsheet/171...-broadsheet.xlsx') — Postman encodes path variables automatically, but if pasting manually into the raw URL, encode '/' as %2F. Populated automatically by 'GET /admin/documents/batches/:id - Success'."
               },
               "event": [
                 {
@@ -8044,7 +8056,7 @@
                     "reject"
                   ]
                 },
-                "description": "Needs a PENDING_REVIEW agent, so this uses a different agent than the one approved above \u2014 register another one via Agent > Enrollment > POST /agents/register - Success (that overwrites target_agent_id) before running this, or substitute any real PENDING_REVIEW agent id in the URL."
+                "description": "Needs a PENDING_REVIEW agent, so this uses a different agent than the one approved above — register another one via Agent > Enrollment > POST /agents/register - Success (that overwrites target_agent_id) before running this, or substitute any real PENDING_REVIEW agent id in the URL."
               },
               "event": [
                 {
@@ -8087,7 +8099,7 @@
                         "reject"
                       ]
                     },
-                    "description": "Needs a PENDING_REVIEW agent, so this uses a different agent than the one approved above \u2014 register another one via Agent > Enrollment > POST /agents/register - Success (that overwrites target_agent_id) before running this, or substitute any real PENDING_REVIEW agent id in the URL."
+                    "description": "Needs a PENDING_REVIEW agent, so this uses a different agent than the one approved above — register another one via Agent > Enrollment > POST /agents/register - Success (that overwrites target_agent_id) before running this, or substitute any real PENDING_REVIEW agent id in the URL."
                   },
                   "status": "OK",
                   "code": 200,
@@ -8212,7 +8224,7 @@
                     "resend-credentials"
                   ]
                 },
-                "description": "Uses the agent approved above (target_agent_id) \u2014 must be APPROVED and not yet logged in. Regenerates and re-emails the temporary password."
+                "description": "Uses the agent approved above (target_agent_id) — must be APPROVED and not yet logged in. Regenerates and re-emails the temporary password."
               },
               "event": [
                 {
@@ -8247,7 +8259,7 @@
                         "resend-credentials"
                       ]
                     },
-                    "description": "Uses the agent approved above (target_agent_id) \u2014 must be APPROVED and not yet logged in. Regenerates and re-emails the temporary password."
+                    "description": "Uses the agent approved above (target_agent_id) — must be APPROVED and not yet logged in. Regenerates and re-emails the temporary password."
                   },
                   "status": "OK",
                   "code": 200,
@@ -8372,7 +8384,7 @@
                     "login"
                   ]
                 },
-                "description": "Agent self-registration/approval isn't built yet (deferred to Phase 2 \u2014 see docs/specs). This only works if an Agent row with status=APPROVED and a bcrypt passwordHash already exists in the DB \u2014 insert one directly for testing, matching agent_email/agent_password."
+                "description": "Agent self-registration/approval isn't built yet (deferred to Phase 2 — see docs/specs). This only works if an Agent row with status=APPROVED and a bcrypt passwordHash already exists in the DB — insert one directly for testing, matching agent_email/agent_password."
               },
               "event": [
                 {
@@ -8586,6 +8598,794 @@
                   "body": "{\n  \"statusCode\": 400,\n  \"message\": [\n    \"email must be an email\",\n    \"password must be longer than or equal to 8 characters\"\n  ],\n  \"error\": \"Bad Request\"\n}"
                 }
               ]
+            },
+            {
+              "name": "POST /auth/agent/2fa/setup - TOTP",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{agent_access_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"method\": \"TOTP\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/auth/agent/2fa/setup",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "auth",
+                    "agent",
+                    "2fa",
+                    "setup"
+                  ]
+                },
+                "description": "Begins TOTP enrollment for the currently logged-in agent (agent_access_token) — returns a base32 secret and an otpauth:// URI to enter into an authenticator app. Nothing is enabled yet until a real generated code is confirmed via 'POST /auth/agent/2fa/confirm - Success'. 409 if this agent already has 2FA enabled (see 'POST /auth/agent/2fa/setup - Already enabled (409)'). On success, captures the secret into the agent_2fa_secret collection variable."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));",
+                      "const json = pm.response.json();",
+                      "pm.test('returns TOTP secret and otpauth URL', () => { pm.expect(json.method).to.eql('TOTP'); pm.expect(json.secret).to.be.a('string'); pm.expect(json.otpauthUrl).to.be.a('string'); });",
+                      "pm.collectionVariables.set('agent_2fa_secret', json.secret);"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "OK",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      },
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{agent_access_token}}"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"method\": \"TOTP\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/auth/agent/2fa/setup",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "auth",
+                        "agent",
+                        "2fa",
+                        "setup"
+                      ]
+                    },
+                    "description": "Begins TOTP enrollment for the currently logged-in agent (agent_access_token) — returns a base32 secret and an otpauth:// URI to enter into an authenticator app. Nothing is enabled yet until a real generated code is confirmed via 'POST /auth/agent/2fa/confirm - Success'. 409 if this agent already has 2FA enabled (see 'POST /auth/agent/2fa/setup - Already enabled (409)'). On success, captures the secret into the agent_2fa_secret collection variable."
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"method\": \"TOTP\",\n  \"secret\": \"JBSWY3DPEHPK3PXP\",\n  \"otpauthUrl\": \"otpauth://totp/Public%20Sector%20Backend:approved-agent%40example.com?secret=JBSWY3DPEHPK3PXP&issuer=Public%20Sector%20Backend\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "POST /auth/agent/2fa/setup - EMAIL",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{agent_access_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"method\": \"EMAIL\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/auth/agent/2fa/setup",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "auth",
+                    "agent",
+                    "2fa",
+                    "setup"
+                  ]
+                },
+                "description": "Begins EMAIL 2FA enrollment — emails a 6-digit verification code via the (mock console) email provider. Check the running server's console log for a line like 'Email to ... — Your two-factor setup code\\nYour verification code is: <code>', then paste it into the agent_2fa_code collection variable before running 'POST /auth/agent/2fa/confirm - Success'."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));",
+                      "pm.test('reports EMAIL method', () => { pm.expect(pm.response.json()).to.eql({ method: 'EMAIL' }); });"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "OK",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      },
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{agent_access_token}}"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"method\": \"EMAIL\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/auth/agent/2fa/setup",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "auth",
+                        "agent",
+                        "2fa",
+                        "setup"
+                      ]
+                    },
+                    "description": "Begins EMAIL 2FA enrollment — emails a 6-digit verification code via the (mock console) email provider. Check the running server's console log for a line like 'Email to ... — Your two-factor setup code\\nYour verification code is: <code>', then paste it into the agent_2fa_code collection variable before running 'POST /auth/agent/2fa/confirm - Success'."
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"method\": \"EMAIL\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "POST /auth/agent/2fa/setup - Already enabled (409)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{agent_access_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"method\": \"TOTP\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/auth/agent/2fa/setup",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "auth",
+                    "agent",
+                    "2fa",
+                    "setup"
+                  ]
+                },
+                "description": "Run this after 2FA has already been confirmed as enabled for agent_access_token's agent (e.g. after 'POST /auth/agent/2fa/confirm - Success') — setup is rejected once 2FA is already active, regardless of which method is requested."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 409', () => pm.response.to.have.status(409));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Conflict",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      },
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{agent_access_token}}"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"method\": \"TOTP\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/auth/agent/2fa/setup",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "auth",
+                        "agent",
+                        "2fa",
+                        "setup"
+                      ]
+                    },
+                    "description": "Run this after 2FA has already been confirmed as enabled for agent_access_token's agent (e.g. after 'POST /auth/agent/2fa/confirm - Success') — setup is rejected once 2FA is already active, regardless of which method is requested."
+                  },
+                  "status": "Conflict",
+                  "code": 409,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"statusCode\": 409,\n  \"message\": \"Two-factor authentication is already enabled\",\n  \"error\": \"Conflict\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "POST /auth/agent/2fa/confirm - Success",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{agent_access_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"code\": \"{{agent_2fa_code}}\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/auth/agent/2fa/confirm",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "auth",
+                    "agent",
+                    "2fa",
+                    "confirm"
+                  ]
+                },
+                "description": "Activates 2FA using a real code — for TOTP, generate one from the agent_2fa_secret collection variable (an authenticator app, or 'otplib'/'generate({ secret })'); for EMAIL, use the code captured from the console-logged setup email. Paste the code into the agent_2fa_code collection variable first. Only activates on a real, successfully-verified code, so a botched setup never locks anyone out."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));",
+                      "pm.test('reports enabled', () => { pm.expect(pm.response.json()).to.eql({ enabled: true }); });"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "OK",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      },
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{agent_access_token}}"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"code\": \"{{agent_2fa_code}}\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/auth/agent/2fa/confirm",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "auth",
+                        "agent",
+                        "2fa",
+                        "confirm"
+                      ]
+                    },
+                    "description": "Activates 2FA using a real code — for TOTP, generate one from the agent_2fa_secret collection variable (an authenticator app, or 'otplib'/'generate({ secret })'); for EMAIL, use the code captured from the console-logged setup email. Paste the code into the agent_2fa_code collection variable first. Only activates on a real, successfully-verified code, so a botched setup never locks anyone out."
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"enabled\": true\n}"
+                }
+              ]
+            },
+            {
+              "name": "POST /auth/agent/2fa/confirm - Invalid code (401)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{agent_access_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"code\": \"000000\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/auth/agent/2fa/confirm",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "auth",
+                    "agent",
+                    "2fa",
+                    "confirm"
+                  ]
+                },
+                "description": "Run this while a TOTP setup is pending (right after 'POST /auth/agent/2fa/setup - TOTP') — a wrong code is rejected without enabling 2FA."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 401', () => pm.response.to.have.status(401));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Unauthorized",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      },
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{agent_access_token}}"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"code\": \"000000\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/auth/agent/2fa/confirm",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "auth",
+                        "agent",
+                        "2fa",
+                        "confirm"
+                      ]
+                    },
+                    "description": "Run this while a TOTP setup is pending (right after 'POST /auth/agent/2fa/setup - TOTP') — a wrong code is rejected without enabling 2FA."
+                  },
+                  "status": "Unauthorized",
+                  "code": 401,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"statusCode\": 401,\n  \"message\": \"Invalid verification code\",\n  \"error\": \"Unauthorized\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "POST /auth/agent/2fa/disable - Success",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{agent_access_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"currentPassword\": \"{{agent_password}}\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/auth/agent/2fa/disable",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "auth",
+                    "agent",
+                    "2fa",
+                    "disable"
+                  ]
+                },
+                "description": "Disables 2FA for the currently logged-in agent (agent_access_token) once it's enabled — requires re-confirming the current password. Unlike reset-password, this does not revoke other sessions."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));",
+                      "pm.test('reports disabled', () => { pm.expect(pm.response.json()).to.eql({ disabled: true }); });"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "OK",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      },
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{agent_access_token}}"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"currentPassword\": \"{{agent_password}}\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/auth/agent/2fa/disable",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "auth",
+                        "agent",
+                        "2fa",
+                        "disable"
+                      ]
+                    },
+                    "description": "Disables 2FA for the currently logged-in agent (agent_access_token) once it's enabled — requires re-confirming the current password. Unlike reset-password, this does not revoke other sessions."
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"disabled\": true\n}"
+                }
+              ]
+            },
+            {
+              "name": "POST /auth/agent/login - Two-factor required",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"{{agent_email}}\",\n  \"password\": \"{{agent_password}}\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/auth/agent/login",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "auth",
+                    "agent",
+                    "login"
+                  ]
+                },
+                "description": "A variant of 'POST /auth/agent/login - Success' showing the response shape once 2FA is enabled for this agent — real tokens are withheld and a short-lived pendingToken is returned instead. Run this after 2FA has been confirmed as enabled (e.g. via the TOTP setup+confirm requests above). On success, captures the pendingToken into the agent_2fa_pending_token collection variable for 'POST /auth/agent/2fa/login-verify - Success'."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));",
+                      "const json = pm.response.json();",
+                      "pm.test('reports two-factor required', () => { pm.expect(json.twoFactorRequired).to.eql(true); pm.expect(json.pendingToken).to.be.a('string'); });",
+                      "pm.collectionVariables.set('agent_2fa_pending_token', json.pendingToken);"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "OK",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"email\": \"{{agent_email}}\",\n  \"password\": \"{{agent_password}}\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/auth/agent/login",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "auth",
+                        "agent",
+                        "login"
+                      ]
+                    },
+                    "description": "A variant of 'POST /auth/agent/login - Success' showing the response shape once 2FA is enabled for this agent — real tokens are withheld and a short-lived pendingToken is returned instead. Run this after 2FA has been confirmed as enabled (e.g. via the TOTP setup+confirm requests above). On success, captures the pendingToken into the agent_2fa_pending_token collection variable for 'POST /auth/agent/2fa/login-verify - Success'."
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"twoFactorRequired\": true,\n  \"method\": \"TOTP\",\n  \"pendingToken\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhM2MxZTJiNC02ZjhkLTRhOTEtOWMzZS0xZDJmM2E0YjVjNmQifQ.fake-signature-do-not-use\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "POST /auth/agent/2fa/login-verify - Success",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"pendingToken\": \"{{agent_2fa_pending_token}}\",\n  \"code\": \"{{agent_2fa_code}}\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/auth/agent/2fa/login-verify",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "auth",
+                    "agent",
+                    "2fa",
+                    "login-verify"
+                  ]
+                },
+                "description": "Completes a 2FA-gated login using the pendingToken captured from 'POST /auth/agent/login - Two-factor required' and a fresh real code (generate a new one from agent_2fa_secret for TOTP, since a previously-used code may already be stale) — issues real tokens exactly like a normal login. pendingToken is signed with a separate secret (JWT_TWO_FACTOR_PENDING_SECRET), so it cannot be used as a real Bearer token anywhere."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));",
+                      "const json = pm.response.json();",
+                      "pm.test('has tokens', () => { pm.expect(json.accessToken).to.be.a('string'); pm.expect(json.refreshToken).to.be.a('string'); });",
+                      "pm.collectionVariables.set('agent_access_token', json.accessToken);",
+                      "pm.collectionVariables.set('agent_refresh_token', json.refreshToken);"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "OK",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"pendingToken\": \"{{agent_2fa_pending_token}}\",\n  \"code\": \"{{agent_2fa_code}}\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/auth/agent/2fa/login-verify",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "auth",
+                        "agent",
+                        "2fa",
+                        "login-verify"
+                      ]
+                    },
+                    "description": "Completes a 2FA-gated login using the pendingToken captured from 'POST /auth/agent/login - Two-factor required' and a fresh real code (generate a new one from agent_2fa_secret for TOTP, since a previously-used code may already be stale) — issues real tokens exactly like a normal login. pendingToken is signed with a separate secret (JWT_TWO_FACTOR_PENDING_SECRET), so it cannot be used as a real Bearer token anywhere."
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"accessToken\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhM2MxZTJiNC02ZjhkLTRhOTEtOWMzZS0xZDJmM2E0YjVjNmQiLCJ0eXBlIjoiYWdlbnQifQ.ImKogdll8EiPykiJxN7uCHEfsqGvu_tml_yXe62_Yf\",\n  \"refreshToken\": \"f34927f8dc8a9cc0d497687d1281aa34ddb942ce6c602e320f201cf95ff2876e\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "POST /auth/agent/2fa/login-verify - Invalid code (401)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"pendingToken\": \"{{agent_2fa_pending_token}}\",\n  \"code\": \"000000\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/auth/agent/2fa/login-verify",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "auth",
+                    "agent",
+                    "2fa",
+                    "login-verify"
+                  ]
+                },
+                "description": "A wrong code is rejected without invalidating the pending token — agent_2fa_pending_token can still be retried with a correct code afterward (see 'POST /auth/agent/2fa/login-verify - Success')."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 401', () => pm.response.to.have.status(401));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Unauthorized",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"pendingToken\": \"{{agent_2fa_pending_token}}\",\n  \"code\": \"000000\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/auth/agent/2fa/login-verify",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "auth",
+                        "agent",
+                        "2fa",
+                        "login-verify"
+                      ]
+                    },
+                    "description": "A wrong code is rejected without invalidating the pending token — agent_2fa_pending_token can still be retried with a correct code afterward (see 'POST /auth/agent/2fa/login-verify - Success')."
+                  },
+                  "status": "Unauthorized",
+                  "code": 401,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"statusCode\": 401,\n  \"message\": \"Invalid verification code\",\n  \"error\": \"Unauthorized\"\n}"
+                }
+              ]
             }
           ]
         },
@@ -8617,7 +9417,7 @@
                     "refresh"
                   ]
                 },
-                "description": "Not role-namespaced \u2014 the Session row itself carries the principal type. Rotates the token: the old refresh token is revoked and a new one is returned."
+                "description": "Not role-namespaced — the Session row itself carries the principal type. Rotates the token: the old refresh token is revoked and a new one is returned."
               },
               "event": [
                 {
@@ -8658,7 +9458,7 @@
                         "refresh"
                       ]
                     },
-                    "description": "Not role-namespaced \u2014 the Session row itself carries the principal type. Rotates the token: the old refresh token is revoked and a new one is returned."
+                    "description": "Not role-namespaced — the Session row itself carries the principal type. Rotates the token: the old refresh token is revoked and a new one is returned."
                   },
                   "status": "OK",
                   "code": 200,
@@ -9041,7 +9841,7 @@
                     "logout"
                   ]
                 },
-                "description": "Idempotent \u2014 also returns 200 on an already-revoked/unknown token."
+                "description": "Idempotent — also returns 200 on an already-revoked/unknown token."
               },
               "event": [
                 {
@@ -9079,7 +9879,7 @@
                         "logout"
                       ]
                     },
-                    "description": "Idempotent \u2014 also returns 200 on an already-revoked/unknown token."
+                    "description": "Idempotent — also returns 200 on an already-revoked/unknown token."
                   },
                   "status": "OK",
                   "code": 200,
@@ -9995,7 +10795,7 @@
     },
     {
       "name": "Client",
-      "description": "Everything authenticated as a Client (phone + OTP) \u2014 in this codebase, an IPPIS civil servant is onboarded and logs in as a Client. Login/OTP and this client's own session management. Independent of Admin's ability to force-revoke this client's sessions (see Admin > Force-Revoke Sessions).",
+      "description": "Everything authenticated as a Client (phone + OTP) — in this codebase, an IPPIS civil servant is onboarded and logs in as a Client. Login/OTP and this client's own session management. Independent of Admin's ability to force-revoke this client's sessions (see Admin > Force-Revoke Sessions).",
       "item": [
         {
           "name": "Auth",
@@ -10437,7 +11237,7 @@
                     "refresh"
                   ]
                 },
-                "description": "Not role-namespaced \u2014 the Session row itself carries the principal type. Rotates the token: the old refresh token is revoked and a new one is returned."
+                "description": "Not role-namespaced — the Session row itself carries the principal type. Rotates the token: the old refresh token is revoked and a new one is returned."
               },
               "event": [
                 {
@@ -10478,7 +11278,7 @@
                         "refresh"
                       ]
                     },
-                    "description": "Not role-namespaced \u2014 the Session row itself carries the principal type. Rotates the token: the old refresh token is revoked and a new one is returned."
+                    "description": "Not role-namespaced — the Session row itself carries the principal type. Rotates the token: the old refresh token is revoked and a new one is returned."
                   },
                   "status": "OK",
                   "code": 200,
@@ -10861,7 +11661,7 @@
                     "logout"
                   ]
                 },
-                "description": "Idempotent \u2014 also returns 200 on an already-revoked/unknown token."
+                "description": "Idempotent — also returns 200 on an already-revoked/unknown token."
               },
               "event": [
                 {
@@ -10899,7 +11699,7 @@
                         "logout"
                       ]
                     },
-                    "description": "Idempotent \u2014 also returns 200 on an already-revoked/unknown token."
+                    "description": "Idempotent — also returns 200 on an already-revoked/unknown token."
                   },
                   "status": "OK",
                   "code": 200,
@@ -11695,14 +12495,41 @@
               "request": {
                 "method": "POST",
                 "header": [
-                  { "key": "Content-Type", "value": "application/json" },
-                  { "key": "Authorization", "value": "Bearer {{client_access_token}}" }
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{client_access_token}}"
+                  }
                 ],
-                "body": { "mode": "raw", "raw": "{\n  \"amount\": 999999999\n}" },
-                "url": { "raw": "{{base_url}}/client/loan-requests", "host": ["{{base_url}}"], "path": ["client", "loan-requests"] },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"amount\": 999999999\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/client/loan-requests",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "client",
+                    "loan-requests"
+                  ]
+                },
                 "description": "Requires the client to already be VERIFIED with a linked IppisRecord that has a salary on file (see Client > Onboarding)."
               },
-              "event": [{ "listen": "test", "script": { "exec": ["pm.test('status 422', () => pm.response.to.have.status(422));"] } }],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 422', () => pm.response.to.have.status(422));"
+                    ]
+                  }
+                }
+              ],
               "response": [
                 {
                   "name": "Eligibility failure - amount exceeds salary cap (422)",
@@ -11753,11 +12580,29 @@
               "request": {
                 "method": "POST",
                 "header": [
-                  { "key": "Content-Type", "value": "application/json" },
-                  { "key": "Authorization", "value": "Bearer {{client_access_token}}" }
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{client_access_token}}"
+                  }
                 ],
-                "body": { "mode": "raw", "raw": "{\n  \"amount\": 5000\n}" },
-                "url": { "raw": "{{base_url}}/client/loan-requests", "host": ["{{base_url}}"], "path": ["client", "loan-requests"] }
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"amount\": 5000\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/client/loan-requests",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "client",
+                    "loan-requests"
+                  ]
+                }
               },
               "event": [
                 {
@@ -11819,14 +12664,35 @@
               "name": "POST /client/loan-requests/:id/resend - Success",
               "request": {
                 "method": "POST",
-                "header": [{ "key": "Authorization", "value": "Bearer {{client_access_token}}" }],
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{client_access_token}}"
+                  }
+                ],
                 "url": {
                   "raw": "{{base_url}}/client/loan-requests/{{loan_request_id}}/resend",
-                  "host": ["{{base_url}}"],
-                  "path": ["client", "loan-requests", "{{loan_request_id}}", "resend"]
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "client",
+                    "loan-requests",
+                    "{{loan_request_id}}",
+                    "resend"
+                  ]
                 }
               },
-              "event": [{ "listen": "test", "script": { "exec": ["pm.test('status 200', () => pm.response.to.have.status(200));"] } }],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));"
+                    ]
+                  }
+                }
+              ],
               "response": [
                 {
                   "name": "Success (200)",
@@ -11869,12 +12735,39 @@
               "name": "POST /webhooks/sms/inbound - Confirm (no auth)",
               "request": {
                 "method": "POST",
-                "header": [{ "key": "Content-Type", "value": "application/json" }],
-                "body": { "mode": "raw", "raw": "{\n  \"phone\": \"{{client_phone}}\",\n  \"message\": \"YES\"\n}" },
-                "url": { "raw": "{{base_url}}/webhooks/sms/inbound", "host": ["{{base_url}}"], "path": ["webhooks", "sms", "inbound"] },
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"phone\": \"{{client_phone}}\",\n  \"message\": \"YES\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/webhooks/sms/inbound",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "webhooks",
+                    "sms",
+                    "inbound"
+                  ]
+                },
                 "description": "No Authorization header — this endpoint is public. client_phone must match the phone used to log in as the Client running this folder."
               },
-              "event": [{ "listen": "test", "script": { "exec": ["pm.test('status 200', () => pm.response.to.have.status(200));"] } }],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));"
+                    ]
+                  }
+                }
+              ],
               "response": [
                 {
                   "name": "Received (200)",
@@ -11921,8 +12814,22 @@
               "name": "GET /client/loan-requests - Success",
               "request": {
                 "method": "GET",
-                "header": [{ "key": "Authorization", "value": "Bearer {{client_access_token}}" }],
-                "url": { "raw": "{{base_url}}/client/loan-requests", "host": ["{{base_url}}"], "path": ["client", "loan-requests"] }
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{client_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/client/loan-requests",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "client",
+                    "loan-requests"
+                  ]
+                }
               },
               "event": [
                 {
@@ -11975,15 +12882,36 @@
               "name": "POST /client/loan-requests/:id/resend - Blocked, not PENDING (409)",
               "request": {
                 "method": "POST",
-                "header": [{ "key": "Authorization", "value": "Bearer {{client_access_token}}" }],
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{client_access_token}}"
+                  }
+                ],
                 "url": {
                   "raw": "{{base_url}}/client/loan-requests/{{loan_request_id}}/resend",
-                  "host": ["{{base_url}}"],
-                  "path": ["client", "loan-requests", "{{loan_request_id}}", "resend"]
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "client",
+                    "loan-requests",
+                    "{{loan_request_id}}",
+                    "resend"
+                  ]
                 },
                 "description": "Run the webhook confirm request above first so this request is no longer PENDING."
               },
-              "event": [{ "listen": "test", "script": { "exec": ["pm.test('status 409', () => pm.response.to.have.status(409));"] } }],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 409', () => pm.response.to.have.status(409));"
+                    ]
+                  }
+                }
+              ],
               "response": [
                 {
                   "name": "Blocked - not PENDING (409)",
@@ -12032,8 +12960,22 @@
               "name": "GET /client/loans - Success",
               "request": {
                 "method": "GET",
-                "header": [{ "key": "Authorization", "value": "Bearer {{client_access_token}}" }],
-                "url": { "raw": "{{base_url}}/client/loans", "host": ["{{base_url}}"], "path": ["client", "loans"] }
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{client_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/client/loans",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "client",
+                    "loans"
+                  ]
+                }
               },
               "event": [
                 {
