@@ -13039,7 +13039,7 @@
                     "request"
                   ]
                 },
-                "description": "The mock ConsoleOtpProvider logs the 6-digit code to the running server's stdout (e.g. 'OTP for +234...: 123456') since there's no real SMS vendor wired in. Copy that code into client_otp_code before running the verify request."
+                "description": "The mock ConsoleOtpProvider logs the 6-digit code to the running server's stdout (e.g. 'OTP for +234...: 123456') since there's no real SMS vendor wired in. Copy that code into client_otp_code before running the verify request. Response is normally just { sent: true }; when the server has ENABLE_MOCK_OTP=true, it additionally includes mockCode (the raw code, for local/dev/staging use only) \u2014 see the second saved example below."
               },
               "event": [
                 {
@@ -13079,7 +13079,7 @@
                         "request"
                       ]
                     },
-                    "description": "The mock ConsoleOtpProvider logs the 6-digit code to the running server's stdout (e.g. 'OTP for +234...: 123456') since there's no real SMS vendor wired in. Copy that code into client_otp_code before running the verify request."
+                    "description": "The mock ConsoleOtpProvider logs the 6-digit code to the running server's stdout (e.g. 'OTP for +234...: 123456') since there's no real SMS vendor wired in. Copy that code into client_otp_code before running the verify request. Response is normally just { sent: true }; when the server has ENABLE_MOCK_OTP=true, it additionally includes mockCode (the raw code, for local/dev/staging use only) \u2014 see the second saved example below."
                   },
                   "status": "OK",
                   "code": 200,
@@ -13092,6 +13092,46 @@
                   ],
                   "cookie": [],
                   "body": "{\n  \"sent\": true\n}"
+                },
+                {
+                  "name": "OK - dev mode (ENABLE_MOCK_OTP=true)",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"phone\": \"{{client_phone}}\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/auth/client/otp/request",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "auth",
+                        "client",
+                        "otp",
+                        "request"
+                      ]
+                    },
+                    "description": "The mock ConsoleOtpProvider logs the 6-digit code to the running server's stdout (e.g. 'OTP for +234...: 123456') since there's no real SMS vendor wired in. Copy that code into client_otp_code before running the verify request. Response is normally just { sent: true }; when the server has ENABLE_MOCK_OTP=true, it additionally includes mockCode (the raw code, for local/dev/staging use only) \u2014 see the second saved example below."
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"sent\": true,\n  \"mockCode\": \"123456\"\n}"
                 }
               ]
             },
