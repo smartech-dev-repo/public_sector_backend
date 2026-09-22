@@ -1,7 +1,8 @@
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { ClientStatus, OnboardingStep } from '../generated/prisma/client';
 import { ClientOnboardingService } from '../client-onboarding/client-onboarding.service';
+import { FILE_STORAGE_PROVIDER, FileStorageProvider } from '../file-storage/file-storage-provider.interface';
 
 interface FailureReasons {
   identityVerified?: boolean;
@@ -13,6 +14,7 @@ export class AdminClientReviewService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly clientOnboardingService: ClientOnboardingService,
+    @Inject(FILE_STORAGE_PROVIDER) private readonly fileStorageProvider: FileStorageProvider,
   ) {}
 
   async list(status?: ClientStatus) {
@@ -27,11 +29,23 @@ export class AdminClientReviewService {
   async findById(id: string) {
     const client = await this.prisma.client.findUnique({
       where: { id },
-      include: { onboarding: true },
+      include: { onboarding: { include: { documents: true } } },
     });
     if (!client) {
       throw new NotFoundException('Client not found');
     }
+
+    if (client.onboarding) {
+      const documents = await Promise.all(
+        (client.onboarding.documents ?? []).map(async (document) => ({
+          documentType: document.documentType,
+          url: await this.fileStorageProvider.getSignedDownloadUrl(document.storageKey),
+          uploadedAt: document.uploadedAt,
+        })),
+      );
+      return { ...client, onboarding: { ...client.onboarding, documents } };
+    }
+
     return client;
   }
 

@@ -2,6 +2,7 @@ import { ConflictException, NotFoundException } from '@nestjs/common';
 import { AdminClientReviewService } from './admin-client-review.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { ClientOnboardingService } from '../client-onboarding/client-onboarding.service';
+import { FileStorageProvider } from '../file-storage/file-storage-provider.interface';
 
 describe('AdminClientReviewService', () => {
   let service: AdminClientReviewService;
@@ -10,6 +11,7 @@ describe('AdminClientReviewService', () => {
     clientOnboarding: { update: jest.Mock };
   };
   let clientOnboardingService: { determineStepAfterIdentity: jest.Mock };
+  let fileStorageProvider: { getSignedDownloadUrl: jest.Mock };
 
   beforeEach(() => {
     prisma = {
@@ -17,9 +19,11 @@ describe('AdminClientReviewService', () => {
       clientOnboarding: { update: jest.fn() },
     };
     clientOnboardingService = { determineStepAfterIdentity: jest.fn() };
+    fileStorageProvider = { getSignedDownloadUrl: jest.fn() };
     service = new AdminClientReviewService(
       prisma as unknown as PrismaService,
       clientOnboardingService as unknown as ClientOnboardingService,
+      fileStorageProvider as unknown as FileStorageProvider,
     );
   });
 
@@ -51,6 +55,35 @@ describe('AdminClientReviewService', () => {
       prisma.client.findUnique.mockResolvedValue({ id: 'c1', status: 'MANUAL_REVIEW', onboarding: { id: 'o1' } });
       const result = await service.findById('c1');
       expect(result.id).toBe('c1');
+    });
+
+    it('resolves each document storageKey to a signed URL', async () => {
+      prisma.client.findUnique.mockResolvedValue({
+        id: 'c1',
+        status: 'MANUAL_REVIEW',
+        onboarding: {
+          id: 'o1',
+          documents: [
+            { documentType: 'NIN_CARD', storageKey: 'client-onboarding/c1/documents/nin_card.jpg', uploadedAt: new Date('2026-01-01') },
+          ],
+        },
+      });
+      fileStorageProvider.getSignedDownloadUrl.mockResolvedValue('https://signed-url.example/nin_card.jpg');
+
+      const result = await service.findById('c1');
+
+      expect(fileStorageProvider.getSignedDownloadUrl).toHaveBeenCalledWith(
+        'client-onboarding/c1/documents/nin_card.jpg',
+      );
+      expect(result.onboarding.documents).toEqual([
+        { documentType: 'NIN_CARD', url: 'https://signed-url.example/nin_card.jpg', uploadedAt: new Date('2026-01-01') },
+      ]);
+    });
+
+    it('does not fail when the client has no onboarding record', async () => {
+      prisma.client.findUnique.mockResolvedValue({ id: 'c1', status: 'PHONE_VERIFIED', onboarding: null });
+      const result = await service.findById('c1');
+      expect(result.onboarding).toBeNull();
     });
   });
 
