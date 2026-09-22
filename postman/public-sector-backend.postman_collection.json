@@ -7982,7 +7982,7 @@
                     "{{review_client_id}}"
                   ]
                 },
-                "description": "Run 'GET /admin/clients - Filtered by status' first to populate review_client_id from a real MANUAL_REVIEW client."
+                "description": "Run 'GET /admin/clients - Filtered by status' first to populate review_client_id from a real MANUAL_REVIEW client. onboarding.documents resolves each uploaded ClientDocument's storageKey to a viewable URL via GET /admin/documents/files/:key (documents:read)."
               },
               "event": [
                 {
@@ -8028,7 +8028,7 @@
                     }
                   ],
                   "cookie": [],
-                  "body": "{\n  \"id\": \"c1a2b3c4-d5e6-4f78-9a0b-1c2d3e4f5a6b\",\n  \"phone\": \"+2348012345678\",\n  \"status\": \"MANUAL_REVIEW\",\n  \"createdAt\": \"2026-09-10T08:00:00.000Z\",\n  \"updatedAt\": \"2026-09-15T11:30:00.000Z\",\n  \"onboarding\": {\n    \"id\": \"d2b3c4d5-e6f7-4a8b-9c0d-2e3f4a5b6c7d\",\n    \"clientId\": \"c1a2b3c4-d5e6-4f78-9a0b-1c2d3e4f5a6b\",\n    \"ippisRecordId\": \"e3c4d5e6-f7a8-4b9c-0d1e-3f4a5b6c7d8e\",\n    \"employeeName\": \"Ibrahim Suleiman\",\n    \"agency\": \"Federal Ministry of Works\",\n    \"bankName\": \"GTBank\",\n    \"accountNumber\": \"0123456789\",\n    \"bvn\": \"12345678901\",\n    \"nin\": \"98765432109\",\n    \"bvnSelfie\": \"onboarding/selfies/bvn-c1a2b3c4.jpg\",\n    \"ninSelfie\": \"onboarding/selfies/nin-c1a2b3c4.jpg\",\n    \"liveSelfieKey\": \"onboarding/selfies/live-c1a2b3c4.jpg\",\n    \"identityVerified\": true,\n    \"faceMatchBvnScore\": 0.62,\n    \"faceMatchNinScore\": 0.58,\n    \"faceMatchPassed\": false,\n    \"step\": \"FACE_MATCH_PENDING\",\n    \"failureReasons\": {\n      \"identityVerified\": true,\n      \"faceMatchPassed\": false\n    },\n    \"reviewedBy\": null,\n    \"reviewedAt\": null,\n    \"reviewNote\": null,\n    \"createdAt\": \"2026-09-10T08:05:00.000Z\",\n    \"updatedAt\": \"2026-09-15T11:30:00.000Z\"\n  }\n}"
+                  "body": "{\n  \"id\": \"c1a2b3c4-d5e6-4f78-9a0b-1c2d3e4f5a6b\",\n  \"phone\": \"+2348012345678\",\n  \"status\": \"MANUAL_REVIEW\",\n  \"createdAt\": \"2026-09-10T08:00:00.000Z\",\n  \"updatedAt\": \"2026-09-15T11:30:00.000Z\",\n  \"onboarding\": {\n    \"id\": \"d2b3c4d5-e6f7-4a8b-9c0d-2e3f4a5b6c7d\",\n    \"clientId\": \"c1a2b3c4-d5e6-4f78-9a0b-1c2d3e4f5a6b\",\n    \"ippisRecordId\": \"e3c4d5e6-f7a8-4b9c-0d1e-3f4a5b6c7d8e\",\n    \"employeeName\": \"Ibrahim Suleiman\",\n    \"agency\": \"Federal Ministry of Works\",\n    \"bankName\": \"GTBank\",\n    \"accountNumber\": \"0123456789\",\n    \"bvn\": \"12345678901\",\n    \"nin\": \"98765432109\",\n    \"bvnSelfie\": \"onboarding/selfies/bvn-c1a2b3c4.jpg\",\n    \"ninSelfie\": \"onboarding/selfies/nin-c1a2b3c4.jpg\",\n    \"liveSelfieKey\": \"onboarding/selfies/live-c1a2b3c4.jpg\",\n    \"identityVerified\": true,\n    \"faceMatchBvnScore\": 0.62,\n    \"faceMatchNinScore\": 0.58,\n    \"faceMatchPassed\": false,\n    \"step\": \"FACE_MATCH_PENDING\",\n    \"failureReasons\": {\n      \"identityVerified\": true,\n      \"faceMatchPassed\": false\n    },\n    \"reviewedBy\": null,\n    \"reviewedAt\": null,\n    \"reviewNote\": null,\n    \"createdAt\": \"2026-09-10T08:05:00.000Z\",\n    \"updatedAt\": \"2026-09-15T11:30:00.000Z\",\n    \"documents\": [\n      {\n        \"documentType\": \"NIN_CARD\",\n        \"url\": \"/admin/documents/files/client-onboarding%2Fc1a2b3c4-d5e6-4f78-9a0b-1c2d3e4f5a6b%2Fdocuments%2Fnin_card.jpg\",\n        \"uploadedAt\": \"2026-09-15T11:00:00.000Z\"\n      },\n      {\n        \"documentType\": \"WORK_ID\",\n        \"url\": \"/admin/documents/files/client-onboarding%2Fc1a2b3c4-d5e6-4f78-9a0b-1c2d3e4f5a6b%2Fdocuments%2Fwork_id.jpg\",\n        \"uploadedAt\": \"2026-09-15T11:00:00.000Z\"\n      },\n      {\n        \"documentType\": \"PASSPORT_PHOTO\",\n        \"url\": \"/admin/documents/files/client-onboarding%2Fc1a2b3c4-d5e6-4f78-9a0b-1c2d3e4f5a6b%2Fdocuments%2Fpassport_photo.jpg\",\n        \"uploadedAt\": \"2026-09-15T11:00:00.000Z\"\n      },\n      {\n        \"documentType\": \"SIGNATURE\",\n        \"url\": \"/admin/documents/files/client-onboarding%2Fc1a2b3c4-d5e6-4f78-9a0b-1c2d3e4f5a6b%2Fdocuments%2Fsignature.jpg\",\n        \"uploadedAt\": \"2026-09-15T11:00:00.000Z\"\n      }\n    ]\n  }\n}"
                 }
               ]
             },
@@ -14058,7 +14058,7 @@
         },
         {
           "name": "Onboarding",
-          "description": "IPPIS link, BVN/NIN identity submission, and face-match verification for the authenticated Client. Run 'Client > Auth > POST /auth/client/otp/verify - Success' first to populate client_access_token, and set test_ippis_staff_id to a Staff ID already present in IppisRecord (e.g. from Admin > Documents > IPPIS Broadsheet upload) that isn't already linked to another client.",
+          "description": "IPPIS link, BVN/NIN identity submission, document upload (NIN Card, Work ID, Passport Photo, Signature), and face-match verification for the authenticated Client. Run 'Client > Auth > POST /auth/client/otp/verify - Success' first to populate client_access_token, and set test_ippis_staff_id to a Staff ID already present in IppisRecord (e.g. from Admin > Documents > IPPIS Broadsheet upload) that isn't already linked to another client.",
           "item": [
             {
               "name": "GET /client/onboarding/status - Unauthenticated (401)",
@@ -14533,6 +14533,286 @@
                   ],
                   "cookie": [],
                   "body": "{\n  \"statusCode\": 400,\n  \"message\": [\n    \"bvn must be an 11-digit number\"\n  ],\n  \"error\": \"Bad Request\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "POST /client/onboarding/documents/:type - Success",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{client_access_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "file",
+                      "type": "file",
+                      "src": []
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "{{base_url}}/client/onboarding/documents/NIN_CARD",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "client",
+                    "onboarding",
+                    "documents",
+                    "NIN_CARD"
+                  ]
+                },
+                "description": "Attach a JPEG, PNG, or PDF file (max 5MB). Valid from IDENTITY_SUBMITTED or DOCUMENTS_SUBMITTED — run the identity request above first. Repeat for WORK_ID, PASSPORT_PHOTO, and SIGNATURE to advance the step to DOCUMENTS_SUBMITTED once all 4 are uploaded."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 201', () => pm.response.to.have.status(201));",
+                      "pm.test('documentType is NIN_CARD', () => pm.expect(pm.response.json().documentType).to.eql('NIN_CARD'));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Created - document stored",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{client_access_token}}"
+                      }
+                    ],
+                    "body": {
+                      "mode": "formdata",
+                      "formdata": [
+                        {
+                          "key": "file",
+                          "type": "file",
+                          "src": []
+                        }
+                      ]
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/client/onboarding/documents/NIN_CARD",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "client",
+                        "onboarding",
+                        "documents",
+                        "NIN_CARD"
+                      ]
+                    },
+                    "description": "Attach a JPEG, PNG, or PDF file (max 5MB). Valid from IDENTITY_SUBMITTED or DOCUMENTS_SUBMITTED — run the identity request above first. Repeat for WORK_ID, PASSPORT_PHOTO, and SIGNATURE to advance the step to DOCUMENTS_SUBMITTED once all 4 are uploaded."
+                  },
+                  "status": "Created",
+                  "code": 201,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"id\": \"f4a5b6c7-8d9e-4f0a-b1c2-d3e4f5a6b7c8\",\n  \"clientOnboardingId\": \"e1f2a3b4-5c6d-4e7f-8091-a2b3c4d5e6f7\",\n  \"documentType\": \"NIN_CARD\",\n  \"storageKey\": \"client-onboarding/d4e5f6a7-8b9c-4d1e-af23-4b5c6d7e8f90/documents/nin_card.jpg\",\n  \"uploadedAt\": \"2026-09-22T10:15:00.000Z\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "POST /client/onboarding/documents/:type - Wrong step (409)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{client_access_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "file",
+                      "type": "file",
+                      "src": []
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "{{base_url}}/client/onboarding/documents/NIN_CARD",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "client",
+                    "onboarding",
+                    "documents",
+                    "NIN_CARD"
+                  ]
+                },
+                "description": "Run this before submitting identity (i.e. while the client is still at IPPIS_LINKED or earlier) to see the 409."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 409', () => pm.response.to.have.status(409));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Conflict - identity not yet submitted",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{client_access_token}}"
+                      }
+                    ],
+                    "body": {
+                      "mode": "formdata",
+                      "formdata": [
+                        {
+                          "key": "file",
+                          "type": "file",
+                          "src": []
+                        }
+                      ]
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/client/onboarding/documents/NIN_CARD",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "client",
+                        "onboarding",
+                        "documents",
+                        "NIN_CARD"
+                      ]
+                    },
+                    "description": "Run this before submitting identity (i.e. while the client is still at IPPIS_LINKED or earlier) to see the 409."
+                  },
+                  "status": "Conflict",
+                  "code": 409,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"statusCode\": 409,\n  \"message\": \"Expected step IDENTITY_SUBMITTED or DOCUMENTS_SUBMITTED, but client is at IPPIS_LINKED\",\n  \"error\": \"Conflict\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "POST /client/onboarding/documents/:type - Invalid file type (400)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{client_access_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "file",
+                      "type": "file",
+                      "src": []
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "{{base_url}}/client/onboarding/documents/WORK_ID",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "client",
+                    "onboarding",
+                    "documents",
+                    "WORK_ID"
+                  ]
+                },
+                "description": "Attach a non-JPEG/PNG/PDF file (e.g. a .txt or .zip) to see the 400. Only JPEG, PNG, and PDF are accepted, capped at 5MB."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 400', () => pm.response.to.have.status(400));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Bad Request - disallowed file type",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{client_access_token}}"
+                      }
+                    ],
+                    "body": {
+                      "mode": "formdata",
+                      "formdata": [
+                        {
+                          "key": "file",
+                          "type": "file",
+                          "src": []
+                        }
+                      ]
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/client/onboarding/documents/WORK_ID",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "client",
+                        "onboarding",
+                        "documents",
+                        "WORK_ID"
+                      ]
+                    },
+                    "description": "Attach a non-JPEG/PNG/PDF file (e.g. a .txt or .zip) to see the 400. Only JPEG, PNG, and PDF are accepted, capped at 5MB."
+                  },
+                  "status": "Bad Request",
+                  "code": 400,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"statusCode\": 400,\n  \"message\": \"Only JPEG, PNG, or PDF files are allowed\",\n  \"error\": \"Bad Request\"\n}"
                 }
               ]
             },

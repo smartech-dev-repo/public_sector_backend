@@ -265,7 +265,7 @@ manually.
 | Endpoint | Permission | Notes |
 |---|---|---|
 | `GET /admin/clients` | `clients:review` | Filterable by `status` |
-| `GET /admin/clients/:id` | `clients:review` | Full detail incl. `ClientOnboarding` — selfie images are downloaded separately via `GET /admin/documents/files/:key` (`documents:read`) |
+| `GET /admin/clients/:id` | `clients:review` | Full detail incl. `ClientOnboarding` — selfie images are downloaded separately via `GET /admin/documents/files/:key` (`documents:read`); `onboarding.documents` is an array of `{ documentType, url, uploadedAt }` with each of the 4 uploaded documents' `storageKey` already resolved to a signed, directly viewable `url` |
 | `POST /admin/clients/:id/approve` | `clients:review` | Only valid from `MANUAL_REVIEW` |
 | `POST /admin/clients/:id/retry` | `clients:review` | `{ note }`. Resets to `IPPIS_LINKED` if identity verification itself failed, or `IDENTITY_SUBMITTED` if only the face match failed |
 
@@ -483,16 +483,33 @@ After phone/OTP login, a Client links their IPPIS number, submits BVN/NIN
 for lookup (via a pluggable `IdentityVerificationProvider` — mock by
 default, `DojahIdentityVerificationProvider` when
 `IDENTITY_VERIFICATION_PROVIDER=dojah` and `DOJAH_APP_ID`/`DOJAH_SECRET_KEY`
-are set), then submits a live selfie compared against both the BVN and NIN
-reference photos via a pluggable `FaceVerificationProvider` (mock only for
-now). Passing both auto-verifies the client; any failure routes to
-`MANUAL_REVIEW` (existing `clients:review` permission covers visibility).
+are set), then uploads four required documents (NIN Card, Work ID,
+Passport Photo, Signature), then submits a live selfie compared against
+both the BVN and NIN reference photos via a pluggable
+`FaceVerificationProvider` (mock only for now). Passing both auto-verifies
+the client; any failure routes to `MANUAL_REVIEW` (existing
+`clients:review` permission covers visibility).
+
+The step order is `PHONE_VERIFIED` → `IPPIS_LINKED` → `IDENTITY_SUBMITTED`
+→ `DOCUMENTS_SUBMITTED` → `FACE_MATCH_PENDING`/`COMPLETED`.
+`POST /client/onboarding/documents/:type` accepts a single-file multipart
+upload (`:type` one of `NIN_CARD`/`WORK_ID`/`PASSPORT_PHOTO`/`SIGNATURE`)
+from either `IDENTITY_SUBMITTED` or `DOCUMENTS_SUBMITTED` — the latter
+lets a client re-upload one document (replacing it, not duplicating it)
+without needing all 4 still outstanding. Only JPEG/PNG/PDF are accepted,
+capped at 5MB. The step only advances to `DOCUMENTS_SUBMITTED` once all 4
+document types have been uploaded, and face-match is allowed from either
+`IDENTITY_SUBMITTED` or `DOCUMENTS_SUBMITTED`. An admin `retry` (see
+below) after a face-match-only failure lands the client back on
+`DOCUMENTS_SUBMITTED` directly, rather than forcing a redundant
+re-upload, if all 4 documents already exist.
 
 | Endpoint | Auth | Notes |
 |---|---|---|
 | `POST /client/onboarding/ippis-link` | Client JWT | `{ ippisNumber }` |
 | `POST /client/onboarding/identity` | Client JWT | `{ bvn, nin }` |
-| `POST /client/onboarding/face-match` | Client JWT | multipart, field `selfie` |
+| `POST /client/onboarding/documents/:type` | Client JWT | multipart, field `file`; JPEG/PNG/PDF only, 5MB cap; valid from `IDENTITY_SUBMITTED` or `DOCUMENTS_SUBMITTED` |
+| `POST /client/onboarding/face-match` | Client JWT | multipart, field `selfie`; valid from `IDENTITY_SUBMITTED` or `DOCUMENTS_SUBMITTED` |
 | `GET /client/onboarding/status` | Client JWT | resumability — `step` says exactly where to continue |
 
 ## Roadmap
