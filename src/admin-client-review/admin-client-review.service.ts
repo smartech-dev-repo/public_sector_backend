@@ -2,6 +2,7 @@ import { ConflictException, Inject, Injectable, NotFoundException } from '@nestj
 import { PrismaService } from '../prisma/prisma.service';
 import { ClientStatus, OnboardingStep } from '../generated/prisma/client';
 import { ClientOnboardingService } from '../client-onboarding/client-onboarding.service';
+import { computeLengthOfService } from '../client-onboarding/length-of-service.util';
 import { FILE_STORAGE_PROVIDER, FileStorageProvider } from '../file-storage/file-storage-provider.interface';
 
 interface FailureReasons {
@@ -29,7 +30,7 @@ export class AdminClientReviewService {
   async findById(id: string) {
     const client = await this.prisma.client.findUnique({
       where: { id },
-      include: { onboarding: { include: { documents: true } } },
+      include: { onboarding: { include: { documents: true, ippisRecord: true } } },
     });
     if (!client) {
       throw new NotFoundException('Client not found');
@@ -43,10 +44,11 @@ export class AdminClientReviewService {
           uploadedAt: document.uploadedAt,
         })),
       );
-      return { ...client, onboarding: { ...client.onboarding, documents } };
+      const lengthOfService = computeLengthOfService(client.onboarding.ippisRecord?.hireDate ?? null);
+      return { ...client, onboarding: { ...client.onboarding, documents, lengthOfService } };
     }
 
-    return client;
+    return { ...client, onboarding: null };
   }
 
   async approve(id: string, adminId: string) {

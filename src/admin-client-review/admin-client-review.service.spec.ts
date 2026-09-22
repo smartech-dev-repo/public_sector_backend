@@ -85,6 +85,24 @@ describe('AdminClientReviewService', () => {
       const result = await service.findById('c1');
       expect(result.onboarding).toBeNull();
     });
+
+    it('includes a computed lengthOfService from the linked IppisRecord', async () => {
+      const now = new Date();
+      const hireDate = new Date(now.getFullYear() - 1, now.getMonth(), 1);
+      prisma.client.findUnique.mockResolvedValue({
+        id: 'c1',
+        status: 'MANUAL_REVIEW',
+        onboarding: { id: 'o1', ippisRecord: { hireDate } },
+      });
+
+      const result = await service.findById('c1');
+
+      expect(prisma.client.findUnique).toHaveBeenCalledWith({
+        where: { id: 'c1' },
+        include: { onboarding: { include: { documents: true, ippisRecord: true } } },
+      });
+      expect(result.onboarding.lengthOfService).toEqual({ years: 1, months: 0 });
+    });
   });
 
   describe('approve', () => {
