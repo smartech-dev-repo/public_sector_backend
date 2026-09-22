@@ -27,6 +27,7 @@ const BOOTSTRAP_PERMISSIONS: Array<{ key: string; description: string }> = [
   { key: 'loan-terms:manage', description: "Create/edit the agency-scoped loan terms catalog" },
   { key: 'loan-requests:review', description: 'Approve, reject, or disburse client loan requests' },
   { key: 'client-loans:read', description: "View client loans and disbursement reports" },
+  { key: 'clients:read', description: "View a client's loan requests, loans, and activity history" },
 ];
 
 async function main() {
