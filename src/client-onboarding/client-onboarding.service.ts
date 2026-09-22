@@ -132,8 +132,10 @@ export class ClientOnboardingService {
 
   async submitFaceMatch(clientId: string, selfieBuffer: Buffer) {
     const onboarding = await this.requireOnboarding(clientId);
-    if (onboarding.step !== OnboardingStep.IDENTITY_SUBMITTED) {
-      throw new ConflictException(`Expected step IDENTITY_SUBMITTED, but client is at ${onboarding.step}`);
+    if (onboarding.step !== OnboardingStep.IDENTITY_SUBMITTED && onboarding.step !== OnboardingStep.DOCUMENTS_SUBMITTED) {
+      throw new ConflictException(
+        `Expected step IDENTITY_SUBMITTED or DOCUMENTS_SUBMITTED, but client is at ${onboarding.step}`,
+      );
     }
 
     const liveSelfieKey = `client-onboarding/${clientId}/live-selfie.jpg`;

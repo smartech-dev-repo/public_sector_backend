@@ -244,6 +244,24 @@ describe('ClientOnboardingService', () => {
       });
     });
 
+    it('completes and sets Client VERIFIED when starting from DOCUMENTS_SUBMITTED', async () => {
+      prisma.clientOnboarding.findUnique.mockResolvedValue({
+        step: 'DOCUMENTS_SUBMITTED',
+        identityVerified: true,
+        bvnSelfie: 'bvn-key',
+        ninSelfie: 'nin-key',
+      });
+      faceVerificationProvider.compare.mockResolvedValue({ score: 0.95, passed: true });
+      prisma.clientOnboarding.update.mockResolvedValue({ id: 'onboarding-1', step: 'COMPLETED' });
+
+      await service.submitFaceMatch('client-1', Buffer.from('selfie'));
+
+      expect(prisma.client.update).toHaveBeenCalledWith({
+        where: { id: 'client-1' },
+        data: { status: 'VERIFIED' },
+      });
+    });
+
     it('routes to MANUAL_REVIEW when a face match fails', async () => {
       prisma.clientOnboarding.findUnique.mockResolvedValue({
         step: 'IDENTITY_SUBMITTED',
