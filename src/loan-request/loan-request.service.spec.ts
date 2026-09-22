@@ -6,6 +6,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { EligibilityService } from './eligibility/eligibility.service';
 import { TopupEligibilityService } from './eligibility/topup-eligibility.service';
 import { TwoWaySmsProvider } from '../two-way-sms/two-way-sms-provider.interface';
+import { WalletService } from '../wallet/wallet.service';
 import { LoanRequestType } from '../generated/prisma/client';
 
 describe('LoanRequestService', () => {
@@ -31,10 +32,11 @@ describe('LoanRequestService', () => {
       findFirst: jest.Mock;
       findUnique: jest.Mock;
     };
-    clientLoanRepaymentVariance: { findMany: jest.Mock };
+    clientLoanRepaymentVariance: { findMany: jest.Mock; findUnique: jest.Mock; create: jest.Mock };
   };
   let eligibilityService: { check: jest.Mock };
   let topupEligibilityService: { check: jest.Mock };
+  let walletService: { debit: jest.Mock };
   let smsProvider: { send: jest.Mock };
   let expiryQueue: { add: jest.Mock };
 
@@ -60,10 +62,11 @@ describe('LoanRequestService', () => {
         findFirst: jest.fn(),
         findUnique: jest.fn(),
       },
-      clientLoanRepaymentVariance: { findMany: jest.fn() },
+      clientLoanRepaymentVariance: { findMany: jest.fn(), findUnique: jest.fn(), create: jest.fn() },
     };
     eligibilityService = { check: jest.fn() };
     topupEligibilityService = { check: jest.fn() };
+    walletService = { debit: jest.fn() };
     smsProvider = { send: jest.fn().mockResolvedValue(undefined) };
     expiryQueue = { add: jest.fn().mockResolvedValue(undefined) };
 
@@ -73,6 +76,7 @@ describe('LoanRequestService', () => {
       smsProvider as unknown as TwoWaySmsProvider,
       expiryQueue as unknown as Queue,
       topupEligibilityService as unknown as TopupEligibilityService,
+      walletService as unknown as WalletService,
     );
   });
 
@@ -199,6 +203,7 @@ describe('LoanRequestService', () => {
         smsProvider as unknown as TwoWaySmsProvider,
         expiryQueue as unknown as Queue,
         topupEligibilityService as unknown as TopupEligibilityService,
+        walletService as unknown as WalletService,
         configService,
       );
       prisma.client.findUnique.mockResolvedValue({ id: 'c1' });
@@ -247,6 +252,7 @@ describe('LoanRequestService', () => {
         smsProvider as unknown as TwoWaySmsProvider,
         expiryQueue as unknown as Queue,
         topupEligibilityService as unknown as TopupEligibilityService,
+        walletService as unknown as WalletService,
         configService,
       );
       prisma.client.findUnique.mockResolvedValue({ id: 'c1' });
@@ -602,6 +608,124 @@ describe('LoanRequestService', () => {
       expect(result.schedule).toEqual([
         { period: '2026-01', expectedAmount: 90000, actualAmount: null, variance: null, status: 'UPCOMING' },
       ]);
+    });
+  });
+
+  describe('applyWalletToLoan', () => {
+    // Date-relative (not hardcoded) so this fixture never drifts into the past — see the identical
+    // reasoning in client-loan-reconciliation.service.spec.ts's baseLoan fixture.
+    const now = new Date();
+    const disbursementDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const maturationDate = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+
+    it('throws UnprocessableEntityException when the client has no outstanding loan balance', async () => {
+      prisma.clientLoan.findFirst.mockResolvedValue(null);
+      await expect(service.applyWalletToLoan('c1', 5000)).rejects.toThrow(UnprocessableEntityException);
+      expect(walletService.debit).not.toHaveBeenCalled();
+    });
+
+    it('throws ConflictException when the current period already has a variance row, without touching the wallet', async () => {
+      prisma.clientLoan.findFirst.mockResolvedValue({
+        id: 'cl1',
+        principalAmount: 90000,
+        principalBalance: 60000,
+        interestRatePercent: 0,
+        disbursementDate,
+        maturationDate,
+      });
+      prisma.clientLoanRepaymentVariance.findUnique.mockResolvedValue({ id: 'existing-row' });
+
+      await expect(service.applyWalletToLoan('c1', 5000)).rejects.toThrow(ConflictException);
+      expect(walletService.debit).not.toHaveBeenCalled();
+      expect(prisma.clientLoanRepaymentVariance.create).not.toHaveBeenCalled();
+    });
+
+    it('caps the applied amount at principalBalance, fully pays off the loan, and records an OVER_PAID row', async () => {
+      // expectedAmount = 90000 / 2 months = 45000. Requesting 100000 against a 60000 balance caps at
+      // 60000 — which exceeds the period's own expected installment (45000), so this period's row is
+      // OVER_PAID even though nothing is credited back to the wallet (per the design: the full applied
+      // amount pays down principal, with no separate excess-to-wallet step for a client-initiated payment).
+      prisma.clientLoan.findFirst.mockResolvedValue({
+        id: 'cl1',
+        clientId: 'c1',
+        principalAmount: 90000,
+        principalBalance: 60000,
+        interestRatePercent: 0,
+        disbursementDate,
+        maturationDate,
+      });
+      prisma.clientLoanRepaymentVariance.findUnique.mockResolvedValue(null);
+      prisma.clientLoan.update.mockResolvedValue({ id: 'cl1', status: 'CLOSED' });
+
+      const result = await service.applyWalletToLoan('c1', 100000);
+
+      expect(walletService.debit).toHaveBeenCalledWith(
+        'c1',
+        60000,
+        expect.stringContaining('cl1'),
+        { actorType: 'CLIENT', actorId: 'c1' },
+      );
+      expect(prisma.clientLoanRepaymentVariance.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          clientLoanId: 'cl1',
+          expectedAmount: 45000,
+          actualAmount: 60000,
+          variance: 15000,
+          status: 'OVER_PAID',
+          source: 'WALLET_APPLICATION',
+        }),
+      });
+      expect(prisma.clientLoan.update).toHaveBeenCalledWith({
+        where: { id: 'cl1' },
+        data: { principalBalance: 0, status: 'CLOSED' },
+      });
+      expect(result).toEqual({ appliedAmount: 60000, remainingBalance: 0, status: 'CLOSED' });
+    });
+
+    it('applies a partial amount without capping, reducing the balance by the full amount regardless of the expected installment', async () => {
+      prisma.clientLoan.findFirst.mockResolvedValue({
+        id: 'cl1',
+        clientId: 'c1',
+        principalAmount: 90000,
+        principalBalance: 60000,
+        interestRatePercent: 0,
+        disbursementDate,
+        maturationDate,
+      });
+      prisma.clientLoanRepaymentVariance.findUnique.mockResolvedValue(null);
+      prisma.clientLoan.update.mockResolvedValue({ id: 'cl1', status: 'DEFAULT' });
+
+      const result = await service.applyWalletToLoan('c1', 20000);
+
+      expect(walletService.debit).toHaveBeenCalledWith('c1', 20000, expect.any(String), {
+        actorType: 'CLIENT',
+        actorId: 'c1',
+      });
+      expect(prisma.clientLoanRepaymentVariance.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({ actualAmount: 20000, status: 'UNDER_PAID' }),
+      });
+      expect(prisma.clientLoan.update).toHaveBeenCalledWith({
+        where: { id: 'cl1' },
+        data: { principalBalance: 40000, status: 'DEFAULT' },
+      });
+      expect(result).toEqual({ appliedAmount: 20000, remainingBalance: 40000, status: 'DEFAULT' });
+    });
+
+    it('propagates WalletService.debit\'s own insufficient-balance error without creating a variance row', async () => {
+      prisma.clientLoan.findFirst.mockResolvedValue({
+        id: 'cl1',
+        clientId: 'c1',
+        principalAmount: 90000,
+        principalBalance: 60000,
+        interestRatePercent: 0,
+        disbursementDate,
+        maturationDate,
+      });
+      prisma.clientLoanRepaymentVariance.findUnique.mockResolvedValue(null);
+      walletService.debit.mockRejectedValue(new UnprocessableEntityException('Insufficient wallet balance'));
+
+      await expect(service.applyWalletToLoan('c1', 20000)).rejects.toThrow('Insufficient wallet balance');
+      expect(prisma.clientLoanRepaymentVariance.create).not.toHaveBeenCalled();
     });
   });
 });

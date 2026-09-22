@@ -18,6 +18,7 @@ import { TopupEligibilityService } from './eligibility/topup-eligibility.service
 import { TwoWaySmsModule } from '../two-way-sms/two-way-sms.module';
 import { ClientLoansModule } from '../client-loans/client-loans.module';
 import { AuditModule } from '../audit/audit.module';
+import { WalletModule } from '../wallet/wallet.module';
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { AuditModule } from '../audit/audit.module';
     TwoWaySmsModule,
     ClientLoansModule,
     AuditModule,
+    WalletModule,
   ],
   controllers: [
     LoanRequestController,

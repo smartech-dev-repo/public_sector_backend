@@ -14,9 +14,13 @@ import { EligibilityService } from './eligibility/eligibility.service';
 import { TopupEligibilityService } from './eligibility/topup-eligibility.service';
 import { TWO_WAY_SMS_PROVIDER, TwoWaySmsProvider } from '../two-way-sms/two-way-sms-provider.interface';
 import { LOAN_REQUEST_EXPIRY_QUEUE } from './loan-request-queue.constants';
-import { generatePeriodRange } from '../reconciliation/period.util';
+import { generatePeriodRange, toPeriodKey } from '../reconciliation/period.util';
 import { computeExpectedInstallment } from '../reconciliation/amortization.util';
+import { WalletService } from '../wallet/wallet.service';
+import { classifyVariance } from '../reconciliation/variance-classification.util';
+import { computeClientLoanStatus } from '../reconciliation/client-loan-status.util';
 import {
+  AuditActorType,
   ClientLoan,
   ClientLoanStatus,
   LoanRequest,
@@ -24,6 +28,7 @@ import {
   LoanRequestType,
   ManagementChargeApplication,
   ManagementChargeType,
+  VarianceSource,
 } from '../generated/prisma/client';
 
 const EXPIRY_MS = 24 * 60 * 60 * 1000;
@@ -40,6 +45,7 @@ export class LoanRequestService {
     @Inject(TWO_WAY_SMS_PROVIDER) private readonly smsProvider: TwoWaySmsProvider,
     @InjectQueue(LOAN_REQUEST_EXPIRY_QUEUE) private readonly expiryQueue: Queue<LoanRequestExpiryJobData>,
     private readonly topupEligibilityService: TopupEligibilityService,
+    private readonly walletService: WalletService,
     private readonly configService?: ConfigService,
   ) {}
 
@@ -124,6 +130,66 @@ export class LoanRequestService {
         maturationDate: newMaturationDate,
       },
     });
+  }
+
+  async applyWalletToLoan(clientId: string, amount: number) {
+    const clientLoan = await this.prisma.clientLoan.findFirst({
+      where: { clientId, principalBalance: { gt: 0 } },
+      orderBy: { disbursementDate: 'desc' },
+    });
+    if (!clientLoan) {
+      throw new UnprocessableEntityException('No outstanding loan balance to pay down');
+    }
+
+    const currentPeriod = toPeriodKey(new Date());
+    const existingVariance = await this.prisma.clientLoanRepaymentVariance.findUnique({
+      where: { clientLoanId_period: { clientLoanId: clientLoan.id, period: currentPeriod } },
+    });
+    if (existingVariance) {
+      throw new ConflictException('This period has already been reconciled for this loan');
+    }
+
+    const principalBalance = Number(clientLoan.principalBalance);
+    const appliedAmount = Math.min(amount, principalBalance);
+
+    await this.walletService.debit(clientId, appliedAmount, `Applied toward loan #${clientLoan.id}`, {
+      actorType: AuditActorType.CLIENT,
+      actorId: clientId,
+    });
+
+    const expectedAmount = computeExpectedInstallment(
+      Number(clientLoan.principalAmount),
+      Number(clientLoan.interestRatePercent),
+      clientLoan.disbursementDate,
+      clientLoan.maturationDate,
+    );
+    const variance = appliedAmount - expectedAmount;
+    const status = classifyVariance(appliedAmount, variance);
+
+    await this.prisma.clientLoanRepaymentVariance.create({
+      data: {
+        clientLoanId: clientLoan.id,
+        period: currentPeriod,
+        expectedAmount,
+        actualAmount: appliedAmount,
+        variance,
+        status,
+        source: VarianceSource.WALLET_APPLICATION,
+      },
+    });
+
+    const remainingBalance = principalBalance - appliedAmount;
+    const newStatus = computeClientLoanStatus(
+      { principalBalance: remainingBalance, maturationDate: clientLoan.maturationDate },
+      status,
+    );
+
+    await this.prisma.clientLoan.update({
+      where: { id: clientLoan.id },
+      data: { principalBalance: remainingBalance, status: newStatus },
+    });
+
+    return { appliedAmount, remainingBalance, status: newStatus };
   }
 
   async create(clientId: string, amount: number, tenorMonths: number) {
