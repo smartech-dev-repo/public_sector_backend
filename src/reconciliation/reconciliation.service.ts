@@ -3,8 +3,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { computeExpectedInstallment } from './amortization.util';
 import { VarianceStatus } from '../generated/prisma/client';
 import { toPeriodKey } from './period.util';
-
-const MATCH_TOLERANCE = 1;
+import { classifyVariance } from './variance-classification.util';
 
 export interface ReconciliationFilters {
   agency?: string;
@@ -63,7 +62,7 @@ export class ReconciliationService {
       for (const period of applicablePeriods) {
         const actualAmount = periodMap.get(period) ?? 0;
         const variance = actualAmount - expectedAmount;
-        const status = this.classify(actualAmount, variance);
+        const status = classifyVariance(actualAmount, variance);
 
         await this.prisma.repaymentVariance.upsert({
           where: { loanId_period: { loanId: loan.id, period } },
@@ -72,16 +71,6 @@ export class ReconciliationService {
         });
       }
     }
-  }
-
-  private classify(actualAmount: number, variance: number): VarianceStatus {
-    if (actualAmount === 0) {
-      return VarianceStatus.NO_DEDUCTION_FOUND;
-    }
-    if (Math.abs(variance) <= MATCH_TOLERANCE) {
-      return VarianceStatus.MATCHED;
-    }
-    return variance > 0 ? VarianceStatus.OVER_PAID : VarianceStatus.UNDER_PAID;
   }
 
   async list(filters: ReconciliationFilters) {

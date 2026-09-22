@@ -4,9 +4,8 @@ import { WalletService } from '../wallet/wallet.service';
 import { computeExpectedInstallment } from './amortization.util';
 import { toPeriodKey } from './period.util';
 import { computeClientLoanStatus } from './client-loan-status.util';
-import { AuditActorType, VarianceStatus } from '../generated/prisma/client';
-
-const MATCH_TOLERANCE = 1;
+import { AuditActorType } from '../generated/prisma/client';
+import { classifyVariance } from './variance-classification.util';
 
 @Injectable()
 export class ClientLoanReconciliationService {
@@ -68,7 +67,7 @@ export class ClientLoanReconciliationService {
 
         const actualAmount = periodMap.get(period) ?? 0;
         const variance = actualAmount - expectedAmount;
-        const status = this.classify(actualAmount, variance);
+        const status = classifyVariance(actualAmount, variance);
 
         await this.prisma.clientLoanRepaymentVariance.create({
           data: { clientLoanId: clientLoan.id, period, expectedAmount, actualAmount, variance, status },
@@ -103,15 +102,5 @@ export class ClientLoanReconciliationService {
         });
       }
     }
-  }
-
-  private classify(actualAmount: number, variance: number): VarianceStatus {
-    if (actualAmount === 0) {
-      return VarianceStatus.NO_DEDUCTION_FOUND;
-    }
-    if (Math.abs(variance) <= MATCH_TOLERANCE) {
-      return VarianceStatus.MATCHED;
-    }
-    return variance > 0 ? VarianceStatus.OVER_PAID : VarianceStatus.UNDER_PAID;
   }
 }
