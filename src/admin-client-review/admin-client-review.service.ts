@@ -1,6 +1,7 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { ClientStatus, OnboardingStep } from '../generated/prisma/client';
+import { ClientOnboardingService } from '../client-onboarding/client-onboarding.service';
 
 interface FailureReasons {
   identityVerified?: boolean;
@@ -9,7 +10,10 @@ interface FailureReasons {
 
 @Injectable()
 export class AdminClientReviewService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly clientOnboardingService: ClientOnboardingService,
+  ) {}
 
   async list(status?: ClientStatus) {
     return this.prisma.client.findMany({
@@ -78,7 +82,7 @@ export class AdminClientReviewService {
           faceMatchPassed: null,
         }
       : {
-          step: OnboardingStep.IDENTITY_SUBMITTED,
+          step: await this.clientOnboardingService.determineStepAfterIdentity(client.onboarding.id),
           liveSelfieKey: null,
           faceMatchBvnScore: null,
           faceMatchNinScore: null,

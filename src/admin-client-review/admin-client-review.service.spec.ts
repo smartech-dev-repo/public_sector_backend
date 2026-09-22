@@ -1,6 +1,7 @@
 import { ConflictException, NotFoundException } from '@nestjs/common';
 import { AdminClientReviewService } from './admin-client-review.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { ClientOnboardingService } from '../client-onboarding/client-onboarding.service';
 
 describe('AdminClientReviewService', () => {
   let service: AdminClientReviewService;
@@ -8,13 +9,18 @@ describe('AdminClientReviewService', () => {
     client: { findMany: jest.Mock; findUnique: jest.Mock; update: jest.Mock };
     clientOnboarding: { update: jest.Mock };
   };
+  let clientOnboardingService: { determineStepAfterIdentity: jest.Mock };
 
   beforeEach(() => {
     prisma = {
       client: { findMany: jest.fn(), findUnique: jest.fn(), update: jest.fn() },
       clientOnboarding: { update: jest.fn() },
     };
-    service = new AdminClientReviewService(prisma as unknown as PrismaService);
+    clientOnboardingService = { determineStepAfterIdentity: jest.fn() };
+    service = new AdminClientReviewService(
+      prisma as unknown as PrismaService,
+      clientOnboardingService as unknown as ClientOnboardingService,
+    );
   });
 
   describe('list', () => {
@@ -123,6 +129,7 @@ describe('AdminClientReviewService', () => {
         onboarding: { id: 'o1', failureReasons: { identityVerified: true, faceMatchPassed: false } },
       });
       prisma.client.update.mockResolvedValue({ id: 'c1', status: 'PENDING_IPPIS' });
+      clientOnboardingService.determineStepAfterIdentity.mockResolvedValue('IDENTITY_SUBMITTED');
 
       await service.retry('c1', 'admin-1', 'blurry selfie, please retake');
 
@@ -140,6 +147,24 @@ describe('AdminClientReviewService', () => {
       expect(prisma.clientOnboarding.update).not.toHaveBeenCalledWith(
         expect.objectContaining({ data: expect.objectContaining({ bvn: null }) }),
       );
+    });
+
+    it('skips straight to DOCUMENTS_SUBMITTED when the client already has all 4 documents, on a face-match-only retry', async () => {
+      prisma.client.findUnique.mockResolvedValue({
+        id: 'c1',
+        status: 'MANUAL_REVIEW',
+        onboarding: { id: 'o1', failureReasons: { identityVerified: true, faceMatchPassed: false } },
+      });
+      prisma.client.update.mockResolvedValue({ id: 'c1', status: 'PENDING_IPPIS' });
+      clientOnboardingService.determineStepAfterIdentity.mockResolvedValue('DOCUMENTS_SUBMITTED');
+
+      await service.retry('c1', 'admin-1', 'blurry selfie, please retake');
+
+      expect(clientOnboardingService.determineStepAfterIdentity).toHaveBeenCalledWith('o1');
+      expect(prisma.clientOnboarding.update).toHaveBeenCalledWith({
+        where: { clientId: 'c1' },
+        data: expect.objectContaining({ step: 'DOCUMENTS_SUBMITTED' }),
+      });
     });
   });
 });

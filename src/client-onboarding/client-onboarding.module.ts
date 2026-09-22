@@ -9,5 +9,6 @@ import { FileStorageModule } from '../file-storage/file-storage.module';
   imports: [IdentityVerificationModule, FaceVerificationModule, FileStorageModule],
   controllers: [ClientOnboardingController],
   providers: [ClientOnboardingService],
+  exports: [ClientOnboardingService],
 })
 export class ClientOnboardingModule {}
