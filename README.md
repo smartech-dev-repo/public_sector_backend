@@ -345,6 +345,24 @@ period-by-period schedule (`null` if they've never had one);
 `GET /admin/client-loans/:id/repayment-plan` (`client-loans:read`)
 returns the same for any loan.
 
+### Spend wallet balance toward a loan payment
+
+`POST /client/client-loans/me/apply-wallet` (`{ amount }`, Client JWT)
+lets a client apply their own wallet balance toward their loan's
+outstanding `principalBalance` — `422` if they have no outstanding
+balance, `409` if the current period already has a
+`ClientLoanRepaymentVariance` row (from either payroll reconciliation or
+an earlier wallet application this period — at most one per period,
+either source). The requested amount is silently capped at
+`principalBalance`; `WalletService.debit()` still applies its own
+independent insufficient-wallet-balance check. Unlike payroll
+reconciliation, the **full** applied amount reduces `principalBalance` —
+there's no excess-to-wallet step, since the amount already came from the
+client's own wallet. Produces a `ClientLoanRepaymentVariance` row for the
+current period (`source: WALLET_APPLICATION`), so the payment shows up in
+`GET /client/client-loans/me`'s schedule the same way a payroll deduction
+would.
+
 ## Client loan dashboard
 
 `GET /client/loans` (Client JWT) returns the calling client's pre-existing

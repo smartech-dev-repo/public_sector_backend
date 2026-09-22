@@ -15787,6 +15787,368 @@
                   "body": ""
                 }
               ]
+            },
+            {
+              "name": "POST /client/client-loans/me/apply-wallet - Success",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{client_access_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"amount\": 20000\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/client/client-loans/me/apply-wallet",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "client",
+                    "client-loans",
+                    "me",
+                    "apply-wallet"
+                  ]
+                },
+                "description": "Applies the client's own wallet balance toward their ClientLoan's outstanding principalBalance (LoanRequestService.applyWalletToLoan()). The requested amount is silently capped at principalBalance; the full applied amount (not min(applied, expectedAmount) as payroll reconciliation uses) reduces the balance, since the funds already came from the client's own wallet. Produces a ClientLoanRepaymentVariance row for the current period with source WALLET_APPLICATION, so the payment appears in GET /client/client-loans/me's schedule. Requires an ACTIVE ClientLoan with an outstanding balance, a sufficient wallet balance (see Client > Wallet), and no existing variance row for the current period."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));",
+                      "pm.test('response has appliedAmount/remainingBalance/status', () => {",
+                      "  const body = pm.response.json();",
+                      "  pm.expect(body).to.have.property('appliedAmount');",
+                      "  pm.expect(body).to.have.property('remainingBalance');",
+                      "  pm.expect(body).to.have.property('status');",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Success (200)",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      },
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{client_access_token}}"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"amount\": 20000\n}"
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/client/client-loans/me/apply-wallet",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "client",
+                        "client-loans",
+                        "me",
+                        "apply-wallet"
+                      ]
+                    },
+                    "description": "Applies the client's own wallet balance toward their ClientLoan's outstanding principalBalance (LoanRequestService.applyWalletToLoan()). The requested amount is silently capped at principalBalance; the full applied amount (not min(applied, expectedAmount) as payroll reconciliation uses) reduces the balance, since the funds already came from the client's own wallet. Produces a ClientLoanRepaymentVariance row for the current period with source WALLET_APPLICATION, so the payment appears in GET /client/client-loans/me's schedule. Requires an ACTIVE ClientLoan with an outstanding balance, a sufficient wallet balance (see Client > Wallet), and no existing variance row for the current period."
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"appliedAmount\": 20000,\n  \"remainingBalance\": 70000,\n  \"status\": \"DEFAULT\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "POST /client/client-loans/me/apply-wallet - No outstanding balance (422)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{client_access_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"amount\": 5000\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/client/client-loans/me/apply-wallet",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "client",
+                    "client-loans",
+                    "me",
+                    "apply-wallet"
+                  ]
+                },
+                "description": "Run against a client with no outstanding ClientLoan balance (never originated a loan, or an already-CLOSED loan with principalBalance 0) — rejected by LoanRequestService.applyWalletToLoan()'s clientLoan.findFirst({ principalBalance: { gt: 0 } }) lookup returning null."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 422', () => pm.response.to.have.status(422));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "No outstanding balance (422)",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      },
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{client_access_token}}"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"amount\": 5000\n}"
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/client/client-loans/me/apply-wallet",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "client",
+                        "client-loans",
+                        "me",
+                        "apply-wallet"
+                      ]
+                    },
+                    "description": "Run against a client with no outstanding ClientLoan balance (never originated a loan, or an already-CLOSED loan with principalBalance 0) — rejected by LoanRequestService.applyWalletToLoan()'s clientLoan.findFirst({ principalBalance: { gt: 0 } }) lookup returning null."
+                  },
+                  "status": "Unprocessable Entity",
+                  "code": 422,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"statusCode\": 422,\n  \"message\": \"No outstanding loan balance to pay down\",\n  \"error\": \"Unprocessable Entity\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "POST /client/client-loans/me/apply-wallet - Already reconciled this period (409)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{client_access_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"amount\": 5000\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/client/client-loans/me/apply-wallet",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "client",
+                    "client-loans",
+                    "me",
+                    "apply-wallet"
+                  ]
+                },
+                "description": "Run a second time in the same period against a loan that already has a ClientLoanRepaymentVariance row for the current period — either from an earlier wallet application this period (see the Success request in this folder) or from payroll reconciliation. At most one variance row per period, regardless of source; the wallet is never touched when this check fails."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 409', () => pm.response.to.have.status(409));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Already reconciled this period (409)",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      },
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{client_access_token}}"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"amount\": 5000\n}"
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/client/client-loans/me/apply-wallet",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "client",
+                        "client-loans",
+                        "me",
+                        "apply-wallet"
+                      ]
+                    },
+                    "description": "Run a second time in the same period against a loan that already has a ClientLoanRepaymentVariance row for the current period — either from an earlier wallet application this period (see the Success request in this folder) or from payroll reconciliation. At most one variance row per period, regardless of source; the wallet is never touched when this check fails."
+                  },
+                  "status": "Conflict",
+                  "code": 409,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"statusCode\": 409,\n  \"message\": \"This period has already been reconciled for this loan\",\n  \"error\": \"Conflict\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "POST /client/client-loans/me/apply-wallet - Insufficient wallet balance (422)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{client_access_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"amount\": 5000\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/client/client-loans/me/apply-wallet",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "client",
+                    "client-loans",
+                    "me",
+                    "apply-wallet"
+                  ]
+                },
+                "description": "Run against a client with an outstanding ClientLoan balance but an insufficient (or zero) wallet balance for the requested amount — WalletService.debit()'s own, unchanged insufficient-balance check rejects it before any ClientLoanRepaymentVariance row is created or principalBalance is touched."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 422', () => pm.response.to.have.status(422));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Insufficient wallet balance (422)",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      },
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{client_access_token}}"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"amount\": 5000\n}"
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/client/client-loans/me/apply-wallet",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "client",
+                        "client-loans",
+                        "me",
+                        "apply-wallet"
+                      ]
+                    },
+                    "description": "Run against a client with an outstanding ClientLoan balance but an insufficient (or zero) wallet balance for the requested amount — WalletService.debit()'s own, unchanged insufficient-balance check rejects it before any ClientLoanRepaymentVariance row is created or principalBalance is touched."
+                  },
+                  "status": "Unprocessable Entity",
+                  "code": 422,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"statusCode\": 422,\n  \"message\": \"Insufficient wallet balance\",\n  \"error\": \"Unprocessable Entity\"\n}"
+                }
+              ]
             }
           ]
         }
