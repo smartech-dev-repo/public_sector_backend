@@ -6,6 +6,7 @@ import { JwtPayload } from '../auth/jwt-payload.interface';
 import { AuditInterceptor } from '../audit/audit.interceptor';
 import { AuditLogService } from '../audit/audit-log.service';
 import { AdminClientReviewService } from './admin-client-review.service';
+import { AdminClientActivityService } from './admin-client-activity.service';
 import { RetryReviewDto } from './dto/retry-review.dto';
 import { AuditActorType, ClientStatus } from '../generated/prisma/client';
 
@@ -16,6 +17,7 @@ export class AdminClientReviewController {
   constructor(
     private readonly adminClientReviewService: AdminClientReviewService,
     private readonly auditLogService: AuditLogService,
+    private readonly adminClientActivityService: AdminClientActivityService,
   ) {}
 
   @Get()
@@ -28,6 +30,12 @@ export class AdminClientReviewController {
   @RequirePermissions('clients:review')
   findOne(@Param('id') id: string) {
     return this.adminClientReviewService.findById(id);
+  }
+
+  @Get(':id/activities')
+  @RequirePermissions('clients:read')
+  getActivities(@Param('id') id: string) {
+    return this.adminClientActivityService.listActivities(id);
   }
 
   @Post(':id/approve')
