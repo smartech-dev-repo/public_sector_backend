@@ -64,6 +64,8 @@ describe('ClientOnboardingService', () => {
         agency: 'NPF',
         bankName: 'GTBank',
         accountNumber: '0123456789',
+        employeeStatus: 'ACTIVE',
+        legacyId: 'LEGACY-001',
       });
       prisma.clientOnboarding.create.mockResolvedValue({ id: 'onboarding-1' });
 
@@ -77,6 +79,8 @@ describe('ClientOnboardingService', () => {
           agency: 'NPF',
           bankName: 'GTBank',
           accountNumber: '0123456789',
+          employeeStatus: 'ACTIVE',
+          legacyId: 'LEGACY-001',
           step: 'IPPIS_LINKED',
         }),
       });
@@ -90,6 +94,8 @@ describe('ClientOnboardingService', () => {
         agency: 'NPF',
         bankName: 'GTBank',
         accountNumber: '0123456789',
+        employeeStatus: 'ACTIVE',
+        legacyId: 'LEGACY-001',
       });
       prisma.clientOnboarding.create.mockResolvedValue({ id: 'onboarding-1' });
 
@@ -291,6 +297,33 @@ describe('ClientOnboardingService', () => {
       const result = await service.getStatus('client-1');
 
       expect(result.step).toBe('PHONE_VERIFIED');
+    });
+
+    it('returns a null lengthOfService when there is no onboarding row yet', async () => {
+      prisma.client.findUniqueOrThrow.mockResolvedValue({ id: 'client-1', status: 'PHONE_VERIFIED' });
+      prisma.clientOnboarding.findUnique.mockResolvedValue(null);
+
+      const result = await service.getStatus('client-1');
+
+      expect(result.lengthOfService).toBeNull();
+    });
+
+    it('computes lengthOfService from the linked IppisRecord\'s hireDate', async () => {
+      const now = new Date();
+      const hireDate = new Date(now.getFullYear() - 2, now.getMonth(), 1);
+      prisma.client.findUniqueOrThrow.mockResolvedValue({ id: 'client-1', status: 'VERIFIED' });
+      prisma.clientOnboarding.findUnique.mockResolvedValue({
+        step: 'COMPLETED',
+        ippisRecord: { hireDate },
+      });
+
+      const result = await service.getStatus('client-1');
+
+      expect(prisma.clientOnboarding.findUnique).toHaveBeenCalledWith({
+        where: { clientId: 'client-1' },
+        include: { ippisRecord: true },
+      });
+      expect(result.lengthOfService).toEqual({ years: 2, months: 0 });
     });
   });
 });

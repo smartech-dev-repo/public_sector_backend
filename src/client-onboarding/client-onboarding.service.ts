@@ -5,6 +5,7 @@ import { IdentityVerificationService } from '../identity-verification/identity-v
 import { FACE_VERIFICATION_PROVIDER, FaceVerificationProvider } from '../face-verification/face-verification-provider.interface';
 import { FILE_STORAGE_PROVIDER, FileStorageProvider } from '../file-storage/file-storage-provider.interface';
 import { ClientDocumentType, ClientStatus, OnboardingStep } from '../generated/prisma/client';
+import { computeLengthOfService } from './length-of-service.util';
 
 @Injectable()
 export class ClientOnboardingService {
@@ -51,6 +52,8 @@ export class ClientOnboardingService {
         agency: ippisRecord.agency,
         bankName: ippisRecord.bankName,
         accountNumber: ippisRecord.accountNumber,
+        employeeStatus: ippisRecord.employeeStatus,
+        legacyId: ippisRecord.legacyId,
         step: OnboardingStep.IPPIS_LINKED,
       },
     });
@@ -173,11 +176,15 @@ export class ClientOnboardingService {
 
   async getStatus(clientId: string) {
     const client = await this.prisma.client.findUniqueOrThrow({ where: { id: clientId } });
-    const onboarding = await this.prisma.clientOnboarding.findUnique({ where: { clientId } });
+    const onboarding = await this.prisma.clientOnboarding.findUnique({
+      where: { clientId },
+      include: { ippisRecord: true },
+    });
     return {
       step: onboarding?.step ?? OnboardingStep.PHONE_VERIFIED,
       clientStatus: client.status,
       onboarding,
+      lengthOfService: computeLengthOfService(onboarding?.ippisRecord?.hireDate ?? null),
     };
   }
 }
