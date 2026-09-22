@@ -387,6 +387,10 @@ export class LoanRequestService {
     return this.prisma.loanRequest.findMany({ where: { status, type, clientId }, orderBy: { createdAt: 'desc' } });
   }
 
+  async listByClient(clientId: string) {
+    return this.prisma.clientLoan.findMany({ where: { clientId }, orderBy: { disbursementDate: 'desc' } });
+  }
+
   async exportDisbursementSummaryCsv(month: string): Promise<string> {
     const match = /^(\d{4})-(\d{2})$/.exec(month);
     if (!match) {

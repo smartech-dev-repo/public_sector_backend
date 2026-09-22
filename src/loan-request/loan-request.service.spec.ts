@@ -538,6 +538,18 @@ describe('LoanRequestService', () => {
     });
   });
 
+  describe('listByClient', () => {
+    it('lists a client\'s ClientLoan rows ordered by disbursementDate descending', async () => {
+      prisma.clientLoan.findMany.mockResolvedValue([{ id: 'cl1' }]);
+      const result = await service.listByClient('client-1');
+      expect(prisma.clientLoan.findMany).toHaveBeenCalledWith({
+        where: { clientId: 'client-1' },
+        orderBy: { disbursementDate: 'desc' },
+      });
+      expect(result).toEqual([{ id: 'cl1' }]);
+    });
+  });
+
   describe('expire', () => {
     it('does nothing if the loan request no longer exists', async () => {
       prisma.loanRequest.findUnique.mockResolvedValue(null);

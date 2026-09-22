@@ -3,12 +3,19 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { PermissionsGuard } from '../auth/permissions.guard';
 import { RequirePermissions } from '../auth/permissions.decorator';
 import { LoanRequestService } from './loan-request.service';
+import { ListClientLoansQueryDto } from './dto/list-client-loans-query.dto';
 
 @Controller('admin/client-loans')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 @RequirePermissions('client-loans:read')
 export class AdminClientLoansController {
   constructor(private readonly loanRequestService: LoanRequestService) {}
+
+  @Get()
+  @RequirePermissions('clients:read')
+  list(@Query() query: ListClientLoansQueryDto) {
+    return this.loanRequestService.listByClient(query.clientId);
+  }
 
   @Get('disbursement-summary')
   @Header('Content-Type', 'text/csv')
