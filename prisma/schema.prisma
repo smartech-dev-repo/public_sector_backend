@@ -300,8 +300,16 @@ enum OnboardingStep {
   PHONE_VERIFIED
   IPPIS_LINKED
   IDENTITY_SUBMITTED
+  DOCUMENTS_SUBMITTED
   FACE_MATCH_PENDING
   COMPLETED
+}
+
+enum ClientDocumentType {
+  NIN_CARD
+  WORK_ID
+  PASSPORT_PHOTO
+  SIGNATURE
 }
 
 model ClientOnboarding {
@@ -328,8 +336,20 @@ model ClientOnboarding {
   reviewedBy String?
   reviewedAt DateTime?
   reviewNote String?
+  documents         ClientDocument[]
   createdAt         DateTime       @default(now())
   updatedAt         DateTime       @updatedAt
+}
+
+model ClientDocument {
+  id                 String             @id @default(uuid())
+  clientOnboardingId String
+  clientOnboarding   ClientOnboarding   @relation(fields: [clientOnboardingId], references: [id])
+  documentType       ClientDocumentType
+  storageKey         String
+  uploadedAt         DateTime           @default(now())
+
+  @@unique([clientOnboardingId, documentType])
 }
 
 model Loan {
