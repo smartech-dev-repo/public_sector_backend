@@ -1,4 +1,5 @@
 import { InternalServerErrorException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { OtpService } from './otp.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { OtpProvider } from './otp-provider.interface';
@@ -103,6 +104,69 @@ describe('OtpService', () => {
     expect(prisma.otpCode.update).toHaveBeenCalledWith({
       where: { id: 'otp-1' },
       data: { consumedAt: expect.any(Date) },
+    });
+  });
+
+  describe('mock OTP support', () => {
+    it('does not short-circuit verify() when ENABLE_MOCK_OTP is not configured', async () => {
+      service = new OtpService(prisma as unknown as PrismaService, [
+        fakeProvider('primary', jest.fn()),
+      ]);
+      prisma.otpCode.findFirst.mockResolvedValue(null);
+
+      const result = await service.verify('+2348000000000', '000000');
+
+      expect(result).toBe(false);
+      expect(prisma.otpCode.findFirst).toHaveBeenCalled();
+    });
+
+    it('short-circuits verify() to true for the mock code without querying prisma when enabled', async () => {
+      const configService = {
+        get: jest.fn((key: string) => {
+          if (key === 'ENABLE_MOCK_OTP') return 'true';
+          if (key === 'MOCK_OTP_CODE') return '000000';
+          return undefined;
+        }),
+      } as unknown as ConfigService;
+      service = new OtpService(
+        prisma as unknown as PrismaService,
+        [fakeProvider('primary', jest.fn())],
+        configService,
+      );
+
+      const result = await service.verify('+2348000000000', '000000');
+
+      expect(result).toBe(true);
+      expect(prisma.otpCode.findFirst).not.toHaveBeenCalled();
+    });
+
+    it('echoes the real generated code back as mockCode when enabled', async () => {
+      const configService = {
+        get: jest.fn((key: string) => {
+          if (key === 'ENABLE_MOCK_OTP') return 'true';
+          if (key === 'MOCK_OTP_CODE') return '000000';
+          return undefined;
+        }),
+      } as unknown as ConfigService;
+      service = new OtpService(
+        prisma as unknown as PrismaService,
+        [fakeProvider('primary', jest.fn().mockResolvedValue(undefined))],
+        configService,
+      );
+
+      const result = await service.request('+2348000000000');
+
+      expect(result.mockCode).toEqual(expect.stringMatching(/^\d{6}$/));
+    });
+
+    it('omits mockCode from request() when disabled', async () => {
+      service = new OtpService(prisma as unknown as PrismaService, [
+        fakeProvider('primary', jest.fn().mockResolvedValue(undefined)),
+      ]);
+
+      const result = await service.request('+2348000000000');
+
+      expect(result.mockCode).toBeUndefined();
     });
   });
 });

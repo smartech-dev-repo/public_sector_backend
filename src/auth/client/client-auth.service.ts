@@ -14,8 +14,8 @@ export class ClientAuthService {
     private readonly sessionService: SessionService,
   ) {}
 
-  async requestOtp(phone: string): Promise<void> {
-    await this.otpService.request(phone);
+  async requestOtp(phone: string): Promise<{ mockCode?: string }> {
+    return this.otpService.request(phone);
   }
 
   async verifyOtp(phone: string, code: string, meta?: { userAgent?: string; ip?: string }) {

@@ -47,7 +47,7 @@ export class OtpService {
     );
   }
 
-  async request(phone: string): Promise<void> {
+  async request(phone: string): Promise<{ mockCode?: string }> {
     const code = generateCode();
     const codeHash = await hashPassword(code);
     const expiresAt = new Date(Date.now() + this.ttlSeconds() * 1000);
@@ -57,9 +57,23 @@ export class OtpService {
     });
 
     await this.sendWithFailover(phone, code);
+
+    return {
+      mockCode:
+        this.configService?.get('ENABLE_MOCK_OTP') === 'true'
+          ? code
+          : undefined,
+    };
   }
 
   async verify(phone: string, code: string): Promise<boolean> {
+    if (
+      this.configService?.get('ENABLE_MOCK_OTP') === 'true' &&
+      code === (this.configService?.get('MOCK_OTP_CODE') ?? '000000')
+    ) {
+      return true;
+    }
+
     const candidate = await this.prisma.otpCode.findFirst({
       where: { phone, purpose: 'CLIENT_LOGIN', consumedAt: null },
       orderBy: { createdAt: 'desc' },
