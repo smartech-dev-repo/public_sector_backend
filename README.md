@@ -512,6 +512,14 @@ re-upload, if all 4 documents already exist.
 | `POST /client/onboarding/face-match` | Client JWT | multipart, field `selfie`; valid from `IDENTITY_SUBMITTED` or `DOCUMENTS_SUBMITTED` |
 | `GET /client/onboarding/status` | Client JWT | resumability — `step` says exactly where to continue |
 
+`ClientOnboarding.employeeStatus`/`legacyId` are copied from the matched
+`IppisRecord` at `ippis-link` time (the same snapshot pattern as
+`employeeName`/`agency`/`bankName`/`accountNumber`). Both
+`GET /client/onboarding/status` and `GET /admin/clients/:id` additionally
+return a computed `lengthOfService: { years, months } | null`, derived at
+read time from the linked `IppisRecord`'s `hireDate` — `null` when there's
+no linked `IppisRecord` yet.
+
 ## Roadmap
 
 See `docs/specs/2026-09-09-public-sector-backend-spec.md` for the full

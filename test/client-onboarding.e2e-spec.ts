@@ -39,6 +39,9 @@ describe('Client onboarding (e2e)', () => {
         employeeName: 'E2E Onboarding Test',
         bankName: 'Test Bank',
         accountNumber: '0000000000',
+        hireDate: new Date(2020, 0, 1),
+        employeeStatus: 'ACTIVE',
+        legacyId: 'LEGACY-E2E-001',
       },
     });
 
@@ -105,6 +108,17 @@ describe('Client onboarding (e2e)', () => {
       });
 
     await request(app.getHttpServer())
+      .get('/client/onboarding/status')
+      .set('Authorization', `Bearer ${accessToken}`)
+      .expect(200)
+      .expect((res) => {
+        expect(res.body.onboarding.employeeStatus).toBe('ACTIVE');
+        expect(res.body.onboarding.legacyId).toBe('LEGACY-E2E-001');
+        expect(res.body.lengthOfService).not.toBeNull();
+        expect(res.body.lengthOfService.years).toBeGreaterThanOrEqual(5);
+      });
+
+    await request(app.getHttpServer())
       .post('/client/onboarding/identity')
       .set('Authorization', `Bearer ${accessToken}`)
       .send({ bvn: '12345678901', nin: '98765432109' })
@@ -148,6 +162,17 @@ describe('Client onboarding (e2e)', () => {
 
     const client = await prisma.client.findUniqueOrThrow({ where: { id: clientId } });
     expect(client.status).toBe('VERIFIED');
+
+    await request(app.getHttpServer())
+      .get(`/admin/clients/${clientId}`)
+      .set('Authorization', `Bearer ${adminAccessToken}`)
+      .expect(200)
+      .expect((res) => {
+        expect(res.body.onboarding.employeeStatus).toBe('ACTIVE');
+        expect(res.body.onboarding.legacyId).toBe('LEGACY-E2E-001');
+        expect(res.body.onboarding.lengthOfService).not.toBeNull();
+        expect(res.body.onboarding.lengthOfService.years).toBeGreaterThanOrEqual(5);
+      });
   }, 20000);
 
   it('rejects a document upload before identity has been submitted', async () => {
