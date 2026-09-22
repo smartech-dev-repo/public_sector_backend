@@ -9475,6 +9475,84 @@
                   }
                 }
               ]
+            },
+            {
+              "name": "GET /admin/client-loans/:id/repayment-plan - Success",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/client-loans/{{client_loan_id}}/repayment-plan",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "client-loans",
+                    "{{client_loan_id}}",
+                    "repayment-plan"
+                  ]
+                },
+                "description": "Mirrors GET /client/client-loans/me for any platform-native ClientLoan by id (client-loans:read). Returns the loan with its full period-by-period schedule (disbursementDate to maturationDate inclusive) from LoanRequestService.getRepaymentPlanById() -- each period is MATCHED/UNDER_PAID/OVER_PAID/NO_DEDUCTION_FOUND once a ClientLoanRepaymentVariance row exists for it (written by ClientLoanReconciliationService.reconcileAll(), which runs automatically after every disbursed-loans/repayment-schedule upload), or UPCOMING with null actualAmount/variance otherwise."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));",
+                      "pm.test('schedule is an array of periods with consistent expectedAmount', () => {",
+                      "  const body = pm.response.json();",
+                      "  pm.expect(body.schedule).to.be.an('array').that.is.not.empty;",
+                      "  const expected = body.schedule[0].expectedAmount;",
+                      "  body.schedule.forEach((row) => pm.expect(row.expectedAmount).to.eql(expected));",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Success (200)",
+                  "originalRequest": {
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/client-loans/{{client_loan_id}}/repayment-plan",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "client-loans",
+                        "{{client_loan_id}}",
+                        "repayment-plan"
+                      ]
+                    }
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"id\": \"6d8abc8c-58a3-4430-b311-224413774ce9\",\n  \"clientId\": \"20bb7ae8-0751-4929-b3bf-97d84241af04\",\n  \"loanRequestId\": \"fcab6265-f73d-4a6c-8c12-5088db422351\",\n  \"agency\": \"NPF\",\n  \"staffId\": \"E2E-REPAY-1790035752701-A\",\n  \"principalAmount\": \"90000\",\n  \"disbursedAmount\": \"90000\",\n  \"principalBalance\": \"45000\",\n  \"tenorMonths\": 2,\n  \"interestRatePercent\": \"0\",\n  \"managementChargeType\": \"PERCENTAGE\",\n  \"managementChargeValue\": \"0\",\n  \"managementChargeApplication\": \"ADD_TO_REPAYMENT\",\n  \"managementChargeAmount\": \"0\",\n  \"disbursementDate\": \"2026-09-22T00:09:19.751Z\",\n  \"maturationDate\": \"2026-11-22T00:09:19.751Z\",\n  \"status\": \"ACTIVE\",\n  \"createdAt\": \"2026-09-22T00:09:19.754Z\",\n  \"updatedAt\": \"2026-09-22T00:09:29.325Z\",\n  \"schedule\": [\n    {\n      \"period\": \"2026-09\",\n      \"expectedAmount\": 45000,\n      \"actualAmount\": 45000,\n      \"variance\": 0,\n      \"status\": \"MATCHED\"\n    },\n    {\n      \"period\": \"2026-10\",\n      \"expectedAmount\": 45000,\n      \"actualAmount\": null,\n      \"variance\": null,\n      \"status\": \"UPCOMING\"\n    },\n    {\n      \"period\": \"2026-11\",\n      \"expectedAmount\": 45000,\n      \"actualAmount\": null,\n      \"variance\": null,\n      \"status\": \"UPCOMING\"\n    }\n  ]\n}"
+                }
+              ]
             }
           ]
         },
@@ -15570,6 +15648,143 @@
                   ],
                   "cookie": [],
                   "body": "{\n  \"balance\": 0,\n  \"entries\": []\n}"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Client Loan",
+          "item": [
+            {
+              "name": "GET /client/client-loans/me - Success (has a loan)",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{client_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/client/client-loans/me",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "client",
+                    "client-loans",
+                    "me"
+                  ]
+                },
+                "description": "Returns the calling client's most recent platform-native ClientLoan (LoanRequestService.getMyLoan()), regardless of its status, with its full period-by-period repayment schedule -- or null if the client has never had one (see the 'No loan' request in this folder). Each schedule entry is MATCHED/UNDER_PAID/OVER_PAID/NO_DEDUCTION_FOUND once ClientLoanReconciliationService.reconcileAll() has written a ClientLoanRepaymentVariance row for that period (it runs automatically after every disbursed-loans/repayment-schedule upload), or UPCOMING with null actualAmount/variance otherwise."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));",
+                      "pm.test('schedule is an array of periods with consistent expectedAmount', () => {",
+                      "  const body = pm.response.json();",
+                      "  if (body === null) { return; }",
+                      "  pm.expect(body.schedule).to.be.an('array').that.is.not.empty;",
+                      "  const expected = body.schedule[0].expectedAmount;",
+                      "  body.schedule.forEach((row) => pm.expect(row.expectedAmount).to.eql(expected));",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Success (200, has a loan)",
+                  "originalRequest": {
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{client_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/client/client-loans/me",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "client",
+                        "client-loans",
+                        "me"
+                      ]
+                    }
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"id\": \"6d8abc8c-58a3-4430-b311-224413774ce9\",\n  \"clientId\": \"20bb7ae8-0751-4929-b3bf-97d84241af04\",\n  \"loanRequestId\": \"fcab6265-f73d-4a6c-8c12-5088db422351\",\n  \"agency\": \"NPF\",\n  \"staffId\": \"E2E-REPAY-1790035752701-A\",\n  \"principalAmount\": \"90000\",\n  \"disbursedAmount\": \"90000\",\n  \"principalBalance\": \"45000\",\n  \"tenorMonths\": 2,\n  \"interestRatePercent\": \"0\",\n  \"managementChargeType\": \"PERCENTAGE\",\n  \"managementChargeValue\": \"0\",\n  \"managementChargeApplication\": \"ADD_TO_REPAYMENT\",\n  \"managementChargeAmount\": \"0\",\n  \"disbursementDate\": \"2026-09-22T00:09:19.751Z\",\n  \"maturationDate\": \"2026-11-22T00:09:19.751Z\",\n  \"status\": \"ACTIVE\",\n  \"createdAt\": \"2026-09-22T00:09:19.754Z\",\n  \"updatedAt\": \"2026-09-22T00:09:29.325Z\",\n  \"schedule\": [\n    {\n      \"period\": \"2026-09\",\n      \"expectedAmount\": 45000,\n      \"actualAmount\": 45000,\n      \"variance\": 0,\n      \"status\": \"MATCHED\"\n    },\n    {\n      \"period\": \"2026-10\",\n      \"expectedAmount\": 45000,\n      \"actualAmount\": null,\n      \"variance\": null,\n      \"status\": \"UPCOMING\"\n    },\n    {\n      \"period\": \"2026-11\",\n      \"expectedAmount\": 45000,\n      \"actualAmount\": null,\n      \"variance\": null,\n      \"status\": \"UPCOMING\"\n    }\n  ]\n}"
+                }
+              ]
+            },
+            {
+              "name": "GET /client/client-loans/me - No loan (null)",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{client_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/client/client-loans/me",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "client",
+                    "client-loans",
+                    "me"
+                  ]
+                },
+                "description": "A client who has never had a platform-native ClientLoan gets a 200 with a bodyless response (Nest's RouterResponseController sends no body at all for a null/undefined handler return, rather than the literal JSON `null`)."
+              },
+              "response": [
+                {
+                  "name": "Success (200, no body -- no ClientLoan)",
+                  "originalRequest": {
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{client_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/client/client-loans/me",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "client",
+                        "client-loans",
+                        "me"
+                      ]
+                    }
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [],
+                  "cookie": [],
+                  "body": ""
                 }
               ]
             }

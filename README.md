@@ -326,6 +326,25 @@ topup's own amount, and `maturationDate` extends to
 never shortens the loan's remaining term. `GET /admin/loan-requests` now
 also accepts an optional `?type=` filter (`ORIGINATION`/`TOPUP`).
 
+### Repayment tracking
+
+Repayment-schedule uploads are matched against `ClientLoan` the same way
+they're already matched against the historical ingested `Loan` model —
+`ClientLoanReconciliationService.reconcileAll()` runs automatically
+alongside the existing reconciliation, right after every
+disbursed-loans/repayment-schedule upload finishes. Each new period
+(never re-processed once recorded — a correction is a manual admin
+action) reduces `principalBalance` by `min(actualAmount, expectedAmount)`;
+any excess beyond the expected installment is credited to the client's
+wallet (`SYSTEM` actor). Underpayment carries no penalty and no automatic
+remediation — it's simply recorded, which feeds `ClientLoan.status`
+toward `DEFAULT` (mirroring the same `ACTIVE`/`DEFAULT`/`CLOSED` logic
+used for the ingested-loan history). `GET /client/client-loans/me`
+(Client JWT) returns the caller's most recent platform loan with its full
+period-by-period schedule (`null` if they've never had one);
+`GET /admin/client-loans/:id/repayment-plan` (`client-loans:read`)
+returns the same for any loan.
+
 ## Client loan dashboard
 
 `GET /client/loans` (Client JWT) returns the calling client's pre-existing
