@@ -495,6 +495,11 @@ model RepaymentVariance {
   @@unique([loanId, period])
 }
 
+enum VarianceSource {
+  PAYROLL_RECONCILIATION
+  WALLET_APPLICATION
+}
+
 model ClientLoanRepaymentVariance {
   id             String         @id @default(uuid())
   clientLoanId   String
@@ -504,6 +509,7 @@ model ClientLoanRepaymentVariance {
   actualAmount   Decimal
   variance       Decimal
   status         VarianceStatus
+  source         VarianceSource @default(PAYROLL_RECONCILIATION)
   generatedAt    DateTime       @default(now())
 
   @@unique([clientLoanId, period])
