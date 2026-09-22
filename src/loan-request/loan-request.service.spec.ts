@@ -527,6 +527,15 @@ describe('LoanRequestService', () => {
         orderBy: { createdAt: 'desc' },
       });
     });
+
+    it('filters by clientId when provided', async () => {
+      prisma.loanRequest.findMany.mockResolvedValue([]);
+      await service.listAll(undefined, undefined, 'client-1');
+      expect(prisma.loanRequest.findMany).toHaveBeenCalledWith({
+        where: { status: undefined, type: undefined, clientId: 'client-1' },
+        orderBy: { createdAt: 'desc' },
+      });
+    });
   });
 
   describe('expire', () => {

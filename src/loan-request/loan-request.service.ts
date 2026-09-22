@@ -383,8 +383,8 @@ export class LoanRequestService {
     return updated;
   }
 
-  async listAll(status?: LoanRequestStatus, type?: LoanRequestType) {
-    return this.prisma.loanRequest.findMany({ where: { status, type }, orderBy: { createdAt: 'desc' } });
+  async listAll(status?: LoanRequestStatus, type?: LoanRequestType, clientId?: string) {
+    return this.prisma.loanRequest.findMany({ where: { status, type, clientId }, orderBy: { createdAt: 'desc' } });
   }
 
   async exportDisbursementSummaryCsv(month: string): Promise<string> {

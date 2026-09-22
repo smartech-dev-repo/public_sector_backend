@@ -20,8 +20,8 @@ export class AdminLoanRequestController {
   ) {}
 
   @Get()
-  list(@Query('status') status?: LoanRequestStatus, @Query('type') type?: LoanRequestType) {
-    return this.loanRequestService.listAll(status, type);
+  list(@Query('status') status?: LoanRequestStatus, @Query('type') type?: LoanRequestType, @Query('clientId') clientId?: string) {
+    return this.loanRequestService.listAll(status, type, clientId);
   }
 
   @Post(':id/approve')
