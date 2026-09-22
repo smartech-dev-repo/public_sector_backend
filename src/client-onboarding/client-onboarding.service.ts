@@ -1,9 +1,10 @@
 import { ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { extname } from 'path';
 import { PrismaService } from '../prisma/prisma.service';
 import { IdentityVerificationService } from '../identity-verification/identity-verification.service';
 import { FACE_VERIFICATION_PROVIDER, FaceVerificationProvider } from '../face-verification/face-verification-provider.interface';
 import { FILE_STORAGE_PROVIDER, FileStorageProvider } from '../file-storage/file-storage-provider.interface';
-import { ClientStatus, OnboardingStep } from '../generated/prisma/client';
+import { ClientDocumentType, ClientStatus, OnboardingStep } from '../generated/prisma/client';
 
 @Injectable()
 export class ClientOnboardingService {
@@ -80,6 +81,8 @@ export class ClientOnboardingService {
 
     const identityVerified = Boolean(bvnResult.firstName) && Boolean(ninResult.firstName);
 
+    const step = await this.determineStepAfterIdentity(onboarding.id);
+
     return this.prisma.clientOnboarding.update({
       where: { clientId },
       data: {
@@ -88,9 +91,43 @@ export class ClientOnboardingService {
         bvnSelfie: bvnSelfieKey,
         ninSelfie: ninSelfieKey,
         identityVerified,
-        step: OnboardingStep.IDENTITY_SUBMITTED,
+        step,
       },
     });
+  }
+
+  async determineStepAfterIdentity(onboardingId: string): Promise<OnboardingStep> {
+    const documentCount = await this.prisma.clientDocument.count({
+      where: { clientOnboardingId: onboardingId },
+    });
+    return documentCount >= Object.values(ClientDocumentType).length
+      ? OnboardingStep.DOCUMENTS_SUBMITTED
+      : OnboardingStep.IDENTITY_SUBMITTED;
+  }
+
+  async uploadDocument(clientId: string, documentType: ClientDocumentType, file: Express.Multer.File) {
+    const onboarding = await this.requireOnboarding(clientId);
+    if (onboarding.step !== OnboardingStep.IDENTITY_SUBMITTED && onboarding.step !== OnboardingStep.DOCUMENTS_SUBMITTED) {
+      throw new ConflictException(
+        `Expected step IDENTITY_SUBMITTED or DOCUMENTS_SUBMITTED, but client is at ${onboarding.step}`,
+      );
+    }
+
+    const storageKey = `client-onboarding/${clientId}/documents/${documentType.toLowerCase()}${extname(file.originalname)}`;
+    await this.fileStorageProvider.putObject(storageKey, file.buffer);
+
+    const document = await this.prisma.clientDocument.upsert({
+      where: { clientOnboardingId_documentType: { clientOnboardingId: onboarding.id, documentType } },
+      create: { clientOnboardingId: onboarding.id, documentType, storageKey },
+      update: { storageKey, uploadedAt: new Date() },
+    });
+
+    const nextStep = await this.determineStepAfterIdentity(onboarding.id);
+    if (nextStep === OnboardingStep.DOCUMENTS_SUBMITTED && onboarding.step !== OnboardingStep.DOCUMENTS_SUBMITTED) {
+      await this.prisma.clientOnboarding.update({ where: { clientId }, data: { step: nextStep } });
+    }
+
+    return document;
   }
 
   async submitFaceMatch(clientId: string, selfieBuffer: Buffer) {

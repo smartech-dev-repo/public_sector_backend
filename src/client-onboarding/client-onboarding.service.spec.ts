@@ -11,6 +11,7 @@ describe('ClientOnboardingService', () => {
     clientOnboarding: { findUnique: jest.Mock; create: jest.Mock; update: jest.Mock };
     ippisRecord: { findFirst: jest.Mock };
     client: { findUniqueOrThrow: jest.Mock; update: jest.Mock };
+    clientDocument: { count: jest.Mock; upsert: jest.Mock };
   };
   let identityVerificationService: { lookupBvn: jest.Mock; lookupNin: jest.Mock };
   let faceVerificationProvider: { compare: jest.Mock };
@@ -21,6 +22,7 @@ describe('ClientOnboardingService', () => {
       clientOnboarding: { findUnique: jest.fn(), create: jest.fn(), update: jest.fn() },
       ippisRecord: { findFirst: jest.fn() },
       client: { findUniqueOrThrow: jest.fn(), update: jest.fn() },
+      clientDocument: { count: jest.fn().mockResolvedValue(0), upsert: jest.fn() },
     };
     identityVerificationService = { lookupBvn: jest.fn(), lookupNin: jest.fn() };
     faceVerificationProvider = { compare: jest.fn() };
@@ -112,7 +114,7 @@ describe('ClientOnboardingService', () => {
     });
 
     it('looks up BVN and NIN, stores both photos, and marks identityVerified', async () => {
-      prisma.clientOnboarding.findUnique.mockResolvedValue({ step: 'IPPIS_LINKED' });
+      prisma.clientOnboarding.findUnique.mockResolvedValue({ id: 'onboarding-1', step: 'IPPIS_LINKED' });
       identityVerificationService.lookupBvn.mockResolvedValue({
         firstName: 'Jane', lastName: 'Doe', dateOfBirth: null, phoneNumber: null, photoBase64: 'YnZuLXBob3Rv',
       });
@@ -133,6 +135,88 @@ describe('ClientOnboardingService', () => {
           step: 'IDENTITY_SUBMITTED',
         }),
       });
+    });
+  });
+
+  describe('determineStepAfterIdentity', () => {
+    it('returns IDENTITY_SUBMITTED when fewer than 4 documents exist', async () => {
+      prisma.clientDocument.count.mockResolvedValue(3);
+      const result = await service.determineStepAfterIdentity('onboarding-1');
+      expect(result).toBe('IDENTITY_SUBMITTED');
+    });
+
+    it('returns DOCUMENTS_SUBMITTED when all 4 documents exist', async () => {
+      prisma.clientDocument.count.mockResolvedValue(4);
+      const result = await service.determineStepAfterIdentity('onboarding-1');
+      expect(result).toBe('DOCUMENTS_SUBMITTED');
+    });
+  });
+
+  describe('uploadDocument', () => {
+    const file = { originalname: 'nin.jpg', buffer: Buffer.from('fake') } as Express.Multer.File;
+
+    it('rejects when the client has no onboarding row', async () => {
+      prisma.clientOnboarding.findUnique.mockResolvedValue(null);
+      await expect(service.uploadDocument('client-1', 'NIN_CARD' as never, file)).rejects.toThrow(
+        ConflictException,
+      );
+    });
+
+    it('rejects when the client is not at IDENTITY_SUBMITTED or DOCUMENTS_SUBMITTED', async () => {
+      prisma.clientOnboarding.findUnique.mockResolvedValue({ id: 'onboarding-1', step: 'IPPIS_LINKED' });
+      await expect(service.uploadDocument('client-1', 'NIN_CARD' as never, file)).rejects.toThrow(
+        ConflictException,
+      );
+    });
+
+    it('uploads a document and does not advance the step when fewer than 4 documents exist', async () => {
+      prisma.clientOnboarding.findUnique.mockResolvedValue({ id: 'onboarding-1', step: 'IDENTITY_SUBMITTED' });
+      prisma.clientDocument.upsert.mockResolvedValue({ id: 'doc-1' });
+      prisma.clientDocument.count.mockResolvedValue(1);
+
+      await service.uploadDocument('client-1', 'NIN_CARD' as never, file);
+
+      expect(fileStorageProvider.putObject).toHaveBeenCalledWith(
+        'client-onboarding/client-1/documents/nin_card.jpg',
+        file.buffer,
+      );
+      expect(prisma.clientDocument.upsert).toHaveBeenCalledWith({
+        where: { clientOnboardingId_documentType: { clientOnboardingId: 'onboarding-1', documentType: 'NIN_CARD' } },
+        create: {
+          clientOnboardingId: 'onboarding-1',
+          documentType: 'NIN_CARD',
+          storageKey: 'client-onboarding/client-1/documents/nin_card.jpg',
+        },
+        update: {
+          storageKey: 'client-onboarding/client-1/documents/nin_card.jpg',
+          uploadedAt: expect.any(Date),
+        },
+      });
+      expect(prisma.clientOnboarding.update).not.toHaveBeenCalled();
+    });
+
+    it('advances the step to DOCUMENTS_SUBMITTED once the 4th document is uploaded', async () => {
+      prisma.clientOnboarding.findUnique.mockResolvedValue({ id: 'onboarding-1', step: 'IDENTITY_SUBMITTED' });
+      prisma.clientDocument.upsert.mockResolvedValue({ id: 'doc-4' });
+      prisma.clientDocument.count.mockResolvedValue(4);
+      prisma.clientOnboarding.update.mockResolvedValue({ id: 'onboarding-1', step: 'DOCUMENTS_SUBMITTED' });
+
+      await service.uploadDocument('client-1', 'SIGNATURE' as never, file);
+
+      expect(prisma.clientOnboarding.update).toHaveBeenCalledWith({
+        where: { clientId: 'client-1' },
+        data: { step: 'DOCUMENTS_SUBMITTED' },
+      });
+    });
+
+    it('does not re-trigger the step update when already at DOCUMENTS_SUBMITTED', async () => {
+      prisma.clientOnboarding.findUnique.mockResolvedValue({ id: 'onboarding-1', step: 'DOCUMENTS_SUBMITTED' });
+      prisma.clientDocument.upsert.mockResolvedValue({ id: 'doc-1' });
+      prisma.clientDocument.count.mockResolvedValue(4);
+
+      await service.uploadDocument('client-1', 'NIN_CARD' as never, file);
+
+      expect(prisma.clientOnboarding.update).not.toHaveBeenCalled();
     });
   });
 
