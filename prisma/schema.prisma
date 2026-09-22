@@ -322,6 +322,8 @@ model ClientOnboarding {
   agency            String
   bankName          String?
   accountNumber     String?
+  employeeStatus    String?
+  legacyId          String?
   bvn               String?
   nin               String?
   bvnSelfie         String?
