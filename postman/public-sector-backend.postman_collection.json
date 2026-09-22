@@ -8033,6 +8033,155 @@
               ]
             },
             {
+              "name": "GET /admin/clients/:id/activities - Success",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/clients/{{review_client_id}}/activities",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "clients",
+                    "{{review_client_id}}",
+                    "activities"
+                  ]
+                },
+                "description": "Merged, timestamp-descending activity timeline for one client (clients:read). Combines AuditLog rows targeting the client or their loan requests, the client's own loan-request creation/confirmation, Session logins, CLIENT-actor WalletEntry rows, and the current ClientOnboarding step -- all derived at query time, no separate feed table."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));",
+                      "pm.test('sorted by timestamp descending', () => {",
+                      "  const body = pm.response.json();",
+                      "  const timestamps = body.map((entry) => new Date(entry.timestamp).getTime());",
+                      "  const sorted = [...timestamps].sort((a, b) => b - a);",
+                      "  pm.expect(timestamps).to.eql(sorted);",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Success (200)",
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "[\n  {\n    \"timestamp\": \"2026-09-22T10:15:00.000Z\",\n    \"type\": \"loan-request.disburse\",\n    \"description\": \"loan-request.disburse\",\n    \"source\": \"AUDIT_LOG\"\n  },\n  {\n    \"timestamp\": \"2026-09-22T10:10:00.000Z\",\n    \"type\": \"loan-request.approve\",\n    \"description\": \"loan-request.approve\",\n    \"source\": \"AUDIT_LOG\"\n  },\n  {\n    \"timestamp\": \"2026-09-22T10:05:00.000Z\",\n    \"type\": \"loan-request.confirmed\",\n    \"description\": \"Loan request confirmed via SMS\",\n    \"source\": \"LOAN_REQUEST\"\n  },\n  {\n    \"timestamp\": \"2026-09-22T10:00:00.000Z\",\n    \"type\": \"loan-request.created\",\n    \"description\": \"Loan request submitted for ₦90000\",\n    \"source\": \"LOAN_REQUEST\"\n  },\n  {\n    \"timestamp\": \"2026-09-15T11:30:00.000Z\",\n    \"type\": \"onboarding.step\",\n    \"description\": \"Onboarding step: COMPLETED\",\n    \"source\": \"ONBOARDING\"\n  }\n]",
+                  "originalRequest": {
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/clients/{{review_client_id}}/activities",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "clients",
+                        "{{review_client_id}}",
+                        "activities"
+                      ]
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "name": "GET /admin/clients/:id/activities - Client not found (404)",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/clients/00000000-0000-0000-0000-000000000000/activities",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "clients",
+                    "00000000-0000-0000-0000-000000000000",
+                    "activities"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 404', () => pm.response.to.have.status(404));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "404 Not Found",
+                  "status": "Not Found",
+                  "code": 404,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"statusCode\": 404,\n  \"message\": \"Client not found\",\n  \"error\": \"Not Found\"\n}",
+                  "originalRequest": {
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/clients/00000000-0000-0000-0000-000000000000/activities",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "clients",
+                        "00000000-0000-0000-0000-000000000000",
+                        "activities"
+                      ]
+                    }
+                  }
+                }
+              ]
+            },
+            {
               "name": "POST /admin/clients/:id/retry - Success",
               "request": {
                 "method": "POST",
@@ -8566,8 +8715,17 @@
                   "path": [
                     "admin",
                     "loan-requests"
+                  ],
+                  "query": [
+                    {
+                      "key": "clientId",
+                      "value": "",
+                      "description": "Optional. Scopes the list to one client's loan requests (added alongside status/type; loan-requests:review permission unchanged).",
+                      "disabled": true
+                    }
                   ]
-                }
+                },
+                "description": "Lists all admin-visible loan requests. Accepts optional status/type/clientId query filters (clientId added by the admin client visibility feature; still gated by loan-requests:review only)."
               },
               "event": [
                 {
@@ -8747,6 +8905,90 @@
                         {
                           "key": "type",
                           "value": "TOPUP"
+                        }
+                      ]
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "name": "GET /admin/loan-requests - Filtered by clientId",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/loan-requests?clientId={{review_client_id}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "loan-requests"
+                  ],
+                  "query": [
+                    {
+                      "key": "clientId",
+                      "value": "{{review_client_id}}"
+                    }
+                  ]
+                },
+                "description": "Scopes the loan-requests list to a single client. No new permission -- an addition to the already-gated loan-requests:review endpoint."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));",
+                      "pm.test('every request belongs to the filtered client', () => {",
+                      "  const body = pm.response.json();",
+                      "  body.forEach((lr) => pm.expect(lr.clientId).to.eql(pm.collectionVariables.get('review_client_id')));",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Success (200)",
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "[\n  {\n    \"id\": \"a1b2c3d4-5e6f-4708-8192-a3b4c5d6e7f8\",\n    \"clientId\": \"c1a2b3c4-d5e6-4f78-9a0b-1c2d3e4f5a6b\",\n    \"amount\": \"90000\",\n    \"status\": \"DISBURSED\",\n    \"confirmationSmsSentAt\": \"2026-09-22T10:00:00.000Z\",\n    \"confirmedAt\": \"2026-09-22T10:05:00.000Z\",\n    \"expiresAt\": \"2026-09-23T10:00:00.000Z\",\n    \"createdAt\": \"2026-09-22T10:00:00.000Z\",\n    \"updatedAt\": \"2026-09-22T10:15:00.000Z\",\n    \"tenorMonths\": 2,\n    \"interestRatePercent\": \"0\",\n    \"managementChargeType\": \"PERCENTAGE\",\n    \"managementChargeValue\": \"0\",\n    \"managementChargeApplication\": \"ADD_TO_REPAYMENT\",\n    \"managementChargeAmount\": \"0\",\n    \"rejectionReason\": null,\n    \"approvedAt\": \"2026-09-22T10:10:00.000Z\",\n    \"disbursedAt\": \"2026-09-22T10:15:00.000Z\",\n    \"type\": \"ORIGINATION\",\n    \"topupTargetId\": null\n  }\n]",
+                  "originalRequest": {
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/loan-requests?clientId={{review_client_id}}",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "loan-requests"
+                      ],
+                      "query": [
+                        {
+                          "key": "clientId",
+                          "value": "{{review_client_id}}"
                         }
                       ]
                     }
@@ -9248,6 +9490,155 @@
         {
           "name": "Client Loans",
           "item": [
+            {
+              "name": "GET /admin/client-loans?clientId= - Success",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/client-loans?clientId={{review_client_id}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "client-loans"
+                  ],
+                  "query": [
+                    {
+                      "key": "clientId",
+                      "value": "{{review_client_id}}"
+                    }
+                  ]
+                },
+                "description": "Lists a client's ClientLoan history (clients:read). clientId is required -- 400 if omitted, see the sibling request below."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));",
+                      "pm.test('is array', () => pm.expect(pm.response.json()).to.be.an('array'));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Success (200)",
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "[\n  {\n    \"id\": \"6d8abc8c-58a3-4430-b311-224413774ce9\",\n    \"clientId\": \"c1a2b3c4-d5e6-4f78-9a0b-1c2d3e4f5a6b\",\n    \"loanRequestId\": \"a1b2c3d4-5e6f-4708-8192-a3b4c5d6e7f8\",\n    \"agency\": \"NPF\",\n    \"staffId\": \"IPPIS-000123\",\n    \"principalAmount\": \"90000\",\n    \"disbursedAmount\": \"90000\",\n    \"principalBalance\": \"45000\",\n    \"tenorMonths\": 2,\n    \"interestRatePercent\": \"0\",\n    \"managementChargeType\": \"PERCENTAGE\",\n    \"managementChargeValue\": \"0\",\n    \"managementChargeApplication\": \"ADD_TO_REPAYMENT\",\n    \"managementChargeAmount\": \"0\",\n    \"disbursementDate\": \"2026-09-22T10:15:00.000Z\",\n    \"maturationDate\": \"2026-11-22T10:15:00.000Z\",\n    \"status\": \"ACTIVE\",\n    \"createdAt\": \"2026-09-22T10:15:00.000Z\",\n    \"updatedAt\": \"2026-09-22T10:15:00.000Z\"\n  }\n]",
+                  "originalRequest": {
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/client-loans?clientId={{review_client_id}}",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "client-loans"
+                      ],
+                      "query": [
+                        {
+                          "key": "clientId",
+                          "value": "{{review_client_id}}"
+                        }
+                      ]
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "name": "GET /admin/client-loans - Missing clientId (400)",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/client-loans",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "client-loans"
+                  ]
+                },
+                "description": "clientId is required, not an optional filter -- omitting it is a validation error."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 400', () => pm.response.to.have.status(400));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Validation error - missing clientId (400)",
+                  "status": "Bad Request",
+                  "code": 400,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"statusCode\": 400,\n  \"message\": [\n    \"clientId should not be empty\",\n    \"clientId must be a string\"\n  ],\n  \"error\": \"Bad Request\"\n}",
+                  "originalRequest": {
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/client-loans",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "client-loans"
+                      ]
+                    }
+                  }
+                }
+              ]
+            },
             {
               "name": "GET /admin/client-loans/disbursement-summary - Success",
               "request": {

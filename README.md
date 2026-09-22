@@ -324,7 +324,9 @@ instead of creating a new loan, the existing `ClientLoan`'s
 topup's own amount, and `maturationDate` extends to
 `max(current, topup disbursement date + topup's own tenor)` — a topup
 never shortens the loan's remaining term. `GET /admin/loan-requests` now
-also accepts an optional `?type=` filter (`ORIGINATION`/`TOPUP`).
+also accepts an optional `?type=` filter (`ORIGINATION`/`TOPUP`), as well as an
+optional `?clientId=` filter to scope the list to one client (its existing
+`loan-requests:review` permission is unchanged by this addition).
 
 ### Repayment tracking
 
@@ -398,6 +400,18 @@ rows where they exist. Periods with no row yet are returned with
 `status: "UPCOMING"` and null `actualAmount`/`variance`. Requesting a
 `loanId` that isn't the caller's own (or doesn't exist) returns `404`,
 matching this codebase's never-leak-existence convention elsewhere.
+
+## Admin client visibility
+
+`GET /admin/loan-requests` accepts an optional `clientId` filter alongside
+`status`/`type`. `GET /admin/client-loans?clientId=` (`clients:read`,
+required `clientId` — `400` if missing) lists a client's `ClientLoan`
+history. `GET /admin/clients/:id/activities` (`clients:read`) returns a
+merged, timestamp-descending timeline for one client: admin actions on
+them or their loan requests (from the audit log), their own loan-request
+creation/confirmation, logins, `CLIENT`-actor wallet applications, and
+their current onboarding step — all derived at query time from existing
+records, not a separately tracked feed.
 
 ## Wallet
 
