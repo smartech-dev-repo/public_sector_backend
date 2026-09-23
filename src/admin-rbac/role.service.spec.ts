@@ -5,7 +5,14 @@ import { PrismaService } from '../prisma/prisma.service';
 describe('RoleService', () => {
   let service: RoleService;
   let prisma: {
-    role: { create: jest.Mock; findMany: jest.Mock; findUnique: jest.Mock; update: jest.Mock; delete: jest.Mock };
+    role: {
+      create: jest.Mock;
+      findMany: jest.Mock;
+      findUnique: jest.Mock;
+      update: jest.Mock;
+      delete: jest.Mock;
+      count: jest.Mock;
+    };
     adminUserRole: { count: jest.Mock };
     permission: { findUnique: jest.Mock };
     rolePermission: { upsert: jest.Mock; deleteMany: jest.Mock };
@@ -13,7 +20,14 @@ describe('RoleService', () => {
 
   beforeEach(() => {
     prisma = {
-      role: { create: jest.fn(), findMany: jest.fn(), findUnique: jest.fn(), update: jest.fn(), delete: jest.fn() },
+      role: {
+        create: jest.fn(),
+        findMany: jest.fn(),
+        findUnique: jest.fn(),
+        update: jest.fn(),
+        delete: jest.fn(),
+        count: jest.fn(),
+      },
       adminUserRole: { count: jest.fn() },
       permission: { findUnique: jest.fn() },
       rolePermission: { upsert: jest.fn(), deleteMany: jest.fn() },
@@ -84,5 +98,38 @@ describe('RoleService', () => {
   it('removePermission deletes the RolePermission row', async () => {
     await service.removePermission('role-1', 'perm-1');
     expect(prisma.rolePermission.deleteMany).toHaveBeenCalledWith({ where: { roleId: 'role-1', permissionId: 'perm-1' } });
+  });
+
+  describe('list', () => {
+    it('defaults to page 1/limit 25 with no filters', async () => {
+      prisma.role.findMany.mockResolvedValue([]);
+      prisma.role.count.mockResolvedValue(0);
+
+      const result = await service.list();
+
+      expect(prisma.role.findMany).toHaveBeenCalledWith(expect.objectContaining({ skip: 0, take: 25 }));
+      expect(result.meta).toEqual({ total: 0, page: 1, limit: 25, totalPages: 0 });
+    });
+
+    it('searches by name', async () => {
+      prisma.role.findMany.mockResolvedValue([]);
+      prisma.role.count.mockResolvedValue(0);
+
+      await service.list({ q: 'reviewer' });
+
+      expect(prisma.role.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { name: { contains: 'reviewer', mode: 'insensitive' } } }),
+      );
+    });
+
+    it('computes skip/take from page and limit and reports the total', async () => {
+      prisma.role.findMany.mockResolvedValue([]);
+      prisma.role.count.mockResolvedValue(8);
+
+      const result = await service.list({}, { page: 2, limit: 5 });
+
+      expect(prisma.role.findMany).toHaveBeenCalledWith(expect.objectContaining({ skip: 5, take: 5 }));
+      expect(result.meta).toEqual({ total: 8, page: 2, limit: 5, totalPages: 2 });
+    });
   });
 });

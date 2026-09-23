@@ -1,6 +1,7 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { Role } from '../generated/prisma/client';
+import { Role, Prisma } from '../generated/prisma/client';
+import { buildPaginatedResult } from '../common/pagination/paginated-result';
 
 const SUPER_ADMIN_ROLE_NAME = 'SUPER_ADMIN';
 
@@ -37,11 +38,27 @@ export class RoleService {
     }
   }
 
-  async list() {
-    return this.prisma.role.findMany({
-      include: ROLE_WITH_PERMISSIONS_INCLUDE,
-      orderBy: { name: 'asc' },
-    });
+  async list(
+    filters: { q?: string } = {},
+    pagination: { page: number; limit: number } = { page: 1, limit: 25 },
+  ) {
+    const { page, limit } = pagination;
+    const where: Prisma.RoleWhereInput = {
+      name: filters.q ? { contains: filters.q, mode: 'insensitive' } : undefined,
+    };
+
+    const [data, total] = await Promise.all([
+      this.prisma.role.findMany({
+        where,
+        include: ROLE_WITH_PERMISSIONS_INCLUDE,
+        orderBy: { name: 'asc' },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      this.prisma.role.count({ where }),
+    ]);
+
+    return buildPaginatedResult(data, total, page, limit);
   }
 
   async findById(id: string) {
