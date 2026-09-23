@@ -84,10 +84,19 @@ bare array.
 ## Admin invite flow
 
 `POST /admin/invites` (`admins:create`) → emails a token via the mock console
-email provider → `POST /auth/admin/accept-invite { token, password, fullName }`
-(public) creates the `AdminUser` and logs them in. `POST
-/admin/invites/:id/resend` and `GET /admin/invites` manage outstanding
-invites. No `AdminUser` row exists until the invite is accepted.
+email provider → `POST /auth/admin/accept-invite { token, password, firstName, lastName }`
+(public) creates the `AdminUser` (`fullName` is derived as
+`` `${firstName} ${lastName}` ``, never set independently) and logs them in.
+`POST /admin/invites/:id/resend` and `GET /admin/invites` manage outstanding
+invites; `DELETE /admin/invites/:id` (`admins:create`) hard-deletes a
+`PENDING` invite (`404` if it doesn't exist or is no longer `PENDING`). No
+`AdminUser` row exists until the invite is accepted.
+
+`POST /admin/invites` and `POST /admin/invites/:id/resend` responses include
+a trimmed `role: { id, name }`; `GET /admin/invites` rows include the full
+nested `Role` object (matching how `AdminUser.role` is returned by
+`GET /admin/admins`).
+
 `GET /admin/invites` filters by `status`, a `q` search across `email`, and
 `createdFrom`/`createdTo`/`expiresFrom`/`expiresTo` date ranges over
 `createdAt`/`expiresAt`; it accepts `page`/`limit` pagination (default
@@ -195,11 +204,12 @@ always derived from `role`; it is never set independently.
 | `POST/GET /admin/roles` | `roles:manage` | Body accepts an optional `departmentId`. |
 | `GET/PATCH/DELETE /admin/roles/:id` | `roles:manage` | Renaming or deleting `SUPER_ADMIN` is blocked (409); deleting a role assigned to any admin is blocked (409). `PATCH` accepts `departmentId` (a UUID, or `null` to clear it). |
 | `POST /admin/roles/:id/permissions` | `roles:manage` | `{ permissionId }` |
+| `POST /admin/roles/:id/permissions/bulk` | `roles:manage` | `{ permissionIds: string[] }`. Upserts every permission in one call, all-or-nothing — if any `permissionId` doesn't exist, the whole batch is rejected (404) and none are written. |
 | `DELETE /admin/roles/:id/permissions/:permissionId` | `roles:manage` | |
 | `GET /admin/admins` | `roles:manage` | Lists admins with `role` and `department` as direct nested objects (not an array). |
 | `PATCH /admin/admins/:id/role` | `roles:manage` | `{ roleId }`. Sets the admin's role and inherits that role's `departmentId` in one call. 404 if the admin or role doesn't exist; blocked (409) if it would leave zero admins holding `SUPER_ADMIN`. Replaces the old `POST /admin/admins/:id/roles` / `DELETE /admin/admins/:id/roles/:roleId` pair — an admin can no longer hold zero or multiple roles. |
-| `POST /admin/admins/:id/deactivate` | `roles:manage` | 409 if targeting your own account or an already-inactive admin; force-revokes the admin's sessions |
-| `POST /admin/admins/:id/reactivate` | `roles:manage` | 409 if the admin is already active |
+| `POST /admin/admins/:id/suspend` | `roles:manage` | 409 if targeting your own account or an already-suspended admin; force-revokes the admin's sessions. Was `deactivate`. |
+| `POST /admin/admins/:id/unsuspend` | `roles:manage` | 409 if the admin is already active. Was `reactivate`. |
 
 `GET /admin/roles/ping` no longer exists — it was a Phase 1 placeholder,
 superseded by the real endpoints above.
