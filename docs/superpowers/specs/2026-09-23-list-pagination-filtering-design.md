@@ -148,7 +148,23 @@ so future endpoints don't reinvent it.
 
 ## 3. Retrofit: `ListLoansQueryDto` / `GET /client/loans`
 
-The one endpoint with an existing well-designed filter DTO. Change:
+The one endpoint with an existing well-designed filter DTO. Note on
+re-reading `ClientLoansService.getDashboard`: this endpoint does not
+return a bare array today — it returns `{ loans: [...], repayments: [...] }`
+— and `status` is a value computed per-loan from variance data
+(`computeLoanStatus`) *after* the Prisma `findMany`, not a column
+`findMany` can filter on directly. So pagination here means: run the
+existing `findMany` (filtered by `product`/`disbursedFrom`/`disbursedTo`
+at the DB level, as today), compute `status` per loan, filter by `status`
+in memory (as today), then apply `skip`/`take` as an in-memory
+`.slice()` over that already-filtered array to get the current page, and
+compute `total` as that filtered array's `.length` (not a separate
+`prisma.count()`, since the filter cannot run purely in SQL). Only
+`loans` becomes a `PaginatedResult` — `repayments` is unrelated to this
+filter set and stays a plain array, unpaginated, exactly as today. Final
+response shape: `{ loans: PaginatedResult<LoanWithStatus>, repayments: RepaymentRecord[] }`.
+
+Change:
 
 ```typescript
 export class ListLoansQueryDto extends PaginationDto {
@@ -178,11 +194,13 @@ convention before Sub-project 2 applies it at scale.
 
 ## 4. Response-shape impact
 
-`GET /client/loans`'s response changes from a bare array to
-`{ data: [...], meta: {...} }`. Any Postman saved example or test script
-for this endpoint that reads the response as a bare array needs updating
-in this same sub-project (check `test/client-loans.e2e-spec.ts` and the
-Postman collection's `Client > Loans` folder).
+`GET /client/loans`'s response changes from `{ loans: [...], repayments: [...] }`
+to `{ loans: { data: [...], meta: {...} }, repayments: [...] }` — only the
+`loans` field gains the envelope; `repayments` is untouched. Any Postman
+saved example or test script for this endpoint that reads `res.body.loans`
+as a bare array needs updating to read `res.body.loans.data` instead
+(check `test/client-loans.e2e-spec.ts` and the Postman collection's
+`Client > Loans` folder).
 
 ## 5. Testing
 
@@ -194,14 +212,16 @@ Postman collection's `Client > Loans` folder).
 - Unit: `buildPaginatedResult()` — correct `totalPages` (including the
   zero-results case, `totalPages: 0`, and a partial-last-page case,
   e.g. `total: 51, limit: 25` → `totalPages: 3`).
-- Unit: `ClientLoansService`'s list method — returns `{ data, meta }`,
-  `total` reflects the filtered count (not the unfiltered table count),
-  `skip`/`take` passed to `findMany` match the requested page/limit.
+- Unit: `ClientLoansService.getDashboard` — `loans` is a `PaginatedResult`,
+  `meta.total` reflects the post-status-filter count (not the raw
+  `findMany` count), the returned page is a correct `.slice()` of the
+  filtered array, `repayments` is unchanged (plain array, no envelope).
 - e2e: `GET /client/loans?page=2&limit=1` against a client with 2+ loans
-  returns the second loan only, with correct `meta.total`/`totalPages`;
-  existing status/product/date-range e2e assertions still pass against
-  the new `{ data, meta }` shape (update assertions to read `res.body.data`
-  instead of `res.body`).
+  returns the second loan only in `loans.data`, with correct
+  `loans.meta.total`/`totalPages`; existing status/product/date-range e2e
+  assertions still pass against the new shape (update assertions to read
+  `res.body.loans.data` instead of `res.body.loans`); `repayments` assertions
+  unchanged.
 
 ## 6. Postman
 
