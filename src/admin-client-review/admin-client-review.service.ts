@@ -72,7 +72,43 @@ export class AdminClientReviewService {
         })),
       );
       const lengthOfService = computeLengthOfService(client.onboarding.ippisRecord?.hireDate ?? null);
-      return { ...client, onboarding: { ...client.onboarding, documents, lengthOfService } };
+
+      const ippisRecord = client.onboarding.ippisRecord
+        ? {
+            agency: client.onboarding.ippisRecord.agency,
+            staffId: client.onboarding.ippisRecord.staffId,
+            employeeName: client.onboarding.ippisRecord.employeeName,
+            employeeStatus: client.onboarding.ippisRecord.employeeStatus,
+            hireDate: client.onboarding.ippisRecord.hireDate,
+            department: client.onboarding.ippisRecord.department,
+            grade: client.onboarding.ippisRecord.grade,
+            bankName: client.onboarding.ippisRecord.bankName,
+            accountNumber: client.onboarding.ippisRecord.accountNumber,
+          }
+        : undefined;
+
+      const bvnSelfieUrl = client.onboarding.bvnSelfie
+        ? await this.fileStorageProvider.getSignedDownloadUrl(client.onboarding.bvnSelfie)
+        : null;
+      const ninSelfieUrl = client.onboarding.ninSelfie
+        ? await this.fileStorageProvider.getSignedDownloadUrl(client.onboarding.ninSelfie)
+        : null;
+      const liveSelfieUrl = client.onboarding.liveSelfieKey
+        ? await this.fileStorageProvider.getSignedDownloadUrl(client.onboarding.liveSelfieKey)
+        : null;
+
+      return {
+        ...client,
+        onboarding: {
+          ...client.onboarding,
+          documents,
+          lengthOfService,
+          ippisRecord,
+          bvnSelfieUrl,
+          ninSelfieUrl,
+          liveSelfieUrl,
+        },
+      };
     }
 
     return { ...client, onboarding: null };

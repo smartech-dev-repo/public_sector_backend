@@ -143,6 +143,70 @@ describe('AdminClientReviewService', () => {
       });
       expect(result.onboarding.lengthOfService).toEqual({ years: 1, months: 0 });
     });
+
+    it('trims the nested ippisRecord and resolves identity selfie keys to signed URLs', async () => {
+      prisma.client.findUnique.mockResolvedValue({
+        id: 'c1',
+        status: 'MANUAL_REVIEW',
+        onboarding: {
+          id: 'o1',
+          bvnSelfie: 'client-onboarding/c1/bvn-selfie.jpg',
+          ninSelfie: 'client-onboarding/c1/nin-selfie.jpg',
+          liveSelfieKey: 'client-onboarding/c1/live-selfie.jpg',
+          ippisRecord: {
+            agency: 'NPF',
+            staffId: 'NPF-001',
+            employeeName: 'Jane Doe',
+            employeeStatus: 'ACTIVE',
+            hireDate: new Date('2020-01-01'),
+            department: 'Finance',
+            grade: 'GL-08',
+            bankName: 'GTBank',
+            accountNumber: '0123456789',
+            salary: 500000,
+            pinNumber: 'secret-pin',
+            pfaName: 'Some PFA',
+            bvn: '99999999999',
+            rawFields: { anything: 'here' },
+          },
+        },
+      });
+      fileStorageProvider.getSignedDownloadUrl.mockImplementation(
+        async (key: string) => `https://signed-url.example/${key}`,
+      );
+
+      const result = await service.findById('c1');
+
+      expect(result.onboarding.ippisRecord).toEqual({
+        agency: 'NPF',
+        staffId: 'NPF-001',
+        employeeName: 'Jane Doe',
+        employeeStatus: 'ACTIVE',
+        hireDate: new Date('2020-01-01'),
+        department: 'Finance',
+        grade: 'GL-08',
+        bankName: 'GTBank',
+        accountNumber: '0123456789',
+      });
+      expect(result.onboarding.bvnSelfieUrl).toBe('https://signed-url.example/client-onboarding/c1/bvn-selfie.jpg');
+      expect(result.onboarding.ninSelfieUrl).toBe('https://signed-url.example/client-onboarding/c1/nin-selfie.jpg');
+      expect(result.onboarding.liveSelfieUrl).toBe('https://signed-url.example/client-onboarding/c1/live-selfie.jpg');
+    });
+
+    it('does not attempt to resolve selfie URLs that are not set', async () => {
+      prisma.client.findUnique.mockResolvedValue({
+        id: 'c1',
+        status: 'PENDING_IPPIS',
+        onboarding: { id: 'o1' },
+      });
+
+      const result = await service.findById('c1');
+
+      expect(result.onboarding.bvnSelfieUrl).toBeNull();
+      expect(result.onboarding.ninSelfieUrl).toBeNull();
+      expect(result.onboarding.liveSelfieUrl).toBeNull();
+      expect(fileStorageProvider.getSignedDownloadUrl).not.toHaveBeenCalled();
+    });
   });
 
   describe('approve', () => {

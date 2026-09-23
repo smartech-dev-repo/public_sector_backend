@@ -193,7 +193,27 @@ export class ClientOnboardingService {
     return {
       step: onboarding?.step ?? OnboardingStep.PHONE_VERIFIED,
       clientStatus: client.status,
-      onboarding,
+      onboarding: onboarding
+        ? {
+            employeeName: onboarding.employeeName,
+            agency: onboarding.agency,
+            bankName: onboarding.bankName,
+            accountNumber: onboarding.accountNumber,
+            employeeStatus: onboarding.employeeStatus,
+            identityDateOfBirth: onboarding.identityDateOfBirth,
+            identityGender: onboarding.identityGender,
+            identityPhoneNumber: onboarding.identityPhoneNumber,
+            stateOfOrigin: onboarding.stateOfOrigin,
+            lgaOfOrigin: onboarding.lgaOfOrigin,
+            stateOfResidence: onboarding.stateOfResidence,
+            lgaOfResidence: onboarding.lgaOfResidence,
+            address: onboarding.address,
+            city: onboarding.city,
+            zipCode: onboarding.zipCode,
+            maritalStatus: onboarding.maritalStatus,
+            step: onboarding.step,
+          }
+        : null,
       lengthOfService: computeLengthOfService(onboarding?.ippisRecord?.hireDate ?? null),
     };
   }

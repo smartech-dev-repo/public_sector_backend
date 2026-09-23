@@ -361,6 +361,72 @@ describe('ClientOnboardingService', () => {
       });
       expect(result.lengthOfService).toEqual({ years: 2, months: 0 });
     });
+
+    it('returns a curated onboarding shape without bvn/nin/selfie keys or the raw ippisRecord', async () => {
+      prisma.client.findUniqueOrThrow.mockResolvedValue({ id: 'client-1', status: 'VERIFIED' });
+      prisma.clientOnboarding.findUnique.mockResolvedValue({
+        step: 'COMPLETED',
+        employeeName: 'Jane Doe',
+        agency: 'NPF',
+        bankName: 'GTBank',
+        accountNumber: '0123456789',
+        employeeStatus: 'ACTIVE',
+        identityDateOfBirth: new Date('1990-01-01'),
+        identityGender: 'Female',
+        identityPhoneNumber: '08011111111',
+        stateOfOrigin: 'Lagos',
+        lgaOfOrigin: 'Ikeja',
+        stateOfResidence: 'Abuja',
+        lgaOfResidence: 'AMAC',
+        address: '12 Example Street',
+        city: 'Wuse',
+        zipCode: null,
+        maritalStatus: 'Single',
+        bvn: '12345678901',
+        nin: '98765432109',
+        bvnSelfie: 'client-onboarding/client-1/bvn-selfie.jpg',
+        ninSelfie: 'client-onboarding/client-1/nin-selfie.jpg',
+        liveSelfieKey: 'client-onboarding/client-1/live-selfie.jpg',
+        ippisRecord: { hireDate: new Date('2020-01-01') },
+      });
+
+      const result = await service.getStatus('client-1');
+
+      expect(result.onboarding).toEqual({
+        employeeName: 'Jane Doe',
+        agency: 'NPF',
+        bankName: 'GTBank',
+        accountNumber: '0123456789',
+        employeeStatus: 'ACTIVE',
+        identityDateOfBirth: new Date('1990-01-01'),
+        identityGender: 'Female',
+        identityPhoneNumber: '08011111111',
+        stateOfOrigin: 'Lagos',
+        lgaOfOrigin: 'Ikeja',
+        stateOfResidence: 'Abuja',
+        lgaOfResidence: 'AMAC',
+        address: '12 Example Street',
+        city: 'Wuse',
+        zipCode: null,
+        maritalStatus: 'Single',
+        step: 'COMPLETED',
+      });
+      expect(result.onboarding).not.toHaveProperty('bvn');
+      expect(result.onboarding).not.toHaveProperty('nin');
+      expect(result.onboarding).not.toHaveProperty('bvnSelfie');
+      expect(result.onboarding).not.toHaveProperty('ninSelfie');
+      expect(result.onboarding).not.toHaveProperty('liveSelfieKey');
+      expect(result.onboarding).not.toHaveProperty('ippisRecord');
+    });
+
+    it('returns a null onboarding view when there is no onboarding row yet', async () => {
+      prisma.client.findUniqueOrThrow.mockResolvedValue({ id: 'client-1', status: 'PHONE_VERIFIED' });
+      prisma.clientOnboarding.findUnique.mockResolvedValue(null);
+
+      const result = await service.getStatus('client-1');
+
+      expect(result.onboarding).toBeNull();
+    });
   });
 
   describe('updateMaritalStatus', () => {
