@@ -79,6 +79,12 @@ email provider → `POST /auth/admin/accept-invite { token, password, fullName }
 (public) creates the `AdminUser` and logs them in. `POST
 /admin/invites/:id/resend` and `GET /admin/invites` manage outstanding
 invites. No `AdminUser` row exists until the invite is accepted.
+`GET /admin/invites` filters by `status`, a `q` search across `email`, and
+`createdFrom`/`createdTo`/`expiresFrom`/`expiresTo` date ranges over
+`createdAt`/`expiresAt`; it accepts `page`/`limit` pagination (default
+`1`/`25`, `limit` capped at `100`) and returns
+`{ data: [...], meta: { total, page, limit, totalPages } }` in place of a
+bare array.
 
 ## Audit log
 
@@ -169,6 +175,14 @@ Roles and permissions can now be managed via the API — previously only
 
 `GET /admin/roles/ping` no longer exists — it was a Phase 1 placeholder,
 superseded by the real endpoints above.
+
+`GET /admin/permissions` searches with a `q` across `key`. `GET
+/admin/roles` searches with a `q` across `name`. `GET /admin/admins`
+filters by `isActive`, a `q` search across `email`/`fullName`, and a
+`createdFrom`/`createdTo` date range over `createdAt`. All three accept
+`page`/`limit` pagination (default `1`/`25`, `limit` capped at `100`) and
+return `{ data: [...], meta: { total, page, limit, totalPages } }` in
+place of a bare array.
 
 ## CORS
 
@@ -318,6 +332,14 @@ non-terminal request, an `ACTIVE` `ClientLoan`, or an `ACTIVE` loan in
 their ingested bank history. `GET /admin/client-loans/disbursement-summary
 ?month=YYYY-MM` (`client-loans:read`) streams a CSV of that month's
 disbursed loans.
+
+`GET /admin/loan-terms` (`loan-terms:manage`) filters by `agency`/
+`isActive`; it accepts `page`/`limit` pagination (default `1`/`25`,
+`limit` capped at `100`) and returns
+`{ data: [...], meta: { total, page, limit, totalPages } }` in place of a
+bare array. (`GET /client/loan-terms`, the client-facing list of active
+terms for the client's own agency, is unpaginated — out of scope until a
+later wave.)
 
 ### Topup
 
@@ -481,6 +503,12 @@ credentials, but only until the agent has logged in once
 `POST /auth/refresh` re-derives `mustChangePassword` fresh from the
 database on every agent token refresh, the same way it already
 re-derives `permissions` fresh for admin tokens.
+`GET /admin/agents` filters by `status`, a `q` search across
+`fullName`/`email`/`phone`, and `createdFrom`/`createdTo`/`reviewedFrom`/
+`reviewedTo` date ranges over `createdAt`/`reviewedAt`; it accepts
+`page`/`limit` pagination (default `1`/`25`, `limit` capped at `100`) and
+returns `{ data: [...], meta: { total, page, limit, totalPages } }` in
+place of a bare array.
 
 ## Agent password self-service
 
