@@ -28,10 +28,10 @@ describe('AdminClientActivityService', () => {
     await expect(service.listActivities('missing')).rejects.toThrow(NotFoundException);
   });
 
-  it('returns an empty array when the client has no activity anywhere', async () => {
+  it('returns an empty paginated result when the client has no activity anywhere', async () => {
     prisma.client.findUnique.mockResolvedValue({ id: 'c1', onboarding: null });
     const result = await service.listActivities('c1');
-    expect(result).toEqual([]);
+    expect(result).toEqual({ data: [], meta: { total: 0, page: 1, limit: 25, totalPages: 0 } });
   });
 
   it('does not query LoanRequest-scoped audit logs when the client has no loan requests', async () => {
@@ -86,8 +86,9 @@ describe('AdminClientActivityService', () => {
     });
     // 7 entries total: 1 client-targeted audit log + 1 loan-request-targeted audit log + 2 loan
     // request entries (created + confirmed) + 1 session + 1 wallet entry + 1 onboarding snapshot.
-    expect(result).toHaveLength(7);
-    expect(result.map((entry) => entry.timestamp.toISOString())).toEqual([
+    expect(result.data).toHaveLength(7);
+    expect(result.meta).toEqual({ total: 7, page: 1, limit: 25, totalPages: 1 });
+    expect(result.data.map((entry) => entry.timestamp.toISOString())).toEqual([
       '2026-01-07T00:00:00.000Z',
       '2026-01-06T00:00:00.000Z',
       '2026-01-05T00:00:00.000Z',
@@ -96,7 +97,7 @@ describe('AdminClientActivityService', () => {
       '2026-01-02T00:00:00.000Z',
       '2026-01-01T00:00:00.000Z',
     ]);
-    expect(result[result.length - 1]).toEqual(
+    expect(result.data[result.data.length - 1]).toEqual(
       expect.objectContaining({ type: 'loan-request.created', source: 'LOAN_REQUEST' }),
     );
   });
@@ -109,6 +110,49 @@ describe('AdminClientActivityService', () => {
 
     const result = await service.listActivities('c1');
 
-    expect(result.filter((entry) => entry.source === 'LOAN_REQUEST')).toHaveLength(1);
+    expect(result.data.filter((entry) => entry.source === 'LOAN_REQUEST')).toHaveLength(1);
+  });
+
+  it('filters by type', async () => {
+    prisma.client.findUnique.mockResolvedValue({ id: 'c1', onboarding: null });
+    prisma.loanRequest.findMany.mockResolvedValue([
+      { id: 'lr1', amount: 50000, createdAt: new Date('2026-01-01T00:00:00.000Z'), confirmedAt: null },
+    ]);
+    prisma.session.findMany.mockResolvedValue([{ createdAt: new Date('2026-01-02T00:00:00.000Z') }]);
+
+    const result = await service.listActivities('c1', { type: 'session.created' });
+
+    expect(result.data).toHaveLength(1);
+    expect(result.data[0].type).toBe('session.created');
+  });
+
+  it('filters by occurredFrom/occurredTo', async () => {
+    prisma.client.findUnique.mockResolvedValue({ id: 'c1', onboarding: null });
+    prisma.loanRequest.findMany.mockResolvedValue([
+      { id: 'lr1', amount: 50000, createdAt: new Date('2025-01-01T00:00:00.000Z'), confirmedAt: null },
+      { id: 'lr2', amount: 50000, createdAt: new Date('2026-01-01T00:00:00.000Z'), confirmedAt: null },
+    ]);
+
+    const result = await service.listActivities('c1', {
+      occurredFrom: new Date('2025-12-01T00:00:00.000Z'),
+      occurredTo: new Date('2026-02-01T00:00:00.000Z'),
+    });
+
+    expect(result.data).toHaveLength(1);
+    expect(result.data[0].timestamp.toISOString()).toBe('2026-01-01T00:00:00.000Z');
+  });
+
+  it('paginates the merged, filtered, sorted entries', async () => {
+    prisma.client.findUnique.mockResolvedValue({ id: 'c1', onboarding: null });
+    prisma.loanRequest.findMany.mockResolvedValue([
+      { id: 'lr1', amount: 50000, createdAt: new Date('2026-01-01T00:00:00.000Z'), confirmedAt: null },
+      { id: 'lr2', amount: 50000, createdAt: new Date('2026-01-02T00:00:00.000Z'), confirmedAt: null },
+    ]);
+
+    const result = await service.listActivities('c1', {}, { page: 2, limit: 1 });
+
+    expect(result.data).toHaveLength(1);
+    expect(result.meta).toEqual({ total: 2, page: 2, limit: 1, totalPages: 2 });
+    expect(result.data[0].timestamp.toISOString()).toBe('2026-01-01T00:00:00.000Z');
   });
 });

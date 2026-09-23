@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditActorType, SessionPrincipalType } from '../generated/prisma/client';
+import { buildPaginatedResult, PaginatedResult } from '../common/pagination/paginated-result';
 
 export interface ActivityEntry {
   timestamp: Date;
@@ -9,11 +10,21 @@ export interface ActivityEntry {
   source: 'AUDIT_LOG' | 'LOAN_REQUEST' | 'SESSION' | 'WALLET' | 'ONBOARDING';
 }
 
+export interface ListActivitiesFilters {
+  type?: string;
+  occurredFrom?: Date;
+  occurredTo?: Date;
+}
+
 @Injectable()
 export class AdminClientActivityService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async listActivities(clientId: string): Promise<ActivityEntry[]> {
+  async listActivities(
+    clientId: string,
+    filters: ListActivitiesFilters = {},
+    pagination: { page: number; limit: number } = { page: 1, limit: 25 },
+  ): Promise<PaginatedResult<ActivityEntry>> {
     const client = await this.prisma.client.findUnique({
       where: { id: clientId },
       include: { onboarding: true },
@@ -91,6 +102,24 @@ export class AdminClientActivityService {
       });
     }
 
-    return entries.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+    const sorted = entries.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+    const filtered = sorted.filter((entry) => {
+      if (filters.type && entry.type !== filters.type) {
+        return false;
+      }
+      if (filters.occurredFrom && entry.timestamp < filters.occurredFrom) {
+        return false;
+      }
+      if (filters.occurredTo && entry.timestamp > filters.occurredTo) {
+        return false;
+      }
+      return true;
+    });
+
+    const { page, limit } = pagination;
+    const pageStart = (page - 1) * limit;
+    const paged = filtered.slice(pageStart, pageStart + limit);
+
+    return buildPaginatedResult(paged, filtered.length, page, limit);
   }
 }

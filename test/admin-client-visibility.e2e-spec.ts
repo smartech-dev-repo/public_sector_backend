@@ -136,13 +136,13 @@ describe('Admin client visibility (e2e)', () => {
         .get(`/admin/clients/${clientA.id}/activities`)
         .set('Authorization', `Bearer ${adminAccessToken}`)
         .expect(200);
-      const types = activitiesRes.body.map((entry: { type: string }) => entry.type);
+      const types = activitiesRes.body.data.map((entry: { type: string }) => entry.type);
       expect(types).toContain('loan-request.created');
       expect(types).toContain('loan-request.confirmed');
       expect(types).toContain('loan-request.approve');
       expect(types).toContain('loan-request.disburse');
       expect(types).toContain('onboarding.step');
-      const timestamps = activitiesRes.body.map((entry: { timestamp: string }) => new Date(entry.timestamp).getTime());
+      const timestamps = activitiesRes.body.data.map((entry: { timestamp: string }) => new Date(entry.timestamp).getTime());
       const sorted = [...timestamps].sort((a, b) => b - a);
       expect(timestamps).toEqual(sorted);
 
