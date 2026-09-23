@@ -35,7 +35,8 @@
 | Client | `POST /auth/client/otp/request` then `POST /auth/client/otp/verify` | `{ phone }` then `{ phone, code }` |
 
 OTP codes are logged to the console by the mock `ConsoleOtpProvider` in
-development — there is no real SMS vendor wired in yet.
+development — there is no real SMS vendor wired in yet. Phone OTP codes
+are 4 digits by default, configurable via `PHONE_OTP_LENGTH`.
 
 ## Admin password self-service
 
@@ -60,7 +61,9 @@ returns `{ twoFactorRequired: true, method, pendingToken }` instead of
 real tokens — `pendingToken` is signed with a **separate secret**
 (`JWT_TWO_FACTOR_PENDING_SECRET`), so it's cryptographically incapable of
 being used as a real Bearer token anywhere. `POST /auth/admin/2fa/login-verify`
-(`{ pendingToken, code }`) completes the login and issues real tokens.
+(`{ pendingToken, code }`) completes the login and issues real tokens. The
+`EMAIL` method's emailed code is `EMAIL_CODE_LENGTH` digits (default 6,
+configurable 6-8).
 
 ## Session endpoints
 
@@ -564,13 +567,20 @@ place of a bare array.
 
 `POST /auth/agent/forgot-password` (`{ email }`, always `200`, gated on
 `status === APPROVED`) emails a one-hour opaque reset token via the same
-mechanism Admin's own password reset uses. `POST /auth/agent/reset-password`
-(`{ token, newPassword }`) consumes it, clears `mustChangePassword` (a
+mechanism Admin's own password reset uses. Unlike Admin, the email also
+contains an `EMAIL_CODE_LENGTH`-digit reset code (default 6, configurable
+6-8) valid for the same hour — either the link or the code resets the
+password, and using one invalidates the other. `POST /auth/agent/reset-password`
+(`{ token, newPassword }`) consumes the token, clears `mustChangePassword` (a
 reset via a verified email token counts as establishing a real password
 of the agent's own choosing), and force-revokes every existing session
-for that agent. `POST /auth/agent/change-password` (the voluntary,
+for that agent. `POST /auth/agent/reset-password/code`
+(`{ email, code, newPassword }`) is the code-based equivalent — same
+validation and session-revocation behavior, `401` on a wrong/expired/missing
+code. `POST /auth/agent/change-password` (the voluntary,
 already-authenticated path) already existed from the enrollment work and
-is unchanged.
+is unchanged. Admin forgot-password is untouched — it remains a
+link-only flow.
 
 ## Agent two-factor authentication
 
