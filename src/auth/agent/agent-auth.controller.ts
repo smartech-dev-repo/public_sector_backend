@@ -6,6 +6,7 @@ import { AgentLoginDto } from './dto/agent-login.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
+import { ResetPasswordByCodeDto } from './dto/reset-password-by-code.dto';
 import { SetupTwoFactorDto } from './dto/setup-two-factor.dto';
 import { ConfirmTwoFactorDto } from './dto/confirm-two-factor.dto';
 import { DisableTwoFactorDto } from './dto/disable-two-factor.dto';
@@ -43,6 +44,14 @@ export class AgentAuthController {
   @HttpCode(200)
   async resetPassword(@Body() dto: ResetPasswordDto) {
     await this.agentAuthService.resetPassword(dto.token, dto.newPassword);
+    return { reset: true };
+  }
+
+  @Throttle({ default: { limit: 5, ttl: 900000 } })
+  @Post('reset-password/code')
+  @HttpCode(200)
+  async resetPasswordByCode(@Body() dto: ResetPasswordByCodeDto) {
+    await this.agentAuthService.resetPasswordByCode(dto.email, dto.code, dto.newPassword);
     return { reset: true };
   }
 

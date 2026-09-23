@@ -7,6 +7,8 @@ import { TokenService } from '../token.service';
 import { SessionService } from '../../session/session.service';
 import { EmailService } from '../../email/email.service';
 import { ConfigService } from '@nestjs/config';
+import { hashToken } from '../../common/opaque-token.util';
+import { SessionPrincipalType } from '../../generated/prisma/client';
 
 jest.mock('otplib', () => ({
   ...jest.requireActual('otplib'),
@@ -178,6 +180,30 @@ describe('AgentAuthService', () => {
       );
       expect(emailService.send).toHaveBeenCalledWith(expect.objectContaining({ to: 'a@example.com' }));
     });
+
+    it('stores both a reset token and a reset code with the same expiry, and emails both', async () => {
+      prisma.agent.findUnique.mockResolvedValue({ id: 'agent-1', email: 'agent@example.com', status: 'APPROVED' });
+
+      await service.forgotPassword('agent@example.com');
+
+      expect(prisma.agent.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'agent-1' },
+          data: expect.objectContaining({
+            passwordResetTokenHash: expect.any(String),
+            passwordResetTokenExpiresAt: expect.any(Date),
+            passwordResetCodeHash: expect.any(String),
+            passwordResetCodeExpiresAt: expect.any(Date),
+          }),
+        }),
+      );
+      const updateData = prisma.agent.update.mock.calls[0][0].data;
+      expect(updateData.passwordResetTokenExpiresAt).toEqual(updateData.passwordResetCodeExpiresAt);
+
+      const sentEmail = emailService.send.mock.calls[0][0];
+      expect(sentEmail.text).toMatch(/reset your password:/);
+      expect(sentEmail.text).toMatch(/enter this code: \d{6,8}/);
+    });
   });
 
   describe('resetPassword', () => {
@@ -209,9 +235,96 @@ describe('AgentAuthService', () => {
           mustChangePassword: false,
           passwordResetTokenHash: null,
           passwordResetTokenExpiresAt: null,
+          passwordResetCodeHash: null,
+          passwordResetCodeExpiresAt: null,
         },
       });
       expect(sessionService.revokeAllForPrincipal).toHaveBeenCalledWith('AGENT', 'agent-1', 'password_reset');
+    });
+
+    it('clears the reset code alongside the reset token on success', async () => {
+      prisma.agent.findFirst.mockResolvedValue({
+        id: 'agent-1',
+        passwordResetTokenExpiresAt: new Date(Date.now() + 1000 * 60 * 30),
+      });
+
+      await service.resetPassword('some-token', 'New-Password-123!');
+
+      expect(prisma.agent.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            passwordResetTokenHash: null,
+            passwordResetTokenExpiresAt: null,
+            passwordResetCodeHash: null,
+            passwordResetCodeExpiresAt: null,
+          }),
+        }),
+      );
+    });
+  });
+
+  describe('resetPasswordByCode', () => {
+    it('throws UnauthorizedException when the email is unknown', async () => {
+      prisma.agent.findUnique.mockResolvedValue(null);
+
+      await expect(service.resetPasswordByCode('nobody@example.com', '123456', 'New-Password-123!')).rejects.toThrow(
+        UnauthorizedException,
+      );
+    });
+
+    it('throws UnauthorizedException when there is no pending code', async () => {
+      prisma.agent.findUnique.mockResolvedValue({ id: 'agent-1', passwordResetCodeHash: null, passwordResetCodeExpiresAt: null });
+
+      await expect(service.resetPasswordByCode('agent@example.com', '123456', 'New-Password-123!')).rejects.toThrow(
+        UnauthorizedException,
+      );
+    });
+
+    it('throws UnauthorizedException when the code has expired', async () => {
+      prisma.agent.findUnique.mockResolvedValue({
+        id: 'agent-1',
+        passwordResetCodeHash: hashToken('123456'),
+        passwordResetCodeExpiresAt: new Date(Date.now() - 1000),
+      });
+
+      await expect(service.resetPasswordByCode('agent@example.com', '123456', 'New-Password-123!')).rejects.toThrow(
+        UnauthorizedException,
+      );
+    });
+
+    it('throws UnauthorizedException when the code does not match', async () => {
+      prisma.agent.findUnique.mockResolvedValue({
+        id: 'agent-1',
+        passwordResetCodeHash: hashToken('654321'),
+        passwordResetCodeExpiresAt: new Date(Date.now() + 1000 * 60 * 30),
+      });
+
+      await expect(service.resetPasswordByCode('agent@example.com', '123456', 'New-Password-123!')).rejects.toThrow(
+        UnauthorizedException,
+      );
+    });
+
+    it('resets the password, clears both token and code fields, and revokes sessions on a correct code', async () => {
+      prisma.agent.findUnique.mockResolvedValue({
+        id: 'agent-1',
+        passwordResetCodeHash: hashToken('123456'),
+        passwordResetCodeExpiresAt: new Date(Date.now() + 1000 * 60 * 30),
+      });
+
+      await service.resetPasswordByCode('agent@example.com', '123456', 'New-Password-123!');
+
+      expect(prisma.agent.update).toHaveBeenCalledWith({
+        where: { id: 'agent-1' },
+        data: expect.objectContaining({
+          passwordHash: expect.any(String),
+          mustChangePassword: false,
+          passwordResetTokenHash: null,
+          passwordResetTokenExpiresAt: null,
+          passwordResetCodeHash: null,
+          passwordResetCodeExpiresAt: null,
+        }),
+      });
+      expect(sessionService.revokeAllForPrincipal).toHaveBeenCalledWith(SessionPrincipalType.AGENT, 'agent-1', 'password_reset');
     });
   });
 

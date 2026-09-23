@@ -108,6 +108,8 @@ model Agent {
   twoFactorPendingMethod      TwoFactorMethod?
   twoFactorEmailCodeHash      String?
   twoFactorEmailCodeExpiresAt DateTime?
+  passwordResetCodeHash       String?
+  passwordResetCodeExpiresAt  DateTime?
 }
 
 enum ClientStatus {

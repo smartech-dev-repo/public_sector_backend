@@ -103,4 +103,57 @@ describe('Agent password self-service (e2e)', () => {
       .expect(200)
       .expect({ sent: true });
   });
+
+  it(
+    'resets the password via the forgot-password code and invalidates the token from the same request',
+    async () => {
+      const codeEmail = `e2e-agent-pw-code-${Date.now()}@example.com`;
+      const passwordHash = await hashPassword(originalPassword);
+      const codeAgent = await prisma.agent.create({
+        data: {
+          email: codeEmail,
+          phone: '+2348012345679',
+          fullName: 'E2E Password Code Test Agent',
+          address: '1 Example Street, Lagos',
+          cvKey: 'agent-documents/e2e-password-code-test/cv.pdf',
+          status: 'APPROVED',
+          passwordHash,
+          mustChangePassword: false,
+        },
+      });
+
+      await request(app.getHttpServer())
+        .post('/auth/agent/forgot-password')
+        .send({ email: codeEmail })
+        .expect(200)
+        .expect({ sent: true });
+
+      expect(capturedEmail?.to).toBe(codeEmail);
+      const codeMatch = capturedEmail?.text?.match(/enter this code: (\d+)/);
+      const resetCode = codeMatch?.[1];
+      expect(resetCode).toBeTruthy();
+      const tokenMatch = capturedEmail?.text?.match(/reset your password: (\S+)/);
+      const resetToken = tokenMatch?.[1];
+      expect(resetToken).toBeTruthy();
+
+      await request(app.getHttpServer())
+        .post('/auth/agent/reset-password/code')
+        .send({ email: codeEmail, code: resetCode, newPassword: 'Reset-By-Code-789!' })
+        .expect(200)
+        .expect({ reset: true });
+
+      await request(app.getHttpServer())
+        .post('/auth/agent/login')
+        .send({ email: codeEmail, password: 'Reset-By-Code-789!' })
+        .expect(200);
+
+      await request(app.getHttpServer())
+        .post('/auth/agent/reset-password')
+        .send({ token: resetToken, newPassword: 'Should-Not-Work-123!' })
+        .expect(401);
+
+      await prisma.agent.deleteMany({ where: { id: codeAgent.id } });
+    },
+    30000,
+  );
 });

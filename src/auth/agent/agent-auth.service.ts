@@ -72,19 +72,25 @@ export class AgentAuthService {
     }
 
     const token = generateOpaqueToken();
+    const codeLength = Number(this.configService?.get('EMAIL_CODE_LENGTH') ?? 6);
+    const code = generateNumericCode(codeLength);
+    const expiresAt = new Date(Date.now() + PASSWORD_RESET_TTL_MS);
+
     await this.prisma.agent.update({
       where: { id: agent.id },
       data: {
         passwordResetTokenHash: hashToken(token),
-        passwordResetTokenExpiresAt: new Date(Date.now() + PASSWORD_RESET_TTL_MS),
+        passwordResetTokenExpiresAt: expiresAt,
+        passwordResetCodeHash: hashToken(code),
+        passwordResetCodeExpiresAt: expiresAt,
       },
     });
 
     await this.emailService.send({
       to: agent.email,
       subject: 'Reset your password',
-      html: `<p>Use this token to reset your password: ${token}</p>`,
-      text: `Use this token to reset your password: ${token}`,
+      html: `<p>Use this link to reset your password: ${token}</p><p>Or enter this code: ${code}</p>`,
+      text: `Use this token to reset your password: ${token}\nOr enter this code: ${code}`,
     });
   }
 
@@ -105,6 +111,37 @@ export class AgentAuthService {
         mustChangePassword: false,
         passwordResetTokenHash: null,
         passwordResetTokenExpiresAt: null,
+        passwordResetCodeHash: null,
+        passwordResetCodeExpiresAt: null,
+      },
+    });
+
+    await this.sessionService.revokeAllForPrincipal(SessionPrincipalType.AGENT, agent.id, 'password_reset');
+  }
+
+  async resetPasswordByCode(email: string, code: string, newPassword: string): Promise<void> {
+    const agent = await this.prisma.agent.findUnique({ where: { email } });
+
+    if (
+      !agent ||
+      !agent.passwordResetCodeHash ||
+      !agent.passwordResetCodeExpiresAt ||
+      agent.passwordResetCodeExpiresAt < new Date() ||
+      agent.passwordResetCodeHash !== hashToken(code)
+    ) {
+      throw new UnauthorizedException('Invalid or expired reset code');
+    }
+
+    const passwordHash = await hashPassword(newPassword);
+    await this.prisma.agent.update({
+      where: { id: agent.id },
+      data: {
+        passwordHash,
+        mustChangePassword: false,
+        passwordResetTokenHash: null,
+        passwordResetTokenExpiresAt: null,
+        passwordResetCodeHash: null,
+        passwordResetCodeExpiresAt: null,
       },
     });
 
