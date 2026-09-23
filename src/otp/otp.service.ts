@@ -9,10 +9,7 @@ import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
 import { OTP_PROVIDERS, OtpProvider } from './otp-provider.interface';
 import { hashPassword } from '../common/password-hash.util';
-
-function generateCode(): string {
-  return Math.floor(100000 + Math.random() * 900000).toString();
-}
+import { generateNumericCode } from '../common/generate-numeric-code.util';
 
 @Injectable()
 export class OtpService {
@@ -48,7 +45,8 @@ export class OtpService {
   }
 
   async request(phone: string): Promise<{ mockCode?: string }> {
-    const code = generateCode();
+    const length = Number(this.configService?.get('PHONE_OTP_LENGTH') ?? 4);
+    const code = generateNumericCode(length);
     const codeHash = await hashPassword(code);
     const expiresAt = new Date(Date.now() + this.ttlSeconds() * 1000);
 
@@ -69,7 +67,7 @@ export class OtpService {
   async verify(phone: string, code: string): Promise<boolean> {
     if (
       this.configService?.get('ENABLE_MOCK_OTP') === 'true' &&
-      code === (this.configService?.get('MOCK_OTP_CODE') ?? '000000')
+      code === (this.configService?.get('MOCK_OTP_CODE') ?? '0000')
     ) {
       return true;
     }
