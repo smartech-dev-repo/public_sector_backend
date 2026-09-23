@@ -1,6 +1,7 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { Permission } from '../generated/prisma/client';
+import { Permission, Prisma } from '../generated/prisma/client';
+import { buildPaginatedResult, PaginatedResult } from '../common/pagination/paginated-result';
 
 export interface CreatePermissionParams {
   key: string;
@@ -30,8 +31,21 @@ export class PermissionService {
     }
   }
 
-  async list(): Promise<Permission[]> {
-    return this.prisma.permission.findMany({ orderBy: { key: 'asc' } });
+  async list(
+    filters: { q?: string } = {},
+    pagination: { page: number; limit: number } = { page: 1, limit: 25 },
+  ): Promise<PaginatedResult<Permission>> {
+    const { page, limit } = pagination;
+    const where: Prisma.PermissionWhereInput = {
+      key: filters.q ? { contains: filters.q, mode: 'insensitive' } : undefined,
+    };
+
+    const [data, total] = await Promise.all([
+      this.prisma.permission.findMany({ where, orderBy: { key: 'asc' }, skip: (page - 1) * limit, take: limit }),
+      this.prisma.permission.count({ where }),
+    ]);
+
+    return buildPaginatedResult(data, total, page, limit);
   }
 
   async findById(id: string): Promise<Permission> {

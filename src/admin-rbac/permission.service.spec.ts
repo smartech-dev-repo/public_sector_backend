@@ -5,13 +5,27 @@ import { PrismaService } from '../prisma/prisma.service';
 describe('PermissionService', () => {
   let service: PermissionService;
   let prisma: {
-    permission: { create: jest.Mock; findMany: jest.Mock; findUnique: jest.Mock; update: jest.Mock; delete: jest.Mock };
+    permission: {
+      create: jest.Mock;
+      findMany: jest.Mock;
+      findUnique: jest.Mock;
+      update: jest.Mock;
+      delete: jest.Mock;
+      count: jest.Mock;
+    };
     rolePermission: { count: jest.Mock };
   };
 
   beforeEach(() => {
     prisma = {
-      permission: { create: jest.fn(), findMany: jest.fn(), findUnique: jest.fn(), update: jest.fn(), delete: jest.fn() },
+      permission: {
+        create: jest.fn(),
+        findMany: jest.fn(),
+        findUnique: jest.fn(),
+        update: jest.fn(),
+        delete: jest.fn(),
+        count: jest.fn(),
+      },
       rolePermission: { count: jest.fn() },
     };
     service = new PermissionService(prisma as unknown as PrismaService);
@@ -63,5 +77,38 @@ describe('PermissionService', () => {
     prisma.rolePermission.count.mockResolvedValue(0);
     await service.remove('perm-1');
     expect(prisma.permission.delete).toHaveBeenCalledWith({ where: { id: 'perm-1' } });
+  });
+
+  describe('list', () => {
+    it('defaults to page 1/limit 25 with no filters', async () => {
+      prisma.permission.findMany.mockResolvedValue([]);
+      prisma.permission.count.mockResolvedValue(0);
+
+      const result = await service.list();
+
+      expect(prisma.permission.findMany).toHaveBeenCalledWith(expect.objectContaining({ skip: 0, take: 25 }));
+      expect(result.meta).toEqual({ total: 0, page: 1, limit: 25, totalPages: 0 });
+    });
+
+    it('searches by key', async () => {
+      prisma.permission.findMany.mockResolvedValue([]);
+      prisma.permission.count.mockResolvedValue(0);
+
+      await service.list({ q: 'audit' });
+
+      expect(prisma.permission.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { key: { contains: 'audit', mode: 'insensitive' } } }),
+      );
+    });
+
+    it('computes skip/take from page and limit and reports the total', async () => {
+      prisma.permission.findMany.mockResolvedValue([]);
+      prisma.permission.count.mockResolvedValue(30);
+
+      const result = await service.list({}, { page: 2, limit: 10 });
+
+      expect(prisma.permission.findMany).toHaveBeenCalledWith(expect.objectContaining({ skip: 10, take: 10 }));
+      expect(result.meta).toEqual({ total: 30, page: 2, limit: 10, totalPages: 3 });
+    });
   });
 });

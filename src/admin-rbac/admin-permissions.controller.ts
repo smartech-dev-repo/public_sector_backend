@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Req, UseGuards, UseInterceptors } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Query, Req, UseGuards, UseInterceptors } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { PermissionsGuard } from '../auth/permissions.guard';
 import { RequirePermissions } from '../auth/permissions.decorator';
@@ -8,6 +8,7 @@ import { AuditLogService } from '../audit/audit-log.service';
 import { PermissionService } from './permission.service';
 import { CreatePermissionDto } from './dto/create-permission.dto';
 import { UpdatePermissionDto } from './dto/update-permission.dto';
+import { ListPermissionsQueryDto } from './dto/list-permissions-query.dto';
 import { AuditActorType } from '../generated/prisma/client';
 
 @Controller('admin/permissions')
@@ -36,8 +37,8 @@ export class AdminPermissionsController {
 
   @Get()
   @RequirePermissions('permissions:manage')
-  list() {
-    return this.permissionService.list();
+  list(@Query() query: ListPermissionsQueryDto) {
+    return this.permissionService.list({ q: query.q }, { page: query.page, limit: query.limit });
   }
 
   @Get(':id')

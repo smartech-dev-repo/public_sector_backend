@@ -66,7 +66,7 @@ describe('Admin permissions (e2e)', () => {
       .get('/admin/permissions')
       .set('Authorization', `Bearer ${accessToken}`)
       .expect(200);
-    expect(res.body.some((p: { key: string }) => p.key === testKey)).toBe(true);
+    expect(res.body.data.some((p: { key: string }) => p.key === testKey)).toBe(true);
   });
 
   it('gets one permission by id', () => {
