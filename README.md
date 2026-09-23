@@ -91,8 +91,12 @@ bare array.
 Every mutating request to an admin-guarded route gets a baseline `AuditLog`
 row automatically (actor, route, status). Business-meaningful actions (invite
 created/resent, sessions force-revoked) also get an explicit, richer entry.
-View them at `GET /admin/audit-logs` (`audit:read`), optionally filtered by
-`actorType`, `action`, `targetType`, `targetId`.
+View them at `GET /admin/audit-logs` (`audit:read`), filterable by
+`actorType`, `action`, `targetType`, `targetId`, plus a `createdFrom`/
+`createdTo` date range over `createdAt`. It accepts `page`/`limit`
+pagination (default `1`/`25`, `limit` capped at `100`) and returns
+`{ data: [...], meta: { total, page, limit, totalPages } }` in place of the
+previous unpaged, `take: 100`-capped bare array.
 
 ## Document ingestion
 
@@ -115,6 +119,13 @@ actual repayments) runs automatically after ingestion — see the
 | `GET /admin/documents/batches` | `documents:read` | List upload history, filterable by `documentType`/`status` |
 | `GET /admin/documents/batches/:id` | `documents:read` | Batch detail incl. snapshot export links |
 | `GET /admin/documents/files/:key` | `documents:read` | Download a stored file (raw upload or snapshot export) |
+
+`GET /admin/documents/batches` also accepts a `q` search across
+`originalFileName`/`period`, and `createdFrom`/`createdTo`/
+`completedFrom`/`completedTo` date ranges over `createdAt`/`completedAt`.
+It accepts `page`/`limit` pagination (default `1`/`25`, `limit` capped at
+`100`) and returns `{ data: [...], meta: { total, page, limit, totalPages } }`
+in place of the previous unpaged, `take: 100`-capped bare array.
 
 File storage picks its active provider via `STORAGE_PROVIDER` (`local` |
 `s3` | `gcs`, default `local`). Only the selected provider's env vars need
@@ -291,6 +302,12 @@ manually.
 | `GET /admin/clients/:id` | `clients:review` | Full detail incl. `ClientOnboarding` — selfie images are downloaded separately via `GET /admin/documents/files/:key` (`documents:read`); `onboarding.documents` is an array of `{ documentType, url, uploadedAt }` with each of the 4 uploaded documents' `storageKey` already resolved to a signed, directly viewable `url` |
 | `POST /admin/clients/:id/approve` | `clients:review` | Only valid from `MANUAL_REVIEW` |
 | `POST /admin/clients/:id/retry` | `clients:review` | `{ note }`. Resets to `IPPIS_LINKED` if identity verification itself failed, or `IDENTITY_SUBMITTED` if only the face match failed |
+
+`GET /admin/clients` also accepts a `q` search across `phone`, and a
+`createdFrom`/`createdTo` date range over `createdAt`. It accepts
+`page`/`limit` pagination (default `1`/`25`, `limit` capped at `100`) and
+returns `{ data: [...], meta: { total, page, limit, totalPages } }` in place
+of the previous unpaged, `take: 100`-capped bare array.
 
 ## Loan requests
 
