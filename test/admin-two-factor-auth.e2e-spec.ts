@@ -11,7 +11,9 @@ describe('Admin two-factor authentication (e2e)', () => {
   let app: INestApplication;
   let prisma: PrismaService;
   let capturedEmail: EmailMessage | undefined;
+  let testRoleId: string;
   const password = 'Original-Password-123!';
+  const testRoleName = `E2E_2FA_ROLE_${Date.now()}`;
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -32,16 +34,24 @@ describe('Admin two-factor authentication (e2e)', () => {
     app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
     await app.init();
     prisma = moduleFixture.get(PrismaService);
+
+    const testRole = await prisma.role.create({ data: { name: testRoleName } });
+    testRoleId = testRole.id;
   });
 
   afterAll(async () => {
+    // AdminUser.roleId is a required FK to Role, so any admin left over from
+    // a failed test (e.g. one that threw before its own cleanup line ran)
+    // must be cleared before this run's dedicated role can be deleted.
+    await prisma.adminUser.deleteMany({ where: { roleId: testRoleId } });
+    await prisma.role.deleteMany({ where: { id: testRoleId } });
     await app.close();
   });
 
   async function createAdminAndLogin(email: string) {
     const passwordHash = await hashPassword(password);
     const admin = await prisma.adminUser.create({
-      data: { email, passwordHash, fullName: 'E2E 2FA Test Admin' },
+      data: { email, passwordHash, fullName: 'E2E 2FA Test Admin', roleId: testRoleId },
     });
     const loginRes = await request(app.getHttpServer())
       .post('/auth/admin/login')

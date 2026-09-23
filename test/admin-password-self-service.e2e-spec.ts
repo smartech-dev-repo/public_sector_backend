@@ -10,9 +10,11 @@ describe('Admin password self-service (e2e)', () => {
   let app: INestApplication;
   let prisma: PrismaService;
   let adminId: string;
+  let testRoleId: string;
   let capturedEmail: EmailMessage | undefined;
   const email = `e2e-admin-pw-${Date.now()}@example.com`;
   const originalPassword = 'Original-Password-123!';
+  const testRoleName = `E2E_PW_ROLE_${Date.now()}`;
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -34,15 +36,19 @@ describe('Admin password self-service (e2e)', () => {
     await app.init();
     prisma = moduleFixture.get(PrismaService);
 
+    const testRole = await prisma.role.create({ data: { name: testRoleName } });
+    testRoleId = testRole.id;
+
     const passwordHash = await hashPassword(originalPassword);
     const admin = await prisma.adminUser.create({
-      data: { email, passwordHash, fullName: 'E2E Password Test Admin' },
+      data: { email, passwordHash, fullName: 'E2E Password Test Admin', roleId: testRoleId },
     });
     adminId = admin.id;
   });
 
   afterAll(async () => {
     await prisma.adminUser.deleteMany({ where: { id: adminId } });
+    await prisma.role.deleteMany({ where: { id: testRoleId } });
     await app.close();
   });
 

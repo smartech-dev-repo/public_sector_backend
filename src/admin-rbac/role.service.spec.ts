@@ -13,7 +13,7 @@ describe('RoleService', () => {
       delete: jest.Mock;
       count: jest.Mock;
     };
-    adminUserRole: { count: jest.Mock };
+    adminUser: { count: jest.Mock };
     permission: { findUnique: jest.Mock };
     rolePermission: { upsert: jest.Mock; deleteMany: jest.Mock };
   };
@@ -28,7 +28,7 @@ describe('RoleService', () => {
         delete: jest.fn(),
         count: jest.fn(),
       },
-      adminUserRole: { count: jest.fn() },
+      adminUser: { count: jest.fn() },
       permission: { findUnique: jest.fn() },
       rolePermission: { upsert: jest.fn(), deleteMany: jest.fn() },
     };
@@ -85,14 +85,14 @@ describe('RoleService', () => {
 
   it('remove rejects deleting a role assigned to any admin', async () => {
     prisma.role.findUnique.mockResolvedValue({ id: 'role-1', name: 'CUSTOM_ROLE' });
-    prisma.adminUserRole.count.mockResolvedValue(2);
+    prisma.adminUser.count.mockResolvedValue(2);
     await expect(service.remove('role-1')).rejects.toThrow(ConflictException);
     expect(prisma.role.delete).not.toHaveBeenCalled();
   });
 
   it('remove deletes an unused, non-SUPER_ADMIN role', async () => {
     prisma.role.findUnique.mockResolvedValue({ id: 'role-1', name: 'CUSTOM_ROLE' });
-    prisma.adminUserRole.count.mockResolvedValue(0);
+    prisma.adminUser.count.mockResolvedValue(0);
     await service.remove('role-1');
     expect(prisma.role.delete).toHaveBeenCalledWith({ where: { id: 'role-1' } });
   });

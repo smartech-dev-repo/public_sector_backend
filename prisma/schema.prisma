@@ -28,17 +28,18 @@ model Role {
   departmentId String?
   department   Department?      @relation(fields: [departmentId], references: [id])
   permissions  RolePermission[]
-  admins       AdminUserRole[]
+  admins       AdminUser[]
   invites      AdminInvite[]
   createdAt    DateTime         @default(now())
 }
 
 model Department {
-  id          String   @id @default(uuid())
-  name        String   @unique
+  id          String      @id @default(uuid())
+  name        String      @unique
   description String?
   roles       Role[]
-  createdAt   DateTime @default(now())
+  admins      AdminUser[]
+  createdAt   DateTime    @default(now())
 }
 
 model RolePermission {
@@ -56,7 +57,10 @@ model AdminUser {
   passwordHash String
   fullName     String
   isActive     Boolean         @default(true)
-  roles        AdminUserRole[]
+  roleId       String
+  role         Role            @relation(fields: [roleId], references: [id])
+  departmentId String?
+  department   Department?     @relation(fields: [departmentId], references: [id])
   sentInvites  AdminInvite[]
   uploadedDocumentBatches DocumentUploadBatch[]
   createdAt    DateTime        @default(now())
@@ -75,15 +79,6 @@ model AdminUser {
 enum TwoFactorMethod {
   TOTP
   EMAIL
-}
-
-model AdminUserRole {
-  adminUserId String
-  roleId      String
-  adminUser   AdminUser @relation(fields: [adminUserId], references: [id], onDelete: Cascade)
-  role        Role      @relation(fields: [roleId], references: [id], onDelete: Cascade)
-
-  @@id([adminUserId, roleId])
 }
 
 enum AgentStatus {

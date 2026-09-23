@@ -48,7 +48,8 @@ export class AdminRoleAssignmentService {
           fullName: true,
           isActive: true,
           createdAt: true,
-          roles: { include: { role: true } },
+          role: true,
+          department: true,
         },
         orderBy: { createdAt: 'desc' },
         skip: (page - 1) * limit,
@@ -60,38 +61,32 @@ export class AdminRoleAssignmentService {
     return buildPaginatedResult(data, total, page, limit);
   }
 
-  async assignRole(adminId: string, roleId: string): Promise<void> {
-    const admin = await this.prisma.adminUser.findUnique({ where: { id: adminId } });
+  async setRole(adminId: string, roleId: string): Promise<void> {
+    const admin = await this.prisma.adminUser.findUnique({
+      where: { id: adminId },
+      include: { role: true },
+    });
     if (!admin) {
       throw new NotFoundException('Admin not found');
     }
-    const role = await this.prisma.role.findUnique({ where: { id: roleId } });
-    if (!role) {
+
+    const newRole = await this.prisma.role.findUnique({ where: { id: roleId } });
+    if (!newRole) {
       throw new NotFoundException('Role not found');
     }
-    await this.prisma.adminUserRole.upsert({
-      where: { adminUserId_roleId: { adminUserId: adminId, roleId } },
-      update: {},
-      create: { adminUserId: adminId, roleId },
-    });
-  }
 
-  async removeRole(adminId: string, roleId: string): Promise<void> {
-    const role = await this.prisma.role.findUnique({ where: { id: roleId } });
-
-    if (role?.name === SUPER_ADMIN_ROLE_NAME) {
-      const thisAdminHasIt = await this.prisma.adminUserRole.findUnique({
-        where: { adminUserId_roleId: { adminUserId: adminId, roleId } },
-      });
-      if (thisAdminHasIt) {
-        const holderCount = await this.prisma.adminUserRole.count({ where: { roleId } });
-        if (holderCount <= 1) {
-          throw new ConflictException('Cannot remove the last admin holding the SUPER_ADMIN role');
-        }
+    const movingAwayFromSuperAdmin = admin.role.name === SUPER_ADMIN_ROLE_NAME && newRole.id !== admin.role.id;
+    if (movingAwayFromSuperAdmin) {
+      const holderCount = await this.prisma.adminUser.count({ where: { roleId: admin.role.id } });
+      if (holderCount <= 1) {
+        throw new ConflictException('Cannot remove the last admin holding the SUPER_ADMIN role');
       }
     }
 
-    await this.prisma.adminUserRole.deleteMany({ where: { adminUserId: adminId, roleId } });
+    await this.prisma.adminUser.update({
+      where: { id: adminId },
+      data: { roleId: newRole.id, departmentId: newRole.departmentId },
+    });
   }
 
   async deactivate(callerId: string, id: string): Promise<void> {

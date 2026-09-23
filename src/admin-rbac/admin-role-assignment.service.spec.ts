@@ -8,7 +8,6 @@ describe('AdminRoleAssignmentService', () => {
   let prisma: {
     adminUser: { findMany: jest.Mock; findUnique: jest.Mock; update: jest.Mock; count: jest.Mock };
     role: { findUnique: jest.Mock };
-    adminUserRole: { upsert: jest.Mock; deleteMany: jest.Mock; count: jest.Mock; findUnique: jest.Mock };
   };
   let sessionService: { revokeAllForPrincipal: jest.Mock };
 
@@ -16,17 +15,16 @@ describe('AdminRoleAssignmentService', () => {
     prisma = {
       adminUser: { findMany: jest.fn(), findUnique: jest.fn(), update: jest.fn(), count: jest.fn() },
       role: { findUnique: jest.fn() },
-      adminUserRole: { upsert: jest.fn(), deleteMany: jest.fn(), count: jest.fn(), findUnique: jest.fn() },
     };
     sessionService = { revokeAllForPrincipal: jest.fn().mockResolvedValue(undefined) };
     service = new AdminRoleAssignmentService(prisma as unknown as PrismaService, sessionService as unknown as SessionService);
   });
 
-  it('listAdmins returns admins with roles included', async () => {
+  it('listAdmins returns admins with role and department included', async () => {
     prisma.adminUser.findMany.mockResolvedValue([]);
     await service.listAdmins();
     expect(prisma.adminUser.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({ select: expect.objectContaining({ roles: expect.anything() }) }),
+      expect.objectContaining({ select: expect.objectContaining({ role: true, department: true }) }),
     );
   });
 
@@ -72,55 +70,101 @@ describe('AdminRoleAssignmentService', () => {
     expect(result.meta).toEqual({ total: 4, page: 1, limit: 2, totalPages: 2 });
   });
 
-  it('assignRole throws NotFoundException for an unknown admin', async () => {
-    prisma.adminUser.findUnique.mockResolvedValue(null);
-    await expect(service.assignRole('missing-admin', 'role-1')).rejects.toThrow(NotFoundException);
-  });
-
-  it('assignRole throws NotFoundException for an unknown role', async () => {
-    prisma.adminUser.findUnique.mockResolvedValue({ id: 'admin-1' });
-    prisma.role.findUnique.mockResolvedValue(null);
-    await expect(service.assignRole('admin-1', 'missing-role')).rejects.toThrow(NotFoundException);
-  });
-
-  it('assignRole upserts the AdminUserRole row', async () => {
-    prisma.adminUser.findUnique.mockResolvedValue({ id: 'admin-1' });
-    prisma.role.findUnique.mockResolvedValue({ id: 'role-1' });
-    await service.assignRole('admin-1', 'role-1');
-    expect(prisma.adminUserRole.upsert).toHaveBeenCalledWith({
-      where: { adminUserId_roleId: { adminUserId: 'admin-1', roleId: 'role-1' } },
-      update: {},
-      create: { adminUserId: 'admin-1', roleId: 'role-1' },
+  describe('setRole', () => {
+    it('throws NotFoundException for an unknown admin', async () => {
+      prisma.adminUser.findUnique.mockResolvedValue(null);
+      await expect(service.setRole('missing-admin', 'role-1')).rejects.toThrow(NotFoundException);
     });
-  });
 
-  it('removeRole allows removing a non-SUPER_ADMIN role freely', async () => {
-    prisma.role.findUnique.mockResolvedValue({ id: 'role-1', name: 'CUSTOM_ROLE' });
-    await service.removeRole('admin-1', 'role-1');
-    expect(prisma.adminUserRole.deleteMany).toHaveBeenCalledWith({ where: { adminUserId: 'admin-1', roleId: 'role-1' } });
-  });
+    it('throws NotFoundException for an unknown role', async () => {
+      prisma.adminUser.findUnique.mockResolvedValue({
+        id: 'admin-1',
+        role: { id: 'role-current', name: 'REVIEWER' },
+      });
+      prisma.role.findUnique.mockResolvedValue(null);
+      await expect(service.setRole('admin-1', 'missing-role')).rejects.toThrow(NotFoundException);
+    });
 
-  it('removeRole allows removing SUPER_ADMIN when other admins still hold it', async () => {
-    prisma.role.findUnique.mockResolvedValue({ id: 'role-1', name: 'SUPER_ADMIN' });
-    prisma.adminUserRole.findUnique.mockResolvedValue({ adminUserId: 'admin-1', roleId: 'role-1' });
-    prisma.adminUserRole.count.mockResolvedValue(2);
-    await service.removeRole('admin-1', 'role-1');
-    expect(prisma.adminUserRole.deleteMany).toHaveBeenCalled();
-  });
+    it('sets the new roleId and copies the new role\'s departmentId', async () => {
+      prisma.adminUser.findUnique.mockResolvedValue({
+        id: 'admin-1',
+        role: { id: 'role-current', name: 'REVIEWER' },
+      });
+      prisma.role.findUnique.mockResolvedValue({ id: 'role-new', name: 'APPROVER', departmentId: 'dept-1' });
 
-  it('removeRole rejects removing the last SUPER_ADMIN holder', async () => {
-    prisma.role.findUnique.mockResolvedValue({ id: 'role-1', name: 'SUPER_ADMIN' });
-    prisma.adminUserRole.findUnique.mockResolvedValue({ adminUserId: 'admin-1', roleId: 'role-1' });
-    prisma.adminUserRole.count.mockResolvedValue(1);
-    await expect(service.removeRole('admin-1', 'role-1')).rejects.toThrow(ConflictException);
-    expect(prisma.adminUserRole.deleteMany).not.toHaveBeenCalled();
-  });
+      await service.setRole('admin-1', 'role-new');
 
-  it('removeRole is a no-op (not an error) if the admin never had SUPER_ADMIN', async () => {
-    prisma.role.findUnique.mockResolvedValue({ id: 'role-1', name: 'SUPER_ADMIN' });
-    prisma.adminUserRole.findUnique.mockResolvedValue(null);
-    await service.removeRole('admin-1', 'role-1');
-    expect(prisma.adminUserRole.deleteMany).toHaveBeenCalled();
+      expect(prisma.adminUser.update).toHaveBeenCalledWith({
+        where: { id: 'admin-1' },
+        data: { roleId: 'role-new', departmentId: 'dept-1' },
+      });
+    });
+
+    it('copies a null departmentId when the new role has none', async () => {
+      prisma.adminUser.findUnique.mockResolvedValue({
+        id: 'admin-1',
+        role: { id: 'role-current', name: 'REVIEWER' },
+      });
+      prisma.role.findUnique.mockResolvedValue({ id: 'role-new', name: 'APPROVER', departmentId: null });
+
+      await service.setRole('admin-1', 'role-new');
+
+      expect(prisma.adminUser.update).toHaveBeenCalledWith({
+        where: { id: 'admin-1' },
+        data: { roleId: 'role-new', departmentId: null },
+      });
+    });
+
+    it('allows moving an admin off SUPER_ADMIN when other admins still hold it', async () => {
+      prisma.adminUser.findUnique.mockResolvedValue({
+        id: 'admin-1',
+        role: { id: 'super-admin-role', name: 'SUPER_ADMIN' },
+      });
+      prisma.role.findUnique.mockResolvedValue({ id: 'role-new', name: 'REVIEWER', departmentId: null });
+      prisma.adminUser.count.mockResolvedValue(2);
+
+      await service.setRole('admin-1', 'role-new');
+
+      expect(prisma.adminUser.update).toHaveBeenCalled();
+    });
+
+    it('rejects moving the last SUPER_ADMIN holder to a different role', async () => {
+      prisma.adminUser.findUnique.mockResolvedValue({
+        id: 'admin-1',
+        role: { id: 'super-admin-role', name: 'SUPER_ADMIN' },
+      });
+      prisma.role.findUnique.mockResolvedValue({ id: 'role-new', name: 'REVIEWER', departmentId: null });
+      prisma.adminUser.count.mockResolvedValue(1);
+
+      await expect(service.setRole('admin-1', 'role-new')).rejects.toThrow(ConflictException);
+      expect(prisma.adminUser.update).not.toHaveBeenCalled();
+    });
+
+    it('does not apply the last-holder guard when the admin is already SUPER_ADMIN and stays SUPER_ADMIN', async () => {
+      prisma.adminUser.findUnique.mockResolvedValue({
+        id: 'admin-1',
+        role: { id: 'super-admin-role', name: 'SUPER_ADMIN' },
+      });
+      prisma.role.findUnique.mockResolvedValue({ id: 'super-admin-role', name: 'SUPER_ADMIN', departmentId: null });
+
+      await service.setRole('admin-1', 'super-admin-role');
+
+      expect(prisma.adminUser.count).not.toHaveBeenCalled();
+      expect(prisma.adminUser.update).toHaveBeenCalled();
+    });
+
+    it('does not apply the last-holder guard when the admin is not currently SUPER_ADMIN', async () => {
+      prisma.adminUser.findUnique.mockResolvedValue({
+        id: 'admin-1',
+        role: { id: 'role-current', name: 'REVIEWER' },
+      });
+      prisma.role.findUnique.mockResolvedValue({ id: 'role-new', name: 'APPROVER', departmentId: null });
+
+      await service.setRole('admin-1', 'role-new');
+
+      expect(prisma.adminUser.count).not.toHaveBeenCalled();
+      expect(prisma.adminUser.update).toHaveBeenCalled();
+    });
   });
 
   describe('deactivate', () => {

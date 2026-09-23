@@ -48,7 +48,12 @@ describe('Admin role assignment (e2e)', () => {
     const secondAdminEmail = `e2e-deactivate-${Date.now()}@example.com`;
     const secondAdminPasswordHash = await hashPassword('Test-Password-123!');
     const secondAdmin = await prisma.adminUser.create({
-      data: { email: secondAdminEmail, passwordHash: secondAdminPasswordHash, fullName: 'E2E Deactivate Target' },
+      data: {
+        email: secondAdminEmail,
+        passwordHash: secondAdminPasswordHash,
+        fullName: 'E2E Deactivate Target',
+        roleId: testRoleId,
+      },
     });
     secondAdminId = secondAdmin.id;
 
@@ -59,9 +64,8 @@ describe('Admin role assignment (e2e)', () => {
   });
 
   afterAll(async () => {
-    await prisma.adminUserRole.deleteMany({ where: { adminUserId: bootstrapAdminId, roleId: testRoleId } });
-    await prisma.role.deleteMany({ where: { name: testRoleName } });
     await prisma.adminUser.deleteMany({ where: { id: secondAdminId } });
+    await prisma.role.deleteMany({ where: { name: testRoleName } });
     await app.close();
   });
 
@@ -71,29 +75,36 @@ describe('Admin role assignment (e2e)', () => {
       .set('Authorization', `Bearer ${accessToken}`)
       .expect(200);
     const bootstrapEntry = res.body.data.find((a: { id: string }) => a.id === bootstrapAdminId);
-    expect(bootstrapEntry.roles.some((r: { role: { name: string } }) => r.role.name === 'SUPER_ADMIN')).toBe(true);
+    expect(bootstrapEntry.role.name).toBe('SUPER_ADMIN');
   });
 
-  it('assigns an additional role to the bootstrap admin', () => {
-    return request(app.getHttpServer())
-      .post(`/admin/admins/${bootstrapAdminId}/roles`)
+  it('changes the second admin\'s role via PATCH', async () => {
+    await request(app.getHttpServer())
+      .patch(`/admin/admins/${secondAdminId}/role`)
+      .set('Authorization', `Bearer ${accessToken}`)
+      .send({ roleId: superAdminRoleId })
+      .expect(200)
+      .expect({ updated: true });
+
+    const res = await request(app.getHttpServer())
+      .get('/admin/admins')
+      .set('Authorization', `Bearer ${accessToken}`)
+      .expect(200);
+    const entry = res.body.data.find((a: { id: string }) => a.id === secondAdminId);
+    expect(entry.role.name).toBe('SUPER_ADMIN');
+
+    // put it back so the last-holder test below still sees exactly one
+    // extra SUPER_ADMIN holder if it needs to skip, not two.
+    await request(app.getHttpServer())
+      .patch(`/admin/admins/${secondAdminId}/role`)
       .set('Authorization', `Bearer ${accessToken}`)
       .send({ roleId: testRoleId })
-      .expect(200)
-      .expect({ assigned: true });
+      .expect(200);
   });
 
-  it('removes the additional role from the bootstrap admin', () => {
-    return request(app.getHttpServer())
-      .delete(`/admin/admins/${bootstrapAdminId}/roles/${testRoleId}`)
-      .set('Authorization', `Bearer ${accessToken}`)
-      .expect(200)
-      .expect({ removed: true });
-  });
-
-  it('rejects removing SUPER_ADMIN from the bootstrap admin if it is the only holder (409)', async () => {
-    const otherSuperAdmins = await prisma.adminUserRole.count({
-      where: { roleId: superAdminRoleId, adminUserId: { not: bootstrapAdminId } },
+  it('rejects moving the sole SUPER_ADMIN holder to a different role (409)', async () => {
+    const otherSuperAdmins = await prisma.adminUser.count({
+      where: { roleId: superAdminRoleId, id: { not: bootstrapAdminId } },
     });
     // This test's assertion only holds if the bootstrap admin is genuinely
     // the only SUPER_ADMIN holder in this environment, which is true on a
@@ -103,8 +114,9 @@ describe('Admin role assignment (e2e)', () => {
       return;
     }
     return request(app.getHttpServer())
-      .delete(`/admin/admins/${bootstrapAdminId}/roles/${superAdminRoleId}`)
+      .patch(`/admin/admins/${bootstrapAdminId}/role`)
       .set('Authorization', `Bearer ${accessToken}`)
+      .send({ roleId: testRoleId })
       .expect(409);
   });
 

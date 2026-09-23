@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, HttpCode, Param, Post, Query, Req, UseGuards, UseInterceptors } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Param, Patch, Post, Query, Req, UseGuards, UseInterceptors } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { PermissionsGuard } from '../auth/permissions.guard';
 import { RequirePermissions } from '../auth/permissions.decorator';
@@ -33,44 +33,24 @@ export class AdminRoleAssignmentController {
     );
   }
 
-  @Post(':id/roles')
+  @Patch(':id/role')
   @HttpCode(200)
   @RequirePermissions('roles:manage')
-  async assignRole(
+  async setRole(
     @Param('id') id: string,
     @Body() dto: AssignRoleDto,
     @Req() req: { user: JwtPayload },
   ) {
-    await this.adminRoleAssignmentService.assignRole(id, dto.roleId);
+    await this.adminRoleAssignmentService.setRole(id, dto.roleId);
     await this.auditLogService.record({
       actorType: AuditActorType.ADMIN,
       actorId: req.user.sub,
-      action: 'admin.role.assigned',
+      action: 'admin.role.set',
       targetType: 'AdminUser',
       targetId: id,
       metadata: { roleId: dto.roleId },
     });
-    return { assigned: true };
-  }
-
-  @Delete(':id/roles/:roleId')
-  @HttpCode(200)
-  @RequirePermissions('roles:manage')
-  async removeRole(
-    @Param('id') id: string,
-    @Param('roleId') roleId: string,
-    @Req() req: { user: JwtPayload },
-  ) {
-    await this.adminRoleAssignmentService.removeRole(id, roleId);
-    await this.auditLogService.record({
-      actorType: AuditActorType.ADMIN,
-      actorId: req.user.sub,
-      action: 'admin.role.removed',
-      targetType: 'AdminUser',
-      targetId: id,
-      metadata: { roleId },
-    });
-    return { removed: true };
+    return { updated: true };
   }
 
   @Post(':id/deactivate')

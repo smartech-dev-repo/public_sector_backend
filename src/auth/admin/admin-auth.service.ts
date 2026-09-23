@@ -31,11 +31,7 @@ export class AdminAuthService {
     const admin = await this.prisma.adminUser.findUnique({
       where: { id: adminId },
       include: {
-        roles: {
-          include: {
-            role: { include: { permissions: { include: { permission: true } } } },
-          },
-        },
+        role: { include: { permissions: { include: { permission: true } } } },
       },
     });
 
@@ -43,13 +39,7 @@ export class AdminAuthService {
       return [];
     }
 
-    return Array.from(
-      new Set(
-        admin.roles.flatMap((adminRole) =>
-          adminRole.role.permissions.map((rp) => rp.permission.key),
-        ),
-      ),
-    );
+    return admin.role.permissions.map((rp) => rp.permission.key);
   }
 
   async login(email: string, password: string, meta?: { userAgent?: string; ip?: string }) {
@@ -79,13 +69,15 @@ export class AdminAuthService {
   ) {
     const invite = await this.adminInviteService.findValidByToken(token);
     const passwordHash = await hashPassword(password);
+    const role = await this.prisma.role.findUniqueOrThrow({ where: { id: invite.roleId } });
 
     const admin = await this.prisma.adminUser.create({
       data: {
         email: invite.email,
         passwordHash,
         fullName,
-        roles: { create: { roleId: invite.roleId } },
+        roleId: role.id,
+        departmentId: role.departmentId,
       },
     });
 

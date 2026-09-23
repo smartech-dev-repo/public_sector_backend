@@ -73,18 +73,16 @@ async function main() {
 
   const passwordHash = await hashPassword(bootstrapPassword);
 
-  const admin = await prisma.adminUser.upsert({
+  await prisma.adminUser.upsert({
     where: { email: bootstrapEmail },
     update: {},
-    create: { email: bootstrapEmail, passwordHash, fullName: bootstrapName },
-  });
-
-  await prisma.adminUserRole.upsert({
-    where: {
-      adminUserId_roleId: { adminUserId: admin.id, roleId: superAdminRole.id },
+    create: {
+      email: bootstrapEmail,
+      passwordHash,
+      fullName: bootstrapName,
+      roleId: superAdminRole.id,
+      departmentId: superAdminRole.departmentId,
     },
-    update: {},
-    create: { adminUserId: admin.id, roleId: superAdminRole.id },
   });
 }
 

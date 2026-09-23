@@ -18,6 +18,7 @@ describe('AdminAuthService', () => {
   let service: AdminAuthService;
   let prisma: {
     adminUser: { findUnique: jest.Mock; findUniqueOrThrow: jest.Mock; findFirst: jest.Mock; create: jest.Mock; update: jest.Mock };
+    role: { findUniqueOrThrow: jest.Mock };
   };
   let tokenService: TokenService;
   let sessionService: { createSession: jest.Mock; revokeAllForPrincipal: jest.Mock };
@@ -33,6 +34,7 @@ describe('AdminAuthService', () => {
         create: jest.fn(),
         update: jest.fn().mockResolvedValue(undefined),
       },
+      role: { findUniqueOrThrow: jest.fn() },
     };
     tokenService = {
       signAccessToken: jest.fn().mockReturnValue('access-token'),
@@ -79,7 +81,7 @@ describe('AdminAuthService', () => {
       .mockResolvedValueOnce({ id: 'admin-1', email: 'admin@example.com', passwordHash, isActive: true })
       .mockResolvedValueOnce({
         id: 'admin-1',
-        roles: [{ role: { permissions: [{ permission: { key: 'agents:read' } }] } }],
+        role: { permissions: [{ permission: { key: 'agents:read' } }] },
       });
 
     const result = await service.login('admin@example.com', 'correct-password', {
@@ -101,13 +103,15 @@ describe('AdminAuthService', () => {
     });
   });
 
-  it('getPermissionsForAdmin flattens and de-duplicates permission keys', async () => {
+  it('getPermissionsForAdmin reads permission keys off the admin\'s single role', async () => {
     prisma.adminUser.findUnique.mockResolvedValue({
       id: 'admin-1',
-      roles: [
-        { role: { permissions: [{ permission: { key: 'agents:read' } }] } },
-        { role: { permissions: [{ permission: { key: 'agents:read' } }, { permission: { key: 'roles:manage' } }] } },
-      ],
+      role: {
+        permissions: [
+          { permission: { key: 'agents:read' } },
+          { permission: { key: 'roles:manage' } },
+        ],
+      },
     });
 
     const permissions = await service.getPermissionsForAdmin('admin-1');
@@ -120,26 +124,29 @@ describe('AdminAuthService', () => {
     expect(await service.getPermissionsForAdmin('nobody')).toEqual([]);
   });
 
-  it('acceptInvite creates the AdminUser, assigns the invited role, and logs in', async () => {
+  it('acceptInvite creates the AdminUser with the invited role and its department, and logs in', async () => {
     adminInviteService.findValidByToken.mockResolvedValue({
       id: 'invite-1',
       email: 'new-admin@example.com',
       roleId: 'role-1',
     });
+    prisma.role.findUniqueOrThrow.mockResolvedValue({ id: 'role-1', departmentId: 'dept-1' });
     prisma.adminUser.create.mockResolvedValue({ id: 'admin-2' });
     prisma.adminUser.findUnique.mockResolvedValue({
       id: 'admin-2',
-      roles: [{ role: { permissions: [] } }],
+      role: { permissions: [] },
     });
 
     const result = await service.acceptInvite('some-token', 'new-password', 'New Admin');
 
     expect(prisma.adminUser.create).toHaveBeenCalledWith({
-      data: expect.objectContaining({
+      data: {
         email: 'new-admin@example.com',
+        passwordHash: expect.any(String),
         fullName: 'New Admin',
-        roles: { create: { roleId: 'role-1' } },
-      }),
+        roleId: 'role-1',
+        departmentId: 'dept-1',
+      },
     });
     expect(adminInviteService.markAccepted).toHaveBeenCalledWith('invite-1');
     expect(result).toEqual({ accessToken: 'access-token', refreshToken: 'refresh-token' });
@@ -512,7 +519,7 @@ describe('AdminAuthService', () => {
       (otplibVerify as jest.Mock).mockResolvedValue({ valid: true });
       prisma.adminUser.findUnique.mockResolvedValue({
         id: 'admin-1',
-        roles: [{ role: { permissions: [] } }],
+        role: { permissions: [] },
       });
 
       const result = await service.verifyTwoFactorLogin('good-pending-token', '123456', {
@@ -539,7 +546,7 @@ describe('AdminAuthService', () => {
       });
       prisma.adminUser.findUnique.mockResolvedValue({
         id: 'admin-1',
-        roles: [{ role: { permissions: [] } }],
+        role: { permissions: [] },
       });
 
       await service.verifyTwoFactorLogin('good-pending-token', '123456');

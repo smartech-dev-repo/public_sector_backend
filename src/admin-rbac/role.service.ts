@@ -90,7 +90,7 @@ export class RoleService {
     if (role.name === SUPER_ADMIN_ROLE_NAME) {
       throw new ConflictException('The SUPER_ADMIN role cannot be deleted');
     }
-    const assignmentCount = await this.prisma.adminUserRole.count({ where: { roleId: id } });
+    const assignmentCount = await this.prisma.adminUser.count({ where: { roleId: id } });
     if (assignmentCount > 0) {
       throw new ConflictException('Cannot delete a role that is currently assigned to one or more admins');
     }

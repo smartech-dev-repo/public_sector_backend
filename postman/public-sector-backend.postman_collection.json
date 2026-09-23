@@ -6663,7 +6663,7 @@
                     }
                   ]
                 },
-                "description": "Lists admins with their roles, filterable by isActive, searchable by q across email/fullName, plus a createdFrom/createdTo date range. Paginated (page/limit, default 1/25, limit capped at 100). Requires roles:manage. Response is { data, meta }."
+                "description": "Lists admins with their role and inherited department as direct nested objects, filterable by isActive, searchable by q across email/fullName, plus a createdFrom/createdTo date range. Paginated (page/limit, default 1/25, limit capped at 100). Requires roles:manage. Response is { data, meta }."
               },
               "event": [
                 {
@@ -6682,7 +6682,7 @@
               ],
               "response": [
                 {
-                  "name": "Success - list all admins with roles (200)",
+                  "name": "Success - list all admins with role and department (200)",
                   "originalRequest": {
                     "method": "GET",
                     "header": [
@@ -6750,14 +6750,14 @@
                     }
                   ],
                   "cookie": [],
-                  "body": "{\n  \"data\": [\n    {\n      \"id\": \"5e2f4b0a-1a2b-4c3d-8e4f-1a2b3c4d5e6f\",\n      \"email\": \"admin2@example.com\",\n      \"fullName\": \"Amaka Nwosu\",\n      \"isActive\": true,\n      \"createdAt\": \"2026-09-01T09:00:00.000Z\",\n      \"roles\": [\n        {\n          \"adminUserId\": \"5e2f4b0a-1a2b-4c3d-8e4f-1a2b3c4d5e6f\",\n          \"roleId\": \"7c1d2e3f-4a5b-6c7d-8e9f-0a1b2c3d4e5f\",\n          \"role\": {\n            \"id\": \"7c1d2e3f-4a5b-6c7d-8e9f-0a1b2c3d4e5f\",\n            \"name\": \"CLIENT_REVIEWER\",\n            \"description\": \"Reviews client onboarding submissions\",\n            \"createdAt\": \"2026-08-15T10:00:00.000Z\"\n          }\n        }\n      ]\n    },\n    {\n      \"id\": \"9b8a7c6d-5e4f-3a2b-1c0d-9e8f7a6b5c4d\",\n      \"email\": \"superadmin@example.com\",\n      \"fullName\": \"Chinedu Okafor\",\n      \"isActive\": true,\n      \"createdAt\": \"2026-07-10T08:30:00.000Z\",\n      \"roles\": [\n        {\n          \"adminUserId\": \"9b8a7c6d-5e4f-3a2b-1c0d-9e8f7a6b5c4d\",\n          \"roleId\": \"1a2b3c4d-5e6f-7a8b-9c0d-1e2f3a4b5c6d\",\n          \"role\": {\n            \"id\": \"1a2b3c4d-5e6f-7a8b-9c0d-1e2f3a4b5c6d\",\n            \"name\": \"SUPER_ADMIN\",\n            \"description\": \"Full administrative access\",\n            \"createdAt\": \"2026-01-01T00:00:00.000Z\"\n          }\n        }\n      ]\n    }\n  ],\n  \"meta\": {\n    \"total\": 2,\n    \"page\": 1,\n    \"limit\": 25,\n    \"totalPages\": 1\n  }\n}"
+                  "body": "{\n  \"data\": [\n    {\n      \"id\": \"5e2f4b0a-1a2b-4c3d-8e4f-1a2b3c4d5e6f\",\n      \"email\": \"admin2@example.com\",\n      \"fullName\": \"Amaka Nwosu\",\n      \"isActive\": true,\n      \"createdAt\": \"2026-09-01T09:00:00.000Z\",\n      \"role\": {\n        \"id\": \"7c1d2e3f-4a5b-6c7d-8e9f-0a1b2c3d4e5f\",\n        \"name\": \"CLIENT_REVIEWER\",\n        \"description\": \"Reviews client onboarding submissions\",\n        \"departmentId\": \"3f2e1d0c-9b8a-4c6d-8e7f-0a1b2c3d4e5f\",\n        \"createdAt\": \"2026-08-15T10:00:00.000Z\"\n      },\n      \"department\": {\n        \"id\": \"3f2e1d0c-9b8a-4c6d-8e7f-0a1b2c3d4e5f\",\n        \"name\": \"Client Operations\",\n        \"description\": \"Handles client onboarding review\",\n        \"createdAt\": \"2026-08-01T09:00:00.000Z\"\n      }\n    },\n    {\n      \"id\": \"9b8a7c6d-5e4f-3a2b-1c0d-9e8f7a6b5c4d\",\n      \"email\": \"superadmin@example.com\",\n      \"fullName\": \"Chinedu Okafor\",\n      \"isActive\": true,\n      \"createdAt\": \"2026-07-10T08:30:00.000Z\",\n      \"role\": {\n        \"id\": \"1a2b3c4d-5e6f-7a8b-9c0d-1e2f3a4b5c6d\",\n        \"name\": \"SUPER_ADMIN\",\n        \"description\": \"Full administrative access\",\n        \"departmentId\": null,\n        \"createdAt\": \"2026-01-01T00:00:00.000Z\"\n      },\n      \"department\": null\n    }\n  ],\n  \"meta\": {\n    \"total\": 2,\n    \"page\": 1,\n    \"limit\": 25,\n    \"totalPages\": 1\n  }\n}"
                 }
               ]
             },
             {
-              "name": "POST /admin/admins/:id/roles - Success",
+              "name": "PATCH /admin/admins/:id/role - Success",
               "request": {
-                "method": "POST",
+                "method": "PATCH",
                 "header": [
                   {
                     "key": "Content-Type",
@@ -6773,7 +6773,7 @@
                   "raw": "{\n  \"roleId\": \"{{role_id}}\"\n}"
                 },
                 "url": {
-                  "raw": "{{base_url}}/admin/admins/{{admin_id}}/roles",
+                  "raw": "{{base_url}}/admin/admins/{{admin_id}}/role",
                   "host": [
                     "{{base_url}}"
                   ],
@@ -6781,10 +6781,10 @@
                     "admin",
                     "admins",
                     "{{admin_id}}",
-                    "roles"
+                    "role"
                   ]
                 },
-                "description": "admin_id is set by 'Admin > Reference > GET /admin/me - Success'. role_id is set by 'Admin > Roles > POST /admin/roles - Success' — run that again first if you already deleted it in this run."
+                "description": "Sets the admin's role in one call, replacing the old assign/remove-role endpoints. The admin's department is inherited (copied) from the new role's departmentId. admin_id is set by 'Admin > Reference > GET /admin/me - Success'. role_id is set by 'Admin > Roles > POST /admin/roles - Success' — run that again first if you already deleted it in this run."
               },
               "event": [
                 {
@@ -6792,16 +6792,16 @@
                   "script": {
                     "exec": [
                       "pm.test('status 200', () => pm.response.to.have.status(200));",
-                      "pm.test('assigned true', () => pm.expect(pm.response.json().assigned).to.eql(true));"
+                      "pm.test('updated true', () => pm.expect(pm.response.json().updated).to.eql(true));"
                     ]
                   }
                 }
               ],
               "response": [
                 {
-                  "name": "Success - role assigned (200)",
+                  "name": "Success - role updated (200)",
                   "originalRequest": {
-                    "method": "POST",
+                    "method": "PATCH",
                     "header": [
                       {
                         "key": "Content-Type",
@@ -6817,7 +6817,7 @@
                       "raw": "{\n  \"roleId\": \"{{role_id}}\"\n}"
                     },
                     "url": {
-                      "raw": "{{base_url}}/admin/admins/{{admin_id}}/roles",
+                      "raw": "{{base_url}}/admin/admins/{{admin_id}}/role",
                       "host": [
                         "{{base_url}}"
                       ],
@@ -6825,10 +6825,10 @@
                         "admin",
                         "admins",
                         "{{admin_id}}",
-                        "roles"
+                        "role"
                       ]
                     },
-                    "description": "admin_id is set by 'Admin > Reference > GET /admin/me - Success'. role_id is set by 'Admin > Roles > POST /admin/roles - Success' — run that again first if you already deleted it in this run."
+                    "description": "Sets the admin's role in one call, replacing the old assign/remove-role endpoints. The admin's department is inherited (copied) from the new role's departmentId. admin_id is set by 'Admin > Reference > GET /admin/me - Success'. role_id is set by 'Admin > Roles > POST /admin/roles - Success' — run that again first if you already deleted it in this run."
                   },
                   "status": "OK",
                   "code": 200,
@@ -6840,22 +6840,30 @@
                     }
                   ],
                   "cookie": [],
-                  "body": "{\n  \"assigned\": true\n}"
+                  "body": "{\n  \"updated\": true\n}"
                 }
               ]
             },
             {
-              "name": "DELETE /admin/admins/:id/roles/:roleId - Success",
+              "name": "PATCH /admin/admins/:id/role - Unknown role (404)",
               "request": {
-                "method": "DELETE",
+                "method": "PATCH",
                 "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
                   {
                     "key": "Authorization",
                     "value": "Bearer {{admin_access_token}}"
                   }
                 ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"roleId\": \"00000000-0000-0000-0000-000000000000\"\n}"
+                },
                 "url": {
-                  "raw": "{{base_url}}/admin/admins/{{admin_id}}/roles/{{role_id}}",
+                  "raw": "{{base_url}}/admin/admins/{{admin_id}}/role",
                   "host": [
                     "{{base_url}}"
                   ],
@@ -6863,8 +6871,7 @@
                     "admin",
                     "admins",
                     "{{admin_id}}",
-                    "roles",
-                    "{{role_id}}"
+                    "role"
                   ]
                 }
               },
@@ -6873,25 +6880,32 @@
                   "listen": "test",
                   "script": {
                     "exec": [
-                      "pm.test('status 200', () => pm.response.to.have.status(200));",
-                      "pm.test('removed true', () => pm.expect(pm.response.json().removed).to.eql(true));"
+                      "pm.test('status 404', () => pm.response.to.have.status(404));"
                     ]
                   }
                 }
               ],
               "response": [
                 {
-                  "name": "Success - role removed (200)",
+                  "name": "Not Found - unknown role (404)",
                   "originalRequest": {
-                    "method": "DELETE",
+                    "method": "PATCH",
                     "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      },
                       {
                         "key": "Authorization",
                         "value": "Bearer {{admin_access_token}}"
                       }
                     ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"roleId\": \"00000000-0000-0000-0000-000000000000\"\n}"
+                    },
                     "url": {
-                      "raw": "{{base_url}}/admin/admins/{{admin_id}}/roles/{{role_id}}",
+                      "raw": "{{base_url}}/admin/admins/{{admin_id}}/role",
                       "host": [
                         "{{base_url}}"
                       ],
@@ -6899,13 +6913,12 @@
                         "admin",
                         "admins",
                         "{{admin_id}}",
-                        "roles",
-                        "{{role_id}}"
+                        "role"
                       ]
                     }
                   },
-                  "status": "OK",
-                  "code": 200,
+                  "status": "Not Found",
+                  "code": 404,
                   "_postman_previewlanguage": "json",
                   "header": [
                     {
@@ -6914,22 +6927,30 @@
                     }
                   ],
                   "cookie": [],
-                  "body": "{\n  \"removed\": true\n}"
+                  "body": "{\n  \"statusCode\": 404,\n  \"message\": \"Role not found\",\n  \"error\": \"Not Found\"\n}"
                 }
               ]
             },
             {
-              "name": "DELETE /admin/admins/:id/roles/:roleId - Blocked, last SUPER_ADMIN holder (409)",
+              "name": "PATCH /admin/admins/:id/role - Blocked, last SUPER_ADMIN holder (409)",
               "request": {
-                "method": "DELETE",
+                "method": "PATCH",
                 "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
                   {
                     "key": "Authorization",
                     "value": "Bearer {{admin_access_token}}"
                   }
                 ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"roleId\": \"{{role_id}}\"\n}"
+                },
                 "url": {
-                  "raw": "{{base_url}}/admin/admins/{{admin_id}}/roles/{{super_admin_role_id}}",
+                  "raw": "{{base_url}}/admin/admins/{{admin_id}}/role",
                   "host": [
                     "{{base_url}}"
                   ],
@@ -6937,11 +6958,10 @@
                     "admin",
                     "admins",
                     "{{admin_id}}",
-                    "roles",
-                    "{{super_admin_role_id}}"
+                    "role"
                   ]
                 },
-                "description": "Only returns 409 if admin_id is genuinely the only SUPER_ADMIN holder in this environment (true on a freshly seeded database)."
+                "description": "Only returns 409 if admin_id is genuinely the only SUPER_ADMIN holder in this environment (true on a freshly seeded database) and role_id refers to a non-SUPER_ADMIN role."
               },
               "event": [
                 {
@@ -6955,17 +6975,25 @@
               ],
               "response": [
                 {
-                  "name": "Conflict - cannot remove last SUPER_ADMIN holder (409)",
+                  "name": "Conflict - cannot move the last SUPER_ADMIN holder (409)",
                   "originalRequest": {
-                    "method": "DELETE",
+                    "method": "PATCH",
                     "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      },
                       {
                         "key": "Authorization",
                         "value": "Bearer {{admin_access_token}}"
                       }
                     ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"roleId\": \"{{role_id}}\"\n}"
+                    },
                     "url": {
-                      "raw": "{{base_url}}/admin/admins/{{admin_id}}/roles/{{super_admin_role_id}}",
+                      "raw": "{{base_url}}/admin/admins/{{admin_id}}/role",
                       "host": [
                         "{{base_url}}"
                       ],
@@ -6973,11 +7001,10 @@
                         "admin",
                         "admins",
                         "{{admin_id}}",
-                        "roles",
-                        "{{super_admin_role_id}}"
+                        "role"
                       ]
                     },
-                    "description": "Only returns 409 if admin_id is genuinely the only SUPER_ADMIN holder in this environment (true on a freshly seeded database)."
+                    "description": "Only returns 409 if admin_id is genuinely the only SUPER_ADMIN holder in this environment (true on a freshly seeded database) and role_id refers to a non-SUPER_ADMIN role."
                   },
                   "status": "Conflict",
                   "code": 409,
