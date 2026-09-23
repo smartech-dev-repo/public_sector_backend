@@ -179,17 +179,25 @@ bare array.
 Roles and permissions can now be managed via the API — previously only
 `prisma/seed.ts` could create them.
 
+Every `AdminUser` has **exactly one required role** (`AdminUser.roleId`,
+not-null) — the old unconstrained many-to-many `AdminUserRole` join table
+has been dropped. `Role` has an optional, freely editable
+`departmentId` (including on `SUPER_ADMIN`), and whenever an admin's role
+is set — via `PATCH /admin/admins/:id/role` or by accepting an invite —
+`AdminUser.departmentId` is copied from that role's `departmentId`
+(including `null`, if the role has none). `department` is therefore
+always derived from `role`; it is never set independently.
+
 | Endpoint | Permission | Notes |
 |---|---|---|
 | `POST/GET /admin/permissions` | `permissions:manage` | |
 | `GET/PATCH/DELETE /admin/permissions/:id` | `permissions:manage` | `PATCH` only changes `description` — `key` is immutable. `DELETE` is blocked (409) if any role still has it. |
-| `POST/GET /admin/roles` | `roles:manage` | |
-| `GET/PATCH/DELETE /admin/roles/:id` | `roles:manage` | Renaming or deleting `SUPER_ADMIN` is blocked (409); deleting a role assigned to any admin is blocked (409). |
+| `POST/GET /admin/roles` | `roles:manage` | Body accepts an optional `departmentId`. |
+| `GET/PATCH/DELETE /admin/roles/:id` | `roles:manage` | Renaming or deleting `SUPER_ADMIN` is blocked (409); deleting a role assigned to any admin is blocked (409). `PATCH` accepts `departmentId` (a UUID, or `null` to clear it). |
 | `POST /admin/roles/:id/permissions` | `roles:manage` | `{ permissionId }` |
 | `DELETE /admin/roles/:id/permissions/:permissionId` | `roles:manage` | |
-| `GET /admin/admins` | `roles:manage` | Lists admins with their roles |
-| `POST /admin/admins/:id/roles` | `roles:manage` | `{ roleId }` |
-| `DELETE /admin/admins/:id/roles/:roleId` | `roles:manage` | Blocked (409) if it would leave zero admins holding `SUPER_ADMIN` |
+| `GET /admin/admins` | `roles:manage` | Lists admins with `role` and `department` as direct nested objects (not an array). |
+| `PATCH /admin/admins/:id/role` | `roles:manage` | `{ roleId }`. Sets the admin's role and inherits that role's `departmentId` in one call. 404 if the admin or role doesn't exist; blocked (409) if it would leave zero admins holding `SUPER_ADMIN`. Replaces the old `POST /admin/admins/:id/roles` / `DELETE /admin/admins/:id/roles/:roleId` pair — an admin can no longer hold zero or multiple roles. |
 | `POST /admin/admins/:id/deactivate` | `roles:manage` | 409 if targeting your own account or an already-inactive admin; force-revokes the admin's sessions |
 | `POST /admin/admins/:id/reactivate` | `roles:manage` | 409 if the admin is already active |
 
@@ -203,6 +211,22 @@ filters by `isActive`, a `q` search across `email`/`fullName`, and a
 `page`/`limit` pagination (default `1`/`25`, `limit` capped at `100`) and
 return `{ data: [...], meta: { total, page, limit, totalPages } }` in
 place of a bare array.
+
+## Departments
+
+`Department` (`id`, `name` unique, `description?`, `createdAt`) is a
+standalone entity managed the same way as `Role`/`Permission`, gated by
+its own `departments:manage` permission.
+
+| Endpoint | Permission | Notes |
+|---|---|---|
+| `POST/GET /admin/departments` | `departments:manage` | `GET` is paginated (default `1`/`25`, `limit` capped at `100`) and searches with `q` across `name`. |
+| `GET/PATCH/DELETE /admin/departments/:id` | `departments:manage` | `DELETE` is blocked (409) if any role still has this department assigned. |
+
+A department has no direct link to `AdminUser` — it only reaches admins
+indirectly, through whichever role(s) reference it (`Role.departmentId`),
+and from there onto each of that role's admins via the department
+inheritance described above.
 
 ## CORS
 

@@ -19,7 +19,7 @@ standalone Health check:
   CRUD, SUPER_ADMIN protections, role↔permission assignment),
   **Departments** (full CRUD, blocked-delete-if-assigned-to-a-role,
   mirrors Permissions/Roles exactly — gated by `departments:manage`),
-  **Admins** (list admins, assign/remove roles, SUPER_ADMIN-lockout protection),
+  **Admins** (list admins, set role via `PATCH .../role`, SUPER_ADMIN-lockout protection),
   Invites, Audit Logs, Force-Revoke Sessions (an admin action that
   *targets* an Agent's or a Client's sessions — it lives here because an
   Admin performs it, and it doesn't affect or get affected by the
