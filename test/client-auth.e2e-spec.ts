@@ -28,7 +28,7 @@ describe('Client auth (e2e)', () => {
   it('rejects a made-up OTP code', () => {
     return request(app.getHttpServer())
       .post('/auth/client/otp/verify')
-      .send({ phone, code: '000000' })
+      .send({ phone, code: '0000' })
       .expect(401);
   });
 
