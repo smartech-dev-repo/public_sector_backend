@@ -6,7 +6,7 @@ import { SessionService } from '../session/session.service';
 describe('AdminRoleAssignmentService', () => {
   let service: AdminRoleAssignmentService;
   let prisma: {
-    adminUser: { findMany: jest.Mock; findUnique: jest.Mock; update: jest.Mock };
+    adminUser: { findMany: jest.Mock; findUnique: jest.Mock; update: jest.Mock; count: jest.Mock };
     role: { findUnique: jest.Mock };
     adminUserRole: { upsert: jest.Mock; deleteMany: jest.Mock; count: jest.Mock; findUnique: jest.Mock };
   };
@@ -14,7 +14,7 @@ describe('AdminRoleAssignmentService', () => {
 
   beforeEach(() => {
     prisma = {
-      adminUser: { findMany: jest.fn(), findUnique: jest.fn(), update: jest.fn() },
+      adminUser: { findMany: jest.fn(), findUnique: jest.fn(), update: jest.fn(), count: jest.fn() },
       role: { findUnique: jest.fn() },
       adminUserRole: { upsert: jest.fn(), deleteMany: jest.fn(), count: jest.fn(), findUnique: jest.fn() },
     };
@@ -28,6 +28,48 @@ describe('AdminRoleAssignmentService', () => {
     expect(prisma.adminUser.findMany).toHaveBeenCalledWith(
       expect.objectContaining({ select: expect.objectContaining({ roles: expect.anything() }) }),
     );
+  });
+
+  it('listAdmins filters by isActive and searches email/fullName', async () => {
+    prisma.adminUser.findMany.mockResolvedValue([]);
+    prisma.adminUser.count.mockResolvedValue(0);
+
+    await service.listAdmins({ isActive: false, q: 'bello' });
+
+    expect(prisma.adminUser.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          isActive: false,
+          OR: [
+            { email: { contains: 'bello', mode: 'insensitive' } },
+            { fullName: { contains: 'bello', mode: 'insensitive' } },
+          ],
+        }),
+      }),
+    );
+  });
+
+  it('listAdmins applies a createdAt date range', async () => {
+    prisma.adminUser.findMany.mockResolvedValue([]);
+    prisma.adminUser.count.mockResolvedValue(0);
+    const createdFrom = new Date('2025-01-01');
+    const createdTo = new Date('2025-12-31');
+
+    await service.listAdmins({ createdFrom, createdTo });
+
+    expect(prisma.adminUser.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expect.objectContaining({ createdAt: { gte: createdFrom, lte: createdTo } }) }),
+    );
+  });
+
+  it('listAdmins computes skip/take from page and limit and reports the total', async () => {
+    prisma.adminUser.findMany.mockResolvedValue([]);
+    prisma.adminUser.count.mockResolvedValue(4);
+
+    const result = await service.listAdmins({}, { page: 1, limit: 2 });
+
+    expect(prisma.adminUser.findMany).toHaveBeenCalledWith(expect.objectContaining({ skip: 0, take: 2 }));
+    expect(result.meta).toEqual({ total: 4, page: 1, limit: 2, totalPages: 2 });
   });
 
   it('assignRole throws NotFoundException for an unknown admin', async () => {

@@ -1,9 +1,17 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { SessionService } from '../session/session.service';
-import { SessionPrincipalType } from '../generated/prisma/client';
+import { Prisma, SessionPrincipalType } from '../generated/prisma/client';
+import { buildPaginatedResult } from '../common/pagination/paginated-result';
 
 const SUPER_ADMIN_ROLE_NAME = 'SUPER_ADMIN';
+
+export interface ListAdminsFilters {
+  isActive?: boolean;
+  q?: string;
+  createdFrom?: Date;
+  createdTo?: Date;
+}
 
 @Injectable()
 export class AdminRoleAssignmentService {
@@ -12,18 +20,44 @@ export class AdminRoleAssignmentService {
     private readonly sessionService: SessionService,
   ) {}
 
-  async listAdmins() {
-    return this.prisma.adminUser.findMany({
-      select: {
-        id: true,
-        email: true,
-        fullName: true,
-        isActive: true,
-        createdAt: true,
-        roles: { include: { role: true } },
-      },
-      orderBy: { createdAt: 'desc' },
-    });
+  async listAdmins(
+    filters: ListAdminsFilters = {},
+    pagination: { page: number; limit: number } = { page: 1, limit: 25 },
+  ) {
+    const { page, limit } = pagination;
+    const where: Prisma.AdminUserWhereInput = {
+      isActive: filters.isActive,
+      createdAt:
+        filters.createdFrom || filters.createdTo
+          ? { gte: filters.createdFrom, lte: filters.createdTo }
+          : undefined,
+      OR: filters.q
+        ? [
+            { email: { contains: filters.q, mode: 'insensitive' } },
+            { fullName: { contains: filters.q, mode: 'insensitive' } },
+          ]
+        : undefined,
+    };
+
+    const [data, total] = await Promise.all([
+      this.prisma.adminUser.findMany({
+        where,
+        select: {
+          id: true,
+          email: true,
+          fullName: true,
+          isActive: true,
+          createdAt: true,
+          roles: { include: { role: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      this.prisma.adminUser.count({ where }),
+    ]);
+
+    return buildPaginatedResult(data, total, page, limit);
   }
 
   async assignRole(adminId: string, roleId: string): Promise<void> {

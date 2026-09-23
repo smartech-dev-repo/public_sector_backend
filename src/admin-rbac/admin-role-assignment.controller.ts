@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, HttpCode, Param, Post, Req, UseGuards, UseInterceptors } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, Param, Post, Query, Req, UseGuards, UseInterceptors } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { PermissionsGuard } from '../auth/permissions.guard';
 import { RequirePermissions } from '../auth/permissions.decorator';
@@ -7,6 +7,7 @@ import { AuditInterceptor } from '../audit/audit.interceptor';
 import { AuditLogService } from '../audit/audit-log.service';
 import { AdminRoleAssignmentService } from './admin-role-assignment.service';
 import { AssignRoleDto } from './dto/assign-role.dto';
+import { ListAdminsQueryDto } from './dto/list-admins-query.dto';
 import { AuditActorType } from '../generated/prisma/client';
 
 @Controller('admin/admins')
@@ -20,8 +21,16 @@ export class AdminRoleAssignmentController {
 
   @Get()
   @RequirePermissions('roles:manage')
-  list() {
-    return this.adminRoleAssignmentService.listAdmins();
+  list(@Query() query: ListAdminsQueryDto) {
+    return this.adminRoleAssignmentService.listAdmins(
+      {
+        isActive: query.isActive,
+        q: query.q,
+        createdFrom: query.createdFrom ? new Date(query.createdFrom) : undefined,
+        createdTo: query.createdTo ? new Date(query.createdTo) : undefined,
+      },
+      { page: query.page, limit: query.limit },
+    );
   }
 
   @Post(':id/roles')

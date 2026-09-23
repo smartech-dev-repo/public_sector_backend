@@ -70,7 +70,7 @@ describe('Admin role assignment (e2e)', () => {
       .get('/admin/admins')
       .set('Authorization', `Bearer ${accessToken}`)
       .expect(200);
-    const bootstrapEntry = res.body.find((a: { id: string }) => a.id === bootstrapAdminId);
+    const bootstrapEntry = res.body.data.find((a: { id: string }) => a.id === bootstrapAdminId);
     expect(bootstrapEntry.roles.some((r: { role: { name: string } }) => r.role.name === 'SUPER_ADMIN')).toBe(true);
   });
 
@@ -126,7 +126,7 @@ describe('Admin role assignment (e2e)', () => {
       .get('/admin/admins')
       .set('Authorization', `Bearer ${accessToken}`)
       .expect(200);
-    const deactivatedEntry = listRes.body.find((a: { id: string }) => a.id === secondAdminId);
+    const deactivatedEntry = listRes.body.data.find((a: { id: string }) => a.id === secondAdminId);
     expect(deactivatedEntry.isActive).toBe(false);
 
     await request(app.getHttpServer())
@@ -153,7 +153,7 @@ describe('Admin role assignment (e2e)', () => {
       .get('/admin/admins')
       .set('Authorization', `Bearer ${accessToken}`)
       .expect(200);
-    const reactivatedEntry = listRes.body.find((a: { id: string }) => a.id === secondAdminId);
+    const reactivatedEntry = listRes.body.data.find((a: { id: string }) => a.id === secondAdminId);
     expect(reactivatedEntry.isActive).toBe(true);
   });
 });
