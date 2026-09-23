@@ -14,6 +14,14 @@ export class MockIdentityVerificationProvider implements IdentityVerificationPro
       dateOfBirth: '1990-01-01',
       phoneNumber: '08000000000',
       photoBase64: PLACEHOLDER_PHOTO_BASE64,
+      gender: 'Female',
+      stateOfOrigin: 'Lagos',
+      lgaOfOrigin: 'Ikeja',
+      stateOfResidence: 'Lagos',
+      lgaOfResidence: 'Ikeja',
+      maritalStatus: 'Single',
+      address: null,
+      city: null,
     };
   }
 
@@ -24,6 +32,14 @@ export class MockIdentityVerificationProvider implements IdentityVerificationPro
       dateOfBirth: '1990-01-01',
       phoneNumber: '08000000000',
       photoBase64: PLACEHOLDER_PHOTO_BASE64,
+      gender: 'Female',
+      stateOfOrigin: null,
+      lgaOfOrigin: null,
+      stateOfResidence: null,
+      lgaOfResidence: null,
+      maritalStatus: null,
+      address: '1 Mock Street',
+      city: 'Mocktown',
     };
   }
 }

@@ -6,6 +6,14 @@ export interface IdentityLookupResult {
   dateOfBirth: string | null;
   phoneNumber: string | null;
   photoBase64: string;
+  gender: string | null;
+  stateOfOrigin: string | null;
+  lgaOfOrigin: string | null;
+  stateOfResidence: string | null;
+  lgaOfResidence: string | null;
+  maritalStatus: string | null;
+  address: string | null;
+  city: string | null;
 }
 
 export interface IdentityVerificationProvider {

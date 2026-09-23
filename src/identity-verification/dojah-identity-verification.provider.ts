@@ -8,6 +8,12 @@ interface DojahBvnEntity {
   date_of_birth: string | null;
   phone_number1: string | null;
   image: string;
+  gender: string | null;
+  state_of_origin: string | null;
+  lga_of_origin: string | null;
+  state_of_residence: string | null;
+  lga_of_residence: string | null;
+  marital_status: string | null;
 }
 
 interface DojahNinEntity {
@@ -16,6 +22,9 @@ interface DojahNinEntity {
   date_of_birth: string | null;
   phone_number: string | null;
   photo: string;
+  gender: string | null;
+  residence_address_line_1: string | null;
+  residence_town: string | null;
 }
 
 @Injectable()
@@ -54,6 +63,14 @@ export class DojahIdentityVerificationProvider implements IdentityVerificationPr
       dateOfBirth: body.entity.date_of_birth,
       phoneNumber: body.entity.phone_number1,
       photoBase64: body.entity.image,
+      gender: body.entity.gender ?? null,
+      stateOfOrigin: body.entity.state_of_origin ?? null,
+      lgaOfOrigin: body.entity.lga_of_origin ?? null,
+      stateOfResidence: body.entity.state_of_residence ?? null,
+      lgaOfResidence: body.entity.lga_of_residence ?? null,
+      maritalStatus: body.entity.marital_status ?? null,
+      address: null,
+      city: null,
     };
   }
 
@@ -71,6 +88,14 @@ export class DojahIdentityVerificationProvider implements IdentityVerificationPr
       dateOfBirth: body.entity.date_of_birth,
       phoneNumber: body.entity.phone_number,
       photoBase64: body.entity.photo,
+      gender: body.entity.gender ?? null,
+      stateOfOrigin: null,
+      lgaOfOrigin: null,
+      stateOfResidence: null,
+      lgaOfResidence: null,
+      maritalStatus: null,
+      address: body.entity.residence_address_line_1 ?? null,
+      city: body.entity.residence_town ?? null,
     };
   }
 }

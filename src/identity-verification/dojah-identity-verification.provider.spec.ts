@@ -22,7 +22,7 @@ describe('DojahIdentityVerificationProvider', () => {
     global.fetch = fetchMock as unknown as typeof fetch;
   });
 
-  it('calls the advance BVN endpoint with the correct headers and maps the response', async () => {
+  it('calls the advance BVN endpoint with the correct headers and maps the response, including the new demographic fields', async () => {
     fetchMock.mockResolvedValue({
       ok: true,
       json: async () => ({
@@ -32,6 +32,12 @@ describe('DojahIdentityVerificationProvider', () => {
           date_of_birth: '1990-01-01',
           phone_number1: '08000000000',
           image: 'ZmFrZS1waG90bw==',
+          gender: 'Female',
+          state_of_origin: 'Lagos',
+          lga_of_origin: 'Ikeja',
+          state_of_residence: 'Abuja',
+          lga_of_residence: 'AMAC',
+          marital_status: 'Single',
         },
       }),
     });
@@ -48,10 +54,18 @@ describe('DojahIdentityVerificationProvider', () => {
       dateOfBirth: '1990-01-01',
       phoneNumber: '08000000000',
       photoBase64: 'ZmFrZS1waG90bw==',
+      gender: 'Female',
+      stateOfOrigin: 'Lagos',
+      lgaOfOrigin: 'Ikeja',
+      stateOfResidence: 'Abuja',
+      lgaOfResidence: 'AMAC',
+      maritalStatus: 'Single',
+      address: null,
+      city: null,
     });
   });
 
-  it('calls the advance NIN endpoint and maps the response', async () => {
+  it('calls the advance NIN endpoint and maps the response, including address fields', async () => {
     fetchMock.mockResolvedValue({
       ok: true,
       json: async () => ({
@@ -61,6 +75,9 @@ describe('DojahIdentityVerificationProvider', () => {
           date_of_birth: '1990-01-01',
           phone_number: '08000000000',
           photo: 'ZmFrZS1waG90bw==',
+          gender: 'Female',
+          residence_address_line_1: '12 Example Street',
+          residence_town: 'Wuse',
         },
       }),
     });
@@ -72,6 +89,11 @@ describe('DojahIdentityVerificationProvider', () => {
       { headers: { AppId: 'app-id', Authorization: 'secret' } },
     );
     expect(result.photoBase64).toBe('ZmFrZS1waG90bw==');
+    expect(result.gender).toBe('Female');
+    expect(result.address).toBe('12 Example Street');
+    expect(result.city).toBe('Wuse');
+    expect(result.stateOfOrigin).toBeNull();
+    expect(result.maritalStatus).toBeNull();
   });
 
   it('throws when Dojah returns a non-ok response', async () => {
