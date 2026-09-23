@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Query, Req, UseGuards, UseInterceptors } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, Param, Post, Query, Req, UseGuards, UseInterceptors } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { PermissionsGuard } from '../auth/permissions.guard';
 import { RequirePermissions } from '../auth/permissions.decorator';
@@ -46,7 +46,13 @@ export class AdminInviteController {
       metadata: { email: dto.email, roleId: dto.roleId },
     });
 
-    return { id: invite.id, email: invite.email, status: invite.status, expiresAt: invite.expiresAt };
+    return {
+      id: invite.id,
+      email: invite.email,
+      status: invite.status,
+      expiresAt: invite.expiresAt,
+      role: { id: invite.role.id, name: invite.role.name },
+    };
   }
 
   @Post(':id/resend')
@@ -69,7 +75,13 @@ export class AdminInviteController {
       targetId: invite.id,
     });
 
-    return { id: invite.id, email: invite.email, status: invite.status, expiresAt: invite.expiresAt };
+    return {
+      id: invite.id,
+      email: invite.email,
+      status: invite.status,
+      expiresAt: invite.expiresAt,
+      role: { id: invite.role.id, name: invite.role.name },
+    };
   }
 
   @Get()
@@ -86,5 +98,20 @@ export class AdminInviteController {
       },
       { page: query.page, limit: query.limit },
     );
+  }
+
+  @Delete(':id')
+  @HttpCode(200)
+  @RequirePermissions('admins:create')
+  async remove(@Param('id') id: string, @Req() req: { user: JwtPayload }) {
+    await this.adminInviteService.remove(id);
+    await this.auditLogService.record({
+      actorType: AuditActorType.ADMIN,
+      actorId: req.user.sub,
+      action: 'admin.invite.deleted',
+      targetType: 'AdminInvite',
+      targetId: id,
+    });
+    return { deleted: true };
   }
 }

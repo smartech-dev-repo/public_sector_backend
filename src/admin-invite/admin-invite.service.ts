@@ -12,8 +12,10 @@ export interface CreateInviteParams {
   invitedById: string;
 }
 
+export type AdminInviteWithRole = Prisma.AdminInviteGetPayload<{ include: { role: true } }>;
+
 export interface IssuedInvite {
-  invite: AdminInvite;
+  invite: AdminInviteWithRole;
   token: string;
 }
 
@@ -41,6 +43,7 @@ export class AdminInviteService {
         tokenHash: hashToken(token),
         expiresAt: new Date(Date.now() + INVITE_TTL_MS),
       },
+      include: { role: true },
     });
 
     return { invite, token };
@@ -58,6 +61,7 @@ export class AdminInviteService {
     const invite = await this.prisma.adminInvite.update({
       where: { id },
       data: { tokenHash: hashToken(token), expiresAt: new Date(Date.now() + INVITE_TTL_MS) },
+      include: { role: true },
     });
 
     return { invite, token };
@@ -66,7 +70,7 @@ export class AdminInviteService {
   async list(
     filters: ListInvitesFilters = {},
     pagination: { page: number; limit: number } = { page: 1, limit: 25 },
-  ): Promise<PaginatedResult<AdminInvite>> {
+  ): Promise<PaginatedResult<AdminInviteWithRole>> {
     const { page, limit } = pagination;
     const where: Prisma.AdminInviteWhereInput = {
       status: filters.status,
@@ -82,7 +86,13 @@ export class AdminInviteService {
     };
 
     const [data, total] = await Promise.all([
-      this.prisma.adminInvite.findMany({ where, orderBy: { createdAt: 'desc' }, skip: (page - 1) * limit, take: limit }),
+      this.prisma.adminInvite.findMany({
+        where,
+        include: { role: true },
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
       this.prisma.adminInvite.count({ where }),
     ]);
 
@@ -106,5 +116,13 @@ export class AdminInviteService {
       where: { id },
       data: { status: AdminInviteStatus.ACCEPTED, acceptedAt: new Date() },
     });
+  }
+
+  async remove(id: string): Promise<void> {
+    const invite = await this.prisma.adminInvite.findUnique({ where: { id } });
+    if (!invite || invite.status !== AdminInviteStatus.PENDING) {
+      throw new NotFoundException('Invite not found or not pending');
+    }
+    await this.prisma.adminInvite.delete({ where: { id } });
   }
 }

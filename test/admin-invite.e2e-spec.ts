@@ -48,6 +48,7 @@ describe('Admin invite (e2e)', () => {
       .expect((res) => {
         expect(res.body.email).toBe(inviteEmail);
         expect(res.body.status).toBe('PENDING');
+        expect(res.body.role).toEqual({ id: superAdminRoleId, name: 'SUPER_ADMIN' });
       });
 
     const admin = await prisma.adminUser.findUnique({ where: { email: inviteEmail } });
@@ -69,5 +70,39 @@ describe('Admin invite (e2e)', () => {
       .expect((res) => {
         expect(res.body.data.some((invite: { email: string }) => invite.email === inviteEmail)).toBe(true);
       });
+  });
+
+  it('lists invites with the full role object hydrated', async () => {
+    const res = await request(app.getHttpServer())
+      .get('/admin/invites')
+      .set('Authorization', `Bearer ${bootstrapAccessToken}`)
+      .expect(200);
+    const listedInvite = res.body.data.find((invite: { email: string }) => invite.email === inviteEmail);
+    expect(listedInvite.role.name).toBe('SUPER_ADMIN');
+  });
+
+  it('creates and then deletes a PENDING invite', async () => {
+    const deletableEmail = `deletable-invite-${Date.now()}@example.com`;
+    const createRes = await request(app.getHttpServer())
+      .post('/admin/invites')
+      .set('Authorization', `Bearer ${bootstrapAccessToken}`)
+      .send({ email: deletableEmail, roleId: superAdminRoleId })
+      .expect(201);
+
+    await request(app.getHttpServer())
+      .delete(`/admin/invites/${createRes.body.id}`)
+      .set('Authorization', `Bearer ${bootstrapAccessToken}`)
+      .expect(200)
+      .expect({ deleted: true });
+
+    const found = await prisma.adminInvite.findUnique({ where: { id: createRes.body.id } });
+    expect(found).toBeNull();
+  });
+
+  it('rejects deleting an already-accepted or unknown invite (404)', () => {
+    return request(app.getHttpServer())
+      .delete('/admin/invites/00000000-0000-0000-0000-000000000000')
+      .set('Authorization', `Bearer ${bootstrapAccessToken}`)
+      .expect(404);
   });
 });
