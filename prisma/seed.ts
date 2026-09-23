@@ -28,6 +28,7 @@ const BOOTSTRAP_PERMISSIONS: Array<{ key: string; description: string }> = [
   { key: 'loan-requests:review', description: 'Approve, reject, or disburse client loan requests' },
   { key: 'client-loans:read', description: "View client loans and disbursement reports" },
   { key: 'clients:read', description: "View a client's loan requests, loans, and activity history" },
+  { key: 'departments:manage', description: 'Create, edit, and delete department definitions' },
 ];
 
 async function main() {

@@ -31,6 +31,13 @@ model Role {
   createdAt   DateTime         @default(now())
 }
 
+model Department {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String?
+  createdAt   DateTime @default(now())
+}
+
 model RolePermission {
   roleId       String
   permissionId String
