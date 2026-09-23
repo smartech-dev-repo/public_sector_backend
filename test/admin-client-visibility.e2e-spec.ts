@@ -124,8 +124,8 @@ describe('Admin client visibility (e2e)', () => {
         .get(`/admin/client-loans?clientId=${clientA.id}`)
         .set('Authorization', `Bearer ${adminAccessToken}`)
         .expect(200);
-      expect(loansRes.body).toHaveLength(1);
-      expect(loansRes.body[0].clientId).toBe(clientA.id);
+      expect(loansRes.body.data).toHaveLength(1);
+      expect(loansRes.body.data[0].clientId).toBe(clientA.id);
 
       await request(app.getHttpServer())
         .get('/admin/client-loans')

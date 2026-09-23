@@ -14,7 +14,16 @@ export class AdminClientLoansController {
   @Get()
   @RequirePermissions('clients:read')
   list(@Query() query: ListClientLoansQueryDto) {
-    return this.loanRequestService.listByClient(query.clientId);
+    return this.loanRequestService.listByClient(
+      query.clientId,
+      {
+        status: query.status,
+        agency: query.agency,
+        disbursedFrom: query.disbursedFrom ? new Date(query.disbursedFrom) : undefined,
+        disbursedTo: query.disbursedTo ? new Date(query.disbursedTo) : undefined,
+      },
+      { page: query.page, limit: query.limit },
+    );
   }
 
   @Get('disbursement-summary')

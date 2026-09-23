@@ -1,9 +1,10 @@
-import { Body, Controller, Get, HttpCode, Param, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Param, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { ClientOnlyGuard } from '../auth/client-only.guard';
 import { JwtPayload } from '../auth/jwt-payload.interface';
 import { LoanRequestService } from './loan-request.service';
 import { CreateLoanRequestDto } from './dto/create-loan-request.dto';
+import { ListClientLoanRequestsQueryDto } from './dto/list-client-loan-requests-query.dto';
 
 @Controller('client/loan-requests')
 @UseGuards(JwtAuthGuard, ClientOnlyGuard)
@@ -27,7 +28,7 @@ export class LoanRequestController {
   }
 
   @Get()
-  list(@Req() req: { user: JwtPayload }) {
-    return this.loanRequestService.list(req.user.sub);
+  list(@Query() query: ListClientLoanRequestsQueryDto, @Req() req: { user: JwtPayload }) {
+    return this.loanRequestService.list(req.user.sub, { status: query.status }, { page: query.page, limit: query.limit });
   }
 }

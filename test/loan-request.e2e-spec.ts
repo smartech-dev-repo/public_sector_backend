@@ -98,7 +98,7 @@ describe('Loan request workflow (e2e)', () => {
       .get('/client/loan-requests')
       .set('Authorization', `Bearer ${accessToken}`)
       .expect(200);
-    const confirmed = listRes.body.find((lr: { id: string }) => lr.id === loanRequestId);
+    const confirmed = listRes.body.data.find((lr: { id: string }) => lr.id === loanRequestId);
     expect(confirmed.status).toBe('CONFIRMED');
   });
 

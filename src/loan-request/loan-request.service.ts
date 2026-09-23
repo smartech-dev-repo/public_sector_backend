@@ -29,6 +29,7 @@ import {
   LoanRequestType,
   ManagementChargeApplication,
   ManagementChargeType,
+  Prisma,
   VarianceSource,
 } from '../generated/prisma/client';
 
@@ -419,8 +420,28 @@ export class LoanRequestService {
     return buildPaginatedResult(data, total, page, limit);
   }
 
-  async listByClient(clientId: string) {
-    return this.prisma.clientLoan.findMany({ where: { clientId }, orderBy: { disbursementDate: 'desc' } });
+  async listByClient(
+    clientId: string,
+    filters: { status?: ClientLoanStatus; agency?: string; disbursedFrom?: Date; disbursedTo?: Date } = {},
+    pagination: { page: number; limit: number } = { page: 1, limit: 25 },
+  ) {
+    const { page, limit } = pagination;
+    const where: Prisma.ClientLoanWhereInput = {
+      clientId,
+      status: filters.status,
+      agency: filters.agency,
+      disbursementDate:
+        filters.disbursedFrom || filters.disbursedTo
+          ? { gte: filters.disbursedFrom, lte: filters.disbursedTo }
+          : undefined,
+    };
+
+    const [data, total] = await Promise.all([
+      this.prisma.clientLoan.findMany({ where, orderBy: { disbursementDate: 'desc' }, skip: (page - 1) * limit, take: limit }),
+      this.prisma.clientLoan.count({ where }),
+    ]);
+
+    return buildPaginatedResult(data, total, page, limit);
   }
 
   async exportDisbursementSummaryCsv(month: string): Promise<string> {
@@ -478,11 +499,20 @@ export class LoanRequestService {
     });
   }
 
-  async list(clientId: string) {
-    return this.prisma.loanRequest.findMany({
-      where: { clientId },
-      orderBy: { createdAt: 'desc' },
-    });
+  async list(
+    clientId: string,
+    filters: { status?: LoanRequestStatus } = {},
+    pagination: { page: number; limit: number } = { page: 1, limit: 25 },
+  ) {
+    const { page, limit } = pagination;
+    const where: Prisma.LoanRequestWhereInput = { clientId, status: filters.status };
+
+    const [data, total] = await Promise.all([
+      this.prisma.loanRequest.findMany({ where, orderBy: { createdAt: 'desc' }, skip: (page - 1) * limit, take: limit }),
+      this.prisma.loanRequest.count({ where }),
+    ]);
+
+    return buildPaginatedResult(data, total, page, limit);
   }
 
   async getMyLoan(clientId: string) {
