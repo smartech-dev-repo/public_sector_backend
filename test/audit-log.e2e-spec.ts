@@ -70,8 +70,8 @@ describe('Audit log (e2e)', () => {
       .set('Authorization', `Bearer ${accessToken}`)
       .expect(200);
 
-    expect(Array.isArray(res.body)).toBe(true);
-    expect(res.body.length).toBeGreaterThan(0);
+    expect(Array.isArray(res.body.data)).toBe(true);
+    expect(res.body.data.length).toBeGreaterThan(0);
   });
 
   it('GET /admin/audit-logs filters by action', async () => {
@@ -81,6 +81,6 @@ describe('Audit log (e2e)', () => {
       .set('Authorization', `Bearer ${accessToken}`)
       .expect(200);
 
-    expect(res.body.every((entry: { action: string }) => entry.action === 'admin.invite.created')).toBe(true);
+    expect(res.body.data.every((entry: { action: string }) => entry.action === 'admin.invite.created')).toBe(true);
   });
 });
