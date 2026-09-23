@@ -72,6 +72,12 @@ being used as a real Bearer token anywhere. `POST /auth/admin/2fa/login-verify`
 | `GET /auth/sessions` | Bearer access token | Lists the caller's own active sessions. |
 | `DELETE /auth/sessions/:id` | Bearer access token | Revokes one of the caller's own sessions. |
 
+`GET /auth/sessions` also accepts a `createdFrom`/`createdTo` date range
+over `createdAt`, plus `page`/`limit` pagination (default `1`/`25`,
+`limit` capped at `100`), and returns
+`{ data: [...], meta: { total, page, limit, totalPages } }` in place of a
+bare array.
+
 ## Admin invite flow
 
 `POST /admin/invites` (`admins:create`) → emails a token via the mock console
@@ -330,6 +336,12 @@ into an actual `Loan` record) is not built — a separate future concern.
 | `GET /client/loan-requests` | Client JWT | The calling client's own requests |
 | `POST /webhooks/sms/inbound` | None (public) | `{ phone, message }` — mocked shape standing in for a real vendor's payload |
 
+`GET /client/loan-requests` also accepts an optional `status` filter,
+plus `page`/`limit` pagination (default `1`/`25`, `limit` capped at
+`100`), and returns
+`{ data: [...], meta: { total, page, limit, totalPages } }` in place of a
+bare array.
+
 ## Loan origination
 
 `LoanRequest` now carries a `tenorMonths` (chosen from
@@ -354,9 +366,11 @@ disbursed loans.
 `isActive`; it accepts `page`/`limit` pagination (default `1`/`25`,
 `limit` capped at `100`) and returns
 `{ data: [...], meta: { total, page, limit, totalPages } }` in place of a
-bare array. (`GET /client/loan-terms`, the client-facing list of active
-terms for the client's own agency, is unpaginated — out of scope until a
-later wave.)
+bare array. `GET /client/loan-terms`, the client-facing list of active
+terms for the client's own agency, also accepts `page`/`limit`
+pagination (default `1`/`25`, `limit` capped at `100`, no other filters)
+and returns the same `{ data: [...], meta: { total, page, limit,
+totalPages } }` shape in place of a bare array.
 
 ### Topup
 
@@ -466,7 +480,12 @@ matching this codebase's never-leak-existence convention elsewhere.
 `GET /admin/loan-requests` accepts `clientId` alongside `status`/`type`
 (see "Loan origination" above for its full filter set and response
 shape). `GET /admin/client-loans?clientId=` (`clients:read`, required
-`clientId` — `400` if missing) lists a client's `ClientLoan` history.
+`clientId` — `400` if missing) lists a client's `ClientLoan` history;
+also filterable by `status`/`agency`, a `disbursedFrom`/`disbursedTo`
+date range over `disbursementDate`, plus `page`/`limit` pagination
+(default `1`/`25`, `limit` capped at `100`), returning
+`{ data: [...], meta: { total, page, limit, totalPages } }` in place of a
+bare array.
 `GET /admin/clients/:id/activities` (`clients:read`) returns a merged,
 timestamp-descending timeline for one client: admin actions on them or
 their loan requests (from the audit log), their own loan-request
@@ -499,6 +518,20 @@ approve/reject in `AdminClientReviewController`). This is the first of
 two sub-projects in a broader loan-lifecycle overhaul — a second,
 not-yet-built piece will let overpayment on a loan auto-credit this same
 wallet, and let a client spend their balance toward a payment.
+
+Both `GET /client/wallet` and `GET /admin/clients/:clientId/wallet` also
+accept `direction`/`actorType` filters and a `createdFrom`/`createdTo`
+date range over `createdAt`, plus `page`/`limit` pagination (default
+`1`/`25`, `limit` capped at `100`), applied to the `entries` list only.
+**This is the one endpoint in the whole pagination initiative with a
+mixed response shape**: `{ balance: number, entries: { data: [...],
+meta: { total, page, limit, totalPages } } }` — `balance` stays a plain
+number (always computed from the client's *entire* entry history via
+`WalletService.getBalance()`, never from just the current page) while
+only `entries` is wrapped in the `{ data, meta }` envelope. `debit()`'s
+own insufficient-balance check also uses `getBalance()` internally, so
+it's never affected by which page of `entries` a caller happens to be
+viewing.
 
 ## Agent enrollment
 

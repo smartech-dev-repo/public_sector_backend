@@ -2077,6 +2077,32 @@
                   "path": [
                     "auth",
                     "sessions"
+                  ],
+                  "query": [
+                    {
+                      "key": "createdFrom",
+                      "value": "2026-01-01",
+                      "description": "Optional. ISO8601 date. Filters createdAt >= this value.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "createdTo",
+                      "value": "2026-12-31",
+                      "description": "Optional. ISO8601 date. Filters createdAt <= this value.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "page",
+                      "value": "1",
+                      "description": "Optional. Page number, defaults to 1.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "limit",
+                      "value": "25",
+                      "description": "Optional. Page size, defaults to 25, hard max 100 (a request above 100 is a 400, not a silent clamp).",
+                      "disabled": true
+                    }
                   ]
                 }
               },
@@ -2087,8 +2113,11 @@
                     "exec": [
                       "pm.test('status 200', () => pm.response.to.have.status(200));",
                       "const json = pm.response.json();",
-                      "pm.test('is array', () => pm.expect(json).to.be.an('array'));",
-                      "if (json.length > 0) { pm.collectionVariables.set('session_id', json[0].id); }"
+                      "pm.test('is paginated envelope', () => {",
+                      "  pm.expect(json.data).to.be.an('array');",
+                      "  pm.expect(json.meta).to.have.all.keys('total', 'page', 'limit', 'totalPages');",
+                      "});",
+                      "if (json.data.length > 0) { pm.collectionVariables.set('session_id', json.data[0].id); }"
                     ]
                   }
                 }
@@ -2112,6 +2141,32 @@
                       "path": [
                         "auth",
                         "sessions"
+                      ],
+                      "query": [
+                        {
+                          "key": "createdFrom",
+                          "value": "2026-01-01",
+                          "description": "Optional. ISO8601 date. Filters createdAt >= this value.",
+                          "disabled": true
+                        },
+                        {
+                          "key": "createdTo",
+                          "value": "2026-12-31",
+                          "description": "Optional. ISO8601 date. Filters createdAt <= this value.",
+                          "disabled": true
+                        },
+                        {
+                          "key": "page",
+                          "value": "1",
+                          "description": "Optional. Page number, defaults to 1.",
+                          "disabled": true
+                        },
+                        {
+                          "key": "limit",
+                          "value": "25",
+                          "description": "Optional. Page size, defaults to 25, hard max 100 (a request above 100 is a 400, not a silent clamp).",
+                          "disabled": true
+                        }
                       ]
                     }
                   },
@@ -2125,7 +2180,7 @@
                     }
                   ],
                   "cookie": [],
-                  "body": "[\n  {\n    \"id\": \"b7e6d5c4-b3a2-41f0-9e8d-7c6b5a4f3e2d\",\n    \"userAgent\": \"PostmanRuntime/7.36.0\",\n    \"ip\": \"203.0.113.10\",\n    \"createdAt\": \"2026-09-10T09:15:00.000Z\",\n    \"lastUsedAt\": \"2026-09-17T08:42:00.000Z\",\n    \"expiresAt\": \"2026-09-24T09:15:00.000Z\"\n  }\n]"
+                  "body": "{\n  \"data\": [\n    {\n      \"id\": \"b7e6d5c4-b3a2-41f0-9e8d-7c6b5a4f3e2d\",\n      \"userAgent\": \"PostmanRuntime/7.36.0\",\n      \"ip\": \"203.0.113.10\",\n      \"createdAt\": \"2026-09-10T09:15:00.000Z\",\n      \"lastUsedAt\": \"2026-09-17T08:42:00.000Z\",\n      \"expiresAt\": \"2026-09-24T09:15:00.000Z\"\n    }\n  ],\n  \"meta\": {\n    \"total\": 1,\n    \"page\": 1,\n    \"limit\": 25,\n    \"totalPages\": 1\n  }\n}"
                 }
               ]
             },
@@ -9353,6 +9408,44 @@
                     "clients",
                     "{{client_id}}",
                     "wallet"
+                  ],
+                  "query": [
+                    {
+                      "key": "direction",
+                      "value": "CREDIT",
+                      "description": "Optional. CREDIT | DEBIT.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "actorType",
+                      "value": "ADMIN",
+                      "description": "Optional. ADMIN | AGENT | CLIENT | SYSTEM.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "createdFrom",
+                      "value": "2026-01-01",
+                      "description": "Optional. ISO8601 date. Filters createdAt >= this value.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "createdTo",
+                      "value": "2026-12-31",
+                      "description": "Optional. ISO8601 date. Filters createdAt <= this value.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "page",
+                      "value": "1",
+                      "description": "Optional. Page number, defaults to 1. Applies to entries only -- balance is never paginated.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "limit",
+                      "value": "25",
+                      "description": "Optional. Page size, defaults to 25, hard max 100 (a request above 100 is a 400, not a silent clamp).",
+                      "disabled": true
+                    }
                   ]
                 },
                 "description": "Set client_id to a real Client row's id first (e.g. captured after a successful OTP verify, or from the database)."
@@ -9362,7 +9455,13 @@
                   "listen": "test",
                   "script": {
                     "exec": [
-                      "pm.test('status 200', () => pm.response.to.have.status(200));"
+                      "pm.test('status 200', () => pm.response.to.have.status(200));",
+                      "pm.test('balance is a plain number, entries is a paginated envelope', () => {",
+                      "  const body = pm.response.json();",
+                      "  pm.expect(body.balance).to.be.a('number');",
+                      "  pm.expect(body.entries.data).to.be.an('array');",
+                      "  pm.expect(body.entries.meta).to.have.all.keys('total', 'page', 'limit', 'totalPages');",
+                      "});"
                     ]
                   }
                 }
@@ -9388,6 +9487,44 @@
                         "clients",
                         "{{client_id}}",
                         "wallet"
+                      ],
+                      "query": [
+                        {
+                          "key": "direction",
+                          "value": "CREDIT",
+                          "description": "Optional. CREDIT | DEBIT.",
+                          "disabled": true
+                        },
+                        {
+                          "key": "actorType",
+                          "value": "ADMIN",
+                          "description": "Optional. ADMIN | AGENT | CLIENT | SYSTEM.",
+                          "disabled": true
+                        },
+                        {
+                          "key": "createdFrom",
+                          "value": "2026-01-01",
+                          "description": "Optional. ISO8601 date. Filters createdAt >= this value.",
+                          "disabled": true
+                        },
+                        {
+                          "key": "createdTo",
+                          "value": "2026-12-31",
+                          "description": "Optional. ISO8601 date. Filters createdAt <= this value.",
+                          "disabled": true
+                        },
+                        {
+                          "key": "page",
+                          "value": "1",
+                          "description": "Optional. Page number, defaults to 1. Applies to entries only -- balance is never paginated.",
+                          "disabled": true
+                        },
+                        {
+                          "key": "limit",
+                          "value": "25",
+                          "description": "Optional. Page size, defaults to 25, hard max 100 (a request above 100 is a 400, not a silent clamp).",
+                          "disabled": true
+                        }
                       ]
                     },
                     "description": "Set client_id to a real Client row's id first (e.g. captured after a successful OTP verify, or from the database)."
@@ -9402,7 +9539,7 @@
                     }
                   ],
                   "cookie": [],
-                  "body": "{\n  \"balance\": 3000,\n  \"entries\": [\n    {\n      \"id\": \"b2c3d4e5-f6a7-4b8c-9d0e-1f2a3b4c5d6e\",\n      \"clientId\": \"f4a1b2c3-d4e5-4f67-8a9b-0c1d2e3f4a5b\",\n      \"amount\": \"2000\",\n      \"direction\": \"DEBIT\",\n      \"description\": \"Manual correction\",\n      \"actorType\": \"ADMIN\",\n      \"actorId\": \"9d8c7b6a-5e4f-4a3b-9c2d-1e0f9a8b7c6d\",\n      \"createdAt\": \"2026-09-21T10:30:00.000Z\"\n    },\n    {\n      \"id\": \"a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d\",\n      \"clientId\": \"f4a1b2c3-d4e5-4f67-8a9b-0c1d2e3f4a5b\",\n      \"amount\": \"5000\",\n      \"direction\": \"CREDIT\",\n      \"description\": \"Overpayment excess\",\n      \"actorType\": \"ADMIN\",\n      \"actorId\": \"9d8c7b6a-5e4f-4a3b-9c2d-1e0f9a8b7c6d\",\n      \"createdAt\": \"2026-09-20T09:15:00.000Z\"\n    }\n  ]\n}"
+                  "body": "{\n  \"balance\": 3000,\n  \"entries\": {\n    \"data\": [\n      {\n        \"id\": \"b2c3d4e5-f6a7-4b8c-9d0e-1f2a3b4c5d6e\",\n        \"clientId\": \"f4a1b2c3-d4e5-4f67-8a9b-0c1d2e3f4a5b\",\n        \"amount\": \"2000\",\n        \"direction\": \"DEBIT\",\n        \"description\": \"Manual correction\",\n        \"actorType\": \"ADMIN\",\n        \"actorId\": \"9d8c7b6a-5e4f-4a3b-9c2d-1e0f9a8b7c6d\",\n        \"createdAt\": \"2026-09-21T10:30:00.000Z\"\n      },\n      {\n        \"id\": \"a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d\",\n        \"clientId\": \"f4a1b2c3-d4e5-4f67-8a9b-0c1d2e3f4a5b\",\n        \"amount\": \"5000\",\n        \"direction\": \"CREDIT\",\n        \"description\": \"Overpayment excess\",\n        \"actorType\": \"ADMIN\",\n        \"actorId\": \"9d8c7b6a-5e4f-4a3b-9c2d-1e0f9a8b7c6d\",\n        \"createdAt\": \"2026-09-20T09:15:00.000Z\"\n      }\n    ],\n    \"meta\": {\n      \"total\": 2,\n      \"page\": 1,\n      \"limit\": 25,\n      \"totalPages\": 1\n    }\n  }\n}"
                 }
               ]
             },
@@ -10537,6 +10674,42 @@
                     {
                       "key": "clientId",
                       "value": "{{review_client_id}}"
+                    },
+                    {
+                      "key": "status",
+                      "value": "ACTIVE",
+                      "description": "Optional. Exact match on ClientLoanStatus.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "agency",
+                      "value": "NPF",
+                      "description": "Optional. Exact match on the loan's agency.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "disbursedFrom",
+                      "value": "2026-01-01",
+                      "description": "Optional. ISO8601 date. Filters disbursementDate >= this value.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "disbursedTo",
+                      "value": "2026-12-31",
+                      "description": "Optional. ISO8601 date. Filters disbursementDate <= this value.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "page",
+                      "value": "1",
+                      "description": "Optional. Page number, defaults to 1.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "limit",
+                      "value": "25",
+                      "description": "Optional. Page size, defaults to 25, hard max 100 (a request above 100 is a 400, not a silent clamp).",
+                      "disabled": true
                     }
                   ]
                 },
@@ -10548,7 +10721,11 @@
                   "script": {
                     "exec": [
                       "pm.test('status 200', () => pm.response.to.have.status(200));",
-                      "pm.test('is array', () => pm.expect(pm.response.json()).to.be.an('array'));"
+                      "pm.test('is paginated envelope', () => {",
+                      "  const json = pm.response.json();",
+                      "  pm.expect(json.data).to.be.an('array');",
+                      "  pm.expect(json.meta).to.have.all.keys('total', 'page', 'limit', 'totalPages');",
+                      "});"
                     ]
                   }
                 }
@@ -10566,7 +10743,7 @@
                     }
                   ],
                   "cookie": [],
-                  "body": "[\n  {\n    \"id\": \"6d8abc8c-58a3-4430-b311-224413774ce9\",\n    \"clientId\": \"c1a2b3c4-d5e6-4f78-9a0b-1c2d3e4f5a6b\",\n    \"loanRequestId\": \"a1b2c3d4-5e6f-4708-8192-a3b4c5d6e7f8\",\n    \"agency\": \"NPF\",\n    \"staffId\": \"IPPIS-000123\",\n    \"principalAmount\": \"90000\",\n    \"disbursedAmount\": \"90000\",\n    \"principalBalance\": \"45000\",\n    \"tenorMonths\": 2,\n    \"interestRatePercent\": \"0\",\n    \"managementChargeType\": \"PERCENTAGE\",\n    \"managementChargeValue\": \"0\",\n    \"managementChargeApplication\": \"ADD_TO_REPAYMENT\",\n    \"managementChargeAmount\": \"0\",\n    \"disbursementDate\": \"2026-09-22T10:15:00.000Z\",\n    \"maturationDate\": \"2026-11-22T10:15:00.000Z\",\n    \"status\": \"ACTIVE\",\n    \"createdAt\": \"2026-09-22T10:15:00.000Z\",\n    \"updatedAt\": \"2026-09-22T10:15:00.000Z\"\n  }\n]",
+                  "body": "{\n  \"data\": [\n    {\n      \"id\": \"6d8abc8c-58a3-4430-b311-224413774ce9\",\n      \"clientId\": \"c1a2b3c4-d5e6-4f78-9a0b-1c2d3e4f5a6b\",\n      \"loanRequestId\": \"a1b2c3d4-5e6f-4708-8192-a3b4c5d6e7f8\",\n      \"agency\": \"NPF\",\n      \"staffId\": \"IPPIS-000123\",\n      \"principalAmount\": \"90000\",\n      \"disbursedAmount\": \"90000\",\n      \"principalBalance\": \"45000\",\n      \"tenorMonths\": 2,\n      \"interestRatePercent\": \"0\",\n      \"managementChargeType\": \"PERCENTAGE\",\n      \"managementChargeValue\": \"0\",\n      \"managementChargeApplication\": \"ADD_TO_REPAYMENT\",\n      \"managementChargeAmount\": \"0\",\n      \"disbursementDate\": \"2026-09-22T10:15:00.000Z\",\n      \"maturationDate\": \"2026-11-22T10:15:00.000Z\",\n      \"status\": \"ACTIVE\",\n      \"createdAt\": \"2026-09-22T10:15:00.000Z\",\n      \"updatedAt\": \"2026-09-22T10:15:00.000Z\"\n    }\n  ],\n  \"meta\": {\n    \"total\": 1,\n    \"page\": 1,\n    \"limit\": 25,\n    \"totalPages\": 1\n  }\n}",
                   "originalRequest": {
                     "method": "GET",
                     "header": [
@@ -10588,6 +10765,42 @@
                         {
                           "key": "clientId",
                           "value": "{{review_client_id}}"
+                        },
+                        {
+                          "key": "status",
+                          "value": "ACTIVE",
+                          "description": "Optional. Exact match on ClientLoanStatus.",
+                          "disabled": true
+                        },
+                        {
+                          "key": "agency",
+                          "value": "NPF",
+                          "description": "Optional. Exact match on the loan's agency.",
+                          "disabled": true
+                        },
+                        {
+                          "key": "disbursedFrom",
+                          "value": "2026-01-01",
+                          "description": "Optional. ISO8601 date. Filters disbursementDate >= this value.",
+                          "disabled": true
+                        },
+                        {
+                          "key": "disbursedTo",
+                          "value": "2026-12-31",
+                          "description": "Optional. ISO8601 date. Filters disbursementDate <= this value.",
+                          "disabled": true
+                        },
+                        {
+                          "key": "page",
+                          "value": "1",
+                          "description": "Optional. Page number, defaults to 1.",
+                          "disabled": true
+                        },
+                        {
+                          "key": "limit",
+                          "value": "25",
+                          "description": "Optional. Page size, defaults to 25, hard max 100 (a request above 100 is a 400, not a silent clamp).",
+                          "disabled": true
                         }
                       ]
                     }
@@ -12904,6 +13117,32 @@
                   "path": [
                     "auth",
                     "sessions"
+                  ],
+                  "query": [
+                    {
+                      "key": "createdFrom",
+                      "value": "2026-01-01",
+                      "description": "Optional. ISO8601 date. Filters createdAt >= this value.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "createdTo",
+                      "value": "2026-12-31",
+                      "description": "Optional. ISO8601 date. Filters createdAt <= this value.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "page",
+                      "value": "1",
+                      "description": "Optional. Page number, defaults to 1.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "limit",
+                      "value": "25",
+                      "description": "Optional. Page size, defaults to 25, hard max 100 (a request above 100 is a 400, not a silent clamp).",
+                      "disabled": true
+                    }
                   ]
                 }
               },
@@ -12914,8 +13153,11 @@
                     "exec": [
                       "pm.test('status 200', () => pm.response.to.have.status(200));",
                       "const json = pm.response.json();",
-                      "pm.test('is array', () => pm.expect(json).to.be.an('array'));",
-                      "if (json.length > 0) { pm.collectionVariables.set('agent_session_id', json[0].id); }"
+                      "pm.test('is paginated envelope', () => {",
+                      "  pm.expect(json.data).to.be.an('array');",
+                      "  pm.expect(json.meta).to.have.all.keys('total', 'page', 'limit', 'totalPages');",
+                      "});",
+                      "if (json.data.length > 0) { pm.collectionVariables.set('agent_session_id', json.data[0].id); }"
                     ]
                   }
                 }
@@ -12939,6 +13181,32 @@
                       "path": [
                         "auth",
                         "sessions"
+                      ],
+                      "query": [
+                        {
+                          "key": "createdFrom",
+                          "value": "2026-01-01",
+                          "description": "Optional. ISO8601 date. Filters createdAt >= this value.",
+                          "disabled": true
+                        },
+                        {
+                          "key": "createdTo",
+                          "value": "2026-12-31",
+                          "description": "Optional. ISO8601 date. Filters createdAt <= this value.",
+                          "disabled": true
+                        },
+                        {
+                          "key": "page",
+                          "value": "1",
+                          "description": "Optional. Page number, defaults to 1.",
+                          "disabled": true
+                        },
+                        {
+                          "key": "limit",
+                          "value": "25",
+                          "description": "Optional. Page size, defaults to 25, hard max 100 (a request above 100 is a 400, not a silent clamp).",
+                          "disabled": true
+                        }
                       ]
                     }
                   },
@@ -12952,7 +13220,7 @@
                     }
                   ],
                   "cookie": [],
-                  "body": "[\n  {\n    \"id\": \"d2c1b0a9-f8e7-46d5-9c4b-3a2f1e0d9c8b\",\n    \"userAgent\": \"PostmanRuntime/7.36.0\",\n    \"ip\": \"198.51.100.23\",\n    \"createdAt\": \"2026-09-12T11:30:00.000Z\",\n    \"lastUsedAt\": \"2026-09-17T07:05:00.000Z\",\n    \"expiresAt\": \"2026-09-19T11:30:00.000Z\"\n  }\n]"
+                  "body": "{\n  \"data\": [\n    {\n      \"id\": \"d2c1b0a9-f8e7-46d5-9c4b-3a2f1e0d9c8b\",\n      \"userAgent\": \"PostmanRuntime/7.36.0\",\n      \"ip\": \"198.51.100.23\",\n      \"createdAt\": \"2026-09-12T11:30:00.000Z\",\n      \"lastUsedAt\": \"2026-09-17T07:05:00.000Z\",\n      \"expiresAt\": \"2026-09-19T11:30:00.000Z\"\n    }\n  ],\n  \"meta\": {\n    \"total\": 1,\n    \"page\": 1,\n    \"limit\": 25,\n    \"totalPages\": 1\n  }\n}"
                 }
               ]
             },
@@ -14764,6 +15032,32 @@
                   "path": [
                     "auth",
                     "sessions"
+                  ],
+                  "query": [
+                    {
+                      "key": "createdFrom",
+                      "value": "2026-01-01",
+                      "description": "Optional. ISO8601 date. Filters createdAt >= this value.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "createdTo",
+                      "value": "2026-12-31",
+                      "description": "Optional. ISO8601 date. Filters createdAt <= this value.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "page",
+                      "value": "1",
+                      "description": "Optional. Page number, defaults to 1.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "limit",
+                      "value": "25",
+                      "description": "Optional. Page size, defaults to 25, hard max 100 (a request above 100 is a 400, not a silent clamp).",
+                      "disabled": true
+                    }
                   ]
                 }
               },
@@ -14774,8 +15068,11 @@
                     "exec": [
                       "pm.test('status 200', () => pm.response.to.have.status(200));",
                       "const json = pm.response.json();",
-                      "pm.test('is array', () => pm.expect(json).to.be.an('array'));",
-                      "if (json.length > 0) { pm.collectionVariables.set('client_session_id', json[0].id); }"
+                      "pm.test('is paginated envelope', () => {",
+                      "  pm.expect(json.data).to.be.an('array');",
+                      "  pm.expect(json.meta).to.have.all.keys('total', 'page', 'limit', 'totalPages');",
+                      "});",
+                      "if (json.data.length > 0) { pm.collectionVariables.set('client_session_id', json.data[0].id); }"
                     ]
                   }
                 }
@@ -14799,6 +15096,32 @@
                       "path": [
                         "auth",
                         "sessions"
+                      ],
+                      "query": [
+                        {
+                          "key": "createdFrom",
+                          "value": "2026-01-01",
+                          "description": "Optional. ISO8601 date. Filters createdAt >= this value.",
+                          "disabled": true
+                        },
+                        {
+                          "key": "createdTo",
+                          "value": "2026-12-31",
+                          "description": "Optional. ISO8601 date. Filters createdAt <= this value.",
+                          "disabled": true
+                        },
+                        {
+                          "key": "page",
+                          "value": "1",
+                          "description": "Optional. Page number, defaults to 1.",
+                          "disabled": true
+                        },
+                        {
+                          "key": "limit",
+                          "value": "25",
+                          "description": "Optional. Page size, defaults to 25, hard max 100 (a request above 100 is a 400, not a silent clamp).",
+                          "disabled": true
+                        }
                       ]
                     }
                   },
@@ -14812,7 +15135,7 @@
                     }
                   ],
                   "cookie": [],
-                  "body": "[\n  {\n    \"id\": \"e5f4a3b2-c1d0-49e8-8f7a-6b5c4d3e2f1a\",\n    \"userAgent\": \"okhttp/4.12.0\",\n    \"ip\": \"192.0.2.55\",\n    \"createdAt\": \"2026-09-15T06:00:00.000Z\",\n    \"lastUsedAt\": \"2026-09-17T06:45:00.000Z\",\n    \"expiresAt\": \"2026-09-22T06:00:00.000Z\"\n  }\n]"
+                  "body": "{\n  \"data\": [\n    {\n      \"id\": \"e5f4a3b2-c1d0-49e8-8f7a-6b5c4d3e2f1a\",\n      \"userAgent\": \"okhttp/4.12.0\",\n      \"ip\": \"192.0.2.55\",\n      \"createdAt\": \"2026-09-15T06:00:00.000Z\",\n      \"lastUsedAt\": \"2026-09-17T06:45:00.000Z\",\n      \"expiresAt\": \"2026-09-22T06:00:00.000Z\"\n    }\n  ],\n  \"meta\": {\n    \"total\": 1,\n    \"page\": 1,\n    \"limit\": 25,\n    \"totalPages\": 1\n  }\n}"
                 }
               ]
             },
@@ -16165,6 +16488,20 @@
                   "path": [
                     "client",
                     "loan-terms"
+                  ],
+                  "query": [
+                    {
+                      "key": "page",
+                      "value": "1",
+                      "description": "Optional. Page number, defaults to 1.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "limit",
+                      "value": "25",
+                      "description": "Optional. Page size, defaults to 25, hard max 100 (a request above 100 is a 400, not a silent clamp).",
+                      "disabled": true
+                    }
                   ]
                 }
               },
@@ -16174,7 +16511,11 @@
                   "script": {
                     "exec": [
                       "pm.test('status 200', () => pm.response.to.have.status(200));",
-                      "pm.test('is array', () => pm.expect(pm.response.json()).to.be.an('array'));"
+                      "pm.test('is paginated envelope', () => {",
+                      "  const json = pm.response.json();",
+                      "  pm.expect(json.data).to.be.an('array');",
+                      "  pm.expect(json.meta).to.have.all.keys('total', 'page', 'limit', 'totalPages');",
+                      "});"
                     ]
                   }
                 }
@@ -16192,7 +16533,7 @@
                     }
                   ],
                   "cookie": [],
-                  "body": "[\n  {\n    \"id\": \"b3c4d5e6-f7a8-4b9c-0d1e-2f3a4b5c6d7e\",\n    \"agency\": \"NPF\",\n    \"tenorMonths\": 6,\n    \"interestRatePercent\": \"5\",\n    \"managementChargeType\": \"PERCENTAGE\",\n    \"managementChargeValue\": \"2\",\n    \"managementChargeApplication\": \"DEDUCT_FROM_DISBURSEMENT\",\n    \"isActive\": true,\n    \"createdAt\": \"2026-09-21T10:00:00.000Z\",\n    \"updatedAt\": \"2026-09-21T10:00:00.000Z\"\n  }\n]",
+                  "body": "{\n  \"data\": [\n    {\n      \"id\": \"b3c4d5e6-f7a8-4b9c-0d1e-2f3a4b5c6d7e\",\n      \"agency\": \"NPF\",\n      \"tenorMonths\": 6,\n      \"interestRatePercent\": \"5\",\n      \"managementChargeType\": \"PERCENTAGE\",\n      \"managementChargeValue\": \"2\",\n      \"managementChargeApplication\": \"DEDUCT_FROM_DISBURSEMENT\",\n      \"isActive\": true,\n      \"createdAt\": \"2026-09-21T10:00:00.000Z\",\n      \"updatedAt\": \"2026-09-21T10:00:00.000Z\"\n    }\n  ],\n  \"meta\": {\n    \"total\": 1,\n    \"page\": 1,\n    \"limit\": 25,\n    \"totalPages\": 1\n  }\n}",
                   "originalRequest": {
                     "method": "GET",
                     "header": [
@@ -16209,6 +16550,20 @@
                       "path": [
                         "client",
                         "loan-terms"
+                      ],
+                      "query": [
+                        {
+                          "key": "page",
+                          "value": "1",
+                          "description": "Optional. Page number, defaults to 1.",
+                          "disabled": true
+                        },
+                        {
+                          "key": "limit",
+                          "value": "25",
+                          "description": "Optional. Page size, defaults to 25, hard max 100 (a request above 100 is a 400, not a silent clamp).",
+                          "disabled": true
+                        }
                       ]
                     }
                   }
@@ -16631,6 +16986,26 @@
                   "path": [
                     "client",
                     "loan-requests"
+                  ],
+                  "query": [
+                    {
+                      "key": "status",
+                      "value": "CONFIRMED",
+                      "description": "Optional. Exact match on LoanRequestStatus.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "page",
+                      "value": "1",
+                      "description": "Optional. Page number, defaults to 1.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "limit",
+                      "value": "25",
+                      "description": "Optional. Page size, defaults to 25, hard max 100 (a request above 100 is a 400, not a silent clamp).",
+                      "disabled": true
+                    }
                   ]
                 }
               },
@@ -16640,7 +17015,11 @@
                   "script": {
                     "exec": [
                       "pm.test('status 200', () => pm.response.to.have.status(200));",
-                      "pm.test('is array', () => pm.expect(pm.response.json()).to.be.an('array'));"
+                      "pm.test('is paginated envelope', () => {",
+                      "  const json = pm.response.json();",
+                      "  pm.expect(json.data).to.be.an('array');",
+                      "  pm.expect(json.meta).to.have.all.keys('total', 'page', 'limit', 'totalPages');",
+                      "});"
                     ]
                   }
                 }
@@ -16664,6 +17043,26 @@
                       "path": [
                         "client",
                         "loan-requests"
+                      ],
+                      "query": [
+                        {
+                          "key": "status",
+                          "value": "CONFIRMED",
+                          "description": "Optional. Exact match on LoanRequestStatus.",
+                          "disabled": true
+                        },
+                        {
+                          "key": "page",
+                          "value": "1",
+                          "description": "Optional. Page number, defaults to 1.",
+                          "disabled": true
+                        },
+                        {
+                          "key": "limit",
+                          "value": "25",
+                          "description": "Optional. Page size, defaults to 25, hard max 100 (a request above 100 is a 400, not a silent clamp).",
+                          "disabled": true
+                        }
                       ]
                     }
                   },
@@ -16677,7 +17076,7 @@
                     }
                   ],
                   "cookie": [],
-                  "body": "[\n  {\n    \"id\": \"c7d8e9f0-1a2b-43c4-95d6-e7f8a9b0c1d2\",\n    \"clientId\": \"9f8e7d6c-5b4a-4392-8c1d-0e9f8a7b6c5d\",\n    \"amount\": \"5000\",\n    \"status\": \"CONFIRMED\",\n    \"confirmationSmsSentAt\": \"2026-09-17T11:00:00.000Z\",\n    \"confirmedAt\": \"2026-09-17T11:05:00.000Z\",\n    \"expiresAt\": \"2026-09-18T10:00:00.000Z\",\n    \"createdAt\": \"2026-09-17T10:00:00.000Z\",\n    \"updatedAt\": \"2026-09-17T11:05:00.000Z\"\n  }\n]"
+                  "body": "{\n  \"data\": [\n    {\n      \"id\": \"c7d8e9f0-1a2b-43c4-95d6-e7f8a9b0c1d2\",\n      \"clientId\": \"9f8e7d6c-5b4a-4392-8c1d-0e9f8a7b6c5d\",\n      \"amount\": \"5000\",\n      \"status\": \"CONFIRMED\",\n      \"confirmationSmsSentAt\": \"2026-09-17T11:00:00.000Z\",\n      \"confirmedAt\": \"2026-09-17T11:05:00.000Z\",\n      \"expiresAt\": \"2026-09-18T10:00:00.000Z\",\n      \"createdAt\": \"2026-09-17T10:00:00.000Z\",\n      \"updatedAt\": \"2026-09-17T11:05:00.000Z\"\n    }\n  ],\n  \"meta\": {\n    \"total\": 1,\n    \"page\": 1,\n    \"limit\": 25,\n    \"totalPages\": 1\n  }\n}"
                 }
               ]
             },
@@ -17486,6 +17885,44 @@
                   "path": [
                     "client",
                     "wallet"
+                  ],
+                  "query": [
+                    {
+                      "key": "direction",
+                      "value": "CREDIT",
+                      "description": "Optional. CREDIT | DEBIT.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "actorType",
+                      "value": "ADMIN",
+                      "description": "Optional. ADMIN | AGENT | CLIENT | SYSTEM.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "createdFrom",
+                      "value": "2026-01-01",
+                      "description": "Optional. ISO8601 date. Filters createdAt >= this value.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "createdTo",
+                      "value": "2026-12-31",
+                      "description": "Optional. ISO8601 date. Filters createdAt <= this value.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "page",
+                      "value": "1",
+                      "description": "Optional. Page number, defaults to 1. Applies to entries only -- balance is never paginated.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "limit",
+                      "value": "25",
+                      "description": "Optional. Page size, defaults to 25, hard max 100 (a request above 100 is a 400, not a silent clamp).",
+                      "disabled": true
+                    }
                   ]
                 }
               },
@@ -17495,10 +17932,11 @@
                   "script": {
                     "exec": [
                       "pm.test('status 200', () => pm.response.to.have.status(200));",
-                      "pm.test('has balance and entries', () => {",
+                      "pm.test('balance is a plain number, entries is a paginated envelope', () => {",
                       "  const body = pm.response.json();",
                       "  pm.expect(body.balance).to.be.a('number');",
-                      "  pm.expect(body.entries).to.be.an('array');",
+                      "  pm.expect(body.entries.data).to.be.an('array');",
+                      "  pm.expect(body.entries.meta).to.have.all.keys('total', 'page', 'limit', 'totalPages');",
                       "});"
                     ]
                   }
@@ -17523,6 +17961,44 @@
                       "path": [
                         "client",
                         "wallet"
+                      ],
+                      "query": [
+                        {
+                          "key": "direction",
+                          "value": "CREDIT",
+                          "description": "Optional. CREDIT | DEBIT.",
+                          "disabled": true
+                        },
+                        {
+                          "key": "actorType",
+                          "value": "ADMIN",
+                          "description": "Optional. ADMIN | AGENT | CLIENT | SYSTEM.",
+                          "disabled": true
+                        },
+                        {
+                          "key": "createdFrom",
+                          "value": "2026-01-01",
+                          "description": "Optional. ISO8601 date. Filters createdAt >= this value.",
+                          "disabled": true
+                        },
+                        {
+                          "key": "createdTo",
+                          "value": "2026-12-31",
+                          "description": "Optional. ISO8601 date. Filters createdAt <= this value.",
+                          "disabled": true
+                        },
+                        {
+                          "key": "page",
+                          "value": "1",
+                          "description": "Optional. Page number, defaults to 1. Applies to entries only -- balance is never paginated.",
+                          "disabled": true
+                        },
+                        {
+                          "key": "limit",
+                          "value": "25",
+                          "description": "Optional. Page size, defaults to 25, hard max 100 (a request above 100 is a 400, not a silent clamp).",
+                          "disabled": true
+                        }
                       ]
                     }
                   },
@@ -17536,7 +18012,7 @@
                     }
                   ],
                   "cookie": [],
-                  "body": "{\n  \"balance\": 0,\n  \"entries\": []\n}"
+                  "body": "{\n  \"balance\": 0,\n  \"entries\": {\n    \"data\": [],\n    \"meta\": {\n      \"total\": 0,\n      \"page\": 1,\n      \"limit\": 25,\n      \"totalPages\": 0\n    }\n  }\n}"
                 }
               ]
             }
