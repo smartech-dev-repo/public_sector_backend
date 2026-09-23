@@ -135,9 +135,18 @@ summed deductions for that period: `MATCHED` (within a ₦1 tolerance),
 `UNDER_PAID`, `OVER_PAID`, or `NO_DEDUCTION_FOUND` (no matching repayment
 rows at all for that period). `GET /admin/reconciliation`
 (`reconciliation:read`) lists variances, filterable by `agency`/`status`/
-`period`. `GET /admin/loans` (`loans:upload`) and
-`GET /admin/ippis-records` (`ippis:upload`) provide basic
-listing/filtering by `agency` over the underlying ingested tables.
+`period`, plus a `generatedFrom`/`generatedTo` date range over
+`generatedAt`. `GET /admin/loans` (`loans:upload`) filters by `agency`/
+`product`, a `q` search across `customerName`/`accountNumber`/
+`ippisNumber`, and `disbursedFrom`/`disbursedTo`/`createdFrom`/`createdTo`
+date ranges. `GET /admin/ippis-records` (`ippis:upload`) filters by
+`agency`/`employeeStatus`/`department`/`grade`, a `q` search across
+`employeeName`/`staffId`, and `hireDateFrom`/`hireDateTo`/`createdFrom`/
+`createdTo` date ranges. All three accept `page`/`limit` pagination
+(default `1`/`25`, `limit` capped at `100` — a request above the cap is a
+`400`, not a silent clamp) and return
+`{ data: [...], meta: { total, page, limit, totalPages } }` in place of a
+bare array.
 
 ## RBAC management
 
@@ -323,10 +332,14 @@ instead of creating a new loan, the existing `ClientLoan`'s
 `principalAmount`/`principalBalance`/`disbursedAmount` increase by the
 topup's own amount, and `maturationDate` extends to
 `max(current, topup disbursement date + topup's own tenor)` — a topup
-never shortens the loan's remaining term. `GET /admin/loan-requests` now
-also accepts an optional `?type=` filter (`ORIGINATION`/`TOPUP`), as well as an
-optional `?clientId=` filter to scope the list to one client (its existing
-`loan-requests:review` permission is unchanged by this addition).
+never shortens the loan's remaining term. `GET /admin/loan-requests` also
+accepts optional `status`/`type` (`ORIGINATION`/`TOPUP`)/`clientId`
+filters, plus `createdFrom`/`createdTo`/`disbursedFrom`/`disbursedTo` date
+ranges, and `page`/`limit` pagination (default `1`/`25`, `limit` capped at
+`100`) — its existing `loan-requests:review` permission is unchanged by
+this addition. Response is now
+`{ data: [...], meta: { total, page, limit, totalPages } }` rather than a
+bare array.
 
 ### Repayment tracking
 
@@ -411,15 +424,22 @@ matching this codebase's never-leak-existence convention elsewhere.
 
 ## Admin client visibility
 
-`GET /admin/loan-requests` accepts an optional `clientId` filter alongside
-`status`/`type`. `GET /admin/client-loans?clientId=` (`clients:read`,
-required `clientId` — `400` if missing) lists a client's `ClientLoan`
-history. `GET /admin/clients/:id/activities` (`clients:read`) returns a
-merged, timestamp-descending timeline for one client: admin actions on
-them or their loan requests (from the audit log), their own loan-request
+`GET /admin/loan-requests` accepts `clientId` alongside `status`/`type`
+(see "Loan origination" above for its full filter set and response
+shape). `GET /admin/client-loans?clientId=` (`clients:read`, required
+`clientId` — `400` if missing) lists a client's `ClientLoan` history.
+`GET /admin/clients/:id/activities` (`clients:read`) returns a merged,
+timestamp-descending timeline for one client: admin actions on them or
+their loan requests (from the audit log), their own loan-request
 creation/confirmation, logins, `CLIENT`-actor wallet applications, and
 their current onboarding step — all derived at query time from existing
-records, not a separately tracked feed.
+records, not a separately tracked feed. Accepts an optional `type` filter
+(matching one of the synthesized entry types, e.g. `session.created`,
+`loan-request.created`) and an `occurredFrom`/`occurredTo` date range over
+each entry's `timestamp`, plus `page`/`limit` pagination (default `1`/`25`,
+`limit` capped at `100`) applied in memory over the merged,
+already-sorted list. Returns
+`{ data: [...], meta: { total, page, limit, totalPages } }`.
 
 ## Wallet
 

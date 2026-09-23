@@ -7012,6 +7012,30 @@
                       "key": "period",
                       "value": "2026-08",
                       "description": "YYYY-MM"
+                    },
+                    {
+                      "key": "generatedFrom",
+                      "value": "2025-01-01",
+                      "description": "Optional. ISO8601 date. Filters generatedAt >= this value.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "generatedTo",
+                      "value": "2025-12-31",
+                      "description": "Optional. ISO8601 date. Filters generatedAt <= this value.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "page",
+                      "value": "1",
+                      "description": "Optional. Page number, defaults to 1.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "limit",
+                      "value": "25",
+                      "description": "Optional. Page size, defaults to 25, hard max 100 (a request above 100 is a 400, not a silent clamp).",
+                      "disabled": true
                     }
                   ]
                 },
@@ -7062,6 +7086,30 @@
                           "key": "period",
                           "value": "2026-08",
                           "description": "YYYY-MM"
+                        },
+                        {
+                          "key": "generatedFrom",
+                          "value": "2025-01-01",
+                          "description": "Optional. ISO8601 date. Filters generatedAt >= this value.",
+                          "disabled": true
+                        },
+                        {
+                          "key": "generatedTo",
+                          "value": "2025-12-31",
+                          "description": "Optional. ISO8601 date. Filters generatedAt <= this value.",
+                          "disabled": true
+                        },
+                        {
+                          "key": "page",
+                          "value": "1",
+                          "description": "Optional. Page number, defaults to 1.",
+                          "disabled": true
+                        },
+                        {
+                          "key": "limit",
+                          "value": "25",
+                          "description": "Optional. Page size, defaults to 25, hard max 100 (a request above 100 is a 400, not a silent clamp).",
+                          "disabled": true
                         }
                       ]
                     }
@@ -7076,7 +7124,7 @@
                     }
                   ],
                   "cookie": [],
-                  "body": "[\n  {\n    \"id\": \"d1e2f3a4-1111-4b5c-8d9e-0f1a2b3c4d5e\",\n    \"loanId\": \"c9d8e7f6-2222-4a5b-9c8d-7e6f5a4b3c2d\",\n    \"period\": \"2026-08\",\n    \"expectedAmount\": \"45833.33\",\n    \"actualAmount\": \"45833.33\",\n    \"variance\": \"0\",\n    \"status\": \"MATCHED\",\n    \"generatedAt\": \"2026-09-17T10:05:00.000Z\",\n    \"loan\": {\n      \"id\": \"c9d8e7f6-2222-4a5b-9c8d-7e6f5a4b3c2d\",\n      \"customerId\": \"CUST-100234\",\n      \"customerName\": \"Chinedu Balogun\",\n      \"accountNumber\": \"0123456789\",\n      \"address\": null,\n      \"branch\": \"Abuja Main\",\n      \"gender\": \"M\",\n      \"phone\": null,\n      \"ippisNumber\": \"CD7038686\",\n      \"agency\": \"NSCDC\",\n      \"loanAmount\": \"500000\",\n      \"principalBalance\": \"312500\",\n      \"disbursementDate\": \"2026-01-15T00:00:00.000Z\",\n      \"maturationDate\": \"2027-01-15T00:00:00.000Z\",\n      \"effectiveDate\": null,\n      \"moratoriumDays\": null,\n      \"product\": \"SALARY ADVANCE\",\n      \"linkedAccountNumber\": null,\n      \"bvn\": null,\n      \"interestRatePercent\": \"24\",\n      \"accountOfficer\": null,\n      \"hasPreviouslyTakenLoan\": false,\n      \"rawFields\": null,\n      \"createdAt\": \"2026-08-10T09:00:00.000Z\",\n      \"updatedAt\": \"2026-09-17T10:05:00.000Z\"\n    }\n  }\n]"
+                  "body": "{\n  \"data\": [\n    {\n      \"id\": \"d1e2f3a4-1111-4b5c-8d9e-0f1a2b3c4d5e\",\n      \"loanId\": \"c9d8e7f6-2222-4a5b-9c8d-7e6f5a4b3c2d\",\n      \"period\": \"2026-08\",\n      \"expectedAmount\": \"45833.33\",\n      \"actualAmount\": \"45833.33\",\n      \"variance\": \"0\",\n      \"status\": \"MATCHED\",\n      \"generatedAt\": \"2026-09-17T10:05:00.000Z\",\n      \"loan\": {\n        \"id\": \"c9d8e7f6-2222-4a5b-9c8d-7e6f5a4b3c2d\",\n        \"customerId\": \"CUST-100234\",\n        \"customerName\": \"Chinedu Balogun\",\n        \"accountNumber\": \"0123456789\",\n        \"address\": null,\n        \"branch\": \"Abuja Main\",\n        \"gender\": \"M\",\n        \"phone\": null,\n        \"ippisNumber\": \"CD7038686\",\n        \"agency\": \"NSCDC\",\n        \"loanAmount\": \"500000\",\n        \"principalBalance\": \"312500\",\n        \"disbursementDate\": \"2026-01-15T00:00:00.000Z\",\n        \"maturationDate\": \"2027-01-15T00:00:00.000Z\",\n        \"effectiveDate\": null,\n        \"moratoriumDays\": null,\n        \"product\": \"SALARY ADVANCE\",\n        \"linkedAccountNumber\": null,\n        \"bvn\": null,\n        \"interestRatePercent\": \"24\",\n        \"accountOfficer\": null,\n        \"hasPreviouslyTakenLoan\": false,\n        \"rawFields\": null,\n        \"createdAt\": \"2026-08-10T09:00:00.000Z\",\n        \"updatedAt\": \"2026-09-17T10:05:00.000Z\"\n      }\n    }\n  ],\n  \"meta\": {\n    \"total\": 1,\n    \"page\": 1,\n    \"limit\": 25,\n    \"totalPages\": 1\n  }\n}"
                 }
               ]
             },
@@ -7165,9 +7213,65 @@
                   "path": [
                     "admin",
                     "loans"
+                  ],
+                  "query": [
+                    {
+                      "key": "agency",
+                      "value": "NSCDC",
+                      "description": "Optional. Exact match on the loan's agency.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "product",
+                      "value": "Salary Advance",
+                      "description": "Optional. Exact match on the loan product.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "q",
+                      "value": "Bello",
+                      "description": "Optional. Case-insensitive search across customerName, accountNumber, ippisNumber.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "disbursedFrom",
+                      "value": "2025-01-01",
+                      "description": "Optional. ISO8601 date. Filters disbursementDate >= this value.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "disbursedTo",
+                      "value": "2025-12-31",
+                      "description": "Optional. ISO8601 date. Filters disbursementDate <= this value.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "createdFrom",
+                      "value": "2025-01-01",
+                      "description": "Optional. ISO8601 date. Filters createdAt >= this value.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "createdTo",
+                      "value": "2025-12-31",
+                      "description": "Optional. ISO8601 date. Filters createdAt <= this value.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "page",
+                      "value": "1",
+                      "description": "Optional. Page number, defaults to 1.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "limit",
+                      "value": "25",
+                      "description": "Optional. Page size, defaults to 25, hard max 100 (a request above 100 is a 400, not a silent clamp).",
+                      "disabled": true
+                    }
                   ]
                 },
-                "description": "Basic listing over the ingested Loan table, optionally filtered by ?agency=. Requires loans:upload."
+                "description": "Lists the ingested Loan table, filterable by agency/product, searchable by q across customerName/accountNumber/ippisNumber, plus disbursedFrom/disbursedTo and createdFrom/createdTo date ranges. Paginated (page/limit, default 1/25, limit capped at 100). Requires loans:upload. Response is { data, meta }."
               },
               "event": [
                 {
@@ -7198,6 +7302,62 @@
                       "path": [
                         "admin",
                         "loans"
+                      ],
+                      "query": [
+                        {
+                          "key": "agency",
+                          "value": "NSCDC",
+                          "description": "Optional. Exact match on the loan's agency.",
+                          "disabled": true
+                        },
+                        {
+                          "key": "product",
+                          "value": "Salary Advance",
+                          "description": "Optional. Exact match on the loan product.",
+                          "disabled": true
+                        },
+                        {
+                          "key": "q",
+                          "value": "Bello",
+                          "description": "Optional. Case-insensitive search across customerName, accountNumber, ippisNumber.",
+                          "disabled": true
+                        },
+                        {
+                          "key": "disbursedFrom",
+                          "value": "2025-01-01",
+                          "description": "Optional. ISO8601 date. Filters disbursementDate >= this value.",
+                          "disabled": true
+                        },
+                        {
+                          "key": "disbursedTo",
+                          "value": "2025-12-31",
+                          "description": "Optional. ISO8601 date. Filters disbursementDate <= this value.",
+                          "disabled": true
+                        },
+                        {
+                          "key": "createdFrom",
+                          "value": "2025-01-01",
+                          "description": "Optional. ISO8601 date. Filters createdAt >= this value.",
+                          "disabled": true
+                        },
+                        {
+                          "key": "createdTo",
+                          "value": "2025-12-31",
+                          "description": "Optional. ISO8601 date. Filters createdAt <= this value.",
+                          "disabled": true
+                        },
+                        {
+                          "key": "page",
+                          "value": "1",
+                          "description": "Optional. Page number, defaults to 1.",
+                          "disabled": true
+                        },
+                        {
+                          "key": "limit",
+                          "value": "25",
+                          "description": "Optional. Page size, defaults to 25, hard max 100 (a request above 100 is a 400, not a silent clamp).",
+                          "disabled": true
+                        }
                       ]
                     }
                   },
@@ -7211,7 +7371,7 @@
                     }
                   ],
                   "cookie": [],
-                  "body": "[\n  {\n    \"id\": \"c9d8e7f6-2222-4a5b-9c8d-7e6f5a4b3c2d\",\n    \"customerId\": \"CUST-100234\",\n    \"customerName\": \"Chinedu Balogun\",\n    \"accountNumber\": \"0123456789\",\n    \"address\": null,\n    \"branch\": \"Abuja Main\",\n    \"gender\": \"M\",\n    \"phone\": null,\n    \"ippisNumber\": \"CD7038686\",\n    \"agency\": \"NSCDC\",\n    \"loanAmount\": \"500000\",\n    \"principalBalance\": \"312500\",\n    \"disbursementDate\": \"2026-01-15T00:00:00.000Z\",\n    \"maturationDate\": \"2027-01-15T00:00:00.000Z\",\n    \"effectiveDate\": null,\n    \"moratoriumDays\": null,\n    \"product\": \"SALARY ADVANCE\",\n    \"linkedAccountNumber\": null,\n    \"bvn\": null,\n    \"interestRatePercent\": \"24\",\n    \"accountOfficer\": null,\n    \"hasPreviouslyTakenLoan\": false,\n    \"rawFields\": null,\n    \"createdAt\": \"2026-08-10T09:00:00.000Z\",\n    \"updatedAt\": \"2026-09-17T10:05:00.000Z\"\n  }\n]"
+                  "body": "{\n  \"data\": [\n    {\n      \"id\": \"c9d8e7f6-2222-4a5b-9c8d-7e6f5a4b3c2d\",\n      \"customerId\": \"CUST-100234\",\n      \"customerName\": \"Chinedu Balogun\",\n      \"accountNumber\": \"0123456789\",\n      \"address\": null,\n      \"branch\": \"Abuja Main\",\n      \"gender\": \"M\",\n      \"phone\": null,\n      \"ippisNumber\": \"CD7038686\",\n      \"agency\": \"NSCDC\",\n      \"loanAmount\": \"500000\",\n      \"principalBalance\": \"312500\",\n      \"disbursementDate\": \"2026-01-15T00:00:00.000Z\",\n      \"maturationDate\": \"2027-01-15T00:00:00.000Z\",\n      \"effectiveDate\": null,\n      \"moratoriumDays\": null,\n      \"product\": \"SALARY ADVANCE\",\n      \"linkedAccountNumber\": null,\n      \"bvn\": null,\n      \"interestRatePercent\": \"24\",\n      \"accountOfficer\": null,\n      \"hasPreviouslyTakenLoan\": false,\n      \"rawFields\": null,\n      \"createdAt\": \"2026-08-10T09:00:00.000Z\",\n      \"updatedAt\": \"2026-09-17T10:05:00.000Z\"\n    }\n  ],\n  \"meta\": {\n    \"total\": 1,\n    \"page\": 1,\n    \"limit\": 25,\n    \"totalPages\": 1\n  }\n}"
                 }
               ]
             },
@@ -7233,9 +7393,77 @@
                   "path": [
                     "admin",
                     "ippis-records"
+                  ],
+                  "query": [
+                    {
+                      "key": "agency",
+                      "value": "NSCDC",
+                      "description": "Optional. Exact match on the record's agency.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "employeeStatus",
+                      "value": "ACTIVE",
+                      "description": "Optional. Exact match on employeeStatus.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "department",
+                      "value": "Finance",
+                      "description": "Optional. Exact match on department.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "grade",
+                      "value": "GL-08",
+                      "description": "Optional. Exact match on grade.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "q",
+                      "value": "Amaka",
+                      "description": "Optional. Case-insensitive search across employeeName, staffId.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "hireDateFrom",
+                      "value": "2015-01-01",
+                      "description": "Optional. ISO8601 date. Filters hireDate >= this value.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "hireDateTo",
+                      "value": "2020-01-01",
+                      "description": "Optional. ISO8601 date. Filters hireDate <= this value.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "createdFrom",
+                      "value": "2020-01-01",
+                      "description": "Optional. ISO8601 date. Filters createdAt >= this value.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "createdTo",
+                      "value": "2026-01-01",
+                      "description": "Optional. ISO8601 date. Filters createdAt <= this value.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "page",
+                      "value": "1",
+                      "description": "Optional. Page number, defaults to 1.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "limit",
+                      "value": "25",
+                      "description": "Optional. Page size, defaults to 25, hard max 100 (a request above 100 is a 400, not a silent clamp).",
+                      "disabled": true
+                    }
                   ]
                 },
-                "description": "Basic listing over the ingested IppisRecord table, optionally filtered by ?agency=. Requires ippis:upload."
+                "description": "Lists the ingested IppisRecord table, filterable by agency/employeeStatus/department/grade, searchable by q across employeeName/staffId, plus hireDateFrom/hireDateTo and createdFrom/createdTo date ranges. Paginated (page/limit, default 1/25, limit capped at 100). Requires ippis:upload. Response is { data, meta }."
               },
               "event": [
                 {
@@ -7266,6 +7494,74 @@
                       "path": [
                         "admin",
                         "ippis-records"
+                      ],
+                      "query": [
+                        {
+                          "key": "agency",
+                          "value": "NSCDC",
+                          "description": "Optional. Exact match on the record's agency.",
+                          "disabled": true
+                        },
+                        {
+                          "key": "employeeStatus",
+                          "value": "ACTIVE",
+                          "description": "Optional. Exact match on employeeStatus.",
+                          "disabled": true
+                        },
+                        {
+                          "key": "department",
+                          "value": "Finance",
+                          "description": "Optional. Exact match on department.",
+                          "disabled": true
+                        },
+                        {
+                          "key": "grade",
+                          "value": "GL-08",
+                          "description": "Optional. Exact match on grade.",
+                          "disabled": true
+                        },
+                        {
+                          "key": "q",
+                          "value": "Amaka",
+                          "description": "Optional. Case-insensitive search across employeeName, staffId.",
+                          "disabled": true
+                        },
+                        {
+                          "key": "hireDateFrom",
+                          "value": "2015-01-01",
+                          "description": "Optional. ISO8601 date. Filters hireDate >= this value.",
+                          "disabled": true
+                        },
+                        {
+                          "key": "hireDateTo",
+                          "value": "2020-01-01",
+                          "description": "Optional. ISO8601 date. Filters hireDate <= this value.",
+                          "disabled": true
+                        },
+                        {
+                          "key": "createdFrom",
+                          "value": "2020-01-01",
+                          "description": "Optional. ISO8601 date. Filters createdAt >= this value.",
+                          "disabled": true
+                        },
+                        {
+                          "key": "createdTo",
+                          "value": "2026-01-01",
+                          "description": "Optional. ISO8601 date. Filters createdAt <= this value.",
+                          "disabled": true
+                        },
+                        {
+                          "key": "page",
+                          "value": "1",
+                          "description": "Optional. Page number, defaults to 1.",
+                          "disabled": true
+                        },
+                        {
+                          "key": "limit",
+                          "value": "25",
+                          "description": "Optional. Page size, defaults to 25, hard max 100 (a request above 100 is a 400, not a silent clamp).",
+                          "disabled": true
+                        }
                       ]
                     }
                   },
@@ -7279,7 +7575,7 @@
                     }
                   ],
                   "cookie": [],
-                  "body": "[\n  {\n    \"id\": \"e5f6a7b8-3333-4c6d-9e0f-1a2b3c4d5e6f\",\n    \"agency\": \"NSCDC\",\n    \"staffId\": \"CD7038686\",\n    \"employeeName\": \"Chinedu Balogun\",\n    \"employeeStatus\": \"ACTIVE\",\n    \"hireDate\": \"2015-03-01T00:00:00.000Z\",\n    \"dateOfBirth\": \"1988-06-12T00:00:00.000Z\",\n    \"maritalStatus\": \"MARRIED\",\n    \"gender\": \"M\",\n    \"jobTitle\": \"ASSISTANT SUPERINTENDENT\",\n    \"department\": \"OPERATIONS\",\n    \"subOrganization\": null,\n    \"grade\": \"08\",\n    \"step\": \"03\",\n    \"salary\": \"185000\",\n    \"phone\": null,\n    \"bankName\": null,\n    \"accountNumber\": null,\n    \"pfaName\": null,\n    \"pinNumber\": null,\n    \"dateTerminated\": null,\n    \"bvn\": null,\n    \"legacyId\": null,\n    \"rawFields\": null,\n    \"createdAt\": \"2026-08-01T09:00:00.000Z\",\n    \"updatedAt\": \"2026-08-01T09:00:00.000Z\"\n  }\n]"
+                  "body": "{\n  \"data\": [\n    {\n      \"id\": \"e5f6a7b8-3333-4c6d-9e0f-1a2b3c4d5e6f\",\n      \"agency\": \"NSCDC\",\n      \"staffId\": \"CD7038686\",\n      \"employeeName\": \"Chinedu Balogun\",\n      \"employeeStatus\": \"ACTIVE\",\n      \"hireDate\": \"2015-03-01T00:00:00.000Z\",\n      \"dateOfBirth\": \"1988-06-12T00:00:00.000Z\",\n      \"maritalStatus\": \"MARRIED\",\n      \"gender\": \"M\",\n      \"jobTitle\": \"ASSISTANT SUPERINTENDENT\",\n      \"department\": \"OPERATIONS\",\n      \"subOrganization\": null,\n      \"grade\": \"08\",\n      \"step\": \"03\",\n      \"salary\": \"185000\",\n      \"phone\": null,\n      \"bankName\": null,\n      \"accountNumber\": null,\n      \"pfaName\": null,\n      \"pinNumber\": null,\n      \"dateTerminated\": null,\n      \"bvn\": null,\n      \"legacyId\": null,\n      \"rawFields\": null,\n      \"createdAt\": \"2026-08-01T09:00:00.000Z\",\n      \"updatedAt\": \"2026-08-01T09:00:00.000Z\"\n    }\n  ],\n  \"meta\": {\n    \"total\": 1,\n    \"page\": 1,\n    \"limit\": 25,\n    \"totalPages\": 1\n  }\n}"
                 }
               ]
             }
@@ -8052,9 +8348,41 @@
                     "clients",
                     "{{review_client_id}}",
                     "activities"
+                  ],
+                  "query": [
+                    {
+                      "key": "type",
+                      "value": "session.created",
+                      "description": "Optional. Exact match on the synthesized activity entry type (e.g. session.created, loan-request.created).",
+                      "disabled": true
+                    },
+                    {
+                      "key": "occurredFrom",
+                      "value": "2026-01-01",
+                      "description": "Optional. ISO8601 date. Filters the entry's timestamp >= this value.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "occurredTo",
+                      "value": "2026-12-31",
+                      "description": "Optional. ISO8601 date. Filters the entry's timestamp <= this value.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "page",
+                      "value": "1",
+                      "description": "Optional. Page number, defaults to 1.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "limit",
+                      "value": "25",
+                      "description": "Optional. Page size, defaults to 25, hard max 100 (a request above 100 is a 400, not a silent clamp).",
+                      "disabled": true
+                    }
                   ]
                 },
-                "description": "Merged, timestamp-descending activity timeline for one client (clients:read). Combines AuditLog rows targeting the client or their loan requests, the client's own loan-request creation/confirmation, Session logins, CLIENT-actor WalletEntry rows, and the current ClientOnboarding step -- all derived at query time, no separate feed table."
+                "description": "Merged, timestamp-descending activity timeline for one client (clients:read). Combines AuditLog rows targeting the client or their loan requests, the client's own loan-request creation/confirmation, Session logins, CLIENT-actor WalletEntry rows, and the current ClientOnboarding step -- all derived at query time, no separate feed table. Filterable by type; occurredFrom/occurredTo date-range over each entry's timestamp; paginated in memory (page/limit, default 1/25, limit capped at 100). Response is { data, meta }."
               },
               "event": [
                 {
@@ -8062,9 +8390,14 @@
                   "script": {
                     "exec": [
                       "pm.test('status 200', () => pm.response.to.have.status(200));",
+                      "pm.test('is a paginated result', () => {",
+                      "  const body = pm.response.json();",
+                      "  pm.expect(body.data).to.be.an('array');",
+                      "  pm.expect(body.meta).to.have.all.keys('total', 'page', 'limit', 'totalPages');",
+                      "});",
                       "pm.test('sorted by timestamp descending', () => {",
                       "  const body = pm.response.json();",
-                      "  const timestamps = body.map((entry) => new Date(entry.timestamp).getTime());",
+                      "  const timestamps = body.data.map((entry) => new Date(entry.timestamp).getTime());",
                       "  const sorted = [...timestamps].sort((a, b) => b - a);",
                       "  pm.expect(timestamps).to.eql(sorted);",
                       "});"
@@ -8085,7 +8418,7 @@
                     }
                   ],
                   "cookie": [],
-                  "body": "[\n  {\n    \"timestamp\": \"2026-09-22T10:15:00.000Z\",\n    \"type\": \"loan-request.disburse\",\n    \"description\": \"loan-request.disburse\",\n    \"source\": \"AUDIT_LOG\"\n  },\n  {\n    \"timestamp\": \"2026-09-22T10:10:00.000Z\",\n    \"type\": \"loan-request.approve\",\n    \"description\": \"loan-request.approve\",\n    \"source\": \"AUDIT_LOG\"\n  },\n  {\n    \"timestamp\": \"2026-09-22T10:05:00.000Z\",\n    \"type\": \"loan-request.confirmed\",\n    \"description\": \"Loan request confirmed via SMS\",\n    \"source\": \"LOAN_REQUEST\"\n  },\n  {\n    \"timestamp\": \"2026-09-22T10:00:00.000Z\",\n    \"type\": \"loan-request.created\",\n    \"description\": \"Loan request submitted for ₦90000\",\n    \"source\": \"LOAN_REQUEST\"\n  },\n  {\n    \"timestamp\": \"2026-09-15T11:30:00.000Z\",\n    \"type\": \"onboarding.step\",\n    \"description\": \"Onboarding step: COMPLETED\",\n    \"source\": \"ONBOARDING\"\n  }\n]",
+                  "body": "{\n  \"data\": [\n    {\n      \"timestamp\": \"2026-09-22T10:15:00.000Z\",\n      \"type\": \"loan-request.disburse\",\n      \"description\": \"loan-request.disburse\",\n      \"source\": \"AUDIT_LOG\"\n    },\n    {\n      \"timestamp\": \"2026-09-22T10:10:00.000Z\",\n      \"type\": \"loan-request.approve\",\n      \"description\": \"loan-request.approve\",\n      \"source\": \"AUDIT_LOG\"\n    },\n    {\n      \"timestamp\": \"2026-09-22T10:05:00.000Z\",\n      \"type\": \"loan-request.confirmed\",\n      \"description\": \"Loan request confirmed via SMS\",\n      \"source\": \"LOAN_REQUEST\"\n    },\n    {\n      \"timestamp\": \"2026-09-22T10:00:00.000Z\",\n      \"type\": \"loan-request.created\",\n      \"description\": \"Loan request submitted for ₦90000\",\n      \"source\": \"LOAN_REQUEST\"\n    },\n    {\n      \"timestamp\": \"2026-09-15T11:30:00.000Z\",\n      \"type\": \"onboarding.step\",\n      \"description\": \"Onboarding step: COMPLETED\",\n      \"source\": \"ONBOARDING\"\n    }\n  ],\n  \"meta\": {\n    \"total\": 5,\n    \"page\": 1,\n    \"limit\": 25,\n    \"totalPages\": 1\n  }\n}",
                   "originalRequest": {
                     "method": "GET",
                     "header": [
@@ -8104,6 +8437,38 @@
                         "clients",
                         "{{review_client_id}}",
                         "activities"
+                      ],
+                      "query": [
+                        {
+                          "key": "type",
+                          "value": "session.created",
+                          "description": "Optional. Exact match on the synthesized activity entry type (e.g. session.created, loan-request.created).",
+                          "disabled": true
+                        },
+                        {
+                          "key": "occurredFrom",
+                          "value": "2026-01-01",
+                          "description": "Optional. ISO8601 date. Filters the entry's timestamp >= this value.",
+                          "disabled": true
+                        },
+                        {
+                          "key": "occurredTo",
+                          "value": "2026-12-31",
+                          "description": "Optional. ISO8601 date. Filters the entry's timestamp <= this value.",
+                          "disabled": true
+                        },
+                        {
+                          "key": "page",
+                          "value": "1",
+                          "description": "Optional. Page number, defaults to 1.",
+                          "disabled": true
+                        },
+                        {
+                          "key": "limit",
+                          "value": "25",
+                          "description": "Optional. Page size, defaults to 25, hard max 100 (a request above 100 is a 400, not a silent clamp).",
+                          "disabled": true
+                        }
                       ]
                     }
                   }
@@ -8722,10 +9087,58 @@
                       "value": "",
                       "description": "Optional. Scopes the list to one client's loan requests (added alongside status/type; loan-requests:review permission unchanged).",
                       "disabled": true
+                    },
+                    {
+                      "key": "status",
+                      "value": "CONFIRMED",
+                      "description": "Optional. Exact match on LoanRequestStatus.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "type",
+                      "value": "TOPUP",
+                      "description": "Optional. ORIGINATION | TOPUP.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "createdFrom",
+                      "value": "2026-01-01",
+                      "description": "Optional. ISO8601 date. Filters createdAt >= this value.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "createdTo",
+                      "value": "2026-12-31",
+                      "description": "Optional. ISO8601 date. Filters createdAt <= this value.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "disbursedFrom",
+                      "value": "2026-01-01",
+                      "description": "Optional. ISO8601 date. Filters disbursedAt >= this value.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "disbursedTo",
+                      "value": "2026-12-31",
+                      "description": "Optional. ISO8601 date. Filters disbursedAt <= this value.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "page",
+                      "value": "1",
+                      "description": "Optional. Page number, defaults to 1.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "limit",
+                      "value": "25",
+                      "description": "Optional. Page size, defaults to 25, hard max 100 (a request above 100 is a 400, not a silent clamp).",
+                      "disabled": true
                     }
                   ]
                 },
-                "description": "Lists all admin-visible loan requests. Accepts optional status/type/clientId query filters (clientId added by the admin client visibility feature; still gated by loan-requests:review only)."
+                "description": "Lists all admin-visible loan requests. Accepts optional status/type/clientId query filters (clientId added by the admin client visibility feature; still gated by loan-requests:review only), plus createdFrom/createdTo and disbursedFrom/disbursedTo date ranges. Paginated (page/limit, default 1/25, limit capped at 100). Response is { data, meta }."
               },
               "event": [
                 {
@@ -8733,7 +9146,11 @@
                   "script": {
                     "exec": [
                       "pm.test('status 200', () => pm.response.to.have.status(200));",
-                      "pm.test('is array', () => pm.expect(pm.response.json()).to.be.an('array'));"
+                      "pm.test('is a paginated result', () => {",
+                      "  const body = pm.response.json();",
+                      "  pm.expect(body.data).to.be.an('array');",
+                      "  pm.expect(body.meta).to.have.all.keys('total', 'page', 'limit', 'totalPages');",
+                      "});"
                     ]
                   }
                 }
@@ -8751,7 +9168,7 @@
                     }
                   ],
                   "cookie": [],
-                  "body": "[\n  {\n    \"id\": \"5c74a7fd-0c53-414f-9370-792896b0cf1f\",\n    \"clientId\": \"0cd16c5f-f375-407e-b9aa-85043a03d6a5\",\n    \"amount\": \"200000\",\n    \"status\": \"CONFIRMED\",\n    \"confirmationSmsSentAt\": \"2026-09-21T10:00:00.000Z\",\n    \"confirmedAt\": \"2026-09-21T10:05:00.000Z\",\n    \"expiresAt\": \"2026-09-22T10:00:00.000Z\",\n    \"createdAt\": \"2026-09-21T10:00:00.000Z\",\n    \"updatedAt\": \"2026-09-21T10:05:00.000Z\",\n    \"tenorMonths\": 6,\n    \"interestRatePercent\": \"5\",\n    \"managementChargeType\": \"PERCENTAGE\",\n    \"managementChargeValue\": \"2\",\n    \"managementChargeApplication\": \"DEDUCT_FROM_DISBURSEMENT\",\n    \"managementChargeAmount\": \"4000\",\n    \"rejectionReason\": null,\n    \"approvedAt\": null,\n    \"disbursedAt\": null\n  },\n  {\n    \"id\": \"76357fa6-f9bb-4ea6-a0bc-e11e710b1412\",\n    \"clientId\": \"0cd16c5f-f375-407e-b9aa-85043a03d6a5\",\n    \"amount\": \"200000\",\n    \"status\": \"DISBURSED\",\n    \"confirmationSmsSentAt\": \"2026-09-21T10:00:00.000Z\",\n    \"confirmedAt\": \"2026-09-21T10:05:00.000Z\",\n    \"expiresAt\": \"2026-09-22T10:00:00.000Z\",\n    \"createdAt\": \"2026-09-21T10:00:00.000Z\",\n    \"updatedAt\": \"2026-09-21T10:05:00.000Z\",\n    \"tenorMonths\": 6,\n    \"interestRatePercent\": \"5\",\n    \"managementChargeType\": \"PERCENTAGE\",\n    \"managementChargeValue\": \"2\",\n    \"managementChargeApplication\": \"DEDUCT_FROM_DISBURSEMENT\",\n    \"managementChargeAmount\": \"4000\",\n    \"rejectionReason\": null,\n    \"approvedAt\": \"2026-09-21T10:10:00.000Z\",\n    \"disbursedAt\": \"2026-09-21T10:15:00.000Z\"\n  }\n]",
+                  "body": "{\n  \"data\": [\n    {\n      \"id\": \"5c74a7fd-0c53-414f-9370-792896b0cf1f\",\n      \"clientId\": \"0cd16c5f-f375-407e-b9aa-85043a03d6a5\",\n      \"amount\": \"200000\",\n      \"status\": \"CONFIRMED\",\n      \"confirmationSmsSentAt\": \"2026-09-21T10:00:00.000Z\",\n      \"confirmedAt\": \"2026-09-21T10:05:00.000Z\",\n      \"expiresAt\": \"2026-09-22T10:00:00.000Z\",\n      \"createdAt\": \"2026-09-21T10:00:00.000Z\",\n      \"updatedAt\": \"2026-09-21T10:05:00.000Z\",\n      \"tenorMonths\": 6,\n      \"interestRatePercent\": \"5\",\n      \"managementChargeType\": \"PERCENTAGE\",\n      \"managementChargeValue\": \"2\",\n      \"managementChargeApplication\": \"DEDUCT_FROM_DISBURSEMENT\",\n      \"managementChargeAmount\": \"4000\",\n      \"rejectionReason\": null,\n      \"approvedAt\": null,\n      \"disbursedAt\": null\n    },\n    {\n      \"id\": \"76357fa6-f9bb-4ea6-a0bc-e11e710b1412\",\n      \"clientId\": \"0cd16c5f-f375-407e-b9aa-85043a03d6a5\",\n      \"amount\": \"200000\",\n      \"status\": \"DISBURSED\",\n      \"confirmationSmsSentAt\": \"2026-09-21T10:00:00.000Z\",\n      \"confirmedAt\": \"2026-09-21T10:05:00.000Z\",\n      \"expiresAt\": \"2026-09-22T10:00:00.000Z\",\n      \"createdAt\": \"2026-09-21T10:00:00.000Z\",\n      \"updatedAt\": \"2026-09-21T10:05:00.000Z\",\n      \"tenorMonths\": 6,\n      \"interestRatePercent\": \"5\",\n      \"managementChargeType\": \"PERCENTAGE\",\n      \"managementChargeValue\": \"2\",\n      \"managementChargeApplication\": \"DEDUCT_FROM_DISBURSEMENT\",\n      \"managementChargeAmount\": \"4000\",\n      \"rejectionReason\": null,\n      \"approvedAt\": \"2026-09-21T10:10:00.000Z\",\n      \"disbursedAt\": \"2026-09-21T10:15:00.000Z\"\n    }\n  ],\n  \"meta\": {\n    \"total\": 2,\n    \"page\": 1,\n    \"limit\": 25,\n    \"totalPages\": 1\n  }\n}",
                   "originalRequest": {
                     "method": "GET",
                     "header": [
@@ -8797,6 +9214,18 @@
                     {
                       "key": "status",
                       "value": "CONFIRMED"
+                    },
+                    {
+                      "key": "page",
+                      "value": "1",
+                      "description": "Optional. Page number, defaults to 1.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "limit",
+                      "value": "25",
+                      "description": "Optional. Page size, defaults to 25, hard max 100 (a request above 100 is a 400, not a silent clamp).",
+                      "disabled": true
                     }
                   ]
                 }
@@ -8814,7 +9243,7 @@
                     }
                   ],
                   "cookie": [],
-                  "body": "[\n  {\n    \"id\": \"5c74a7fd-0c53-414f-9370-792896b0cf1f\",\n    \"clientId\": \"0cd16c5f-f375-407e-b9aa-85043a03d6a5\",\n    \"amount\": \"200000\",\n    \"status\": \"CONFIRMED\",\n    \"confirmationSmsSentAt\": \"2026-09-21T10:00:00.000Z\",\n    \"confirmedAt\": \"2026-09-21T10:05:00.000Z\",\n    \"expiresAt\": \"2026-09-22T10:00:00.000Z\",\n    \"createdAt\": \"2026-09-21T10:00:00.000Z\",\n    \"updatedAt\": \"2026-09-21T10:05:00.000Z\",\n    \"tenorMonths\": 6,\n    \"interestRatePercent\": \"5\",\n    \"managementChargeType\": \"PERCENTAGE\",\n    \"managementChargeValue\": \"2\",\n    \"managementChargeApplication\": \"DEDUCT_FROM_DISBURSEMENT\",\n    \"managementChargeAmount\": \"4000\",\n    \"rejectionReason\": null,\n    \"approvedAt\": null,\n    \"disbursedAt\": null\n  }\n]",
+                  "body": "{\n  \"data\": [\n    {\n      \"id\": \"5c74a7fd-0c53-414f-9370-792896b0cf1f\",\n      \"clientId\": \"0cd16c5f-f375-407e-b9aa-85043a03d6a5\",\n      \"amount\": \"200000\",\n      \"status\": \"CONFIRMED\",\n      \"confirmationSmsSentAt\": \"2026-09-21T10:00:00.000Z\",\n      \"confirmedAt\": \"2026-09-21T10:05:00.000Z\",\n      \"expiresAt\": \"2026-09-22T10:00:00.000Z\",\n      \"createdAt\": \"2026-09-21T10:00:00.000Z\",\n      \"updatedAt\": \"2026-09-21T10:05:00.000Z\",\n      \"tenorMonths\": 6,\n      \"interestRatePercent\": \"5\",\n      \"managementChargeType\": \"PERCENTAGE\",\n      \"managementChargeValue\": \"2\",\n      \"managementChargeApplication\": \"DEDUCT_FROM_DISBURSEMENT\",\n      \"managementChargeAmount\": \"4000\",\n      \"rejectionReason\": null,\n      \"approvedAt\": null,\n      \"disbursedAt\": null\n    }\n  ],\n  \"meta\": {\n    \"total\": 1,\n    \"page\": 1,\n    \"limit\": 25,\n    \"totalPages\": 1\n  }\n}",
                   "originalRequest": {
                     "method": "GET",
                     "header": [
@@ -8836,6 +9265,18 @@
                         {
                           "key": "status",
                           "value": "CONFIRMED"
+                        },
+                        {
+                          "key": "page",
+                          "value": "1",
+                          "description": "Optional. Page number, defaults to 1.",
+                          "disabled": true
+                        },
+                        {
+                          "key": "limit",
+                          "value": "25",
+                          "description": "Optional. Page size, defaults to 25, hard max 100 (a request above 100 is a 400, not a silent clamp).",
+                          "disabled": true
                         }
                       ]
                     }
@@ -8866,6 +9307,18 @@
                     {
                       "key": "type",
                       "value": "TOPUP"
+                    },
+                    {
+                      "key": "page",
+                      "value": "1",
+                      "description": "Optional. Page number, defaults to 1.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "limit",
+                      "value": "25",
+                      "description": "Optional. Page size, defaults to 25, hard max 100 (a request above 100 is a 400, not a silent clamp).",
+                      "disabled": true
                     }
                   ]
                 }
@@ -8883,7 +9336,7 @@
                     }
                   ],
                   "cookie": [],
-                  "body": "[\n  {\n    \"id\": \"a1b2c3d4-5e6f-4708-8192-a3b4c5d6e7f8\",\n    \"clientId\": \"9f8e7d6c-5b4a-4392-8c1d-0e9f8a7b6c5d\",\n    \"amount\": \"5000\",\n    \"status\": \"CONFIRMED\",\n    \"confirmationSmsSentAt\": \"2026-09-22T10:00:00.000Z\",\n    \"confirmedAt\": \"2026-09-22T10:05:00.000Z\",\n    \"expiresAt\": \"2026-09-23T10:00:00.000Z\",\n    \"createdAt\": \"2026-09-22T10:00:00.000Z\",\n    \"updatedAt\": \"2026-09-22T10:05:00.000Z\",\n    \"tenorMonths\": 6,\n    \"interestRatePercent\": \"5\",\n    \"managementChargeType\": \"PERCENTAGE\",\n    \"managementChargeValue\": \"2\",\n    \"managementChargeApplication\": \"DEDUCT_FROM_DISBURSEMENT\",\n    \"managementChargeAmount\": \"100\",\n    \"rejectionReason\": null,\n    \"approvedAt\": null,\n    \"disbursedAt\": null,\n    \"type\": \"TOPUP\",\n    \"topupTargetId\": \"5b6c7d8e-9f0a-4b1c-8d2e-3f4a5b6c7d8e\"\n  }\n]",
+                  "body": "{\n  \"data\": [\n    {\n      \"id\": \"a1b2c3d4-5e6f-4708-8192-a3b4c5d6e7f8\",\n      \"clientId\": \"9f8e7d6c-5b4a-4392-8c1d-0e9f8a7b6c5d\",\n      \"amount\": \"5000\",\n      \"status\": \"CONFIRMED\",\n      \"confirmationSmsSentAt\": \"2026-09-22T10:00:00.000Z\",\n      \"confirmedAt\": \"2026-09-22T10:05:00.000Z\",\n      \"expiresAt\": \"2026-09-23T10:00:00.000Z\",\n      \"createdAt\": \"2026-09-22T10:00:00.000Z\",\n      \"updatedAt\": \"2026-09-22T10:05:00.000Z\",\n      \"tenorMonths\": 6,\n      \"interestRatePercent\": \"5\",\n      \"managementChargeType\": \"PERCENTAGE\",\n      \"managementChargeValue\": \"2\",\n      \"managementChargeApplication\": \"DEDUCT_FROM_DISBURSEMENT\",\n      \"managementChargeAmount\": \"100\",\n      \"rejectionReason\": null,\n      \"approvedAt\": null,\n      \"disbursedAt\": null,\n      \"type\": \"TOPUP\",\n      \"topupTargetId\": \"5b6c7d8e-9f0a-4b1c-8d2e-3f4a5b6c7d8e\"\n    }\n  ],\n  \"meta\": {\n    \"total\": 1,\n    \"page\": 1,\n    \"limit\": 25,\n    \"totalPages\": 1\n  }\n}",
                   "originalRequest": {
                     "method": "GET",
                     "header": [
@@ -8905,6 +9358,18 @@
                         {
                           "key": "type",
                           "value": "TOPUP"
+                        },
+                        {
+                          "key": "page",
+                          "value": "1",
+                          "description": "Optional. Page number, defaults to 1.",
+                          "disabled": true
+                        },
+                        {
+                          "key": "limit",
+                          "value": "25",
+                          "description": "Optional. Page size, defaults to 25, hard max 100 (a request above 100 is a 400, not a silent clamp).",
+                          "disabled": true
                         }
                       ]
                     }
@@ -8935,6 +9400,18 @@
                     {
                       "key": "clientId",
                       "value": "{{review_client_id}}"
+                    },
+                    {
+                      "key": "page",
+                      "value": "1",
+                      "description": "Optional. Page number, defaults to 1.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "limit",
+                      "value": "25",
+                      "description": "Optional. Page size, defaults to 25, hard max 100 (a request above 100 is a 400, not a silent clamp).",
+                      "disabled": true
                     }
                   ]
                 },
@@ -8948,7 +9425,7 @@
                       "pm.test('status 200', () => pm.response.to.have.status(200));",
                       "pm.test('every request belongs to the filtered client', () => {",
                       "  const body = pm.response.json();",
-                      "  body.forEach((lr) => pm.expect(lr.clientId).to.eql(pm.collectionVariables.get('review_client_id')));",
+                      "  body.data.forEach((lr) => pm.expect(lr.clientId).to.eql(pm.collectionVariables.get('review_client_id')));",
                       "});"
                     ]
                   }
@@ -8967,7 +9444,7 @@
                     }
                   ],
                   "cookie": [],
-                  "body": "[\n  {\n    \"id\": \"a1b2c3d4-5e6f-4708-8192-a3b4c5d6e7f8\",\n    \"clientId\": \"c1a2b3c4-d5e6-4f78-9a0b-1c2d3e4f5a6b\",\n    \"amount\": \"90000\",\n    \"status\": \"DISBURSED\",\n    \"confirmationSmsSentAt\": \"2026-09-22T10:00:00.000Z\",\n    \"confirmedAt\": \"2026-09-22T10:05:00.000Z\",\n    \"expiresAt\": \"2026-09-23T10:00:00.000Z\",\n    \"createdAt\": \"2026-09-22T10:00:00.000Z\",\n    \"updatedAt\": \"2026-09-22T10:15:00.000Z\",\n    \"tenorMonths\": 2,\n    \"interestRatePercent\": \"0\",\n    \"managementChargeType\": \"PERCENTAGE\",\n    \"managementChargeValue\": \"0\",\n    \"managementChargeApplication\": \"ADD_TO_REPAYMENT\",\n    \"managementChargeAmount\": \"0\",\n    \"rejectionReason\": null,\n    \"approvedAt\": \"2026-09-22T10:10:00.000Z\",\n    \"disbursedAt\": \"2026-09-22T10:15:00.000Z\",\n    \"type\": \"ORIGINATION\",\n    \"topupTargetId\": null\n  }\n]",
+                  "body": "{\n  \"data\": [\n    {\n      \"id\": \"a1b2c3d4-5e6f-4708-8192-a3b4c5d6e7f8\",\n      \"clientId\": \"c1a2b3c4-d5e6-4f78-9a0b-1c2d3e4f5a6b\",\n      \"amount\": \"90000\",\n      \"status\": \"DISBURSED\",\n      \"confirmationSmsSentAt\": \"2026-09-22T10:00:00.000Z\",\n      \"confirmedAt\": \"2026-09-22T10:05:00.000Z\",\n      \"expiresAt\": \"2026-09-23T10:00:00.000Z\",\n      \"createdAt\": \"2026-09-22T10:00:00.000Z\",\n      \"updatedAt\": \"2026-09-22T10:15:00.000Z\",\n      \"tenorMonths\": 2,\n      \"interestRatePercent\": \"0\",\n      \"managementChargeType\": \"PERCENTAGE\",\n      \"managementChargeValue\": \"0\",\n      \"managementChargeApplication\": \"ADD_TO_REPAYMENT\",\n      \"managementChargeAmount\": \"0\",\n      \"rejectionReason\": null,\n      \"approvedAt\": \"2026-09-22T10:10:00.000Z\",\n      \"disbursedAt\": \"2026-09-22T10:15:00.000Z\",\n      \"type\": \"ORIGINATION\",\n      \"topupTargetId\": null\n    }\n  ],\n  \"meta\": {\n    \"total\": 1,\n    \"page\": 1,\n    \"limit\": 25,\n    \"totalPages\": 1\n  }\n}",
                   "originalRequest": {
                     "method": "GET",
                     "header": [
@@ -8989,6 +9466,18 @@
                         {
                           "key": "clientId",
                           "value": "{{review_client_id}}"
+                        },
+                        {
+                          "key": "page",
+                          "value": "1",
+                          "description": "Optional. Page number, defaults to 1.",
+                          "disabled": true
+                        },
+                        {
+                          "key": "limit",
+                          "value": "25",
+                          "description": "Optional. Page size, defaults to 25, hard max 100 (a request above 100 is a 400, not a silent clamp).",
+                          "disabled": true
                         }
                       ]
                     }
