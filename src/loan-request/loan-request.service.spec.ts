@@ -21,6 +21,7 @@ describe('LoanRequestService', () => {
       findFirst: jest.Mock;
       update: jest.Mock;
       findMany: jest.Mock;
+      count: jest.Mock;
     };
     loanTermOption: { findUnique: jest.Mock };
     clientLoan: {
@@ -51,6 +52,7 @@ describe('LoanRequestService', () => {
         findFirst: jest.fn(),
         update: jest.fn(),
         findMany: jest.fn(),
+        count: jest.fn(),
       },
       loanTermOption: { findUnique: jest.fn() },
       clientLoan: {
@@ -348,11 +350,11 @@ describe('LoanRequestService', () => {
   describe('listAll', () => {
     it('filters by status when provided', async () => {
       prisma.loanRequest.findMany.mockResolvedValue([]);
-      await service.listAll('CONFIRMED' as never);
-      expect(prisma.loanRequest.findMany).toHaveBeenCalledWith({
-        where: { status: 'CONFIRMED' },
-        orderBy: { createdAt: 'desc' },
-      });
+      prisma.loanRequest.count.mockResolvedValue(0);
+      await service.listAll({ status: 'CONFIRMED' as never });
+      expect(prisma.loanRequest.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({ where: expect.objectContaining({ status: 'CONFIRMED' }) }),
+      );
     });
   });
 
@@ -521,20 +523,28 @@ describe('LoanRequestService', () => {
   describe('listAll with a type filter', () => {
     it('filters by type when provided', async () => {
       prisma.loanRequest.findMany.mockResolvedValue([]);
-      await service.listAll(undefined, 'TOPUP' as never);
-      expect(prisma.loanRequest.findMany).toHaveBeenCalledWith({
-        where: { status: undefined, type: 'TOPUP' },
-        orderBy: { createdAt: 'desc' },
-      });
+      prisma.loanRequest.count.mockResolvedValue(0);
+      await service.listAll({ type: 'TOPUP' as never });
+      expect(prisma.loanRequest.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({ where: expect.objectContaining({ status: undefined, type: 'TOPUP' }) }),
+      );
     });
 
     it('filters by clientId when provided', async () => {
       prisma.loanRequest.findMany.mockResolvedValue([]);
-      await service.listAll(undefined, undefined, 'client-1');
-      expect(prisma.loanRequest.findMany).toHaveBeenCalledWith({
-        where: { status: undefined, type: undefined, clientId: 'client-1' },
-        orderBy: { createdAt: 'desc' },
-      });
+      prisma.loanRequest.count.mockResolvedValue(0);
+      await service.listAll({ clientId: 'client-1' });
+      expect(prisma.loanRequest.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({ where: expect.objectContaining({ status: undefined, type: undefined, clientId: 'client-1' }) }),
+      );
+    });
+
+    it('computes skip/take from page and limit and reports the total', async () => {
+      prisma.loanRequest.findMany.mockResolvedValue([]);
+      prisma.loanRequest.count.mockResolvedValue(7);
+      const result = await service.listAll({}, { page: 2, limit: 5 });
+      expect(prisma.loanRequest.findMany).toHaveBeenCalledWith(expect.objectContaining({ skip: 5, take: 5 }));
+      expect(result.meta).toEqual({ total: 7, page: 2, limit: 5, totalPages: 2 });
     });
   });
 

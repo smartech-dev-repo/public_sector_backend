@@ -5,9 +5,10 @@ import { RequirePermissions } from '../auth/permissions.decorator';
 import { AuditInterceptor } from '../audit/audit.interceptor';
 import { AuditLogService } from '../audit/audit-log.service';
 import { JwtPayload } from '../auth/jwt-payload.interface';
-import { AuditActorType, LoanRequestStatus, LoanRequestType } from '../generated/prisma/client';
+import { AuditActorType } from '../generated/prisma/client';
 import { LoanRequestService } from './loan-request.service';
 import { RejectLoanRequestDto } from './dto/reject-loan-request.dto';
+import { ListAdminLoanRequestsQueryDto } from './dto/list-admin-loan-requests-query.dto';
 
 @Controller('admin/loan-requests')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
@@ -20,8 +21,19 @@ export class AdminLoanRequestController {
   ) {}
 
   @Get()
-  list(@Query('status') status?: LoanRequestStatus, @Query('type') type?: LoanRequestType, @Query('clientId') clientId?: string) {
-    return this.loanRequestService.listAll(status, type, clientId);
+  list(@Query() query: ListAdminLoanRequestsQueryDto) {
+    return this.loanRequestService.listAll(
+      {
+        status: query.status,
+        type: query.type,
+        clientId: query.clientId,
+        createdFrom: query.createdFrom ? new Date(query.createdFrom) : undefined,
+        createdTo: query.createdTo ? new Date(query.createdTo) : undefined,
+        disbursedFrom: query.disbursedFrom ? new Date(query.disbursedFrom) : undefined,
+        disbursedTo: query.disbursedTo ? new Date(query.disbursedTo) : undefined,
+      },
+      { page: query.page, limit: query.limit },
+    );
   }
 
   @Post(':id/approve')

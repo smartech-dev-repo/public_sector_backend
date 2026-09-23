@@ -109,7 +109,7 @@ describe('Loan origination (e2e)', () => {
         .get('/admin/loan-requests?status=CONFIRMED')
         .set('Authorization', `Bearer ${adminAccessToken}`)
         .expect(200);
-      expect(listRes.body.some((lr: { id: string }) => lr.id === loanRequestId)).toBe(true);
+      expect(listRes.body.data.some((lr: { id: string }) => lr.id === loanRequestId)).toBe(true);
 
       await request(app.getHttpServer())
         .post(`/admin/loan-requests/${loanRequestId}/approve`)

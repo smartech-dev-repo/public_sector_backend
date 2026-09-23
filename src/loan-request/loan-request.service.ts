@@ -10,6 +10,7 @@ import { InjectQueue } from '@nestjs/bullmq';
 import { ConfigService } from '@nestjs/config';
 import { Queue } from 'bullmq';
 import { PrismaService } from '../prisma/prisma.service';
+import { buildPaginatedResult } from '../common/pagination/paginated-result';
 import { EligibilityService } from './eligibility/eligibility.service';
 import { TopupEligibilityService } from './eligibility/topup-eligibility.service';
 import { TWO_WAY_SMS_PROVIDER, TwoWaySmsProvider } from '../two-way-sms/two-way-sms-provider.interface';
@@ -383,8 +384,39 @@ export class LoanRequestService {
     return updated;
   }
 
-  async listAll(status?: LoanRequestStatus, type?: LoanRequestType, clientId?: string) {
-    return this.prisma.loanRequest.findMany({ where: { status, type, clientId }, orderBy: { createdAt: 'desc' } });
+  async listAll(
+    filters: {
+      status?: LoanRequestStatus;
+      type?: LoanRequestType;
+      clientId?: string;
+      createdFrom?: Date;
+      createdTo?: Date;
+      disbursedFrom?: Date;
+      disbursedTo?: Date;
+    } = {},
+    pagination: { page: number; limit: number } = { page: 1, limit: 25 },
+  ) {
+    const { page, limit } = pagination;
+    const where = {
+      status: filters.status,
+      type: filters.type,
+      clientId: filters.clientId,
+      createdAt:
+        filters.createdFrom || filters.createdTo
+          ? { gte: filters.createdFrom, lte: filters.createdTo }
+          : undefined,
+      disbursedAt:
+        filters.disbursedFrom || filters.disbursedTo
+          ? { gte: filters.disbursedFrom, lte: filters.disbursedTo }
+          : undefined,
+    };
+
+    const [data, total] = await Promise.all([
+      this.prisma.loanRequest.findMany({ where, orderBy: { createdAt: 'desc' }, skip: (page - 1) * limit, take: limit }),
+      this.prisma.loanRequest.count({ where }),
+    ]);
+
+    return buildPaginatedResult(data, total, page, limit);
   }
 
   async listByClient(clientId: string) {
