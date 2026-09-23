@@ -67,7 +67,7 @@ describe('Admin invite (e2e)', () => {
       .set('Authorization', `Bearer ${bootstrapAccessToken}`)
       .expect(200)
       .expect((res) => {
-        expect(res.body.some((invite: { email: string }) => invite.email === inviteEmail)).toBe(true);
+        expect(res.body.data.some((invite: { email: string }) => invite.email === inviteEmail)).toBe(true);
       });
   });
 });

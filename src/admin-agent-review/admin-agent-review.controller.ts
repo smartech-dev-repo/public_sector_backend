@@ -7,7 +7,8 @@ import { AuditInterceptor } from '../audit/audit.interceptor';
 import { AuditLogService } from '../audit/audit-log.service';
 import { AdminAgentReviewService } from './admin-agent-review.service';
 import { RejectAgentDto } from './dto/reject-agent.dto';
-import { AgentStatus, AuditActorType } from '../generated/prisma/client';
+import { ListAgentsQueryDto } from './dto/list-agents-query.dto';
+import { AuditActorType } from '../generated/prisma/client';
 
 @Controller('admin/agents')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
@@ -20,8 +21,18 @@ export class AdminAgentReviewController {
 
   @Get()
   @RequirePermissions('agents:read')
-  list(@Query('status') status?: AgentStatus) {
-    return this.adminAgentReviewService.list(status);
+  list(@Query() query: ListAgentsQueryDto) {
+    return this.adminAgentReviewService.list(
+      {
+        status: query.status,
+        q: query.q,
+        createdFrom: query.createdFrom ? new Date(query.createdFrom) : undefined,
+        createdTo: query.createdTo ? new Date(query.createdTo) : undefined,
+        reviewedFrom: query.reviewedFrom ? new Date(query.reviewedFrom) : undefined,
+        reviewedTo: query.reviewedTo ? new Date(query.reviewedTo) : undefined,
+      },
+      { page: query.page, limit: query.limit },
+    );
   }
 
   @Get(':id')

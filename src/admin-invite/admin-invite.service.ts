@@ -1,7 +1,8 @@
 import { Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { generateOpaqueToken, hashToken } from '../common/opaque-token.util';
-import { AdminInvite, AdminInviteStatus } from '../generated/prisma/client';
+import { AdminInvite, AdminInviteStatus, Prisma } from '../generated/prisma/client';
+import { buildPaginatedResult, PaginatedResult } from '../common/pagination/paginated-result';
 
 const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -14,6 +15,15 @@ export interface CreateInviteParams {
 export interface IssuedInvite {
   invite: AdminInvite;
   token: string;
+}
+
+export interface ListInvitesFilters {
+  status?: AdminInviteStatus;
+  q?: string;
+  createdFrom?: Date;
+  createdTo?: Date;
+  expiresFrom?: Date;
+  expiresTo?: Date;
 }
 
 @Injectable()
@@ -53,11 +63,30 @@ export class AdminInviteService {
     return { invite, token };
   }
 
-  async list(status?: AdminInviteStatus): Promise<AdminInvite[]> {
-    return this.prisma.adminInvite.findMany({
-      where: status ? { status } : undefined,
-      orderBy: { createdAt: 'desc' },
-    });
+  async list(
+    filters: ListInvitesFilters = {},
+    pagination: { page: number; limit: number } = { page: 1, limit: 25 },
+  ): Promise<PaginatedResult<AdminInvite>> {
+    const { page, limit } = pagination;
+    const where: Prisma.AdminInviteWhereInput = {
+      status: filters.status,
+      createdAt:
+        filters.createdFrom || filters.createdTo
+          ? { gte: filters.createdFrom, lte: filters.createdTo }
+          : undefined,
+      expiresAt:
+        filters.expiresFrom || filters.expiresTo
+          ? { gte: filters.expiresFrom, lte: filters.expiresTo }
+          : undefined,
+      email: filters.q ? { contains: filters.q, mode: 'insensitive' } : undefined,
+    };
+
+    const [data, total] = await Promise.all([
+      this.prisma.adminInvite.findMany({ where, orderBy: { createdAt: 'desc' }, skip: (page - 1) * limit, take: limit }),
+      this.prisma.adminInvite.count({ where }),
+    ]);
+
+    return buildPaginatedResult(data, total, page, limit);
   }
 
   async findValidByToken(token: string): Promise<AdminInvite> {

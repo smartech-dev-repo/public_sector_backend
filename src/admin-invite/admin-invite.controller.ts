@@ -8,7 +8,8 @@ import { AuditLogService } from '../audit/audit-log.service';
 import { EmailService } from '../email/email.service';
 import { AdminInviteService } from './admin-invite.service';
 import { CreateInviteDto } from './dto/create-invite.dto';
-import { AdminInviteStatus, AuditActorType } from '../generated/prisma/client';
+import { ListInvitesQueryDto } from './dto/list-invites-query.dto';
+import { AuditActorType } from '../generated/prisma/client';
 
 @Controller('admin/invites')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
@@ -73,7 +74,17 @@ export class AdminInviteController {
 
   @Get()
   @RequirePermissions('admins:create')
-  list(@Query('status') status?: AdminInviteStatus) {
-    return this.adminInviteService.list(status);
+  list(@Query() query: ListInvitesQueryDto) {
+    return this.adminInviteService.list(
+      {
+        status: query.status,
+        q: query.q,
+        createdFrom: query.createdFrom ? new Date(query.createdFrom) : undefined,
+        createdTo: query.createdTo ? new Date(query.createdTo) : undefined,
+        expiresFrom: query.expiresFrom ? new Date(query.expiresFrom) : undefined,
+        expiresTo: query.expiresTo ? new Date(query.expiresTo) : undefined,
+      },
+      { page: query.page, limit: query.limit },
+    );
   }
 }

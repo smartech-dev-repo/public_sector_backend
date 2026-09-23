@@ -4,7 +4,17 @@ import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
 import { generateOpaqueToken } from '../common/opaque-token.util';
 import { hashPassword } from '../common/password-hash.util';
-import { Agent, AgentStatus } from '../generated/prisma/client';
+import { buildPaginatedResult } from '../common/pagination/paginated-result';
+import { Agent, AgentStatus, Prisma } from '../generated/prisma/client';
+
+export interface ListAgentsFilters {
+  status?: AgentStatus;
+  q?: string;
+  createdFrom?: Date;
+  createdTo?: Date;
+  reviewedFrom?: Date;
+  reviewedTo?: Date;
+}
 
 @Injectable()
 export class AdminAgentReviewService {
@@ -14,11 +24,36 @@ export class AdminAgentReviewService {
     private readonly configService: ConfigService,
   ) {}
 
-  async list(status?: AgentStatus) {
-    return this.prisma.agent.findMany({
-      where: status ? { status } : undefined,
-      orderBy: { createdAt: 'desc' },
-    });
+  async list(
+    filters: ListAgentsFilters = {},
+    pagination: { page: number; limit: number } = { page: 1, limit: 25 },
+  ) {
+    const { page, limit } = pagination;
+    const where: Prisma.AgentWhereInput = {
+      status: filters.status,
+      createdAt:
+        filters.createdFrom || filters.createdTo
+          ? { gte: filters.createdFrom, lte: filters.createdTo }
+          : undefined,
+      reviewedAt:
+        filters.reviewedFrom || filters.reviewedTo
+          ? { gte: filters.reviewedFrom, lte: filters.reviewedTo }
+          : undefined,
+      OR: filters.q
+        ? [
+            { fullName: { contains: filters.q, mode: 'insensitive' } },
+            { email: { contains: filters.q, mode: 'insensitive' } },
+            { phone: { contains: filters.q, mode: 'insensitive' } },
+          ]
+        : undefined,
+    };
+
+    const [data, total] = await Promise.all([
+      this.prisma.agent.findMany({ where, orderBy: { createdAt: 'desc' }, skip: (page - 1) * limit, take: limit }),
+      this.prisma.agent.count({ where }),
+    ]);
+
+    return buildPaginatedResult(data, total, page, limit);
   }
 
   async findById(id: string) {

@@ -12,6 +12,7 @@ describe('AdminInviteService', () => {
       update: jest.Mock;
       findMany: jest.Mock;
       findUnique: jest.Mock;
+      count: jest.Mock;
     };
   };
 
@@ -22,6 +23,7 @@ describe('AdminInviteService', () => {
         update: jest.fn(),
         findMany: jest.fn(),
         findUnique: jest.fn(),
+        count: jest.fn(),
       },
     };
     service = new AdminInviteService(prisma as unknown as PrismaService);
@@ -94,6 +96,62 @@ describe('AdminInviteService', () => {
     expect(prisma.adminInvite.update).toHaveBeenCalledWith({
       where: { id: 'invite-1' },
       data: { status: AdminInviteStatus.ACCEPTED, acceptedAt: expect.any(Date) },
+    });
+  });
+
+  describe('list', () => {
+    it('defaults to page 1/limit 25 with no filters', async () => {
+      prisma.adminInvite.findMany.mockResolvedValue([]);
+      prisma.adminInvite.count.mockResolvedValue(0);
+
+      const result = await service.list();
+
+      expect(prisma.adminInvite.findMany).toHaveBeenCalledWith(expect.objectContaining({ skip: 0, take: 25 }));
+      expect(result.meta).toEqual({ total: 0, page: 1, limit: 25, totalPages: 0 });
+    });
+
+    it('filters by status and searches email', async () => {
+      prisma.adminInvite.findMany.mockResolvedValue([]);
+      prisma.adminInvite.count.mockResolvedValue(0);
+
+      await service.list({ status: AdminInviteStatus.PENDING, q: 'someone@example.com' });
+
+      expect(prisma.adminInvite.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            status: AdminInviteStatus.PENDING,
+            email: { contains: 'someone@example.com', mode: 'insensitive' },
+          }),
+        }),
+      );
+    });
+
+    it('applies createdAt and expiresAt date ranges independently', async () => {
+      prisma.adminInvite.findMany.mockResolvedValue([]);
+      prisma.adminInvite.count.mockResolvedValue(0);
+      const createdFrom = new Date('2025-01-01');
+      const expiresTo = new Date('2025-06-01');
+
+      await service.list({ createdFrom, expiresTo });
+
+      expect(prisma.adminInvite.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            createdAt: { gte: createdFrom, lte: undefined },
+            expiresAt: { gte: undefined, lte: expiresTo },
+          }),
+        }),
+      );
+    });
+
+    it('computes skip/take from page and limit and reports the total', async () => {
+      prisma.adminInvite.findMany.mockResolvedValue([]);
+      prisma.adminInvite.count.mockResolvedValue(6);
+
+      const result = await service.list({}, { page: 2, limit: 3 });
+
+      expect(prisma.adminInvite.findMany).toHaveBeenCalledWith(expect.objectContaining({ skip: 3, take: 3 }));
+      expect(result.meta).toEqual({ total: 6, page: 2, limit: 3, totalPages: 2 });
     });
   });
 });

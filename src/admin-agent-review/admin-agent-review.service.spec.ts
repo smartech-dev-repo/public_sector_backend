@@ -3,16 +3,17 @@ import { ConfigService } from '@nestjs/config';
 import { AdminAgentReviewService } from './admin-agent-review.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
+import { AgentStatus } from '../generated/prisma/client';
 
 describe('AdminAgentReviewService', () => {
   let service: AdminAgentReviewService;
-  let prisma: { agent: { findMany: jest.Mock; findUnique: jest.Mock; update: jest.Mock } };
+  let prisma: { agent: { findMany: jest.Mock; findUnique: jest.Mock; update: jest.Mock; count: jest.Mock } };
   let emailService: { send: jest.Mock };
   let configService: { get: jest.Mock };
 
   beforeEach(() => {
     prisma = {
-      agent: { findMany: jest.fn(), findUnique: jest.fn(), update: jest.fn() },
+      agent: { findMany: jest.fn(), findUnique: jest.fn(), update: jest.fn(), count: jest.fn() },
     };
     emailService = { send: jest.fn().mockResolvedValue(undefined) };
     configService = { get: jest.fn().mockReturnValue(undefined) };
@@ -128,6 +129,66 @@ describe('AdminAgentReviewService', () => {
         expect.objectContaining({ data: expect.objectContaining({ mustChangePassword: true }) }),
       );
       expect(emailService.send).toHaveBeenCalledWith(expect.objectContaining({ to: 'a@example.com' }));
+    });
+  });
+
+  describe('list', () => {
+    it('defaults to page 1/limit 25 with no filters', async () => {
+      prisma.agent.findMany.mockResolvedValue([]);
+      prisma.agent.count.mockResolvedValue(0);
+
+      const result = await service.list();
+
+      expect(prisma.agent.findMany).toHaveBeenCalledWith(expect.objectContaining({ skip: 0, take: 25 }));
+      expect(result.meta).toEqual({ total: 0, page: 1, limit: 25, totalPages: 0 });
+    });
+
+    it('filters by status and searches fullName/email/phone', async () => {
+      prisma.agent.findMany.mockResolvedValue([]);
+      prisma.agent.count.mockResolvedValue(0);
+
+      await service.list({ status: AgentStatus.APPROVED, q: 'okoro' });
+
+      expect(prisma.agent.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            status: AgentStatus.APPROVED,
+            OR: [
+              { fullName: { contains: 'okoro', mode: 'insensitive' } },
+              { email: { contains: 'okoro', mode: 'insensitive' } },
+              { phone: { contains: 'okoro', mode: 'insensitive' } },
+            ],
+          }),
+        }),
+      );
+    });
+
+    it('applies createdAt and reviewedAt date ranges independently', async () => {
+      prisma.agent.findMany.mockResolvedValue([]);
+      prisma.agent.count.mockResolvedValue(0);
+      const createdFrom = new Date('2025-01-01');
+      const reviewedTo = new Date('2025-06-01');
+
+      await service.list({ createdFrom, reviewedTo });
+
+      expect(prisma.agent.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            createdAt: { gte: createdFrom, lte: undefined },
+            reviewedAt: { gte: undefined, lte: reviewedTo },
+          }),
+        }),
+      );
+    });
+
+    it('computes skip/take from page and limit and reports the total', async () => {
+      prisma.agent.findMany.mockResolvedValue([]);
+      prisma.agent.count.mockResolvedValue(9);
+
+      const result = await service.list({}, { page: 2, limit: 4 });
+
+      expect(prisma.agent.findMany).toHaveBeenCalledWith(expect.objectContaining({ skip: 4, take: 4 }));
+      expect(result.meta).toEqual({ total: 9, page: 2, limit: 4, totalPages: 3 });
     });
   });
 });
