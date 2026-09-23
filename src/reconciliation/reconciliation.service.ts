@@ -4,11 +4,14 @@ import { computeExpectedInstallment } from './amortization.util';
 import { VarianceStatus } from '../generated/prisma/client';
 import { toPeriodKey } from './period.util';
 import { classifyVariance } from './variance-classification.util';
+import { buildPaginatedResult } from '../common/pagination/paginated-result';
 
 export interface ReconciliationFilters {
   agency?: string;
   status?: VarianceStatus;
   period?: string;
+  generatedFrom?: Date;
+  generatedTo?: Date;
 }
 
 @Injectable()
@@ -73,15 +76,32 @@ export class ReconciliationService {
     }
   }
 
-  async list(filters: ReconciliationFilters) {
-    return this.prisma.repaymentVariance.findMany({
-      where: {
-        status: filters.status,
-        period: filters.period,
-        loan: filters.agency ? { agency: filters.agency } : undefined,
-      },
-      include: { loan: true },
-      orderBy: { generatedAt: 'desc' },
-    });
+  async list(
+    filters: ReconciliationFilters = {},
+    pagination: { page: number; limit: number } = { page: 1, limit: 25 },
+  ) {
+    const { page, limit } = pagination;
+    const where = {
+      status: filters.status,
+      period: filters.period,
+      loan: filters.agency ? { agency: filters.agency } : undefined,
+      generatedAt:
+        filters.generatedFrom || filters.generatedTo
+          ? { gte: filters.generatedFrom, lte: filters.generatedTo }
+          : undefined,
+    };
+
+    const [data, total] = await Promise.all([
+      this.prisma.repaymentVariance.findMany({
+        where,
+        include: { loan: true },
+        orderBy: { generatedAt: 'desc' },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      this.prisma.repaymentVariance.count({ where }),
+    ]);
+
+    return buildPaginatedResult(data, total, page, limit);
   }
 }

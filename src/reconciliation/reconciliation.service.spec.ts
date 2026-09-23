@@ -7,14 +7,18 @@ describe('ReconciliationService', () => {
   let prisma: {
     loan: { findMany: jest.Mock };
     loanRepaymentRecord: { findMany: jest.Mock };
-    repaymentVariance: { upsert: jest.Mock; findMany: jest.Mock };
+    repaymentVariance: { upsert: jest.Mock; findMany: jest.Mock; count: jest.Mock };
   };
 
   beforeEach(() => {
     prisma = {
       loan: { findMany: jest.fn() },
       loanRepaymentRecord: { findMany: jest.fn() },
-      repaymentVariance: { upsert: jest.fn().mockResolvedValue(undefined), findMany: jest.fn() },
+      repaymentVariance: {
+        upsert: jest.fn().mockResolvedValue(undefined),
+        findMany: jest.fn(),
+        count: jest.fn(),
+      },
     };
     service = new ReconciliationService(prisma as unknown as PrismaService);
   });
@@ -117,14 +121,38 @@ describe('ReconciliationService', () => {
   describe('list', () => {
     it('applies agency, status, and period filters', async () => {
       prisma.repaymentVariance.findMany.mockResolvedValue([]);
+      prisma.repaymentVariance.count.mockResolvedValue(0);
 
       await service.list({ agency: 'NPF', status: VarianceStatus.UNDER_PAID, period: '2025-01' });
 
       expect(prisma.repaymentVariance.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: { status: VarianceStatus.UNDER_PAID, period: '2025-01', loan: { agency: 'NPF' } },
+          where: { status: VarianceStatus.UNDER_PAID, period: '2025-01', loan: { agency: 'NPF' }, generatedAt: undefined },
         }),
       );
+    });
+
+    it('applies the generatedAt date range filter', async () => {
+      prisma.repaymentVariance.findMany.mockResolvedValue([]);
+      prisma.repaymentVariance.count.mockResolvedValue(0);
+
+      const generatedFrom = new Date('2025-01-01');
+      const generatedTo = new Date('2025-12-31');
+      await service.list({ generatedFrom, generatedTo });
+
+      expect(prisma.repaymentVariance.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({ where: expect.objectContaining({ generatedAt: { gte: generatedFrom, lte: generatedTo } }) }),
+      );
+    });
+
+    it('computes skip/take from page and limit and reports the total', async () => {
+      prisma.repaymentVariance.findMany.mockResolvedValue([]);
+      prisma.repaymentVariance.count.mockResolvedValue(11);
+
+      const result = await service.list({}, { page: 1, limit: 5 });
+
+      expect(prisma.repaymentVariance.findMany).toHaveBeenCalledWith(expect.objectContaining({ skip: 0, take: 5 }));
+      expect(result.meta).toEqual({ total: 11, page: 1, limit: 5, totalPages: 3 });
     });
   });
 });

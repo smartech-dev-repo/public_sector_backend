@@ -107,7 +107,7 @@ describe('Reconciliation (e2e)', () => {
         .set('Authorization', `Bearer ${accessToken}`)
         .expect(200);
 
-      const variance = listRes.body.find(
+      const variance = listRes.body.data.find(
         (v: { loan: { customerId: string } }) => v.loan.customerId === customerId,
       );
       expect(variance).toBeDefined();
