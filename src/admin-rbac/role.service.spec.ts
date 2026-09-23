@@ -55,7 +55,26 @@ describe('RoleService', () => {
     prisma.role.findUnique.mockResolvedValue({ id: 'role-1', name: 'SUPER_ADMIN' });
     prisma.role.update.mockResolvedValue({ id: 'role-1', name: 'SUPER_ADMIN', description: 'new' });
     await service.update('role-1', { description: 'new' });
-    expect(prisma.role.update).toHaveBeenCalledWith({ where: { id: 'role-1' }, data: { name: undefined, description: 'new' } });
+    expect(prisma.role.update).toHaveBeenCalledWith({
+      where: { id: 'role-1' },
+      data: { name: undefined, description: 'new', departmentId: undefined },
+    });
+  });
+
+  it('create stores the departmentId when given', async () => {
+    prisma.role.create.mockResolvedValue({ id: 'role-2', name: 'REVIEWER', departmentId: 'dept-1' });
+    await service.create({ name: 'REVIEWER', departmentId: 'dept-1' });
+    expect(prisma.role.create).toHaveBeenCalledWith({ data: { name: 'REVIEWER', departmentId: 'dept-1' } });
+  });
+
+  it('update sets departmentId when given, and clears it when explicitly set to null', async () => {
+    prisma.role.findUnique.mockResolvedValue({ id: 'role-1', name: 'REVIEWER' });
+    prisma.role.update.mockResolvedValue({ id: 'role-1', name: 'REVIEWER', departmentId: null });
+    await service.update('role-1', { departmentId: null });
+    expect(prisma.role.update).toHaveBeenCalledWith({
+      where: { id: 'role-1' },
+      data: { name: undefined, description: undefined, departmentId: null },
+    });
   });
 
   it('remove rejects deleting SUPER_ADMIN', async () => {

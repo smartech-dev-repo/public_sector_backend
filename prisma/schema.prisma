@@ -22,19 +22,22 @@ model Permission {
 }
 
 model Role {
-  id          String           @id @default(uuid())
-  name        String           @unique
-  description String?
-  permissions RolePermission[]
-  admins      AdminUserRole[]
-  invites     AdminInvite[]
-  createdAt   DateTime         @default(now())
+  id           String           @id @default(uuid())
+  name         String           @unique
+  description  String?
+  departmentId String?
+  department   Department?      @relation(fields: [departmentId], references: [id])
+  permissions  RolePermission[]
+  admins       AdminUserRole[]
+  invites      AdminInvite[]
+  createdAt    DateTime         @default(now())
 }
 
 model Department {
   id          String   @id @default(uuid())
   name        String   @unique
   description String?
+  roles       Role[]
   createdAt   DateTime @default(now())
 }
 

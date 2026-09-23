@@ -4872,7 +4872,7 @@
                 ],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"name\": \"{{test_role_name}}\",\n  \"description\": \"Can export financial reports\"\n}"
+                  "raw": "{\n  \"name\": \"{{test_role_name}}\",\n  \"description\": \"Can export financial reports\",\n  \"departmentId\": \"{{department_id}}\"\n}"
                 },
                 "url": {
                   "raw": "{{base_url}}/admin/roles",
@@ -4883,7 +4883,8 @@
                     "admin",
                     "roles"
                   ]
-                }
+                },
+                "description": "departmentId is optional. If set, it must be a valid department id — run 'Admin > Departments > POST /admin/departments - Success' first to populate department_id, or omit the field entirely."
               },
               "event": [
                 {
@@ -4914,7 +4915,7 @@
                     ],
                     "body": {
                       "mode": "raw",
-                      "raw": "{\n  \"name\": \"{{test_role_name}}\",\n  \"description\": \"Can export financial reports\"\n}"
+                      "raw": "{\n  \"name\": \"{{test_role_name}}\",\n  \"description\": \"Can export financial reports\",\n  \"departmentId\": \"{{department_id}}\"\n}"
                     },
                     "url": {
                       "raw": "{{base_url}}/admin/roles",
@@ -4925,7 +4926,8 @@
                         "admin",
                         "roles"
                       ]
-                    }
+                    },
+                    "description": "departmentId is optional. If set, it must be a valid department id — run 'Admin > Departments > POST /admin/departments - Success' first to populate department_id, or omit the field entirely."
                   },
                   "status": "Created",
                   "code": 201,
@@ -4937,7 +4939,7 @@
                     }
                   ],
                   "cookie": [],
-                  "body": "{\n  \"id\": \"550e8400-e29b-41d4-a716-446655440020\",\n  \"name\": \"REPORTS_ANALYST\",\n  \"description\": \"Can export financial reports\",\n  \"createdAt\": \"2026-09-17T10:00:00.000Z\"\n}"
+                  "body": "{\n  \"id\": \"550e8400-e29b-41d4-a716-446655440020\",\n  \"name\": \"REPORTS_ANALYST\",\n  \"description\": \"Can export financial reports\",\n  \"departmentId\": \"550e8400-e29b-41d4-a716-446655440030\",\n  \"createdAt\": \"2026-09-17T10:00:00.000Z\"\n}"
                 }
               ]
             },
@@ -5227,7 +5229,7 @@
                 ],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"description\": \"Updated role description\"\n}"
+                  "raw": "{\n  \"description\": \"Updated role description\",\n  \"departmentId\": \"{{department_id}}\"\n}"
                 },
                 "url": {
                   "raw": "{{base_url}}/admin/roles/{{role_id}}",
@@ -5239,7 +5241,8 @@
                     "roles",
                     "{{role_id}}"
                   ]
-                }
+                },
+                "description": "departmentId is optional and freely editable, including on SUPER_ADMIN. If set, it must be a valid department id — run 'Admin > Departments > POST /admin/departments - Success' first to populate department_id, or omit the field entirely."
               },
               "event": [
                 {
@@ -5268,7 +5271,7 @@
                     ],
                     "body": {
                       "mode": "raw",
-                      "raw": "{\n  \"description\": \"Updated role description\"\n}"
+                      "raw": "{\n  \"description\": \"Updated role description\",\n  \"departmentId\": \"{{department_id}}\"\n}"
                     },
                     "url": {
                       "raw": "{{base_url}}/admin/roles/{{role_id}}",
@@ -5280,7 +5283,8 @@
                         "roles",
                         "{{role_id}}"
                       ]
-                    }
+                    },
+                    "description": "departmentId is optional and freely editable, including on SUPER_ADMIN. If set, it must be a valid department id — run 'Admin > Departments > POST /admin/departments - Success' first to populate department_id, or omit the field entirely."
                   },
                   "status": "OK",
                   "code": 200,
@@ -5292,7 +5296,7 @@
                     }
                   ],
                   "cookie": [],
-                  "body": "{\n  \"id\": \"550e8400-e29b-41d4-a716-446655440020\",\n  \"name\": \"REPORTS_ANALYST\",\n  \"description\": \"Updated role description\",\n  \"createdAt\": \"2026-09-17T10:00:00.000Z\"\n}"
+                  "body": "{\n  \"id\": \"550e8400-e29b-41d4-a716-446655440020\",\n  \"name\": \"REPORTS_ANALYST\",\n  \"description\": \"Updated role description\",\n  \"departmentId\": \"550e8400-e29b-41d4-a716-446655440030\",\n  \"createdAt\": \"2026-09-17T10:00:00.000Z\"\n}"
                 }
               ]
             },

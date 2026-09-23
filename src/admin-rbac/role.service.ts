@@ -8,11 +8,13 @@ const SUPER_ADMIN_ROLE_NAME = 'SUPER_ADMIN';
 export interface CreateRoleParams {
   name: string;
   description?: string;
+  departmentId?: string;
 }
 
 export interface UpdateRoleParams {
   name?: string;
   description?: string;
+  departmentId?: string | null;
 }
 
 const ROLE_WITH_PERMISSIONS_INCLUDE = {
@@ -79,7 +81,7 @@ export class RoleService {
     }
     return this.prisma.role.update({
       where: { id },
-      data: { name: params.name, description: params.description },
+      data: { name: params.name, description: params.description, departmentId: params.departmentId },
     });
   }
 
