@@ -25,6 +25,7 @@ import { DOCUMENT_INGESTION_QUEUE } from './document-ingestion-queue.constants';
 import { DocumentIngestionJobData } from './document-ingestion.processor';
 import { FILE_STORAGE_PROVIDER, FileStorageProvider } from '../file-storage/file-storage-provider.interface';
 import { DocumentBatchStatus, DocumentType } from '../generated/prisma/client';
+import { ListDocumentBatchesQueryDto } from './dto/list-document-batches-query.dto';
 
 @Controller('admin/documents')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
@@ -91,11 +92,19 @@ export class AdminDocumentsController {
 
   @Get('batches')
   @RequirePermissions('documents:read')
-  listBatches(
-    @Query('documentType') documentType?: DocumentType,
-    @Query('status') status?: DocumentBatchStatus,
-  ) {
-    return this.documentBatchService.list({ documentType, status });
+  listBatches(@Query() query: ListDocumentBatchesQueryDto) {
+    return this.documentBatchService.list(
+      {
+        documentType: query.documentType,
+        status: query.status,
+        q: query.q,
+        createdFrom: query.createdFrom ? new Date(query.createdFrom) : undefined,
+        createdTo: query.createdTo ? new Date(query.createdTo) : undefined,
+        completedFrom: query.completedFrom ? new Date(query.completedFrom) : undefined,
+        completedTo: query.completedTo ? new Date(query.completedTo) : undefined,
+      },
+      { page: query.page, limit: query.limit },
+    );
   }
 
   @Get('batches/:id')

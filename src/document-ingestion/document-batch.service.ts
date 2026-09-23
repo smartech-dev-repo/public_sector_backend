@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { DocumentBatchStatus, DocumentType } from '../generated/prisma/client';
+import { DocumentBatchStatus, DocumentType, Prisma } from '../generated/prisma/client';
+import { buildPaginatedResult } from '../common/pagination/paginated-result';
 
 export interface CreateBatchParams {
   documentType: DocumentType;
@@ -22,6 +23,11 @@ export interface BatchResult {
 export interface ListBatchesFilters {
   documentType?: DocumentType;
   status?: DocumentBatchStatus;
+  q?: string;
+  createdFrom?: Date;
+  createdTo?: Date;
+  completedFrom?: Date;
+  completedTo?: Date;
 }
 
 @Injectable()
@@ -77,11 +83,35 @@ export class DocumentBatchService {
     });
   }
 
-  async list(filters: ListBatchesFilters) {
-    return this.prisma.documentUploadBatch.findMany({
-      where: { documentType: filters.documentType, status: filters.status },
-      orderBy: { createdAt: 'desc' },
-      take: 100,
-    });
+  async list(
+    filters: ListBatchesFilters = {},
+    pagination: { page: number; limit: number } = { page: 1, limit: 25 },
+  ) {
+    const { page, limit } = pagination;
+    const where: Prisma.DocumentUploadBatchWhereInput = {
+      documentType: filters.documentType,
+      status: filters.status,
+      createdAt:
+        filters.createdFrom || filters.createdTo
+          ? { gte: filters.createdFrom, lte: filters.createdTo }
+          : undefined,
+      completedAt:
+        filters.completedFrom || filters.completedTo
+          ? { gte: filters.completedFrom, lte: filters.completedTo }
+          : undefined,
+      OR: filters.q
+        ? [
+            { originalFileName: { contains: filters.q, mode: 'insensitive' } },
+            { period: { contains: filters.q, mode: 'insensitive' } },
+          ]
+        : undefined,
+    };
+
+    const [data, total] = await Promise.all([
+      this.prisma.documentUploadBatch.findMany({ where, orderBy: { createdAt: 'desc' }, skip: (page - 1) * limit, take: limit }),
+      this.prisma.documentUploadBatch.count({ where }),
+    ]);
+
+    return buildPaginatedResult(data, total, page, limit);
   }
 }

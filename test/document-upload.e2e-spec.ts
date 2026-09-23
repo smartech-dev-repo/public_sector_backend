@@ -112,10 +112,10 @@ describe('Document uploads (e2e)', () => {
       .get('/admin/documents/batches')
       .set('Authorization', `Bearer ${accessToken}`)
       .expect(200);
-    expect(Array.isArray(listRes.body)).toBe(true);
-    expect(listRes.body.length).toBeGreaterThan(0);
+    expect(Array.isArray(listRes.body.data)).toBe(true);
+    expect(listRes.body.data.length).toBeGreaterThan(0);
 
-    const batchId = listRes.body[0].id;
+    const batchId = listRes.body.data[0].id;
     const detailRes = await request(app.getHttpServer())
       .get(`/admin/documents/batches/${batchId}`)
       .set('Authorization', `Bearer ${accessToken}`)
