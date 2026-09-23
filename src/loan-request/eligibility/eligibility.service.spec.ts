@@ -15,7 +15,7 @@ describe('EligibilityService', () => {
       clientLoan: { findFirst: jest.fn().mockResolvedValue(null) },
     } as unknown as PrismaService;
     const clientLoansService = {
-      getDashboard: jest.fn().mockResolvedValue({ loans: [], repayments: [] }),
+      hasActiveLoan: jest.fn().mockResolvedValue(false),
     } as unknown as ClientLoansService;
     return new EligibilityService(
       new ClientMustBeVerifiedRule(),

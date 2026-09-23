@@ -171,6 +171,56 @@ describe('ClientLoansService', () => {
     });
   });
 
+  describe('hasActiveLoan', () => {
+    it('returns false when the client has no ClientOnboarding row', async () => {
+      prisma.clientOnboarding.findUnique.mockResolvedValue(null);
+
+      expect(await service.hasActiveLoan('c1')).toBe(false);
+      expect(prisma.loan.findMany).not.toHaveBeenCalled();
+    });
+
+    it('returns false when the client has no ingested loans', async () => {
+      prisma.clientOnboarding.findUnique.mockResolvedValue({
+        bvn: null,
+        ippisRecord: { agency: 'NPF', staffId: 'NPF-001' },
+      });
+      prisma.loan.findMany.mockResolvedValue([]);
+
+      expect(await service.hasActiveLoan('c1')).toBe(false);
+    });
+
+    it('returns true when a matched loan is ACTIVE, even past the default page size', async () => {
+      prisma.clientOnboarding.findUnique.mockResolvedValue({
+        bvn: null,
+        ippisRecord: { agency: 'NPF', staffId: 'NPF-001' },
+      });
+      const manyClosedLoans = Array.from({ length: 30 }, (_, i) => ({
+        id: `loan-closed-${i}`,
+        bvn: null,
+        principalBalance: 0,
+        maturationDate: new Date(Date.now() - 1000 * 60 * 60 * 24 * 30),
+      }));
+      prisma.loan.findMany.mockResolvedValue([
+        ...manyClosedLoans,
+        { id: 'loan-active', bvn: null, principalBalance: 5000, maturationDate: future },
+      ]);
+
+      expect(await service.hasActiveLoan('c1')).toBe(true);
+    });
+
+    it('returns false when every matched loan is CLOSED', async () => {
+      prisma.clientOnboarding.findUnique.mockResolvedValue({
+        bvn: null,
+        ippisRecord: { agency: 'NPF', staffId: 'NPF-001' },
+      });
+      prisma.loan.findMany.mockResolvedValue([
+        { id: 'loan-1', bvn: null, principalBalance: 0, maturationDate: new Date(Date.now() - 1000 * 60 * 60 * 24 * 30) },
+      ]);
+
+      expect(await service.hasActiveLoan('c1')).toBe(false);
+    });
+  });
+
   describe('getRepaymentPlan', () => {
     it('throws NotFoundException when the client has no ClientOnboarding row', async () => {
       prisma.clientOnboarding.findUnique.mockResolvedValue(null);

@@ -60,12 +60,42 @@ export class ClientLoansService {
     filters: ListLoansFilters = {},
     pagination: { page: number; limit: number } = { page: 1, limit: 25 },
   ) {
+    const matched = await this.getMatchedLoansWithStatus(clientId, filters);
+    if (!matched) {
+      return { loans: buildPaginatedResult([], 0, pagination.page, pagination.limit), repayments: [] };
+    }
+
+    const { agency, staffId, loans: filteredLoans } = matched;
+
+    const { page, limit } = pagination;
+    const pageStart = (page - 1) * limit;
+    const pagedLoans = filteredLoans.slice(pageStart, pageStart + limit);
+
+    const repayments = await this.prisma.loanRepaymentRecord.findMany({
+      where: { agency, staffId },
+      select: REPAYMENT_SELECT,
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return {
+      loans: buildPaginatedResult(pagedLoans, filteredLoans.length, page, limit),
+      repayments,
+    };
+  }
+
+  // Unpaginated on purpose — eligibility checks need every matching loan, not one page.
+  async hasActiveLoan(clientId: string): Promise<boolean> {
+    const matched = await this.getMatchedLoansWithStatus(clientId);
+    return matched ? matched.loans.some((loan) => loan.status === 'ACTIVE') : false;
+  }
+
+  private async getMatchedLoansWithStatus(clientId: string, filters: ListLoansFilters = {}) {
     const onboarding = await this.prisma.clientOnboarding.findUnique({
       where: { clientId },
       include: { ippisRecord: true },
     });
     if (!onboarding) {
-      return { loans: buildPaginatedResult([], 0, pagination.page, pagination.limit), repayments: [] };
+      return null;
     }
 
     const { agency, staffId } = onboarding.ippisRecord;
@@ -97,20 +127,7 @@ export class ClientLoansService {
       ? loansWithStatus.filter((loan) => loan.status === filters.status)
       : loansWithStatus;
 
-    const { page, limit } = pagination;
-    const pageStart = (page - 1) * limit;
-    const pagedLoans = filteredLoans.slice(pageStart, pageStart + limit);
-
-    const repayments = await this.prisma.loanRepaymentRecord.findMany({
-      where: { agency, staffId },
-      select: REPAYMENT_SELECT,
-      orderBy: { createdAt: 'desc' },
-    });
-
-    return {
-      loans: buildPaginatedResult(pagedLoans, filteredLoans.length, page, limit),
-      repayments,
-    };
+    return { agency, staffId, loans: filteredLoans };
   }
 
   async getRepaymentPlan(clientId: string, loanId: string) {

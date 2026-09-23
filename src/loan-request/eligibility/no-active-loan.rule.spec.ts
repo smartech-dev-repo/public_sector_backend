@@ -6,7 +6,7 @@ import { Client, IppisRecord } from '../../generated/prisma/client';
 describe('NoActiveLoanRule', () => {
   let rule: NoActiveLoanRule;
   let prisma: { loanRequest: { findFirst: jest.Mock }; clientLoan: { findFirst: jest.Mock } };
-  let clientLoansService: { getDashboard: jest.Mock };
+  let clientLoansService: { hasActiveLoan: jest.Mock };
 
   const client = { id: 'client-1' } as Client;
   const ippisRecord = {} as IppisRecord;
@@ -17,9 +17,7 @@ describe('NoActiveLoanRule', () => {
       clientLoan: { findFirst: jest.fn().mockResolvedValue(null) },
     };
     clientLoansService = {
-      getDashboard: jest
-        .fn()
-        .mockResolvedValue({ loans: { data: [], meta: { total: 0, page: 1, limit: 25, totalPages: 0 } }, repayments: [] }),
+      hasActiveLoan: jest.fn().mockResolvedValue(false),
     };
     rule = new NoActiveLoanRule(prisma as unknown as PrismaService, clientLoansService as unknown as ClientLoansService);
   });
@@ -44,20 +42,14 @@ describe('NoActiveLoanRule', () => {
   });
 
   it('fails when the client has an ACTIVE ingested loan', async () => {
-    clientLoansService.getDashboard.mockResolvedValue({
-      loans: { data: [{ id: 'loan-1', status: 'ACTIVE' }], meta: { total: 1, page: 1, limit: 25, totalPages: 1 } },
-      repayments: [],
-    });
+    clientLoansService.hasActiveLoan.mockResolvedValue(true);
     const result = await rule.check(client, ippisRecord, 1000);
     expect(result.eligible).toBe(false);
     expect(result.reason).toMatch(/active loan/);
   });
 
   it('passes when the client has only a CLOSED ingested loan', async () => {
-    clientLoansService.getDashboard.mockResolvedValue({
-      loans: { data: [{ id: 'loan-1', status: 'CLOSED' }], meta: { total: 1, page: 1, limit: 25, totalPages: 1 } },
-      repayments: [],
-    });
+    clientLoansService.hasActiveLoan.mockResolvedValue(false);
     const result = await rule.check(client, ippisRecord, 1000);
     expect(result.eligible).toBe(true);
   });

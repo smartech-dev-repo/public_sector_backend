@@ -32,8 +32,7 @@ export class NoActiveLoanRule implements EligibilityRule {
       return { eligible: false, reason: 'Client already has an active loan' };
     }
 
-    const { loans } = await this.clientLoansService.getDashboard(client.id);
-    const hasActiveIngestedLoan = loans.data.some((loan) => loan.status === 'ACTIVE');
+    const hasActiveIngestedLoan = await this.clientLoansService.hasActiveLoan(client.id);
     if (hasActiveIngestedLoan) {
       return { eligible: false, reason: 'Client already has an active loan on record' };
     }
