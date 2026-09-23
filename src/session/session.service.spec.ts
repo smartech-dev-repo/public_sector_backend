@@ -13,6 +13,7 @@ describe('SessionService', () => {
       update: jest.Mock;
       updateMany: jest.Mock;
       findMany: jest.Mock;
+      count: jest.Mock;
     };
   };
   let auditLogService: { record: jest.Mock };
@@ -25,6 +26,7 @@ describe('SessionService', () => {
         update: jest.fn(),
         updateMany: jest.fn(),
         findMany: jest.fn(),
+        count: jest.fn(),
       },
     };
     auditLogService = { record: jest.fn() };
@@ -133,5 +135,70 @@ describe('SessionService', () => {
     await expect(
       service.revokeOwnSession(SessionPrincipalType.CLIENT, 'client-1', 'session-1'),
     ).rejects.toThrow(NotFoundException);
+  });
+
+  describe('listActiveSessions', () => {
+    it('lists non-revoked, non-expired sessions ordered by lastUsedAt, defaulting to page 1/limit 25', async () => {
+      prisma.session.findMany.mockResolvedValue([]);
+      prisma.session.count.mockResolvedValue(0);
+
+      const result = await service.listActiveSessions(SessionPrincipalType.CLIENT, 'client-1');
+
+      expect(prisma.session.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            principalType: SessionPrincipalType.CLIENT,
+            principalId: 'client-1',
+            revokedAt: null,
+          }),
+          orderBy: { lastUsedAt: 'desc' },
+          skip: 0,
+          take: 25,
+        }),
+      );
+      expect(result.meta).toEqual({ total: 0, page: 1, limit: 25, totalPages: 0 });
+    });
+
+    it('applies a createdAt date range', async () => {
+      prisma.session.findMany.mockResolvedValue([]);
+      prisma.session.count.mockResolvedValue(0);
+      const createdFrom = new Date('2025-01-01');
+      const createdTo = new Date('2025-12-31');
+
+      await service.listActiveSessions(SessionPrincipalType.CLIENT, 'client-1', { createdFrom, createdTo });
+
+      expect(prisma.session.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({ where: expect.objectContaining({ createdAt: { gte: createdFrom, lte: createdTo } }) }),
+      );
+    });
+
+    it('maps each row to a SessionSummary shape and computes skip/take from page and limit', async () => {
+      prisma.session.findMany.mockResolvedValue([
+        {
+          id: 's1',
+          userAgent: 'jest',
+          ip: '127.0.0.1',
+          createdAt: new Date('2026-01-01'),
+          lastUsedAt: new Date('2026-01-02'),
+          expiresAt: new Date('2026-02-01'),
+        },
+      ]);
+      prisma.session.count.mockResolvedValue(6);
+
+      const result = await service.listActiveSessions(SessionPrincipalType.CLIENT, 'client-1', {}, { page: 2, limit: 3 });
+
+      expect(prisma.session.findMany).toHaveBeenCalledWith(expect.objectContaining({ skip: 3, take: 3 }));
+      expect(result.data).toEqual([
+        {
+          id: 's1',
+          userAgent: 'jest',
+          ip: '127.0.0.1',
+          createdAt: new Date('2026-01-01'),
+          lastUsedAt: new Date('2026-01-02'),
+          expiresAt: new Date('2026-02-01'),
+        },
+      ]);
+      expect(result.meta).toEqual({ total: 6, page: 2, limit: 3, totalPages: 2 });
+    });
   });
 });

@@ -107,9 +107,9 @@ describe('Session rails (e2e)', () => {
       .set('Authorization', `Bearer ${accessToken}`)
       .expect(200);
 
-    expect(Array.isArray(listRes.body)).toBe(true);
-    expect(listRes.body.length).toBeGreaterThan(0);
-    const sessionId = listRes.body[0].id;
+    expect(Array.isArray(listRes.body.data)).toBe(true);
+    expect(listRes.body.data.length).toBeGreaterThan(0);
+    const sessionId = listRes.body.data[0].id;
 
     await request(app.getHttpServer())
       .delete(`/auth/sessions/${sessionId}`)

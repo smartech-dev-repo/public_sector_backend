@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, HttpCode, Param, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, Param, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { Request } from 'express';
 import { SessionService } from '../../session/session.service';
 import { TokenService } from '../token.service';
@@ -7,6 +7,7 @@ import { AgentAuthService } from '../agent/agent-auth.service';
 import { JwtAuthGuard } from '../jwt-auth.guard';
 import { JwtPayload } from '../jwt-payload.interface';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
+import { ListSessionsQueryDto } from './dto/list-sessions-query.dto';
 import { toJwtPrincipalType, toSessionPrincipalType } from '../../session/session-principal-type.mapper';
 import { SessionPrincipalType } from '../../generated/prisma/client';
 import { getRequestMetadata } from '../../common/request-metadata.util';
@@ -69,10 +70,15 @@ export class SessionAuthController {
 
   @Get('sessions')
   @UseGuards(JwtAuthGuard)
-  listSessions(@Req() req: { user: JwtPayload }) {
+  listSessions(@Query() query: ListSessionsQueryDto, @Req() req: { user: JwtPayload }) {
     return this.sessionService.listActiveSessions(
       toSessionPrincipalType(req.user.type),
       req.user.sub,
+      {
+        createdFrom: query.createdFrom ? new Date(query.createdFrom) : undefined,
+        createdTo: query.createdTo ? new Date(query.createdTo) : undefined,
+      },
+      { page: query.page, limit: query.limit },
     );
   }
 

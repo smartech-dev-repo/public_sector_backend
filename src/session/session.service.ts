@@ -2,7 +2,8 @@ import { Injectable, NotFoundException, UnauthorizedException } from '@nestjs/co
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditLogService } from '../audit/audit-log.service';
 import { generateOpaqueToken, hashToken } from '../common/opaque-token.util';
-import { AuditActorType, SessionPrincipalType } from '../generated/prisma/client';
+import { AuditActorType, Prisma, SessionPrincipalType } from '../generated/prisma/client';
+import { buildPaginatedResult, PaginatedResult } from '../common/pagination/paginated-result';
 
 const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -132,13 +133,27 @@ export class SessionService {
   async listActiveSessions(
     principalType: SessionPrincipalType,
     principalId: string,
-  ): Promise<SessionSummary[]> {
-    const sessions = await this.prisma.session.findMany({
-      where: { principalType, principalId, revokedAt: null, expiresAt: { gt: new Date() } },
-      orderBy: { lastUsedAt: 'desc' },
-    });
+    filters: { createdFrom?: Date; createdTo?: Date } = {},
+    pagination: { page: number; limit: number } = { page: 1, limit: 25 },
+  ): Promise<PaginatedResult<SessionSummary>> {
+    const { page, limit } = pagination;
+    const where: Prisma.SessionWhereInput = {
+      principalType,
+      principalId,
+      revokedAt: null,
+      expiresAt: { gt: new Date() },
+      createdAt:
+        filters.createdFrom || filters.createdTo
+          ? { gte: filters.createdFrom, lte: filters.createdTo }
+          : undefined,
+    };
 
-    return sessions.map((session) => ({
+    const [sessions, total] = await Promise.all([
+      this.prisma.session.findMany({ where, orderBy: { lastUsedAt: 'desc' }, skip: (page - 1) * limit, take: limit }),
+      this.prisma.session.count({ where }),
+    ]);
+
+    const data = sessions.map((session) => ({
       id: session.id,
       userAgent: session.userAgent,
       ip: session.ip,
@@ -146,6 +161,8 @@ export class SessionService {
       lastUsedAt: session.lastUsedAt,
       expiresAt: session.expiresAt,
     }));
+
+    return buildPaginatedResult(data, total, page, limit);
   }
 
   async revokeOwnSession(
