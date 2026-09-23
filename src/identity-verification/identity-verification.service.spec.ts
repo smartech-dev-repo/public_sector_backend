@@ -16,6 +16,14 @@ const sampleResult: IdentityLookupResult = {
   dateOfBirth: '1990-01-01',
   phoneNumber: '08000000000',
   photoBase64: 'ZmFrZS1waG90bw==',
+  gender: 'Female',
+  stateOfOrigin: 'Lagos',
+  lgaOfOrigin: 'Ikeja',
+  stateOfResidence: 'Lagos',
+  lgaOfResidence: 'Ikeja',
+  maritalStatus: 'Single',
+  address: null,
+  city: null,
 };
 
 describe('IdentityVerificationService', () => {
