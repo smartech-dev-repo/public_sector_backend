@@ -9,6 +9,7 @@ import { AdminClientReviewService } from './admin-client-review.service';
 import { AdminClientActivityService } from './admin-client-activity.service';
 import { RetryReviewDto } from './dto/retry-review.dto';
 import { ListActivitiesQueryDto } from './dto/list-activities-query.dto';
+import { ListClientsQueryDto } from './dto/list-clients-query.dto';
 import { AuditActorType, ClientStatus } from '../generated/prisma/client';
 
 @Controller('admin/clients')
@@ -23,8 +24,16 @@ export class AdminClientReviewController {
 
   @Get()
   @RequirePermissions('clients:review')
-  list(@Query('status') status?: ClientStatus) {
-    return this.adminClientReviewService.list(status);
+  list(@Query() query: ListClientsQueryDto) {
+    return this.adminClientReviewService.list(
+      {
+        status: query.status,
+        q: query.q,
+        createdFrom: query.createdFrom ? new Date(query.createdFrom) : undefined,
+        createdTo: query.createdTo ? new Date(query.createdTo) : undefined,
+      },
+      { page: query.page, limit: query.limit },
+    );
   }
 
   @Get(':id')

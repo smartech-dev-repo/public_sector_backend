@@ -1,13 +1,21 @@
 import { ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { ClientStatus, OnboardingStep } from '../generated/prisma/client';
+import { ClientStatus, OnboardingStep, Prisma } from '../generated/prisma/client';
 import { ClientOnboardingService } from '../client-onboarding/client-onboarding.service';
 import { computeLengthOfService } from '../client-onboarding/length-of-service.util';
 import { FILE_STORAGE_PROVIDER, FileStorageProvider } from '../file-storage/file-storage-provider.interface';
+import { buildPaginatedResult } from '../common/pagination/paginated-result';
 
 interface FailureReasons {
   identityVerified?: boolean;
   faceMatchPassed?: boolean;
+}
+
+export interface ListClientsFilters {
+  status?: ClientStatus;
+  q?: string;
+  createdFrom?: Date;
+  createdTo?: Date;
 }
 
 @Injectable()
@@ -18,13 +26,32 @@ export class AdminClientReviewService {
     @Inject(FILE_STORAGE_PROVIDER) private readonly fileStorageProvider: FileStorageProvider,
   ) {}
 
-  async list(status?: ClientStatus) {
-    return this.prisma.client.findMany({
-      where: status ? { status } : undefined,
-      include: { onboarding: true },
-      orderBy: { createdAt: 'desc' },
-      take: 100,
-    });
+  async list(
+    filters: ListClientsFilters = {},
+    pagination: { page: number; limit: number } = { page: 1, limit: 25 },
+  ) {
+    const { page, limit } = pagination;
+    const where: Prisma.ClientWhereInput = {
+      status: filters.status,
+      phone: filters.q ? { contains: filters.q, mode: 'insensitive' } : undefined,
+      createdAt:
+        filters.createdFrom || filters.createdTo
+          ? { gte: filters.createdFrom, lte: filters.createdTo }
+          : undefined,
+    };
+
+    const [data, total] = await Promise.all([
+      this.prisma.client.findMany({
+        where,
+        include: { onboarding: true },
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      this.prisma.client.count({ where }),
+    ]);
+
+    return buildPaginatedResult(data, total, page, limit);
   }
 
   async findById(id: string) {

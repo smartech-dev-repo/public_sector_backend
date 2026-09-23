@@ -75,7 +75,7 @@ describe('Admin client review (e2e)', () => {
       .query({ status: 'MANUAL_REVIEW' })
       .set('Authorization', `Bearer ${adminAccessToken}`)
       .expect(200);
-    expect(res.body.some((c: { id: string }) => c.id === clientId)).toBe(true);
+    expect(res.body.data.some((c: { id: string }) => c.id === clientId)).toBe(true);
   });
 
   it('gets the full client detail including onboarding', async () => {

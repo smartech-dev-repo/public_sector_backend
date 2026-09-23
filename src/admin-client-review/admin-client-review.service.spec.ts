@@ -7,7 +7,7 @@ import { FileStorageProvider } from '../file-storage/file-storage-provider.inter
 describe('AdminClientReviewService', () => {
   let service: AdminClientReviewService;
   let prisma: {
-    client: { findMany: jest.Mock; findUnique: jest.Mock; update: jest.Mock };
+    client: { findMany: jest.Mock; count: jest.Mock; findUnique: jest.Mock; update: jest.Mock };
     clientOnboarding: { update: jest.Mock };
   };
   let clientOnboardingService: { determineStepAfterIdentity: jest.Mock };
@@ -15,7 +15,7 @@ describe('AdminClientReviewService', () => {
 
   beforeEach(() => {
     prisma = {
-      client: { findMany: jest.fn(), findUnique: jest.fn(), update: jest.fn() },
+      client: { findMany: jest.fn(), count: jest.fn(), findUnique: jest.fn(), update: jest.fn() },
       clientOnboarding: { update: jest.fn() },
     };
     clientOnboardingService = { determineStepAfterIdentity: jest.fn() };
@@ -28,20 +28,60 @@ describe('AdminClientReviewService', () => {
   });
 
   describe('list', () => {
-    it('lists all clients with their onboarding record when no status filter is given', async () => {
+    it('lists all clients with their onboarding record, defaulting to page 1/limit 25', async () => {
       prisma.client.findMany.mockResolvedValue([]);
-      await service.list();
+      prisma.client.count.mockResolvedValue(0);
+
+      const result = await service.list();
+
       expect(prisma.client.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({ where: undefined, include: { onboarding: true } }),
+        expect.objectContaining({
+          where: { status: undefined, phone: undefined, createdAt: undefined },
+          include: { onboarding: true },
+          skip: 0,
+          take: 25,
+        }),
+      );
+      expect(result.meta).toEqual({ total: 0, page: 1, limit: 25, totalPages: 0 });
+    });
+
+    it('filters by status and searches phone when given', async () => {
+      prisma.client.findMany.mockResolvedValue([]);
+      prisma.client.count.mockResolvedValue(0);
+
+      await service.list({ status: 'MANUAL_REVIEW' as never, q: '0801' });
+
+      expect(prisma.client.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            status: 'MANUAL_REVIEW',
+            phone: { contains: '0801', mode: 'insensitive' },
+          }),
+        }),
       );
     });
 
-    it('filters by status when given', async () => {
+    it('applies a createdAt date range', async () => {
       prisma.client.findMany.mockResolvedValue([]);
-      await service.list('MANUAL_REVIEW' as never);
+      prisma.client.count.mockResolvedValue(0);
+      const createdFrom = new Date('2025-01-01');
+      const createdTo = new Date('2025-12-31');
+
+      await service.list({ createdFrom, createdTo });
+
       expect(prisma.client.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({ where: { status: 'MANUAL_REVIEW' } }),
+        expect.objectContaining({ where: expect.objectContaining({ createdAt: { gte: createdFrom, lte: createdTo } }) }),
       );
+    });
+
+    it('computes skip/take from page and limit and reports the total', async () => {
+      prisma.client.findMany.mockResolvedValue([]);
+      prisma.client.count.mockResolvedValue(60);
+
+      const result = await service.list({}, { page: 3, limit: 25 });
+
+      expect(prisma.client.findMany).toHaveBeenCalledWith(expect.objectContaining({ skip: 50, take: 25 }));
+      expect(result.meta).toEqual({ total: 60, page: 3, limit: 25, totalPages: 3 });
     });
   });
 
