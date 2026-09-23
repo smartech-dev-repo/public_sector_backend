@@ -5,6 +5,7 @@ import { RequirePermissions } from '../auth/permissions.decorator';
 import { LoanTermOptionService } from './loan-terms.service';
 import { CreateLoanTermOptionDto } from './dto/create-loan-term-option.dto';
 import { UpdateLoanTermOptionDto } from './dto/update-loan-term-option.dto';
+import { ListAdminLoanTermsQueryDto } from './dto/list-admin-loan-terms-query.dto';
 
 @Controller('admin/loan-terms')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
@@ -18,8 +19,11 @@ export class AdminLoanTermsController {
   }
 
   @Get()
-  list(@Query('agency') agency?: string) {
-    return this.loanTermOptionService.list(agency);
+  list(@Query() query: ListAdminLoanTermsQueryDto) {
+    return this.loanTermOptionService.list(
+      { agency: query.agency, isActive: query.isActive },
+      { page: query.page, limit: query.limit },
+    );
   }
 
   @Patch(':id')

@@ -6,13 +6,13 @@ import { ManagementChargeApplication, ManagementChargeType } from '../generated/
 describe('LoanTermOptionService', () => {
   let service: LoanTermOptionService;
   let prisma: {
-    loanTermOption: { create: jest.Mock; findMany: jest.Mock; update: jest.Mock; findUnique: jest.Mock };
+    loanTermOption: { create: jest.Mock; findMany: jest.Mock; update: jest.Mock; findUnique: jest.Mock; count: jest.Mock };
     clientOnboarding: { findUnique: jest.Mock };
   };
 
   beforeEach(() => {
     prisma = {
-      loanTermOption: { create: jest.fn(), findMany: jest.fn(), update: jest.fn(), findUnique: jest.fn() },
+      loanTermOption: { create: jest.fn(), findMany: jest.fn(), update: jest.fn(), findUnique: jest.fn(), count: jest.fn() },
       clientOnboarding: { findUnique: jest.fn() },
     };
     service = new LoanTermOptionService(prisma as unknown as PrismaService);
@@ -45,16 +45,37 @@ describe('LoanTermOptionService', () => {
   });
 
   describe('list', () => {
-    it('filters by agency when provided', async () => {
+    it('defaults to page 1/limit 25 with no filters', async () => {
       prisma.loanTermOption.findMany.mockResolvedValue([]);
-      await service.list('NPF');
-      expect(prisma.loanTermOption.findMany).toHaveBeenCalledWith({ where: { agency: 'NPF' } });
+      prisma.loanTermOption.count.mockResolvedValue(0);
+
+      const result = await service.list();
+
+      expect(prisma.loanTermOption.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { agency: undefined, isActive: undefined }, skip: 0, take: 25 }),
+      );
+      expect(result.meta).toEqual({ total: 0, page: 1, limit: 25, totalPages: 0 });
     });
 
-    it('lists everything when no agency is given', async () => {
+    it('filters by agency and isActive when provided', async () => {
       prisma.loanTermOption.findMany.mockResolvedValue([]);
-      await service.list();
-      expect(prisma.loanTermOption.findMany).toHaveBeenCalledWith({ where: { agency: undefined } });
+      prisma.loanTermOption.count.mockResolvedValue(0);
+
+      await service.list({ agency: 'NPF', isActive: true });
+
+      expect(prisma.loanTermOption.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { agency: 'NPF', isActive: true } }),
+      );
+    });
+
+    it('computes skip/take from page and limit and reports the total', async () => {
+      prisma.loanTermOption.findMany.mockResolvedValue([]);
+      prisma.loanTermOption.count.mockResolvedValue(5);
+
+      const result = await service.list({}, { page: 1, limit: 2 });
+
+      expect(prisma.loanTermOption.findMany).toHaveBeenCalledWith(expect.objectContaining({ skip: 0, take: 2 }));
+      expect(result.meta).toEqual({ total: 5, page: 1, limit: 2, totalPages: 3 });
     });
   });
 

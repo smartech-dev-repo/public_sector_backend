@@ -1,6 +1,12 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { LoanTermOption, ManagementChargeApplication, ManagementChargeType } from '../generated/prisma/client';
+import { LoanTermOption, ManagementChargeApplication, ManagementChargeType, Prisma } from '../generated/prisma/client';
+import { buildPaginatedResult, PaginatedResult } from '../common/pagination/paginated-result';
+
+export interface ListLoanTermsFilters {
+  agency?: string;
+  isActive?: boolean;
+}
 
 export interface CreateLoanTermOptionInput {
   agency: string;
@@ -27,8 +33,22 @@ export class LoanTermOptionService {
     return this.prisma.loanTermOption.create({ data: input });
   }
 
-  async list(agency?: string): Promise<LoanTermOption[]> {
-    return this.prisma.loanTermOption.findMany({ where: { agency } });
+  async list(
+    filters: ListLoanTermsFilters = {},
+    pagination: { page: number; limit: number } = { page: 1, limit: 25 },
+  ): Promise<PaginatedResult<LoanTermOption>> {
+    const { page, limit } = pagination;
+    const where: Prisma.LoanTermOptionWhereInput = {
+      agency: filters.agency,
+      isActive: filters.isActive,
+    };
+
+    const [data, total] = await Promise.all([
+      this.prisma.loanTermOption.findMany({ where, skip: (page - 1) * limit, take: limit }),
+      this.prisma.loanTermOption.count({ where }),
+    ]);
+
+    return buildPaginatedResult(data, total, page, limit);
   }
 
   async update(id: string, input: UpdateLoanTermOptionInput): Promise<LoanTermOption> {
