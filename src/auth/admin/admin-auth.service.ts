@@ -8,7 +8,8 @@ import { AdminInviteService } from '../../admin-invite/admin-invite.service';
 import { EmailService } from '../../email/email.service';
 import { generateOpaqueToken, hashToken } from '../../common/opaque-token.util';
 import { hashPassword } from '../../common/password-hash.util';
-import { generateEmailCode } from '../../common/generate-email-code.util';
+import { ConfigService } from '@nestjs/config';
+import { generateNumericCode } from '../../common/generate-numeric-code.util';
 import { JwtPayload } from '../jwt-payload.interface';
 import { SessionPrincipalType, TwoFactorMethod } from '../../generated/prisma/client';
 
@@ -23,6 +24,7 @@ export class AdminAuthService {
     private readonly sessionService: SessionService,
     private readonly adminInviteService: AdminInviteService,
     private readonly emailService: EmailService,
+    private readonly configService?: ConfigService,
   ) {}
 
   async getPermissionsForAdmin(adminId: string): Promise<string[]> {
@@ -168,7 +170,8 @@ export class AdminAuthService {
       return { method: TwoFactorMethod.TOTP, secret, otpauthUrl };
     }
 
-    const code = generateEmailCode();
+    const length = Number(this.configService?.get('EMAIL_CODE_LENGTH') ?? 6);
+    const code = generateNumericCode(length);
     await this.prisma.adminUser.update({
       where: { id: adminId },
       data: {
@@ -261,7 +264,8 @@ export class AdminAuthService {
 
   private async beginTwoFactorLogin(admin: { id: string; email: string; twoFactorMethod: TwoFactorMethod | null }) {
     if (admin.twoFactorMethod === TwoFactorMethod.EMAIL) {
-      const code = generateEmailCode();
+      const length = Number(this.configService?.get('EMAIL_CODE_LENGTH') ?? 6);
+      const code = generateNumericCode(length);
       await this.prisma.adminUser.update({
         where: { id: admin.id },
         data: {

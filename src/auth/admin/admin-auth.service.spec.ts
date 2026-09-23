@@ -7,6 +7,7 @@ import { TokenService } from '../token.service';
 import { SessionService } from '../../session/session.service';
 import { AdminInviteService } from '../../admin-invite/admin-invite.service';
 import { EmailService } from '../../email/email.service';
+import { ConfigService } from '@nestjs/config';
 
 jest.mock('otplib', () => ({
   ...jest.requireActual('otplib'),
@@ -288,6 +289,27 @@ describe('AdminAuthService', () => {
         }),
       );
       expect(emailService.send).toHaveBeenCalledWith(expect.objectContaining({ to: 'admin@example.com' }));
+    });
+
+    it('respects EMAIL_CODE_LENGTH when generating an EMAIL setup code', async () => {
+      prisma.adminUser.findUniqueOrThrow.mockResolvedValue({ id: 'admin-1', email: 'admin@example.com', twoFactorEnabled: false });
+      const configService = {
+        get: jest.fn((key: string) => (key === 'EMAIL_CODE_LENGTH' ? '8' : undefined)),
+      } as unknown as ConfigService;
+      const configuredService = new AdminAuthService(
+        prisma as unknown as PrismaService,
+        tokenService,
+        sessionService as unknown as SessionService,
+        adminInviteService as unknown as AdminInviteService,
+        emailService as unknown as EmailService,
+        configService,
+      );
+
+      await configuredService.setupTwoFactor('admin-1', 'EMAIL' as never);
+
+      const sentEmail = emailService.send.mock.calls[0][0];
+      const match = /Your verification code is: (\d+)/.exec(sentEmail.text);
+      expect(match?.[1]).toHaveLength(8);
     });
   });
 

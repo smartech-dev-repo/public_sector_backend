@@ -6,6 +6,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { TokenService } from '../token.service';
 import { SessionService } from '../../session/session.service';
 import { EmailService } from '../../email/email.service';
+import { ConfigService } from '@nestjs/config';
 
 jest.mock('otplib', () => ({
   ...jest.requireActual('otplib'),
@@ -262,6 +263,26 @@ describe('AgentAuthService', () => {
         }),
       );
       expect(emailService.send).toHaveBeenCalledWith(expect.objectContaining({ to: 'agent@example.com' }));
+    });
+
+    it('respects EMAIL_CODE_LENGTH when generating an EMAIL setup code', async () => {
+      prisma.agent.findUniqueOrThrow.mockResolvedValue({ id: 'agent-1', email: 'agent@example.com', twoFactorEnabled: false });
+      const configService = {
+        get: jest.fn((key: string) => (key === 'EMAIL_CODE_LENGTH' ? '8' : undefined)),
+      } as unknown as ConfigService;
+      const configuredService = new AgentAuthService(
+        prisma as unknown as PrismaService,
+        tokenService,
+        sessionService as unknown as SessionService,
+        emailService as unknown as EmailService,
+        configService,
+      );
+
+      await configuredService.setupTwoFactor('agent-1', 'EMAIL' as never);
+
+      const sentEmail = emailService.send.mock.calls[0][0];
+      const match = /Your verification code is: (\d+)/.exec(sentEmail.text);
+      expect(match?.[1]).toHaveLength(8);
     });
   });
 

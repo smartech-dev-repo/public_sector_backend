@@ -8,7 +8,8 @@ import { AgentStatus, SessionPrincipalType, TwoFactorMethod } from '../../genera
 import { hashPassword } from '../../common/password-hash.util';
 import { EmailService } from '../../email/email.service';
 import { generateOpaqueToken, hashToken } from '../../common/opaque-token.util';
-import { generateEmailCode } from '../../common/generate-email-code.util';
+import { ConfigService } from '@nestjs/config';
+import { generateNumericCode } from '../../common/generate-numeric-code.util';
 
 const PASSWORD_RESET_TTL_MS = 60 * 60 * 1000;
 const TWO_FACTOR_EMAIL_CODE_TTL_MS = 10 * 60 * 1000;
@@ -20,6 +21,7 @@ export class AgentAuthService {
     private readonly tokenService: TokenService,
     private readonly sessionService: SessionService,
     private readonly emailService: EmailService,
+    private readonly configService?: ConfigService,
   ) {}
 
   async login(email: string, password: string, meta?: { userAgent?: string; ip?: string }) {
@@ -125,7 +127,8 @@ export class AgentAuthService {
       return { method: TwoFactorMethod.TOTP, secret, otpauthUrl };
     }
 
-    const code = generateEmailCode();
+    const length = Number(this.configService?.get('EMAIL_CODE_LENGTH') ?? 6);
+    const code = generateNumericCode(length);
     await this.prisma.agent.update({
       where: { id: agentId },
       data: {
@@ -218,7 +221,8 @@ export class AgentAuthService {
 
   private async beginTwoFactorLogin(agent: { id: string; email: string; twoFactorMethod: TwoFactorMethod | null }) {
     if (agent.twoFactorMethod === TwoFactorMethod.EMAIL) {
-      const code = generateEmailCode();
+      const length = Number(this.configService?.get('EMAIL_CODE_LENGTH') ?? 6);
+      const code = generateNumericCode(length);
       await this.prisma.agent.update({
         where: { id: agent.id },
         data: {
