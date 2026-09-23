@@ -89,7 +89,7 @@ export class AdminRoleAssignmentService {
     });
   }
 
-  async deactivate(callerId: string, id: string): Promise<void> {
+  async suspend(callerId: string, id: string): Promise<void> {
     const admin = await this.prisma.adminUser.findUnique({ where: { id } });
     if (!admin) {
       throw new NotFoundException('Admin not found');
@@ -102,10 +102,10 @@ export class AdminRoleAssignmentService {
     }
 
     await this.prisma.adminUser.update({ where: { id }, data: { isActive: false } });
-    await this.sessionService.revokeAllForPrincipal(SessionPrincipalType.ADMIN, id, 'admin_deactivated');
+    await this.sessionService.revokeAllForPrincipal(SessionPrincipalType.ADMIN, id, 'admin_suspended');
   }
 
-  async reactivate(id: string): Promise<void> {
+  async unsuspend(id: string): Promise<void> {
     const admin = await this.prisma.adminUser.findUnique({ where: { id } });
     if (!admin) {
       throw new NotFoundException('Admin not found');

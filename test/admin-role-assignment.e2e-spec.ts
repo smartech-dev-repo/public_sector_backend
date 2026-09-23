@@ -120,26 +120,26 @@ describe('Admin role assignment (e2e)', () => {
       .expect(409);
   });
 
-  it('rejects an admin deactivating their own account (409)', () => {
+  it('rejects an admin suspending their own account (409)', () => {
     return request(app.getHttpServer())
-      .post(`/admin/admins/${bootstrapAdminId}/deactivate`)
+      .post(`/admin/admins/${bootstrapAdminId}/suspend`)
       .set('Authorization', `Bearer ${accessToken}`)
       .expect(409);
   });
 
-  it('deactivates a different admin and revokes their sessions', async () => {
+  it('suspends a different admin and revokes their sessions', async () => {
     await request(app.getHttpServer())
-      .post(`/admin/admins/${secondAdminId}/deactivate`)
+      .post(`/admin/admins/${secondAdminId}/suspend`)
       .set('Authorization', `Bearer ${accessToken}`)
       .expect(200)
-      .expect({ deactivated: true });
+      .expect({ suspended: true });
 
     const listRes = await request(app.getHttpServer())
       .get('/admin/admins')
       .set('Authorization', `Bearer ${accessToken}`)
       .expect(200);
-    const deactivatedEntry = listRes.body.data.find((a: { id: string }) => a.id === secondAdminId);
-    expect(deactivatedEntry.isActive).toBe(false);
+    const suspendedEntry = listRes.body.data.find((a: { id: string }) => a.id === secondAdminId);
+    expect(suspendedEntry.isActive).toBe(false);
 
     await request(app.getHttpServer())
       .post('/auth/refresh')
@@ -147,25 +147,25 @@ describe('Admin role assignment (e2e)', () => {
       .expect(401);
   });
 
-  it('rejects deactivating an already-deactivated admin (409)', () => {
+  it('rejects suspending an already-suspended admin (409)', () => {
     return request(app.getHttpServer())
-      .post(`/admin/admins/${secondAdminId}/deactivate`)
+      .post(`/admin/admins/${secondAdminId}/suspend`)
       .set('Authorization', `Bearer ${accessToken}`)
       .expect(409);
   });
 
-  it('reactivates the admin', async () => {
+  it('unsuspends the admin', async () => {
     await request(app.getHttpServer())
-      .post(`/admin/admins/${secondAdminId}/reactivate`)
+      .post(`/admin/admins/${secondAdminId}/unsuspend`)
       .set('Authorization', `Bearer ${accessToken}`)
       .expect(200)
-      .expect({ reactivated: true });
+      .expect({ unsuspended: true });
 
     const listRes = await request(app.getHttpServer())
       .get('/admin/admins')
       .set('Authorization', `Bearer ${accessToken}`)
       .expect(200);
-    const reactivatedEntry = listRes.body.data.find((a: { id: string }) => a.id === secondAdminId);
-    expect(reactivatedEntry.isActive).toBe(true);
+    const unsuspendedEntry = listRes.body.data.find((a: { id: string }) => a.id === secondAdminId);
+    expect(unsuspendedEntry.isActive).toBe(true);
   });
 });

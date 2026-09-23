@@ -167,52 +167,52 @@ describe('AdminRoleAssignmentService', () => {
     });
   });
 
-  describe('deactivate', () => {
+  describe('suspend', () => {
     it('throws NotFoundException when the admin does not exist', async () => {
       prisma.adminUser.findUnique.mockResolvedValue(null);
-      await expect(service.deactivate('caller-1', 'missing-id')).rejects.toThrow(NotFoundException);
+      await expect(service.suspend('caller-1', 'missing-id')).rejects.toThrow(NotFoundException);
     });
 
-    it('throws ConflictException when deactivating your own account', async () => {
+    it('throws ConflictException when suspending your own account', async () => {
       prisma.adminUser.findUnique.mockResolvedValue({ id: 'caller-1', isActive: true });
-      await expect(service.deactivate('caller-1', 'caller-1')).rejects.toThrow(ConflictException);
+      await expect(service.suspend('caller-1', 'caller-1')).rejects.toThrow(ConflictException);
     });
 
-    it('throws ConflictException when the admin is already inactive', async () => {
+    it('throws ConflictException when the admin is already suspended', async () => {
       prisma.adminUser.findUnique.mockResolvedValue({ id: 'admin-2', isActive: false });
-      await expect(service.deactivate('caller-1', 'admin-2')).rejects.toThrow(ConflictException);
+      await expect(service.suspend('caller-1', 'admin-2')).rejects.toThrow(ConflictException);
     });
 
-    it('deactivates the admin and revokes their sessions', async () => {
+    it('suspends the admin and revokes their sessions', async () => {
       prisma.adminUser.findUnique.mockResolvedValue({ id: 'admin-2', isActive: true });
       prisma.adminUser.update.mockResolvedValue({ id: 'admin-2', isActive: false });
 
-      await service.deactivate('caller-1', 'admin-2');
+      await service.suspend('caller-1', 'admin-2');
 
       expect(prisma.adminUser.update).toHaveBeenCalledWith({
         where: { id: 'admin-2' },
         data: { isActive: false },
       });
-      expect(sessionService.revokeAllForPrincipal).toHaveBeenCalledWith('ADMIN', 'admin-2', 'admin_deactivated');
+      expect(sessionService.revokeAllForPrincipal).toHaveBeenCalledWith('ADMIN', 'admin-2', 'admin_suspended');
     });
   });
 
-  describe('reactivate', () => {
+  describe('unsuspend', () => {
     it('throws NotFoundException when the admin does not exist', async () => {
       prisma.adminUser.findUnique.mockResolvedValue(null);
-      await expect(service.reactivate('missing-id')).rejects.toThrow(NotFoundException);
+      await expect(service.unsuspend('missing-id')).rejects.toThrow(NotFoundException);
     });
 
     it('throws ConflictException when the admin is already active', async () => {
       prisma.adminUser.findUnique.mockResolvedValue({ id: 'admin-2', isActive: true });
-      await expect(service.reactivate('admin-2')).rejects.toThrow(ConflictException);
+      await expect(service.unsuspend('admin-2')).rejects.toThrow(ConflictException);
     });
 
-    it('reactivates the admin without touching sessions', async () => {
+    it('unsuspends the admin without touching sessions', async () => {
       prisma.adminUser.findUnique.mockResolvedValue({ id: 'admin-2', isActive: false });
       prisma.adminUser.update.mockResolvedValue({ id: 'admin-2', isActive: true });
 
-      await service.reactivate('admin-2');
+      await service.unsuspend('admin-2');
 
       expect(prisma.adminUser.update).toHaveBeenCalledWith({
         where: { id: 'admin-2' },

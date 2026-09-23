@@ -53,33 +53,33 @@ export class AdminRoleAssignmentController {
     return { updated: true };
   }
 
-  @Post(':id/deactivate')
+  @Post(':id/suspend')
   @HttpCode(200)
   @RequirePermissions('roles:manage')
-  async deactivate(@Param('id') id: string, @Req() req: { user: JwtPayload }) {
-    await this.adminRoleAssignmentService.deactivate(req.user.sub, id);
+  async suspend(@Param('id') id: string, @Req() req: { user: JwtPayload }) {
+    await this.adminRoleAssignmentService.suspend(req.user.sub, id);
     await this.auditLogService.record({
       actorType: AuditActorType.ADMIN,
       actorId: req.user.sub,
-      action: 'admin.deactivated',
+      action: 'admin.suspended',
       targetType: 'AdminUser',
       targetId: id,
     });
-    return { deactivated: true };
+    return { suspended: true };
   }
 
-  @Post(':id/reactivate')
+  @Post(':id/unsuspend')
   @HttpCode(200)
   @RequirePermissions('roles:manage')
-  async reactivate(@Param('id') id: string, @Req() req: { user: JwtPayload }) {
-    await this.adminRoleAssignmentService.reactivate(id);
+  async unsuspend(@Param('id') id: string, @Req() req: { user: JwtPayload }) {
+    await this.adminRoleAssignmentService.unsuspend(id);
     await this.auditLogService.record({
       actorType: AuditActorType.ADMIN,
       actorId: req.user.sub,
-      action: 'admin.reactivated',
+      action: 'admin.unsuspended',
       targetType: 'AdminUser',
       targetId: id,
     });
-    return { reactivated: true };
+    return { unsuspended: true };
   }
 }
