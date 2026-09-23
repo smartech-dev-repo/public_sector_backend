@@ -84,6 +84,12 @@ describe('Admin client review (e2e)', () => {
       .set('Authorization', `Bearer ${adminAccessToken}`)
       .expect(200);
     expect(res.body.onboarding.faceMatchPassed).toBe(false);
+    expect(typeof res.body.onboarding.bvnSelfieUrl).toBe('string');
+    expect(res.body.onboarding.bvnSelfieUrl.length).toBeGreaterThan(0);
+    expect(typeof res.body.onboarding.ninSelfieUrl).toBe('string');
+    expect(res.body.onboarding.ninSelfieUrl.length).toBeGreaterThan(0);
+    expect(typeof res.body.onboarding.liveSelfieUrl).toBe('string');
+    expect(res.body.onboarding.liveSelfieUrl.length).toBeGreaterThan(0);
   });
 
   it('retries: resets to IDENTITY_SUBMITTED since only the face match failed', async () => {

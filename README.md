@@ -343,8 +343,23 @@ manually.
 |---|---|---|
 | `GET /admin/clients` | `clients:review` | Filterable by `status` |
 | `GET /admin/clients/:id` | `clients:review` | Full detail incl. `ClientOnboarding` — selfie images are downloaded separately via `GET /admin/documents/files/:key` (`documents:read`); `onboarding.documents` is an array of `{ documentType, url, uploadedAt }` with each of the 4 uploaded documents' `storageKey` already resolved to a signed, directly viewable `url` |
+
 | `POST /admin/clients/:id/approve` | `clients:review` | Only valid from `MANUAL_REVIEW` |
 | `POST /admin/clients/:id/retry` | `clients:review` | `{ note }`. Resets to `IPPIS_LINKED` if identity verification itself failed, or `IDENTITY_SUBMITTED` if only the face match failed |
+
+`GET /admin/clients/:id`'s `onboarding.ippisRecord` is trimmed to
+review-relevant fields only — `agency`, `staffId`, `employeeName`,
+`employeeStatus`, `hireDate`, `department`, `grade`, `bankName`,
+`accountNumber` — excluding `salary`, `pinNumber`, `pfaName`, `bvn` (the
+`IppisRecord`'s own separate field), and `rawFields` (raw ingestion
+JSON). The response also resolves `bvnSelfie`/`ninSelfie`/`liveSelfieKey`
+into signed, directly viewable URLs — `bvnSelfieUrl`/`ninSelfieUrl`/
+`liveSelfieUrl` — the same treatment `ClientDocument`s already get,
+alongside the raw storage-key fields (kept, not hidden). All other
+`ClientOnboarding` fields, including `bvn`/`nin` plaintext and the new
+identity/address/marital-status fields below, are returned as-is —
+this endpoint is for admin manual review and isn't curated the way the
+client-facing status endpoint is.
 
 `GET /admin/clients` also accepts a `q` search across `phone`, and a
 `createdFrom`/`createdTo` date range over `createdAt`. It accepts
@@ -660,15 +675,50 @@ re-upload, if all 4 documents already exist.
 | `POST /client/onboarding/identity` | Client JWT | `{ bvn, nin }` |
 | `POST /client/onboarding/documents/:type` | Client JWT | multipart, field `file`; JPEG/PNG/PDF only, 5MB cap; valid from `IDENTITY_SUBMITTED` or `DOCUMENTS_SUBMITTED` |
 | `POST /client/onboarding/face-match` | Client JWT | multipart, field `selfie`; valid from `IDENTITY_SUBMITTED` or `DOCUMENTS_SUBMITTED` |
-| `GET /client/onboarding/status` | Client JWT | resumability — `step` says exactly where to continue |
+| `GET /client/onboarding/status` | Client JWT | resumability — `step` says exactly where to continue; returns a curated `onboarding` shape, see below |
+| `PATCH /client/onboarding/marital-status` | Client JWT | `{ maritalStatus }`. Lets the client correct their IPPIS-sourced marital status; no onboarding-step precondition |
 
 `ClientOnboarding.employeeStatus`/`legacyId` are copied from the matched
 `IppisRecord` at `ippis-link` time (the same snapshot pattern as
-`employeeName`/`agency`/`bankName`/`accountNumber`). Both
-`GET /client/onboarding/status` and `GET /admin/clients/:id` additionally
-return a computed `lengthOfService: { years, months } | null`, derived at
-read time from the linked `IppisRecord`'s `hireDate` — `null` when there's
-no linked `IppisRecord` yet.
+`employeeName`/`agency`/`bankName`/`accountNumber`). `maritalStatus` is
+copied the same way, from `IppisRecord.maritalStatus`, and can be
+corrected afterward by the client via `PATCH
+/client/onboarding/marital-status`. Both `GET /client/onboarding/status`
+and `GET /admin/clients/:id` additionally return a computed
+`lengthOfService: { years, months } | null`, derived at read time from
+the linked `IppisRecord`'s `hireDate` — `null` when there's no linked
+`IppisRecord` yet.
+
+`POST /client/onboarding/identity` also extracts and persists 10
+demographic/address fields onto `ClientOnboarding` from the Dojah (or
+mock) BVN/NIN lookups it already performs:
+
+- From the **BVN** lookup: `identityDateOfBirth`, `identityGender`,
+  `identityPhoneNumber`, `stateOfOrigin`, `lgaOfOrigin`,
+  `stateOfResidence`, `lgaOfResidence`.
+- From the **NIN** lookup: `address`, `city` (BVN's advance response has
+  no address/city field at all).
+- `zipCode` exists on the schema but is **never populated** by any
+  current data source — Dojah returns no postal/zip code for Nigerian
+  BVN/NIN at any tier. This is a known, permanent gap, not a bug.
+- Dojah's BVN response also includes its own `marital_status`, captured
+  into the shared `IdentityLookupResult` interface for completeness but
+  deliberately **not** used to populate `ClientOnboarding.maritalStatus`
+  — that field stays IPPIS-sourced (see above); there's no automatic
+  reconciliation between the two.
+
+`GET /client/onboarding/status`'s `onboarding` object is a curated
+subset of the `ClientOnboarding` row, not a raw spread — it returns
+`employeeName`, `agency`, `bankName`, `accountNumber`, `employeeStatus`,
+`identityDateOfBirth`, `identityGender`, `identityPhoneNumber`,
+`stateOfOrigin`, `lgaOfOrigin`, `stateOfResidence`, `lgaOfResidence`,
+`address`, `city`, `zipCode`, `maritalStatus`, and `step`. It excludes
+`bvn`/`nin` plaintext, the `bvnSelfie`/`ninSelfie`/`liveSelfieKey`
+internal storage keys, internal review metadata
+(`failureReasons`/`reviewedBy`/`reviewedAt`/`reviewNote`), `legacyId`,
+and the raw nested `ippisRecord` entirely (already summarized via
+`lengthOfService`) — a pre-existing PII-exposure gap fixed alongside
+adding these new fields to the same response path.
 
 ## Roadmap
 

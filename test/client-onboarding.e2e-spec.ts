@@ -113,7 +113,8 @@ describe('Client onboarding (e2e)', () => {
       .expect(200)
       .expect((res) => {
         expect(res.body.onboarding.employeeStatus).toBe('ACTIVE');
-        expect(res.body.onboarding.legacyId).toBe('LEGACY-E2E-001');
+        // legacyId is intentionally not part of the curated getStatus shape
+        // (Task 3's curation) — it isn't in the client-facing field list.
         expect(res.body.lengthOfService).not.toBeNull();
         expect(res.body.lengthOfService.years).toBeGreaterThanOrEqual(5);
       });
@@ -127,6 +128,18 @@ describe('Client onboarding (e2e)', () => {
         expect(res.body.step).toBe('IDENTITY_SUBMITTED');
         expect(res.body.identityVerified).toBe(true);
       });
+
+    const statusAfterIdentity = await request(app.getHttpServer())
+      .get('/client/onboarding/status')
+      .set('Authorization', `Bearer ${accessToken}`)
+      .expect(200);
+    expect(statusAfterIdentity.body.onboarding.identityGender).toBe('Female');
+    expect(statusAfterIdentity.body.onboarding.stateOfOrigin).toBe('Lagos');
+    expect(statusAfterIdentity.body.onboarding.address).toBe('1 Mock Street');
+    expect(statusAfterIdentity.body.onboarding.city).toBe('Mocktown');
+    expect(statusAfterIdentity.body.onboarding).not.toHaveProperty('bvn');
+    expect(statusAfterIdentity.body.onboarding).not.toHaveProperty('nin');
+    expect(statusAfterIdentity.body.onboarding).not.toHaveProperty('bvnSelfie');
 
     for (const [index, documentType] of documentTypes.entries()) {
       await request(app.getHttpServer())
@@ -172,6 +185,12 @@ describe('Client onboarding (e2e)', () => {
         expect(res.body.onboarding.legacyId).toBe('LEGACY-E2E-001');
         expect(res.body.onboarding.lengthOfService).not.toBeNull();
         expect(res.body.onboarding.lengthOfService.years).toBeGreaterThanOrEqual(5);
+        expect(typeof res.body.onboarding.bvnSelfieUrl).toBe('string');
+        expect(res.body.onboarding.bvnSelfieUrl.length).toBeGreaterThan(0);
+        expect(typeof res.body.onboarding.ninSelfieUrl).toBe('string');
+        expect(res.body.onboarding.ninSelfieUrl.length).toBeGreaterThan(0);
+        expect(typeof res.body.onboarding.liveSelfieUrl).toBe('string');
+        expect(res.body.onboarding.liveSelfieUrl.length).toBeGreaterThan(0);
       });
   }, 20000);
 
@@ -248,5 +267,50 @@ describe('Client onboarding (e2e)', () => {
       expect(document.url.length).toBeGreaterThan(0);
       expect(document.uploadedAt).toBeDefined();
     }
+  });
+
+  it('lets the client override their IPPIS-sourced marital status', async () => {
+    const maritalPhone = `+234803${Date.now().toString().slice(-7)}`;
+    const maritalStaffId = `E2E-MARITAL-${Date.now()}`;
+    const maritalClient = await prisma.client.create({ data: { phone: maritalPhone } });
+    await prisma.ippisRecord.create({
+      data: {
+        agency: 'NPF',
+        staffId: maritalStaffId,
+        employeeName: 'E2E Marital Test',
+        bankName: 'Test Bank',
+        accountNumber: '0000000002',
+      },
+    });
+    const tokenService = app.get(TokenService);
+    const maritalAccessToken = tokenService.signAccessToken({ sub: maritalClient.id, type: 'client' });
+
+    await request(app.getHttpServer())
+      .post('/client/onboarding/ippis-link')
+      .set('Authorization', `Bearer ${maritalAccessToken}`)
+      .send({ ippisNumber: maritalStaffId })
+      .expect(201);
+
+    const before = await request(app.getHttpServer())
+      .get('/client/onboarding/status')
+      .set('Authorization', `Bearer ${maritalAccessToken}`)
+      .expect(200);
+    expect(before.body.onboarding.maritalStatus).toBeDefined();
+
+    await request(app.getHttpServer())
+      .patch('/client/onboarding/marital-status')
+      .set('Authorization', `Bearer ${maritalAccessToken}`)
+      .send({ maritalStatus: 'Widowed' })
+      .expect(200);
+
+    const after = await request(app.getHttpServer())
+      .get('/client/onboarding/status')
+      .set('Authorization', `Bearer ${maritalAccessToken}`)
+      .expect(200);
+    expect(after.body.onboarding.maritalStatus).toBe('Widowed');
+
+    await prisma.clientOnboarding.deleteMany({ where: { clientId: maritalClient.id } });
+    await prisma.ippisRecord.deleteMany({ where: { staffId: maritalStaffId } });
+    await prisma.client.deleteMany({ where: { id: maritalClient.id } });
   });
 });
