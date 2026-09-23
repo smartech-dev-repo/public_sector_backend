@@ -142,5 +142,6 @@ describe('Admin invite (e2e)', () => {
     expect(created.fullName).toBe('Jane Doe');
 
     await prisma.adminUser.deleteMany({ where: { email: acceptEmail } });
+    await prisma.adminInvite.deleteMany({ where: { email: acceptEmail } });
   });
 });
