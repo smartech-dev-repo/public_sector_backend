@@ -91,12 +91,20 @@
       "value": ""
     },
     {
+      "key": "department_id",
+      "value": ""
+    },
+    {
       "key": "test_permission_key",
       "value": "reports:export"
     },
     {
       "key": "test_role_name",
       "value": "REPORTS_MANAGER"
+    },
+    {
+      "key": "test_department_name",
+      "value": "Finance"
     },
     {
       "key": "admin_id",
@@ -5665,6 +5673,914 @@
                       ]
                     },
                     "description": "Run the permission-removal request above first, and make sure no admin has this role assigned."
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"deleted\": true\n}"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Departments",
+          "item": [
+            {
+              "name": "POST /admin/departments - Success",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"{{test_department_name}}\",\n  \"description\": \"Handles payroll and treasury operations\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/admin/departments",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "departments"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 201', () => pm.response.to.have.status(201));",
+                      "const json = pm.response.json();",
+                      "pm.collectionVariables.set('department_id', json.id);"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Success - department created (201)",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      },
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"name\": \"{{test_department_name}}\",\n  \"description\": \"Handles payroll and treasury operations\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/admin/departments",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "departments"
+                      ]
+                    }
+                  },
+                  "status": "Created",
+                  "code": 201,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"id\": \"550e8400-e29b-41d4-a716-446655440030\",\n  \"name\": \"Finance\",\n  \"description\": \"Handles payroll and treasury operations\",\n  \"createdAt\": \"2026-09-23T10:00:00.000Z\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "POST /admin/departments - Validation error (400)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"description\": \"Missing the required name field\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/admin/departments",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "departments"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 400', () => pm.response.to.have.status(400));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Validation error - name is required (400)",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      },
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"description\": \"Missing the required name field\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/admin/departments",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "departments"
+                      ]
+                    }
+                  },
+                  "status": "Bad Request",
+                  "code": 400,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"statusCode\": 400,\n  \"message\": [\n    \"name must be longer than or equal to 1 characters\",\n    \"name must be a string\"\n  ],\n  \"error\": \"Bad Request\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "POST /admin/departments - Duplicate name (409)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"{{test_department_name}}\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/admin/departments",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "departments"
+                  ]
+                },
+                "description": "Run 'POST /admin/departments - Success' first so {{test_department_name}} already exists."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 409', () => pm.response.to.have.status(409));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Conflict - duplicate department name (409)",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      },
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"name\": \"{{test_department_name}}\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/admin/departments",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "departments"
+                      ]
+                    },
+                    "description": "Run 'POST /admin/departments - Success' first so {{test_department_name}} already exists."
+                  },
+                  "status": "Conflict",
+                  "code": 409,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"statusCode\": 409,\n  \"message\": \"A department named \\\"Finance\\\" already exists\",\n  \"error\": \"Conflict\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "POST /admin/departments - Missing permission (403)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{agent_access_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"{{test_department_name}}\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/admin/departments",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "departments"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 401 or 403', () => pm.expect([401,403]).to.include(pm.response.code));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "403 Forbidden",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      },
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{agent_access_token}}"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"name\": \"{{test_department_name}}\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/admin/departments",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "departments"
+                      ]
+                    }
+                  },
+                  "status": "Forbidden",
+                  "code": 403,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"statusCode\": 403,\n  \"message\": \"Insufficient permissions\",\n  \"error\": \"Forbidden\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "GET /admin/departments - Success (all)",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/departments",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "departments"
+                  ],
+                  "query": [
+                    {
+                      "key": "q",
+                      "value": "finance",
+                      "description": "Optional. Case-insensitive search across name.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "page",
+                      "value": "1",
+                      "description": "Optional. Page number, defaults to 1.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "limit",
+                      "value": "25",
+                      "description": "Optional. Page size, defaults to 25, hard max 100 (a request above 100 is a 400, not a silent clamp).",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "description": "Lists departments, searchable by q across name. Paginated (page/limit, default 1/25, limit capped at 100). Requires departments:manage. Response is { data, meta }."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));",
+                      "pm.test('is a paginated result', () => {",
+                      "  const body = pm.response.json();",
+                      "  pm.expect(body.data).to.be.an('array');",
+                      "  pm.expect(body.meta).to.have.all.keys('total', 'page', 'limit', 'totalPages');",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Success - list all departments (200)",
+                  "originalRequest": {
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/departments",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "departments"
+                      ],
+                      "query": [
+                        {
+                          "key": "q",
+                          "value": "finance",
+                          "description": "Optional. Case-insensitive search across name.",
+                          "disabled": true
+                        },
+                        {
+                          "key": "page",
+                          "value": "1",
+                          "description": "Optional. Page number, defaults to 1.",
+                          "disabled": true
+                        },
+                        {
+                          "key": "limit",
+                          "value": "25",
+                          "description": "Optional. Page size, defaults to 25, hard max 100 (a request above 100 is a 400, not a silent clamp).",
+                          "disabled": true
+                        }
+                      ]
+                    },
+                    "description": "Lists departments, searchable by q across name. Paginated (page/limit, default 1/25, limit capped at 100). Requires departments:manage. Response is { data, meta }."
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"data\": [\n    {\n      \"id\": \"550e8400-e29b-41d4-a716-446655440030\",\n      \"name\": \"Finance\",\n      \"description\": \"Handles payroll and treasury operations\",\n      \"createdAt\": \"2026-09-23T10:00:00.000Z\"\n    }\n  ],\n  \"meta\": {\n    \"total\": 1,\n    \"page\": 1,\n    \"limit\": 25,\n    \"totalPages\": 1\n  }\n}"
+                }
+              ]
+            },
+            {
+              "name": "GET /admin/departments/:id - Success",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/departments/{{department_id}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "departments",
+                    "{{department_id}}"
+                  ]
+                },
+                "description": "Run 'POST /admin/departments - Success' first to populate department_id."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Success - get department by id (200)",
+                  "originalRequest": {
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/departments/{{department_id}}",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "departments",
+                        "{{department_id}}"
+                      ]
+                    },
+                    "description": "Run 'POST /admin/departments - Success' first to populate department_id."
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"id\": \"550e8400-e29b-41d4-a716-446655440030\",\n  \"name\": \"Finance\",\n  \"description\": \"Handles payroll and treasury operations\",\n  \"createdAt\": \"2026-09-23T10:00:00.000Z\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "GET /admin/departments/:id - Not found (404)",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/departments/00000000-0000-0000-0000-000000000000",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "departments",
+                    "00000000-0000-0000-0000-000000000000"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 404', () => pm.response.to.have.status(404));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "404 Not Found",
+                  "originalRequest": {
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/departments/00000000-0000-0000-0000-000000000000",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "departments",
+                        "00000000-0000-0000-0000-000000000000"
+                      ]
+                    }
+                  },
+                  "status": "Not Found",
+                  "code": 404,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"statusCode\": 404,\n  \"message\": \"Department not found\",\n  \"error\": \"Not Found\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "PATCH /admin/departments/:id - Success",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"description\": \"Updated department description\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/admin/departments/{{department_id}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "departments",
+                    "{{department_id}}"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Success - department description updated (200)",
+                  "originalRequest": {
+                    "method": "PATCH",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      },
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"description\": \"Updated department description\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/admin/departments/{{department_id}}",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "departments",
+                        "{{department_id}}"
+                      ]
+                    }
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"id\": \"550e8400-e29b-41d4-a716-446655440030\",\n  \"name\": \"Finance\",\n  \"description\": \"Updated department description\",\n  \"createdAt\": \"2026-09-23T10:00:00.000Z\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "PATCH /admin/departments/:id - Validation error (400)",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/admin/departments/{{department_id}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "departments",
+                    "{{department_id}}"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 400', () => pm.response.to.have.status(400));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Validation error - name cannot be empty (400)",
+                  "originalRequest": {
+                    "method": "PATCH",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      },
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"name\": \"\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/admin/departments/{{department_id}}",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "departments",
+                        "{{department_id}}"
+                      ]
+                    }
+                  },
+                  "status": "Bad Request",
+                  "code": 400,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"statusCode\": 400,\n  \"message\": [\n    \"name must be longer than or equal to 1 characters\"\n  ],\n  \"error\": \"Bad Request\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "DELETE /admin/departments/:id - Blocked, assigned to a role (409)",
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/departments/{{department_id}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "departments",
+                    "{{department_id}}"
+                  ]
+                },
+                "description": "Requires Role.departmentId (added in Task 2 of the restructure plan) to be set on some role pointing at this department to actually reproduce; the guard itself (DepartmentService.remove) is implemented as of Task 1."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 409', () => pm.response.to.have.status(409));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Conflict - department in use by a role (409)",
+                  "originalRequest": {
+                    "method": "DELETE",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/departments/{{department_id}}",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "departments",
+                        "{{department_id}}"
+                      ]
+                    },
+                    "description": "Requires Role.departmentId (added in Task 2 of the restructure plan) to be set on some role pointing at this department to actually reproduce; the guard itself (DepartmentService.remove) is implemented as of Task 1."
+                  },
+                  "status": "Conflict",
+                  "code": 409,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"statusCode\": 409,\n  \"message\": \"Cannot delete a department that is currently assigned to one or more roles\",\n  \"error\": \"Conflict\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "DELETE /admin/departments/:id - Success",
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/departments/{{department_id}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "departments",
+                    "{{department_id}}"
+                  ]
+                },
+                "description": "Run this after the blocked-delete example above, once no role references this department."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));",
+                      "pm.test('deleted true', () => pm.expect(pm.response.json().deleted).to.eql(true));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Success - department deleted (200)",
+                  "originalRequest": {
+                    "method": "DELETE",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/departments/{{department_id}}",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "departments",
+                        "{{department_id}}"
+                      ]
+                    },
+                    "description": "Run this after the blocked-delete example above, once no role references this department."
                   },
                   "status": "OK",
                   "code": 200,
@@ -14678,7 +15594,7 @@
                     "request"
                   ]
                 },
-                "description": "The mock ConsoleOtpProvider logs the 4-digit code (PHONE_OTP_LENGTH, default 4) to the running server's stdout (e.g. 'OTP for +234...: 1234') since there's no real SMS vendor wired in. Copy that code into client_otp_code before running the verify request. Response is normally just { sent: true }; when the server has ENABLE_MOCK_OTP=true, it additionally includes mockCode (the raw code, for local/dev/staging use only) \u2014 see the second saved example below."
+                "description": "The mock ConsoleOtpProvider logs the 4-digit code (PHONE_OTP_LENGTH, default 4) to the running server's stdout (e.g. 'OTP for +234...: 1234') since there's no real SMS vendor wired in. Copy that code into client_otp_code before running the verify request. Response is normally just { sent: true }; when the server has ENABLE_MOCK_OTP=true, it additionally includes mockCode (the raw code, for local/dev/staging use only) — see the second saved example below."
               },
               "event": [
                 {
@@ -14718,7 +15634,7 @@
                         "request"
                       ]
                     },
-                    "description": "The mock ConsoleOtpProvider logs the 4-digit code (PHONE_OTP_LENGTH, default 4) to the running server's stdout (e.g. 'OTP for +234...: 1234') since there's no real SMS vendor wired in. Copy that code into client_otp_code before running the verify request. Response is normally just { sent: true }; when the server has ENABLE_MOCK_OTP=true, it additionally includes mockCode (the raw code, for local/dev/staging use only) \u2014 see the second saved example below."
+                    "description": "The mock ConsoleOtpProvider logs the 4-digit code (PHONE_OTP_LENGTH, default 4) to the running server's stdout (e.g. 'OTP for +234...: 1234') since there's no real SMS vendor wired in. Copy that code into client_otp_code before running the verify request. Response is normally just { sent: true }; when the server has ENABLE_MOCK_OTP=true, it additionally includes mockCode (the raw code, for local/dev/staging use only) — see the second saved example below."
                   },
                   "status": "OK",
                   "code": 200,
@@ -14758,7 +15674,7 @@
                         "request"
                       ]
                     },
-                    "description": "The mock ConsoleOtpProvider logs the 4-digit code (PHONE_OTP_LENGTH, default 4) to the running server's stdout (e.g. 'OTP for +234...: 1234') since there's no real SMS vendor wired in. Copy that code into client_otp_code before running the verify request. Response is normally just { sent: true }; when the server has ENABLE_MOCK_OTP=true, it additionally includes mockCode (the raw code, for local/dev/staging use only) \u2014 see the second saved example below."
+                    "description": "The mock ConsoleOtpProvider logs the 4-digit code (PHONE_OTP_LENGTH, default 4) to the running server's stdout (e.g. 'OTP for +234...: 1234') since there's no real SMS vendor wired in. Copy that code into client_otp_code before running the verify request. Response is normally just { sent: true }; when the server has ENABLE_MOCK_OTP=true, it additionally includes mockCode (the raw code, for local/dev/staging use only) — see the second saved example below."
                   },
                   "status": "OK",
                   "code": 200,
