@@ -124,7 +124,7 @@ describe('AdminAuthService', () => {
     expect(await service.getPermissionsForAdmin('nobody')).toEqual([]);
   });
 
-  it('acceptInvite creates the AdminUser with the invited role and its department, and logs in', async () => {
+  it('acceptInvite creates the AdminUser with a derived fullName, the invited role, and its department, and logs in', async () => {
     adminInviteService.findValidByToken.mockResolvedValue({
       id: 'invite-1',
       email: 'new-admin@example.com',
@@ -137,12 +137,14 @@ describe('AdminAuthService', () => {
       role: { permissions: [] },
     });
 
-    const result = await service.acceptInvite('some-token', 'new-password', 'New Admin');
+    const result = await service.acceptInvite('some-token', 'new-password', 'New', 'Admin');
 
     expect(prisma.adminUser.create).toHaveBeenCalledWith({
       data: {
         email: 'new-admin@example.com',
         passwordHash: expect.any(String),
+        firstName: 'New',
+        lastName: 'Admin',
         fullName: 'New Admin',
         roleId: 'role-1',
         departmentId: 'dept-1',

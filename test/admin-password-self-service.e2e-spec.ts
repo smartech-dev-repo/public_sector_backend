@@ -41,7 +41,14 @@ describe('Admin password self-service (e2e)', () => {
 
     const passwordHash = await hashPassword(originalPassword);
     const admin = await prisma.adminUser.create({
-      data: { email, passwordHash, fullName: 'E2E Password Test Admin', roleId: testRoleId },
+      data: {
+        email,
+        passwordHash,
+        firstName: 'E2E',
+        lastName: 'Password Test Admin',
+        fullName: 'E2E Password Test Admin',
+        roleId: testRoleId,
+      },
     });
     adminId = admin.id;
   });

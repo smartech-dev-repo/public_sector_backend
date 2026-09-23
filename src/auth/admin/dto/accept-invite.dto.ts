@@ -10,5 +10,9 @@ export class AcceptInviteDto {
 
   @IsString()
   @MinLength(1)
-  fullName: string;
+  firstName: string;
+
+  @IsString()
+  @MinLength(1)
+  lastName: string;
 }

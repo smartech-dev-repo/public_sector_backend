@@ -51,6 +51,8 @@ describe('Admin role assignment (e2e)', () => {
       data: {
         email: secondAdminEmail,
         passwordHash: secondAdminPasswordHash,
+        firstName: 'E2E',
+        lastName: 'Deactivate Target',
         fullName: 'E2E Deactivate Target',
         roleId: testRoleId,
       },

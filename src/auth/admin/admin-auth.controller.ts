@@ -33,7 +33,8 @@ export class AdminAuthController {
     return this.adminAuthService.acceptInvite(
       dto.token,
       dto.password,
-      dto.fullName,
+      dto.firstName,
+      dto.lastName,
       getRequestMetadata(req),
     );
   }

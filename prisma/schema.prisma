@@ -55,6 +55,8 @@ model AdminUser {
   id           String          @id @default(uuid())
   email        String          @unique
   passwordHash String
+  firstName    String
+  lastName     String
   fullName     String
   isActive     Boolean         @default(true)
   roleId       String

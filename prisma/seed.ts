@@ -73,12 +73,21 @@ async function main() {
 
   const passwordHash = await hashPassword(bootstrapPassword);
 
+  const trimmedBootstrapName = bootstrapName.trim();
+  const bootstrapFirstSpace = trimmedBootstrapName.indexOf(' ');
+  const bootstrapFirstName =
+    bootstrapFirstSpace === -1 ? trimmedBootstrapName : trimmedBootstrapName.slice(0, bootstrapFirstSpace);
+  const bootstrapLastName =
+    bootstrapFirstSpace === -1 ? '' : trimmedBootstrapName.slice(bootstrapFirstSpace + 1).trim();
+
   await prisma.adminUser.upsert({
     where: { email: bootstrapEmail },
     update: {},
     create: {
       email: bootstrapEmail,
       passwordHash,
+      firstName: bootstrapFirstName,
+      lastName: bootstrapLastName,
       fullName: bootstrapName,
       roleId: superAdminRole.id,
       departmentId: superAdminRole.departmentId,

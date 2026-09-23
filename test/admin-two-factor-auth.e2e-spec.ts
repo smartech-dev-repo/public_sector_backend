@@ -51,7 +51,14 @@ describe('Admin two-factor authentication (e2e)', () => {
   async function createAdminAndLogin(email: string) {
     const passwordHash = await hashPassword(password);
     const admin = await prisma.adminUser.create({
-      data: { email, passwordHash, fullName: 'E2E 2FA Test Admin', roleId: testRoleId },
+      data: {
+        email,
+        passwordHash,
+        firstName: 'E2E',
+        lastName: '2FA Test Admin',
+        fullName: 'E2E 2FA Test Admin',
+        roleId: testRoleId,
+      },
     });
     const loginRes = await request(app.getHttpServer())
       .post('/auth/admin/login')

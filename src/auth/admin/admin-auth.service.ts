@@ -64,7 +64,8 @@ export class AdminAuthService {
   async acceptInvite(
     token: string,
     password: string,
-    fullName: string,
+    firstName: string,
+    lastName: string,
     meta?: { userAgent?: string; ip?: string },
   ) {
     const invite = await this.adminInviteService.findValidByToken(token);
@@ -75,7 +76,9 @@ export class AdminAuthService {
       data: {
         email: invite.email,
         passwordHash,
-        fullName,
+        firstName,
+        lastName,
+        fullName: `${firstName} ${lastName}`,
         roleId: role.id,
         departmentId: role.departmentId,
       },
