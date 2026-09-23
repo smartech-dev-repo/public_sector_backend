@@ -66,6 +66,7 @@ describe('ClientOnboardingService', () => {
         accountNumber: '0123456789',
         employeeStatus: 'ACTIVE',
         legacyId: 'LEGACY-001',
+        maritalStatus: 'Married',
       });
       prisma.clientOnboarding.create.mockResolvedValue({ id: 'onboarding-1' });
 
@@ -81,6 +82,7 @@ describe('ClientOnboardingService', () => {
           accountNumber: '0123456789',
           employeeStatus: 'ACTIVE',
           legacyId: 'LEGACY-001',
+          maritalStatus: 'Married',
           step: 'IPPIS_LINKED',
         }),
       });
@@ -119,13 +121,17 @@ describe('ClientOnboardingService', () => {
       await expect(service.submitIdentity('client-1', '12345678901', '12345678901')).rejects.toThrow(ConflictException);
     });
 
-    it('looks up BVN and NIN, stores both photos, and marks identityVerified', async () => {
+    it('looks up BVN and NIN, stores both photos, marks identityVerified, and persists the extended identity fields', async () => {
       prisma.clientOnboarding.findUnique.mockResolvedValue({ id: 'onboarding-1', step: 'IPPIS_LINKED' });
       identityVerificationService.lookupBvn.mockResolvedValue({
-        firstName: 'Jane', lastName: 'Doe', dateOfBirth: null, phoneNumber: null, photoBase64: 'YnZuLXBob3Rv',
+        firstName: 'Jane', lastName: 'Doe', dateOfBirth: '1990-01-01', phoneNumber: '08011111111', photoBase64: 'YnZuLXBob3Rv',
+        gender: 'Female', stateOfOrigin: 'Lagos', lgaOfOrigin: 'Ikeja', stateOfResidence: 'Abuja', lgaOfResidence: 'AMAC',
+        maritalStatus: 'Single', address: null, city: null,
       });
       identityVerificationService.lookupNin.mockResolvedValue({
-        firstName: 'Jane', lastName: 'Doe', dateOfBirth: null, phoneNumber: null, photoBase64: 'bmluLXBob3Rv',
+        firstName: 'Jane', lastName: 'Doe', dateOfBirth: '1990-01-01', phoneNumber: '08011111111', photoBase64: 'bmluLXBob3Rv',
+        gender: 'Female', stateOfOrigin: null, lgaOfOrigin: null, stateOfResidence: null, lgaOfResidence: null,
+        maritalStatus: null, address: '12 Example Street', city: 'Wuse',
       });
       prisma.clientOnboarding.update.mockResolvedValue({ id: 'onboarding-1' });
 
@@ -139,8 +145,38 @@ describe('ClientOnboardingService', () => {
           nin: '98765432109',
           identityVerified: true,
           step: 'IDENTITY_SUBMITTED',
+          identityDateOfBirth: new Date('1990-01-01'),
+          identityGender: 'Female',
+          identityPhoneNumber: '08011111111',
+          stateOfOrigin: 'Lagos',
+          lgaOfOrigin: 'Ikeja',
+          stateOfResidence: 'Abuja',
+          lgaOfResidence: 'AMAC',
+          address: '12 Example Street',
+          city: 'Wuse',
         }),
       });
+    });
+
+    it('stores a null identityDateOfBirth when Dojah returns no date of birth', async () => {
+      prisma.clientOnboarding.findUnique.mockResolvedValue({ id: 'onboarding-1', step: 'IPPIS_LINKED' });
+      identityVerificationService.lookupBvn.mockResolvedValue({
+        firstName: 'Jane', lastName: 'Doe', dateOfBirth: null, phoneNumber: null, photoBase64: 'YnZuLXBob3Rv',
+        gender: null, stateOfOrigin: null, lgaOfOrigin: null, stateOfResidence: null, lgaOfResidence: null,
+        maritalStatus: null, address: null, city: null,
+      });
+      identityVerificationService.lookupNin.mockResolvedValue({
+        firstName: 'Jane', lastName: 'Doe', dateOfBirth: null, phoneNumber: null, photoBase64: 'bmluLXBob3Rv',
+        gender: null, stateOfOrigin: null, lgaOfOrigin: null, stateOfResidence: null, lgaOfResidence: null,
+        maritalStatus: null, address: null, city: null,
+      });
+      prisma.clientOnboarding.update.mockResolvedValue({ id: 'onboarding-1' });
+
+      await service.submitIdentity('client-1', '12345678901', '98765432109');
+
+      expect(prisma.clientOnboarding.update).toHaveBeenCalledWith(
+        expect.objectContaining({ data: expect.objectContaining({ identityDateOfBirth: null }) }),
+      );
     });
   });
 
@@ -324,6 +360,20 @@ describe('ClientOnboardingService', () => {
         include: { ippisRecord: true },
       });
       expect(result.lengthOfService).toEqual({ years: 2, months: 0 });
+    });
+  });
+
+  describe('updateMaritalStatus', () => {
+    it('updates the maritalStatus field', async () => {
+      prisma.clientOnboarding.update.mockResolvedValue({ id: 'onboarding-1', maritalStatus: 'Divorced' });
+
+      const result = await service.updateMaritalStatus('client-1', 'Divorced');
+
+      expect(prisma.clientOnboarding.update).toHaveBeenCalledWith({
+        where: { clientId: 'client-1' },
+        data: { maritalStatus: 'Divorced' },
+      });
+      expect(result.maritalStatus).toBe('Divorced');
     });
   });
 });

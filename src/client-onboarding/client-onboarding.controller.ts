@@ -5,6 +5,7 @@ import {
   Get,
   Param,
   ParseEnumPipe,
+  Patch,
   Post,
   Req,
   UploadedFile,
@@ -18,6 +19,7 @@ import { JwtPayload } from '../auth/jwt-payload.interface';
 import { ClientOnboardingService } from './client-onboarding.service';
 import { LinkIppisDto } from './dto/link-ippis.dto';
 import { SubmitIdentityDto } from './dto/submit-identity.dto';
+import { UpdateMaritalStatusDto } from './dto/update-marital-status.dto';
 import { ClientDocumentType } from '../generated/prisma/client';
 
 @Controller('client/onboarding')
@@ -44,6 +46,11 @@ export class ClientOnboardingController {
   @Get('status')
   getStatus(@Req() req: { user: JwtPayload }) {
     return this.clientOnboardingService.getStatus(req.user.sub);
+  }
+
+  @Patch('marital-status')
+  updateMaritalStatus(@Body() dto: UpdateMaritalStatusDto, @Req() req: { user: JwtPayload }) {
+    return this.clientOnboardingService.updateMaritalStatus(req.user.sub, dto.maritalStatus);
   }
 
   @Post('documents/:type')

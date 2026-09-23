@@ -54,6 +54,7 @@ export class ClientOnboardingService {
         accountNumber: ippisRecord.accountNumber,
         employeeStatus: ippisRecord.employeeStatus,
         legacyId: ippisRecord.legacyId,
+        maritalStatus: ippisRecord.maritalStatus,
         step: OnboardingStep.IPPIS_LINKED,
       },
     });
@@ -95,6 +96,15 @@ export class ClientOnboardingService {
         ninSelfie: ninSelfieKey,
         identityVerified,
         step,
+        identityDateOfBirth: bvnResult.dateOfBirth ? new Date(bvnResult.dateOfBirth) : null,
+        identityGender: bvnResult.gender,
+        identityPhoneNumber: bvnResult.phoneNumber,
+        stateOfOrigin: bvnResult.stateOfOrigin,
+        lgaOfOrigin: bvnResult.lgaOfOrigin,
+        stateOfResidence: bvnResult.stateOfResidence,
+        lgaOfResidence: bvnResult.lgaOfResidence,
+        address: ninResult.address,
+        city: ninResult.city,
       },
     });
   }
@@ -186,5 +196,12 @@ export class ClientOnboardingService {
       onboarding,
       lengthOfService: computeLengthOfService(onboarding?.ippisRecord?.hireDate ?? null),
     };
+  }
+
+  async updateMaritalStatus(clientId: string, maritalStatus: string) {
+    return this.prisma.clientOnboarding.update({
+      where: { clientId },
+      data: { maritalStatus },
+    });
   }
 }

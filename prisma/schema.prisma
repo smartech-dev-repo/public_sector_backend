@@ -333,6 +333,17 @@ model ClientOnboarding {
   accountNumber     String?
   employeeStatus    String?
   legacyId          String?
+  identityDateOfBirth DateTime?
+  identityGender      String?
+  identityPhoneNumber String?
+  stateOfOrigin       String?
+  lgaOfOrigin         String?
+  stateOfResidence    String?
+  lgaOfResidence      String?
+  address             String?
+  city                String?
+  zipCode             String?
+  maritalStatus       String?
   bvn               String?
   nin               String?
   bvnSelfie         String?
