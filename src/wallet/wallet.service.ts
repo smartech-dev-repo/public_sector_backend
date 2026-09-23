@@ -1,25 +1,62 @@
 import { Injectable, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { AuditActorType, WalletEntry, WalletEntryDirection } from '../generated/prisma/client';
+import { AuditActorType, Prisma, WalletEntry, WalletEntryDirection } from '../generated/prisma/client';
+import { buildPaginatedResult, PaginatedResult } from '../common/pagination/paginated-result';
 
 export interface WalletActor {
   actorType: AuditActorType;
   actorId?: string;
 }
 
+export interface ListWalletEntriesFilters {
+  direction?: WalletEntryDirection;
+  actorType?: AuditActorType;
+  createdFrom?: Date;
+  createdTo?: Date;
+}
+
 @Injectable()
 export class WalletService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async getWallet(clientId: string): Promise<{ balance: number; entries: WalletEntry[] }> {
+  async getWallet(
+    clientId: string,
+    filters: ListWalletEntriesFilters = {},
+    pagination: { page: number; limit: number } = { page: 1, limit: 25 },
+  ): Promise<{ balance: number; entries: PaginatedResult<WalletEntry> }> {
+    await this.assertClientExists(clientId);
+
+    const { page, limit } = pagination;
+    const where: Prisma.WalletEntryWhereInput = {
+      clientId,
+      direction: filters.direction,
+      actorType: filters.actorType,
+      createdAt:
+        filters.createdFrom || filters.createdTo
+          ? { gte: filters.createdFrom, lte: filters.createdTo }
+          : undefined,
+    };
+
+    const [data, total, balance] = await Promise.all([
+      this.prisma.walletEntry.findMany({ where, orderBy: { createdAt: 'desc' }, skip: (page - 1) * limit, take: limit }),
+      this.prisma.walletEntry.count({ where }),
+      this.getBalance(clientId),
+    ]);
+
+    return { balance, entries: buildPaginatedResult(data, total, page, limit) };
+  }
+
+  // Unpaginated, unfiltered on purpose -- the real wallet balance must never
+  // depend on which page of the entries list a caller happens to be viewing.
+  async getBalance(clientId: string): Promise<number> {
     await this.assertClientExists(clientId);
 
     const entries = await this.prisma.walletEntry.findMany({
       where: { clientId },
-      orderBy: { createdAt: 'desc' },
+      select: { amount: true, direction: true },
     });
 
-    return { balance: this.sumEntries(entries), entries };
+    return this.sumEntries(entries);
   }
 
   async credit(clientId: string, amount: number, description: string, actor: WalletActor): Promise<WalletEntry> {
@@ -38,7 +75,7 @@ export class WalletService {
   }
 
   async debit(clientId: string, amount: number, description: string, actor: WalletActor): Promise<WalletEntry> {
-    const { balance } = await this.getWallet(clientId);
+    const balance = await this.getBalance(clientId);
 
     if (amount > balance) {
       throw new UnprocessableEntityException('Insufficient wallet balance');

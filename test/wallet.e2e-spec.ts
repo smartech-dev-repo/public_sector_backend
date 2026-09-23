@@ -50,7 +50,10 @@ describe('Wallet (e2e)', () => {
       .set('Authorization', `Bearer ${clientAccessToken}`)
       .expect(200);
 
-    expect(res.body).toEqual({ balance: 0, entries: [] });
+    expect(res.body).toEqual({
+      balance: 0,
+      entries: { data: [], meta: { total: 0, page: 1, limit: 25, totalPages: 0 } },
+    });
   });
 
   it('lets an admin credit a client wallet, reflected on both the admin and client views', async () => {
@@ -65,8 +68,8 @@ describe('Wallet (e2e)', () => {
       .set('Authorization', `Bearer ${adminAccessToken}`)
       .expect(200);
     expect(adminView.body.balance).toBe(5000);
-    expect(adminView.body.entries).toHaveLength(1);
-    expect(adminView.body.entries[0].description).toBe('Overpayment excess');
+    expect(adminView.body.entries.data).toHaveLength(1);
+    expect(adminView.body.entries.data[0].description).toBe('Overpayment excess');
 
     const clientView = await request(app.getHttpServer())
       .get('/client/wallet')

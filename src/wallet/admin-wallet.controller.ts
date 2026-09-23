@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpCode, Param, Post, Req, UseGuards, UseInterceptors } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Param, Post, Query, Req, UseGuards, UseInterceptors } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { PermissionsGuard } from '../auth/permissions.guard';
 import { RequirePermissions } from '../auth/permissions.decorator';
@@ -8,6 +8,7 @@ import { JwtPayload } from '../auth/jwt-payload.interface';
 import { AuditActorType } from '../generated/prisma/client';
 import { WalletService } from './wallet.service';
 import { WalletTransactionDto } from './dto/wallet-transaction.dto';
+import { ListWalletEntriesQueryDto } from './dto/list-wallet-entries-query.dto';
 
 @Controller('admin/clients/:clientId/wallet')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
@@ -20,8 +21,17 @@ export class AdminWalletController {
 
   @Get()
   @RequirePermissions('wallets:read')
-  getWallet(@Param('clientId') clientId: string) {
-    return this.walletService.getWallet(clientId);
+  getWallet(@Param('clientId') clientId: string, @Query() query: ListWalletEntriesQueryDto) {
+    return this.walletService.getWallet(
+      clientId,
+      {
+        direction: query.direction,
+        actorType: query.actorType,
+        createdFrom: query.createdFrom ? new Date(query.createdFrom) : undefined,
+        createdTo: query.createdTo ? new Date(query.createdTo) : undefined,
+      },
+      { page: query.page, limit: query.limit },
+    );
   }
 
   @Post('credit')
