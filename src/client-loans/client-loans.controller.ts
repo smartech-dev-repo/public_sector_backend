@@ -12,12 +12,16 @@ export class ClientLoansController {
 
   @Get()
   getDashboard(@Query() query: ListLoansQueryDto, @Req() req: { user: JwtPayload }) {
-    return this.clientLoansService.getDashboard(req.user.sub, {
-      status: query.status,
-      product: query.product,
-      disbursedFrom: query.disbursedFrom ? new Date(query.disbursedFrom) : undefined,
-      disbursedTo: query.disbursedTo ? new Date(query.disbursedTo) : undefined,
-    });
+    return this.clientLoansService.getDashboard(
+      req.user.sub,
+      {
+        status: query.status,
+        product: query.product,
+        disbursedFrom: query.disbursedFrom ? new Date(query.disbursedFrom) : undefined,
+        disbursedTo: query.disbursedTo ? new Date(query.disbursedTo) : undefined,
+      },
+      { page: query.page, limit: query.limit },
+    );
   }
 
   @Get(':loanId/repayment-plan')

@@ -30,7 +30,10 @@ describe('ClientLoansService', () => {
 
       const result = await service.getDashboard('c1');
 
-      expect(result).toEqual({ loans: [], repayments: [] });
+      expect(result).toEqual({
+        loans: { data: [], meta: { total: 0, page: 1, limit: 25, totalPages: 0 } },
+        repayments: [],
+      });
       expect(prisma.loan.findMany).not.toHaveBeenCalled();
       expect(prisma.loanRepaymentRecord.findMany).not.toHaveBeenCalled();
     });
@@ -53,9 +56,10 @@ describe('ClientLoansService', () => {
       expect(prisma.loanRepaymentRecord.findMany).toHaveBeenCalledWith(
         expect.objectContaining({ where: { agency: 'NPF', staffId: 'NPF-001' } }),
       );
-      expect(result.loans).toEqual([
+      expect(result.loans.data).toEqual([
         { id: 'loan-1', bvn: null, principalBalance: 5000, maturationDate: future, status: 'ACTIVE' },
       ]);
+      expect(result.loans.meta).toEqual({ total: 1, page: 1, limit: 25, totalPages: 1 });
       expect(result.repayments).toEqual([{ id: 'rep-1' }]);
     });
 
@@ -73,7 +77,7 @@ describe('ClientLoansService', () => {
 
       const result = await service.getDashboard('c1');
 
-      expect(result.loans.map((loan: { id: string }) => loan.id)).toEqual(['loan-no-bvn', 'loan-match']);
+      expect(result.loans.data.map((loan: { id: string }) => loan.id)).toEqual(['loan-no-bvn', 'loan-match']);
     });
 
     it('skips the bvn cross-check entirely when the client has no verified bvn on file', async () => {
@@ -88,7 +92,7 @@ describe('ClientLoansService', () => {
 
       const result = await service.getDashboard('c1');
 
-      expect(result.loans.map((loan: { id: string }) => loan.id)).toEqual(['loan-1']);
+      expect(result.loans.data.map((loan: { id: string }) => loan.id)).toEqual(['loan-1']);
     });
 
     it('pushes product and disbursement date range filters into the loan query', async () => {
@@ -130,7 +134,40 @@ describe('ClientLoansService', () => {
 
       const result = await service.getDashboard('c1', { status: 'DEFAULT' });
 
-      expect(result.loans.map((loan: { id: string }) => loan.id)).toEqual(['loan-default']);
+      expect(result.loans.data.map((loan: { id: string }) => loan.id)).toEqual(['loan-default']);
+    });
+
+    it('paginates the filtered loans array and reports the filtered total, not the raw findMany count', async () => {
+      prisma.clientOnboarding.findUnique.mockResolvedValue({
+        bvn: null,
+        ippisRecord: { agency: 'NPF', staffId: 'NPF-001' },
+      });
+      prisma.loan.findMany.mockResolvedValue([
+        { id: 'loan-1', bvn: null, principalBalance: 5000, maturationDate: future },
+        { id: 'loan-2', bvn: null, principalBalance: 5000, maturationDate: future },
+        { id: 'loan-3', bvn: null, principalBalance: 5000, maturationDate: future },
+      ]);
+      prisma.loanRepaymentRecord.findMany.mockResolvedValue([]);
+
+      const result = await service.getDashboard('c1', {}, { page: 2, limit: 1 });
+
+      expect(result.loans.data.map((loan: { id: string }) => loan.id)).toEqual(['loan-2']);
+      expect(result.loans.meta).toEqual({ total: 3, page: 2, limit: 1, totalPages: 3 });
+    });
+
+    it('defaults to page 1, limit 25 when no pagination is passed', async () => {
+      prisma.clientOnboarding.findUnique.mockResolvedValue({
+        bvn: null,
+        ippisRecord: { agency: 'NPF', staffId: 'NPF-001' },
+      });
+      prisma.loan.findMany.mockResolvedValue([
+        { id: 'loan-1', bvn: null, principalBalance: 5000, maturationDate: future },
+      ]);
+      prisma.loanRepaymentRecord.findMany.mockResolvedValue([]);
+
+      const result = await service.getDashboard('c1');
+
+      expect(result.loans.meta).toEqual({ total: 1, page: 1, limit: 25, totalPages: 1 });
     });
   });
 

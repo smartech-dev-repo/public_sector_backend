@@ -4,6 +4,7 @@ import { VarianceStatus } from '../generated/prisma/client';
 import { computeLoanStatus, LoanStatus } from './loan-status.util';
 import { generatePeriodRange } from '../reconciliation/period.util';
 import { computeExpectedInstallment } from '../reconciliation/amortization.util';
+import { buildPaginatedResult } from '../common/pagination/paginated-result';
 
 const LOAN_SELECT = {
   id: true,
@@ -54,13 +55,17 @@ export interface ListLoansFilters {
 export class ClientLoansService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async getDashboard(clientId: string, filters: ListLoansFilters = {}) {
+  async getDashboard(
+    clientId: string,
+    filters: ListLoansFilters = {},
+    pagination: { page: number; limit: number } = { page: 1, limit: 25 },
+  ) {
     const onboarding = await this.prisma.clientOnboarding.findUnique({
       where: { clientId },
       include: { ippisRecord: true },
     });
     if (!onboarding) {
-      return { loans: [], repayments: [] };
+      return { loans: buildPaginatedResult([], 0, pagination.page, pagination.limit), repayments: [] };
     }
 
     const { agency, staffId } = onboarding.ippisRecord;
@@ -88,9 +93,13 @@ export class ClientLoansService {
       status: computeLoanStatus(loan, latestVarianceByLoanId.get(loan.id) ?? null),
     }));
 
-    const loans = filters.status
+    const filteredLoans = filters.status
       ? loansWithStatus.filter((loan) => loan.status === filters.status)
       : loansWithStatus;
+
+    const { page, limit } = pagination;
+    const pageStart = (page - 1) * limit;
+    const pagedLoans = filteredLoans.slice(pageStart, pageStart + limit);
 
     const repayments = await this.prisma.loanRepaymentRecord.findMany({
       where: { agency, staffId },
@@ -98,7 +107,10 @@ export class ClientLoansService {
       orderBy: { createdAt: 'desc' },
     });
 
-    return { loans, repayments };
+    return {
+      loans: buildPaginatedResult(pagedLoans, filteredLoans.length, page, limit),
+      repayments,
+    };
   }
 
   async getRepaymentPlan(clientId: string, loanId: string) {
