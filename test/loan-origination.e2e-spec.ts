@@ -84,8 +84,8 @@ describe('Loan origination (e2e)', () => {
       .set('Authorization', `Bearer ${accessToken}`)
       .expect(200);
 
-    expect(res.body).toHaveLength(1);
-    expect(res.body[0].tenorMonths).toBe(3);
+    expect(res.body.data).toHaveLength(1);
+    expect(res.body.data[0].tenorMonths).toBe(3);
   });
 
   it(

@@ -99,21 +99,37 @@ describe('LoanTermOptionService', () => {
   });
 
   describe('listActiveForClient', () => {
-    it('returns an empty array when the client has no onboarding record', async () => {
+    it('returns an empty paginated result when the client has no onboarding record', async () => {
       prisma.clientOnboarding.findUnique.mockResolvedValue(null);
+
       const result = await service.listActiveForClient('client-1');
-      expect(result).toEqual([]);
+
+      expect(result).toEqual({ data: [], meta: { total: 0, page: 1, limit: 25, totalPages: 0 } });
       expect(prisma.loanTermOption.findMany).not.toHaveBeenCalled();
     });
 
-    it('lists active options for the client\'s own agency', async () => {
+    it('lists active options for the client\'s own agency, defaulting to page 1/limit 25', async () => {
       prisma.clientOnboarding.findUnique.mockResolvedValue({ ippisRecord: { agency: 'NPF' } });
       prisma.loanTermOption.findMany.mockResolvedValue([{ id: 'term-1' }]);
+      prisma.loanTermOption.count.mockResolvedValue(1);
 
       const result = await service.listActiveForClient('client-1');
 
-      expect(prisma.loanTermOption.findMany).toHaveBeenCalledWith({ where: { agency: 'NPF', isActive: true } });
-      expect(result).toEqual([{ id: 'term-1' }]);
+      expect(prisma.loanTermOption.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { agency: 'NPF', isActive: true }, skip: 0, take: 25 }),
+      );
+      expect(result).toEqual({ data: [{ id: 'term-1' }], meta: { total: 1, page: 1, limit: 25, totalPages: 1 } });
+    });
+
+    it('computes skip/take from page and limit', async () => {
+      prisma.clientOnboarding.findUnique.mockResolvedValue({ ippisRecord: { agency: 'NPF' } });
+      prisma.loanTermOption.findMany.mockResolvedValue([]);
+      prisma.loanTermOption.count.mockResolvedValue(5);
+
+      const result = await service.listActiveForClient('client-1', { page: 2, limit: 2 });
+
+      expect(prisma.loanTermOption.findMany).toHaveBeenCalledWith(expect.objectContaining({ skip: 2, take: 2 }));
+      expect(result.meta).toEqual({ total: 5, page: 2, limit: 2, totalPages: 3 });
     });
   });
 });

@@ -59,16 +59,26 @@ export class LoanTermOptionService {
     return this.prisma.loanTermOption.update({ where: { id }, data: input });
   }
 
-  async listActiveForClient(clientId: string): Promise<LoanTermOption[]> {
+  async listActiveForClient(
+    clientId: string,
+    pagination: { page: number; limit: number } = { page: 1, limit: 25 },
+  ): Promise<PaginatedResult<LoanTermOption>> {
     const onboarding = await this.prisma.clientOnboarding.findUnique({
       where: { clientId },
       include: { ippisRecord: true },
     });
     if (!onboarding) {
-      return [];
+      return buildPaginatedResult([], 0, pagination.page, pagination.limit);
     }
-    return this.prisma.loanTermOption.findMany({
-      where: { agency: onboarding.ippisRecord.agency, isActive: true },
-    });
+
+    const { page, limit } = pagination;
+    const where: Prisma.LoanTermOptionWhereInput = { agency: onboarding.ippisRecord.agency, isActive: true };
+
+    const [data, total] = await Promise.all([
+      this.prisma.loanTermOption.findMany({ where, skip: (page - 1) * limit, take: limit }),
+      this.prisma.loanTermOption.count({ where }),
+    ]);
+
+    return buildPaginatedResult(data, total, page, limit);
   }
 }
