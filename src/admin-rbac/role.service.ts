@@ -110,6 +110,26 @@ export class RoleService {
     });
   }
 
+  async assignPermissions(roleId: string, permissionIds: string[]): Promise<void> {
+    await this.findById(roleId);
+    const permissions = await this.prisma.permission.findMany({ where: { id: { in: permissionIds } } });
+    const foundIds = new Set(permissions.map((p) => p.id));
+    const missing = permissionIds.filter((id) => !foundIds.has(id));
+    if (missing.length > 0) {
+      throw new NotFoundException(`Permission(s) not found: ${missing.join(', ')}`);
+    }
+
+    await this.prisma.$transaction(
+      permissionIds.map((permissionId) =>
+        this.prisma.rolePermission.upsert({
+          where: { roleId_permissionId: { roleId, permissionId } },
+          update: {},
+          create: { roleId, permissionId },
+        }),
+      ),
+    );
+  }
+
   async removePermission(roleId: string, permissionId: string): Promise<void> {
     await this.prisma.rolePermission.deleteMany({ where: { roleId, permissionId } });
   }

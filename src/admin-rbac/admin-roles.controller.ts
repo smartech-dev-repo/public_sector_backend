@@ -9,6 +9,7 @@ import { RoleService } from './role.service';
 import { CreateRoleDto } from './dto/create-role.dto';
 import { UpdateRoleDto } from './dto/update-role.dto';
 import { AssignPermissionDto } from './dto/assign-permission.dto';
+import { AssignPermissionsBulkDto } from './dto/assign-permissions-bulk.dto';
 import { ListRolesQueryDto } from './dto/list-roles-query.dto';
 import { AuditActorType } from '../generated/prisma/client';
 
@@ -85,6 +86,26 @@ export class AdminRolesController {
       targetType: 'Role',
       targetId: id,
       metadata: { permissionId: dto.permissionId },
+    });
+    return { assigned: true };
+  }
+
+  @Post(':id/permissions/bulk')
+  @HttpCode(200)
+  @RequirePermissions('roles:manage')
+  async assignPermissionsBulk(
+    @Param('id') id: string,
+    @Body() dto: AssignPermissionsBulkDto,
+    @Req() req: { user: JwtPayload },
+  ) {
+    await this.roleService.assignPermissions(id, dto.permissionIds);
+    await this.auditLogService.record({
+      actorType: AuditActorType.ADMIN,
+      actorId: req.user.sub,
+      action: 'role.permissions.bulk_assigned',
+      targetType: 'Role',
+      targetId: id,
+      metadata: { permissionIds: dto.permissionIds },
     });
     return { assigned: true };
   }

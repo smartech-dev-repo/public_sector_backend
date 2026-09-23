@@ -14,8 +14,9 @@ describe('RoleService', () => {
       count: jest.Mock;
     };
     adminUser: { count: jest.Mock };
-    permission: { findUnique: jest.Mock };
+    permission: { findUnique: jest.Mock; findMany: jest.Mock };
     rolePermission: { upsert: jest.Mock; deleteMany: jest.Mock };
+    $transaction: jest.Mock;
   };
 
   beforeEach(() => {
@@ -29,8 +30,9 @@ describe('RoleService', () => {
         count: jest.fn(),
       },
       adminUser: { count: jest.fn() },
-      permission: { findUnique: jest.fn() },
+      permission: { findUnique: jest.fn(), findMany: jest.fn() },
       rolePermission: { upsert: jest.fn(), deleteMany: jest.fn() },
+      $transaction: jest.fn(),
     };
     service = new RoleService(prisma as unknown as PrismaService);
   });
@@ -117,6 +119,37 @@ describe('RoleService', () => {
   it('removePermission deletes the RolePermission row', async () => {
     await service.removePermission('role-1', 'perm-1');
     expect(prisma.rolePermission.deleteMany).toHaveBeenCalledWith({ where: { roleId: 'role-1', permissionId: 'perm-1' } });
+  });
+
+  describe('assignPermissions', () => {
+    it('rejects the whole batch when any permissionId is unknown, writing none of them', async () => {
+      prisma.role.findUnique.mockResolvedValue({ id: 'role-1' });
+      prisma.permission.findMany.mockResolvedValue([{ id: 'perm-1' }]);
+
+      await expect(service.assignPermissions('role-1', ['perm-1', 'perm-missing'])).rejects.toThrow(NotFoundException);
+      expect(prisma.$transaction).not.toHaveBeenCalled();
+    });
+
+    it('upserts every permission in the batch when all are valid', async () => {
+      prisma.role.findUnique.mockResolvedValue({ id: 'role-1' });
+      prisma.permission.findMany.mockResolvedValue([{ id: 'perm-1' }, { id: 'perm-2' }]);
+      prisma.$transaction.mockResolvedValue(undefined);
+      prisma.rolePermission.upsert.mockReturnValue('upsert-call');
+
+      await service.assignPermissions('role-1', ['perm-1', 'perm-2']);
+
+      expect(prisma.rolePermission.upsert).toHaveBeenCalledWith({
+        where: { roleId_permissionId: { roleId: 'role-1', permissionId: 'perm-1' } },
+        update: {},
+        create: { roleId: 'role-1', permissionId: 'perm-1' },
+      });
+      expect(prisma.rolePermission.upsert).toHaveBeenCalledWith({
+        where: { roleId_permissionId: { roleId: 'role-1', permissionId: 'perm-2' } },
+        update: {},
+        create: { roleId: 'role-1', permissionId: 'perm-2' },
+      });
+      expect(prisma.$transaction).toHaveBeenCalledWith(['upsert-call', 'upsert-call']);
+    });
   });
 
   describe('list', () => {
