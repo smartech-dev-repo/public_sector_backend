@@ -128,9 +128,9 @@ describe('Client loan dashboard (e2e)', () => {
       .set('Authorization', `Bearer ${accessToken}`)
       .expect(200);
 
-    expect(res.body.loans).toHaveLength(2);
-    const active = res.body.loans.find((loan: { id: string }) => loan.id === activeLoanId);
-    const defaulted = res.body.loans.find((loan: { id: string }) => loan.id === defaultLoanId);
+    expect(res.body.loans.data).toHaveLength(2);
+    const active = res.body.loans.data.find((loan: { id: string }) => loan.id === activeLoanId);
+    const defaulted = res.body.loans.data.find((loan: { id: string }) => loan.id === defaultLoanId);
     expect(active.status).toBe('ACTIVE');
     expect(defaulted.status).toBe('DEFAULT');
     expect(res.body.repayments).toHaveLength(1);
@@ -143,8 +143,18 @@ describe('Client loan dashboard (e2e)', () => {
       .set('Authorization', `Bearer ${accessToken}`)
       .expect(200);
 
-    expect(res.body.loans).toHaveLength(1);
-    expect(res.body.loans[0].id).toBe(defaultLoanId);
+    expect(res.body.loans.data).toHaveLength(1);
+    expect(res.body.loans.data[0].id).toBe(defaultLoanId);
+  });
+
+  it('paginates the loans list', async () => {
+    const res = await request(app.getHttpServer())
+      .get('/client/loans?page=1&limit=1')
+      .set('Authorization', `Bearer ${accessToken}`)
+      .expect(200);
+
+    expect(res.body.loans.data).toHaveLength(1);
+    expect(res.body.loans.meta).toEqual({ total: 2, page: 1, limit: 1, totalPages: 2 });
   });
 
   it('filters the loan list by product', async () => {
@@ -153,8 +163,8 @@ describe('Client loan dashboard (e2e)', () => {
       .set('Authorization', `Bearer ${accessToken}`)
       .expect(200);
 
-    expect(res.body.loans).toHaveLength(1);
-    expect(res.body.loans[0].id).toBe(defaultLoanId);
+    expect(res.body.loans.data).toHaveLength(1);
+    expect(res.body.loans.data[0].id).toBe(defaultLoanId);
   });
 
   it('rejects an invalid status filter with a 400', async () => {

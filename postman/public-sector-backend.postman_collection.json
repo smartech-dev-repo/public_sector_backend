@@ -15916,8 +15916,23 @@
                   "path": [
                     "client",
                     "loans"
+                  ],
+                  "query": [
+                    {
+                      "key": "page",
+                      "value": "1",
+                      "description": "Optional. Page number, defaults to 1.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "limit",
+                      "value": "25",
+                      "description": "Optional. Page size, defaults to 25, hard max 100 (a request above 100 is a 400, not a silent clamp).",
+                      "disabled": true
+                    }
                   ]
-                }
+                },
+                "description": "Returns the calling client's loan history and repayment activity. loans is paginated (default page=1, limit=25, limit capped at 100); repayments is a plain, unpaginated array."
               },
               "event": [
                 {
@@ -15925,12 +15940,13 @@
                   "script": {
                     "exec": [
                       "pm.test('status 200', () => pm.response.to.have.status(200));",
-                      "pm.test('has loans and repayments arrays', () => {",
+                      "pm.test('has paginated loans and repayments array', () => {",
                       "  const body = pm.response.json();",
-                      "  pm.expect(body.loans).to.be.an('array');",
+                      "  pm.expect(body.loans.data).to.be.an('array');",
+                      "  pm.expect(body.loans.meta).to.have.all.keys('total', 'page', 'limit', 'totalPages');",
                       "  pm.expect(body.repayments).to.be.an('array');",
                       "});",
-                      "if (pm.response.json().loans[0]) { pm.collectionVariables.set('client_loan_id', pm.response.json().loans[0].id); }"
+                      "if (pm.response.json().loans.data[0]) { pm.collectionVariables.set('client_loan_id', pm.response.json().loans.data[0].id); }"
                     ]
                   }
                 }
@@ -15954,6 +15970,20 @@
                       "path": [
                         "client",
                         "loans"
+                      ],
+                      "query": [
+                        {
+                          "key": "page",
+                          "value": "1",
+                          "description": "Optional. Page number, defaults to 1.",
+                          "disabled": true
+                        },
+                        {
+                          "key": "limit",
+                          "value": "25",
+                          "description": "Optional. Page size, defaults to 25, hard max 100 (a request above 100 is a 400, not a silent clamp).",
+                          "disabled": true
+                        }
                       ]
                     }
                   },
@@ -15967,7 +15997,7 @@
                     }
                   ],
                   "cookie": [],
-                  "body": "{\n  \"loans\": [\n    {\n      \"id\": \"11112222-3333-4444-5555-666677778888\",\n      \"customerId\": \"CUST-000123\",\n      \"customerName\": \"Adaeze Okafor\",\n      \"accountNumber\": \"0123456789\",\n      \"address\": \"12 Allen Avenue, Ikeja, Lagos\",\n      \"branch\": \"Ikeja Branch\",\n      \"gender\": \"Female\",\n      \"phone\": \"+2348012345678\",\n      \"ippisNumber\": \"IPPIS-445566\",\n      \"agency\": \"Federal Ministry of Education\",\n      \"loanAmount\": \"500000\",\n      \"principalBalance\": \"320000\",\n      \"disbursementDate\": \"2025-03-01T00:00:00.000Z\",\n      \"maturationDate\": \"2027-03-01T00:00:00.000Z\",\n      \"effectiveDate\": \"2025-03-01T00:00:00.000Z\",\n      \"moratoriumDays\": 30,\n      \"product\": \"Consolidated Salary Loan\",\n      \"linkedAccountNumber\": \"0123456789\",\n      \"bvn\": \"22334455667\",\n      \"interestRatePercent\": \"18.5\",\n      \"accountOfficer\": \"Chinedu Eze\",\n      \"hasPreviouslyTakenLoan\": false,\n      \"createdAt\": \"2025-03-01T09:00:00.000Z\",\n      \"updatedAt\": \"2025-03-01T09:00:00.000Z\",\n      \"status\": \"ACTIVE\"\n    }\n  ],\n  \"repayments\": [\n    {\n      \"id\": \"22223333-4444-5555-6666-777788889999\",\n      \"agency\": \"Federal Ministry of Education\",\n      \"staffId\": \"IPPIS-445566\",\n      \"period\": \"2026-08\",\n      \"elementName\": \"Loan Repayment\",\n      \"elementDetail\": \"Monthly salary deduction\",\n      \"amount\": \"25000\",\n      \"createdAt\": \"2026-08-25T00:00:00.000Z\"\n    }\n  ]\n}"
+                  "body": "{\n  \"loans\": {\n    \"data\": [\n      {\n        \"id\": \"11112222-3333-4444-5555-666677778888\",\n        \"customerId\": \"CUST-000123\",\n        \"customerName\": \"Adaeze Okafor\",\n        \"accountNumber\": \"0123456789\",\n        \"address\": \"12 Allen Avenue, Ikeja, Lagos\",\n        \"branch\": \"Ikeja Branch\",\n        \"gender\": \"Female\",\n        \"phone\": \"+2348012345678\",\n        \"ippisNumber\": \"IPPIS-445566\",\n        \"agency\": \"Federal Ministry of Education\",\n        \"loanAmount\": \"500000\",\n        \"principalBalance\": \"320000\",\n        \"disbursementDate\": \"2025-03-01T00:00:00.000Z\",\n        \"maturationDate\": \"2027-03-01T00:00:00.000Z\",\n        \"effectiveDate\": \"2025-03-01T00:00:00.000Z\",\n        \"moratoriumDays\": 30,\n        \"product\": \"Consolidated Salary Loan\",\n        \"linkedAccountNumber\": \"0123456789\",\n        \"bvn\": \"22334455667\",\n        \"interestRatePercent\": \"18.5\",\n        \"accountOfficer\": \"Chinedu Eze\",\n        \"hasPreviouslyTakenLoan\": false,\n        \"createdAt\": \"2025-03-01T09:00:00.000Z\",\n        \"updatedAt\": \"2025-03-01T09:00:00.000Z\",\n        \"status\": \"ACTIVE\"\n      }\n    ],\n    \"meta\": {\n      \"total\": 1,\n      \"page\": 1,\n      \"limit\": 25,\n      \"totalPages\": 1\n    }\n  },\n  \"repayments\": [\n    {\n      \"id\": \"22223333-4444-5555-6666-777788889999\",\n      \"agency\": \"Federal Ministry of Education\",\n      \"staffId\": \"IPPIS-445566\",\n      \"period\": \"2026-08\",\n      \"elementName\": \"Loan Repayment\",\n      \"elementDetail\": \"Monthly salary deduction\",\n      \"amount\": \"25000\",\n      \"createdAt\": \"2026-08-25T00:00:00.000Z\"\n    }\n  ]\n}"
                 }
               ]
             },
@@ -15994,10 +16024,22 @@
                     {
                       "key": "status",
                       "value": "ACTIVE"
+                    },
+                    {
+                      "key": "page",
+                      "value": "1",
+                      "description": "Optional. Page number, defaults to 1.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "limit",
+                      "value": "25",
+                      "description": "Optional. Page size, defaults to 25, hard max 100 (a request above 100 is a 400, not a silent clamp).",
+                      "disabled": true
                     }
                   ]
                 },
-                "description": "Filters the loans array by the computed status query param. Also supports product, disbursedFrom, disbursedTo (all optional, combinable). repayments is never filtered by these params."
+                "description": "Filters the loans array by the computed status query param. Also supports product, disbursedFrom, disbursedTo, and page/limit pagination (all optional, combinable). repayments is never filtered or paginated by these params."
               },
               "event": [
                 {
@@ -16007,7 +16049,7 @@
                       "pm.test('status 200', () => pm.response.to.have.status(200));",
                       "pm.test('every loan matches the requested status', () => {",
                       "  const body = pm.response.json();",
-                      "  body.loans.forEach((loan) => pm.expect(loan.status).to.eql('ACTIVE'));",
+                      "  body.loans.data.forEach((loan) => pm.expect(loan.status).to.eql('ACTIVE'));",
                       "});"
                     ]
                   }
@@ -16037,6 +16079,18 @@
                         {
                           "key": "status",
                           "value": "ACTIVE"
+                        },
+                        {
+                          "key": "page",
+                          "value": "1",
+                          "description": "Optional. Page number, defaults to 1.",
+                          "disabled": true
+                        },
+                        {
+                          "key": "limit",
+                          "value": "25",
+                          "description": "Optional. Page size, defaults to 25, hard max 100 (a request above 100 is a 400, not a silent clamp).",
+                          "disabled": true
                         }
                       ]
                     }
@@ -16051,7 +16105,7 @@
                     }
                   ],
                   "cookie": [],
-                  "body": "{\n  \"loans\": [\n    {\n      \"id\": \"11112222-3333-4444-5555-666677778888\",\n      \"customerId\": \"CUST-000123\",\n      \"customerName\": \"Adaeze Okafor\",\n      \"accountNumber\": \"0123456789\",\n      \"address\": \"12 Allen Avenue, Ikeja, Lagos\",\n      \"branch\": \"Ikeja Branch\",\n      \"gender\": \"Female\",\n      \"phone\": \"+2348012345678\",\n      \"ippisNumber\": \"IPPIS-445566\",\n      \"agency\": \"Federal Ministry of Education\",\n      \"loanAmount\": \"500000\",\n      \"principalBalance\": \"320000\",\n      \"disbursementDate\": \"2025-03-01T00:00:00.000Z\",\n      \"maturationDate\": \"2027-03-01T00:00:00.000Z\",\n      \"effectiveDate\": \"2025-03-01T00:00:00.000Z\",\n      \"moratoriumDays\": 30,\n      \"product\": \"Consolidated Salary Loan\",\n      \"linkedAccountNumber\": \"0123456789\",\n      \"bvn\": \"22334455667\",\n      \"interestRatePercent\": \"18.5\",\n      \"accountOfficer\": \"Chinedu Eze\",\n      \"hasPreviouslyTakenLoan\": false,\n      \"createdAt\": \"2025-03-01T09:00:00.000Z\",\n      \"updatedAt\": \"2025-03-01T09:00:00.000Z\",\n      \"status\": \"ACTIVE\"\n    }\n  ],\n  \"repayments\": [\n    {\n      \"id\": \"22223333-4444-5555-6666-777788889999\",\n      \"agency\": \"Federal Ministry of Education\",\n      \"staffId\": \"IPPIS-445566\",\n      \"period\": \"2026-08\",\n      \"elementName\": \"Loan Repayment\",\n      \"elementDetail\": \"Monthly salary deduction\",\n      \"amount\": \"25000\",\n      \"createdAt\": \"2026-08-25T00:00:00.000Z\"\n    }\n  ]\n}"
+                  "body": "{\n  \"loans\": {\n    \"data\": [\n      {\n        \"id\": \"11112222-3333-4444-5555-666677778888\",\n        \"customerId\": \"CUST-000123\",\n        \"customerName\": \"Adaeze Okafor\",\n        \"accountNumber\": \"0123456789\",\n        \"address\": \"12 Allen Avenue, Ikeja, Lagos\",\n        \"branch\": \"Ikeja Branch\",\n        \"gender\": \"Female\",\n        \"phone\": \"+2348012345678\",\n        \"ippisNumber\": \"IPPIS-445566\",\n        \"agency\": \"Federal Ministry of Education\",\n        \"loanAmount\": \"500000\",\n        \"principalBalance\": \"320000\",\n        \"disbursementDate\": \"2025-03-01T00:00:00.000Z\",\n        \"maturationDate\": \"2027-03-01T00:00:00.000Z\",\n        \"effectiveDate\": \"2025-03-01T00:00:00.000Z\",\n        \"moratoriumDays\": 30,\n        \"product\": \"Consolidated Salary Loan\",\n        \"linkedAccountNumber\": \"0123456789\",\n        \"bvn\": \"22334455667\",\n        \"interestRatePercent\": \"18.5\",\n        \"accountOfficer\": \"Chinedu Eze\",\n        \"hasPreviouslyTakenLoan\": false,\n        \"createdAt\": \"2025-03-01T09:00:00.000Z\",\n        \"updatedAt\": \"2025-03-01T09:00:00.000Z\",\n        \"status\": \"ACTIVE\"\n      }\n    ],\n    \"meta\": {\n      \"total\": 1,\n      \"page\": 1,\n      \"limit\": 25,\n      \"totalPages\": 1\n    }\n  },\n  \"repayments\": [\n    {\n      \"id\": \"22223333-4444-5555-6666-777788889999\",\n      \"agency\": \"Federal Ministry of Education\",\n      \"staffId\": \"IPPIS-445566\",\n      \"period\": \"2026-08\",\n      \"elementName\": \"Loan Repayment\",\n      \"elementDetail\": \"Monthly salary deduction\",\n      \"amount\": \"25000\",\n      \"createdAt\": \"2026-08-25T00:00:00.000Z\"\n    }\n  ]\n}"
                 }
               ]
             },

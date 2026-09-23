@@ -376,20 +376,28 @@ link to `Client`. Matched via the client's linked `IppisRecord`'s
 with a BVN cross-check against `Loan.bvn` (comparing the client's own
 Dojah-verified BVN from onboarding, not the IPPIS broadsheet's BVN) to
 guard against an agency+staffId collision showing one client someone
-else's loan. Returns `{ loans: [], repayments: [] }` (empty, not an
-error) if the client hasn't linked IPPIS yet or has no matching history.
-This is deliberately separate from `GET /client/loan-requests` — that
-endpoint is the client's own in-platform loan applications; this one is
-historical/external data.
+else's loan. Returns `{ loans: { data: [], meta: { total: 0, page: 1, limit: 25, totalPages: 0 } }, repayments: [] }`
+(empty, not an error) if the client hasn't linked IPPIS yet or has no
+matching history. This is deliberately separate from
+`GET /client/loan-requests` — that endpoint is the client's own
+in-platform loan applications; this one is historical/external data.
 
 Each loan in the response carries a computed (not persisted) `status`:
 `CLOSED` if `principalBalance <= 0`; else `DEFAULT` if `maturationDate`
 has passed with a balance still owed, or the loan's most recent
 `RepaymentVariance` row is `UNDER_PAID`/`NO_DEDUCTION_FOUND`; else
 `ACTIVE`. `GET /client/loans` accepts optional `status`/`product`/
-`disbursedFrom`/`disbursedTo` query params to filter the `loans` array —
-`repayments` is never filtered by these, since those rows aren't tied to
-a specific loan in the schema.
+`disbursedFrom`/`disbursedTo` query params to filter the `loans` array,
+plus `page`/`limit` pagination query params (default `1`/`25`, `limit`
+capped at `100` — a request above the cap is a `400`, not a silent
+clamp). The response's `loans` field is a `PaginatedResult`:
+`{ data: [...], meta: { total, page, limit, totalPages } }`, where
+`total`/`totalPages` reflect the count *after* the `status`/`product`/
+date-range filters are applied (status is computed post-query, so
+filtering and pagination both happen in memory over the already-filtered
+array, not via a database `skip`/`take`). `repayments` is unrelated to
+this filter/pagination set and stays a plain, unpaginated array — those
+rows aren't tied to a specific loan in the schema.
 
 `GET /client/loans/:loanId/repayment-plan` (Client JWT) returns one
 loan's full month-by-month schedule from disbursement to maturity, reusing
