@@ -38,7 +38,7 @@ import { HealthModule } from './health/health.module';
         pinoHttp: {
           level: configService.get<string>('LOG_LEVEL', 'info'),
           transport:
-            configService.get<string>('NODE_ENV') !== 'production'
+            configService.get<string>('NODE_ENV') === 'development'
               ? { target: 'pino-pretty', options: { singleLine: true } }
               : undefined,
         },
