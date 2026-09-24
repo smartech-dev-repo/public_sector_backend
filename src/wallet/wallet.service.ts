@@ -2,6 +2,7 @@ import { Injectable, NotFoundException, UnprocessableEntityException } from '@ne
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditActorType, Prisma, WalletEntry, WalletEntryDirection } from '../generated/prisma/client';
 import { buildPaginatedResult, PaginatedResult } from '../common/pagination/paginated-result';
+import { PrincipalResolverService } from '../common/principal-resolver.service';
 
 export interface WalletActor {
   actorType: AuditActorType;
@@ -17,13 +18,16 @@ export interface ListWalletEntriesFilters {
 
 @Injectable()
 export class WalletService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly principalResolver: PrincipalResolverService,
+  ) {}
 
   async getWallet(
     clientId: string,
     filters: ListWalletEntriesFilters = {},
     pagination: { page: number; limit: number } = { page: 1, limit: 25 },
-  ): Promise<{ balance: number; entries: PaginatedResult<WalletEntry> }> {
+  ): Promise<{ balance: number; entries: PaginatedResult<WalletEntry & { actor: Record<string, unknown> | null }> }> {
     await this.assertClientExists(clientId);
 
     const { page, limit } = pagination;
@@ -43,7 +47,15 @@ export class WalletService {
       this.getBalance(clientId),
     ]);
 
-    return { balance, entries: buildPaginatedResult(data, total, page, limit) };
+    const resolved = await this.principalResolver.resolveMany(
+      data.map((row) => ({ type: row.actorType as string, id: row.actorId })),
+    );
+    const enriched = data.map((row) => ({
+      ...row,
+      actor: (row.actorId && resolved.get(`${row.actorType}:${row.actorId}`)) || null,
+    }));
+
+    return { balance, entries: buildPaginatedResult(enriched, total, page, limit) };
   }
 
   // Unpaginated, unfiltered on purpose -- the real wallet balance must never

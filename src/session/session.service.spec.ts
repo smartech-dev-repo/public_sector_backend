@@ -100,6 +100,9 @@ describe('SessionService', () => {
     expect(auditLogService.record).toHaveBeenCalledWith(
       expect.objectContaining({ action: 'session.reuse_detected' }),
     );
+    expect(auditLogService.record).toHaveBeenCalledWith(
+      expect.objectContaining({ targetType: 'Client', targetId: 'client-1' }),
+    );
   });
 
   it('rejects rotating an expired token and revokes it', async () => {

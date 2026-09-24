@@ -1,14 +1,17 @@
 import { AuditLogService } from './audit-log.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { PrincipalResolverService } from '../common/principal-resolver.service';
 import { AuditActorType } from '../generated/prisma/client';
 
 describe('AuditLogService', () => {
   let service: AuditLogService;
   let prisma: { auditLog: { create: jest.Mock; findMany: jest.Mock; count: jest.Mock } };
+  let principalResolver: { resolveMany: jest.Mock };
 
   beforeEach(() => {
     prisma = { auditLog: { create: jest.fn(), findMany: jest.fn(), count: jest.fn() } };
-    service = new AuditLogService(prisma as unknown as PrismaService);
+    principalResolver = { resolveMany: jest.fn().mockResolvedValue(new Map()) };
+    service = new AuditLogService(prisma as unknown as PrismaService, principalResolver as unknown as PrincipalResolverService);
   });
 
   it('writes a row with every provided field', async () => {
@@ -97,6 +100,48 @@ describe('AuditLogService', () => {
 
       expect(prisma.auditLog.findMany).toHaveBeenCalledWith(expect.objectContaining({ skip: 20, take: 20 }));
       expect(result.meta).toEqual({ total: 40, page: 2, limit: 20, totalPages: 2 });
+    });
+
+    it('attaches resolved actor and target objects to each row', async () => {
+      prisma.auditLog.findMany.mockResolvedValue([
+        {
+          id: 'log-1',
+          actorType: AuditActorType.ADMIN,
+          actorId: 'admin-1',
+          action: 'client.sessions.revoked',
+          targetType: 'Client',
+          targetId: 'client-1',
+        },
+      ]);
+      prisma.auditLog.count.mockResolvedValue(1);
+      principalResolver.resolveMany.mockResolvedValue(
+        new Map<string, unknown>([
+          ['ADMIN:admin-1', { id: 'admin-1', fullName: 'Jane Doe', email: 'jane@x.com' }],
+          ['Client:client-1', { id: 'client-1', phone: '0801', status: 'VERIFIED' }],
+        ]),
+      );
+
+      const result = await service.list();
+
+      expect(principalResolver.resolveMany).toHaveBeenCalledWith([
+        { type: AuditActorType.ADMIN, id: 'admin-1' },
+        { type: 'Client', id: 'client-1' },
+      ]);
+      expect(result.data[0].actor).toEqual({ id: 'admin-1', fullName: 'Jane Doe', email: 'jane@x.com' });
+      expect(result.data[0].target).toEqual({ id: 'client-1', phone: '0801', status: 'VERIFIED' });
+    });
+
+    it('attaches null actor/target when the row has no target or is unresolvable', async () => {
+      prisma.auditLog.findMany.mockResolvedValue([
+        { id: 'log-1', actorType: AuditActorType.SYSTEM, actorId: null, action: 'session.reuse_detected', targetType: null, targetId: null },
+      ]);
+      prisma.auditLog.count.mockResolvedValue(1);
+      principalResolver.resolveMany.mockResolvedValue(new Map());
+
+      const result = await service.list();
+
+      expect(result.data[0].actor).toBeNull();
+      expect(result.data[0].target).toBeNull();
     });
   });
 });

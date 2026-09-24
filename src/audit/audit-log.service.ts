@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditActorType, AuditLog, Prisma } from '../generated/prisma/client';
 import { buildPaginatedResult, PaginatedResult } from '../common/pagination/paginated-result';
+import { PrincipalResolverService } from '../common/principal-resolver.service';
 
 export interface RecordAuditEventParams {
   actorType: AuditActorType;
@@ -25,7 +26,10 @@ export interface ListAuditEventsFilters {
 
 @Injectable()
 export class AuditLogService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly principalResolver: PrincipalResolverService,
+  ) {}
 
   async record(params: RecordAuditEventParams): Promise<void> {
     await this.prisma.auditLog.create({
@@ -45,7 +49,7 @@ export class AuditLogService {
   async list(
     filters: ListAuditEventsFilters = {},
     pagination: { page: number; limit: number } = { page: 1, limit: 25 },
-  ): Promise<PaginatedResult<AuditLog>> {
+  ): Promise<PaginatedResult<AuditLog & { actor: Record<string, unknown> | null; target: Record<string, unknown> | null }>> {
     const { page, limit } = pagination;
     const where: Prisma.AuditLogWhereInput = {
       actorType: filters.actorType,
@@ -63,6 +67,18 @@ export class AuditLogService {
       this.prisma.auditLog.count({ where }),
     ]);
 
-    return buildPaginatedResult(data, total, page, limit);
+    const refs = [
+      ...data.map((row) => ({ type: row.actorType as string, id: row.actorId })),
+      ...data.map((row) => ({ type: row.targetType ?? '', id: row.targetId })),
+    ];
+    const resolved = await this.principalResolver.resolveMany(refs);
+
+    const enriched = data.map((row) => ({
+      ...row,
+      actor: (row.actorId && resolved.get(`${row.actorType}:${row.actorId}`)) || null,
+      target: (row.targetType && row.targetId && resolved.get(`${row.targetType}:${row.targetId}`)) || null,
+    }));
+
+    return buildPaginatedResult(enriched, total, page, limit);
   }
 }

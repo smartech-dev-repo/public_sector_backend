@@ -1,6 +1,7 @@
 import { NotFoundException, UnprocessableEntityException } from '@nestjs/common';
 import { WalletService } from './wallet.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { PrincipalResolverService } from '../common/principal-resolver.service';
 import { AuditActorType, WalletEntryDirection } from '../generated/prisma/client';
 
 describe('WalletService', () => {
@@ -9,6 +10,7 @@ describe('WalletService', () => {
     client: { findUnique: jest.Mock };
     walletEntry: { findMany: jest.Mock; create: jest.Mock; count: jest.Mock };
   };
+  let principalResolver: { resolveMany: jest.Mock };
 
   const adminActor = { actorType: AuditActorType.ADMIN, actorId: 'admin-1' };
 
@@ -17,7 +19,8 @@ describe('WalletService', () => {
       client: { findUnique: jest.fn().mockResolvedValue({ id: 'client-1' }) },
       walletEntry: { findMany: jest.fn(), create: jest.fn(), count: jest.fn() },
     };
-    service = new WalletService(prisma as unknown as PrismaService);
+    principalResolver = { resolveMany: jest.fn().mockResolvedValue(new Map()) };
+    service = new WalletService(prisma as unknown as PrismaService, principalResolver as unknown as PrincipalResolverService);
   });
 
   describe('getWallet', () => {
@@ -98,6 +101,21 @@ describe('WalletService', () => {
 
       expect(result.entries.data).toHaveLength(1);
       expect(result.balance).toBe(3700);
+    });
+
+    it('attaches a resolved actor object to each entry', async () => {
+      prisma.walletEntry.findMany.mockResolvedValue([
+        { id: 'entry-1', amount: 5000, direction: WalletEntryDirection.CREDIT, actorType: AuditActorType.ADMIN, actorId: 'admin-1' },
+      ]);
+      prisma.walletEntry.count.mockResolvedValue(1);
+      principalResolver.resolveMany.mockResolvedValue(
+        new Map<string, unknown>([['ADMIN:admin-1', { id: 'admin-1', fullName: 'Jane Doe', email: 'jane@x.com' }]]),
+      );
+
+      const result = await service.getWallet('client-1');
+
+      expect(principalResolver.resolveMany).toHaveBeenCalledWith([{ type: AuditActorType.ADMIN, id: 'admin-1' }]);
+      expect(result.entries.data[0].actor).toEqual({ id: 'admin-1', fullName: 'Jane Doe', email: 'jane@x.com' });
     });
   });
 

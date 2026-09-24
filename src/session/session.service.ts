@@ -67,10 +67,15 @@ export class SessionService {
 
     if (session.revokedAt) {
       await this.revokeAllForPrincipal(session.principalType, session.principalId, 'reuse_detected');
+      const targetType: Record<SessionPrincipalType, string> = {
+        ADMIN: 'AdminUser',
+        AGENT: 'Agent',
+        CLIENT: 'Client',
+      };
       await this.auditLogService.record({
         actorType: AuditActorType.SYSTEM,
         action: 'session.reuse_detected',
-        targetType: 'Session',
+        targetType: targetType[session.principalType],
         targetId: session.principalId,
         metadata: { principalType: session.principalType },
       });
