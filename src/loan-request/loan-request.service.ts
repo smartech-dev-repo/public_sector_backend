@@ -350,6 +350,11 @@ export class LoanRequestService {
     }
   }
 
+  private static readonly LOAN_REQUEST_RELATIONS_INCLUDE = {
+    client: { select: { id: true, phone: true, status: true } },
+    topupTarget: { select: { id: true, status: true, agency: true } },
+  } as const;
+
   async approve(id: string) {
     const loanRequest = await this.prisma.loanRequest.findUnique({ where: { id } });
     if (!loanRequest || loanRequest.status !== LoanRequestStatus.CONFIRMED) {
@@ -358,6 +363,7 @@ export class LoanRequestService {
     return this.prisma.loanRequest.update({
       where: { id },
       data: { status: LoanRequestStatus.APPROVED, approvedAt: new Date() },
+      include: LoanRequestService.LOAN_REQUEST_RELATIONS_INCLUDE,
     });
   }
 
@@ -369,6 +375,7 @@ export class LoanRequestService {
     return this.prisma.loanRequest.update({
       where: { id },
       data: { status: LoanRequestStatus.REJECTED, rejectionReason: reason },
+      include: LoanRequestService.LOAN_REQUEST_RELATIONS_INCLUDE,
     });
   }
 
@@ -380,6 +387,7 @@ export class LoanRequestService {
     const updated = await this.prisma.loanRequest.update({
       where: { id },
       data: { status: LoanRequestStatus.DISBURSED, disbursedAt: new Date() },
+      include: LoanRequestService.LOAN_REQUEST_RELATIONS_INCLUDE,
     });
     await this.createClientLoanFromRequest(id);
     return updated;
@@ -413,7 +421,13 @@ export class LoanRequestService {
     };
 
     const [data, total] = await Promise.all([
-      this.prisma.loanRequest.findMany({ where, orderBy: { createdAt: 'desc' }, skip: (page - 1) * limit, take: limit }),
+      this.prisma.loanRequest.findMany({
+        where,
+        include: LoanRequestService.LOAN_REQUEST_RELATIONS_INCLUDE,
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
       this.prisma.loanRequest.count({ where }),
     ]);
 
@@ -437,7 +451,16 @@ export class LoanRequestService {
     };
 
     const [data, total] = await Promise.all([
-      this.prisma.clientLoan.findMany({ where, orderBy: { disbursementDate: 'desc' }, skip: (page - 1) * limit, take: limit }),
+      this.prisma.clientLoan.findMany({
+        where,
+        include: {
+          loanRequest: { select: { id: true, type: true, status: true } },
+          client: { select: { id: true, phone: true } },
+        },
+        orderBy: { disbursementDate: 'desc' },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
       this.prisma.clientLoan.count({ where }),
     ]);
 
@@ -527,7 +550,13 @@ export class LoanRequestService {
   }
 
   async getRepaymentPlanById(clientLoanId: string) {
-    const clientLoan = await this.prisma.clientLoan.findUnique({ where: { id: clientLoanId } });
+    const clientLoan = await this.prisma.clientLoan.findUnique({
+      where: { id: clientLoanId },
+      include: {
+        loanRequest: { select: { id: true, type: true, status: true } },
+        client: { select: { id: true, phone: true } },
+      },
+    });
     if (!clientLoan) {
       throw new NotFoundException('Loan not found');
     }

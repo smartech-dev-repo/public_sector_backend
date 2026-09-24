@@ -289,6 +289,10 @@ describe('LoanRequestService', () => {
       expect(prisma.loanRequest.update).toHaveBeenCalledWith({
         where: { id: 'lr1' },
         data: { status: 'APPROVED', approvedAt: expect.any(Date) },
+        include: {
+          client: { select: { id: true, phone: true, status: true } },
+          topupTarget: { select: { id: true, status: true, agency: true } },
+        },
       });
     });
   });
@@ -308,6 +312,10 @@ describe('LoanRequestService', () => {
       expect(prisma.loanRequest.update).toHaveBeenCalledWith({
         where: { id: 'lr1' },
         data: { status: 'REJECTED', rejectionReason: 'not eligible' },
+        include: {
+          client: { select: { id: true, phone: true, status: true } },
+          topupTarget: { select: { id: true, status: true, agency: true } },
+        },
       });
     });
   });
@@ -342,6 +350,10 @@ describe('LoanRequestService', () => {
       expect(prisma.loanRequest.update).toHaveBeenCalledWith({
         where: { id: 'lr1' },
         data: { status: 'DISBURSED', disbursedAt: expect.any(Date) },
+        include: {
+          client: { select: { id: true, phone: true, status: true } },
+          topupTarget: { select: { id: true, status: true, agency: true } },
+        },
       });
       expect(prisma.clientLoan.create).toHaveBeenCalledWith({
         data: expect.objectContaining({ disbursedAmount: 5000, principalAmount: 5000 }),
@@ -356,6 +368,22 @@ describe('LoanRequestService', () => {
       await service.listAll({ status: 'CONFIRMED' as never });
       expect(prisma.loanRequest.findMany).toHaveBeenCalledWith(
         expect.objectContaining({ where: expect.objectContaining({ status: 'CONFIRMED' }) }),
+      );
+    });
+
+    it('includes client and topupTarget on every row', async () => {
+      prisma.loanRequest.findMany.mockResolvedValue([]);
+      prisma.loanRequest.count.mockResolvedValue(0);
+
+      await service.listAll();
+
+      expect(prisma.loanRequest.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          include: {
+            client: { select: { id: true, phone: true, status: true } },
+            topupTarget: { select: { id: true, status: true, agency: true } },
+          },
+        }),
       );
     });
   });
@@ -636,6 +664,22 @@ describe('LoanRequestService', () => {
       expect(prisma.clientLoan.findMany).toHaveBeenCalledWith(expect.objectContaining({ skip: 3, take: 3 }));
       expect(result.meta).toEqual({ total: 4, page: 2, limit: 3, totalPages: 2 });
     });
+
+    it('includes loanRequest and client on every row', async () => {
+      prisma.clientLoan.findMany.mockResolvedValue([]);
+      prisma.clientLoan.count.mockResolvedValue(0);
+
+      await service.listByClient('client-1');
+
+      expect(prisma.clientLoan.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          include: {
+            loanRequest: { select: { id: true, type: true, status: true } },
+            client: { select: { id: true, phone: true } },
+          },
+        }),
+      );
+    });
   });
 
   describe('expire', () => {
@@ -717,6 +761,28 @@ describe('LoanRequestService', () => {
       expect(result.schedule).toEqual([
         { period: '2026-01', expectedAmount: 90000, actualAmount: null, variance: null, status: 'UPCOMING' },
       ]);
+    });
+
+    it('includes loanRequest and client when fetching the loan', async () => {
+      prisma.clientLoan.findUnique.mockResolvedValue({
+        id: 'cl1',
+        clientId: 'c1',
+        principalAmount: 90000,
+        interestRatePercent: 0,
+        disbursementDate: new Date(2026, 0, 1),
+        maturationDate: new Date(2026, 0, 1),
+      });
+      prisma.clientLoanRepaymentVariance.findMany.mockResolvedValue([]);
+
+      await service.getRepaymentPlanById('cl1');
+
+      expect(prisma.clientLoan.findUnique).toHaveBeenCalledWith({
+        where: { id: 'cl1' },
+        include: {
+          loanRequest: { select: { id: true, type: true, status: true } },
+          client: { select: { id: true, phone: true } },
+        },
+      });
     });
   });
 
