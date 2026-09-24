@@ -64,6 +64,8 @@ model AdminUser {
   departmentId String?
   department   Department?     @relation(fields: [departmentId], references: [id])
   sentInvites  AdminInvite[]
+  reviewedOnboardings ClientOnboarding[]
+  reviewedAgents      Agent[]
   uploadedDocumentBatches DocumentUploadBatch[]
   createdAt    DateTime        @default(now())
   updatedAt    DateTime        @updatedAt
@@ -102,6 +104,7 @@ model Agent {
   mustChangePassword     Boolean     @default(true)
   hasLoggedIn            Boolean     @default(false)
   reviewedBy             String?
+  reviewedByAdmin        AdminUser? @relation(fields: [reviewedBy], references: [id])
   reviewedAt             DateTime?
   rejectionReason        String?
   createdAt              DateTime    @default(now())
@@ -356,6 +359,7 @@ model ClientOnboarding {
   step              OnboardingStep @default(PHONE_VERIFIED)
   failureReasons    Json?
   reviewedBy String?
+  reviewedByAdmin AdminUser? @relation(fields: [reviewedBy], references: [id])
   reviewedAt DateTime?
   reviewNote String?
   documents         ClientDocument[]
