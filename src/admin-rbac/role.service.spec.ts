@@ -53,20 +53,24 @@ describe('RoleService', () => {
     expect(prisma.role.update).not.toHaveBeenCalled();
   });
 
-  it('update allows editing SUPER_ADMIN description without touching name', async () => {
+  it('update allows editing SUPER_ADMIN description without touching name, and hydrates department/permissions', async () => {
     prisma.role.findUnique.mockResolvedValue({ id: 'role-1', name: 'SUPER_ADMIN' });
     prisma.role.update.mockResolvedValue({ id: 'role-1', name: 'SUPER_ADMIN', description: 'new' });
     await service.update('role-1', { description: 'new' });
     expect(prisma.role.update).toHaveBeenCalledWith({
       where: { id: 'role-1' },
       data: { name: undefined, description: 'new', departmentId: undefined },
+      include: { permissions: { include: { permission: true } }, department: { select: { id: true, name: true } } },
     });
   });
 
-  it('create stores the departmentId when given', async () => {
+  it('create stores the departmentId when given, and hydrates department/permissions in the response', async () => {
     prisma.role.create.mockResolvedValue({ id: 'role-2', name: 'REVIEWER', departmentId: 'dept-1' });
     await service.create({ name: 'REVIEWER', departmentId: 'dept-1' });
-    expect(prisma.role.create).toHaveBeenCalledWith({ data: { name: 'REVIEWER', departmentId: 'dept-1' } });
+    expect(prisma.role.create).toHaveBeenCalledWith({
+      data: { name: 'REVIEWER', departmentId: 'dept-1' },
+      include: { permissions: { include: { permission: true } }, department: { select: { id: true, name: true } } },
+    });
   });
 
   it('update sets departmentId when given, and clears it when explicitly set to null', async () => {
@@ -76,6 +80,7 @@ describe('RoleService', () => {
     expect(prisma.role.update).toHaveBeenCalledWith({
       where: { id: 'role-1' },
       data: { name: undefined, description: undefined, departmentId: null },
+      include: { permissions: { include: { permission: true } }, department: { select: { id: true, name: true } } },
     });
   });
 
@@ -182,6 +187,19 @@ describe('RoleService', () => {
 
       expect(prisma.role.findMany).toHaveBeenCalledWith(expect.objectContaining({ skip: 5, take: 5 }));
       expect(result.meta).toEqual({ total: 8, page: 2, limit: 5, totalPages: 2 });
+    });
+
+    it('includes department alongside permissions', async () => {
+      prisma.role.findMany.mockResolvedValue([]);
+      prisma.role.count.mockResolvedValue(0);
+
+      await service.list();
+
+      expect(prisma.role.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          include: { permissions: { include: { permission: true } }, department: { select: { id: true, name: true } } },
+        }),
+      );
     });
   });
 });

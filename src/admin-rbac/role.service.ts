@@ -17,8 +17,9 @@ export interface UpdateRoleParams {
   departmentId?: string | null;
 }
 
-const ROLE_WITH_PERMISSIONS_INCLUDE = {
+const ROLE_WITH_RELATIONS_INCLUDE = {
   permissions: { include: { permission: true } },
+  department: { select: { id: true, name: true } },
 } as const;
 
 function isUniqueConstraintError(error: unknown): boolean {
@@ -31,7 +32,7 @@ export class RoleService {
 
   async create(params: CreateRoleParams): Promise<Role> {
     try {
-      return await this.prisma.role.create({ data: params });
+      return await this.prisma.role.create({ data: params, include: ROLE_WITH_RELATIONS_INCLUDE });
     } catch (error) {
       if (isUniqueConstraintError(error)) {
         throw new ConflictException(`A role named "${params.name}" already exists`);
@@ -52,7 +53,7 @@ export class RoleService {
     const [data, total] = await Promise.all([
       this.prisma.role.findMany({
         where,
-        include: ROLE_WITH_PERMISSIONS_INCLUDE,
+        include: ROLE_WITH_RELATIONS_INCLUDE,
         orderBy: { name: 'asc' },
         skip: (page - 1) * limit,
         take: limit,
@@ -66,7 +67,7 @@ export class RoleService {
   async findById(id: string) {
     const role = await this.prisma.role.findUnique({
       where: { id },
-      include: ROLE_WITH_PERMISSIONS_INCLUDE,
+      include: ROLE_WITH_RELATIONS_INCLUDE,
     });
     if (!role) {
       throw new NotFoundException('Role not found');
@@ -82,6 +83,7 @@ export class RoleService {
     return this.prisma.role.update({
       where: { id },
       data: { name: params.name, description: params.description, departmentId: params.departmentId },
+      include: ROLE_WITH_RELATIONS_INCLUDE,
     });
   }
 
