@@ -79,7 +79,10 @@ export class DocumentBatchService {
   async findById(batchId: string) {
     return this.prisma.documentUploadBatch.findUnique({
       where: { id: batchId },
-      include: { snapshotExport: true },
+      include: {
+        snapshotExport: true,
+        uploadedBy: { select: { id: true, fullName: true, email: true } },
+      },
     });
   }
 
@@ -108,7 +111,16 @@ export class DocumentBatchService {
     };
 
     const [data, total] = await Promise.all([
-      this.prisma.documentUploadBatch.findMany({ where, orderBy: { createdAt: 'desc' }, skip: (page - 1) * limit, take: limit }),
+      this.prisma.documentUploadBatch.findMany({
+        where,
+        include: {
+          uploadedBy: { select: { id: true, fullName: true, email: true } },
+          snapshotExport: { select: { id: true, documentType: true, generatedAt: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
       this.prisma.documentUploadBatch.count({ where }),
     ]);
 

@@ -88,12 +88,15 @@ describe('DocumentBatchService', () => {
     });
   });
 
-  it('findById includes the snapshot export', async () => {
+  it('findById includes the snapshot export and uploadedBy', async () => {
     prisma.documentUploadBatch.findUnique.mockResolvedValue({ id: 'batch-1' });
     await service.findById('batch-1');
     expect(prisma.documentUploadBatch.findUnique).toHaveBeenCalledWith({
       where: { id: 'batch-1' },
-      include: { snapshotExport: true },
+      include: {
+        snapshotExport: true,
+        uploadedBy: { select: { id: true, fullName: true, email: true } },
+      },
     });
   });
 
@@ -111,6 +114,10 @@ describe('DocumentBatchService', () => {
           createdAt: undefined,
           completedAt: undefined,
           OR: undefined,
+        },
+        include: {
+          uploadedBy: { select: { id: true, fullName: true, email: true } },
+          snapshotExport: { select: { id: true, documentType: true, generatedAt: true } },
         },
         orderBy: { createdAt: 'desc' },
         skip: 0,
