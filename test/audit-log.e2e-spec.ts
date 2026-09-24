@@ -82,5 +82,8 @@ describe('Audit log (e2e)', () => {
       .expect(200);
 
     expect(res.body.data.every((entry: { action: string }) => entry.action === 'admin.invite.created')).toBe(true);
+    expect(res.body.data[0].actor).toEqual(
+      expect.objectContaining({ id: expect.any(String), fullName: expect.any(String), email: expect.any(String) }),
+    );
   });
 });

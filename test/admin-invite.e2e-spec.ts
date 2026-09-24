@@ -91,6 +91,9 @@ describe('Admin invite (e2e)', () => {
       .expect(200);
     const listedInvite = res.body.data.find((invite: { email: string }) => invite.email === inviteEmail);
     expect(listedInvite.role.name).toBe('SUPER_ADMIN');
+    expect(listedInvite.invitedBy).toEqual(
+      expect.objectContaining({ id: expect.any(String), fullName: expect.any(String), email: expect.any(String) }),
+    );
   });
 
   it('creates and then deletes a PENDING invite', async () => {

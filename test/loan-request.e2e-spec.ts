@@ -108,4 +108,22 @@ describe('Loan request workflow (e2e)', () => {
       .set('Authorization', `Bearer ${accessToken}`)
       .expect(409);
   });
+
+  it('admin approves the confirmed loan request, hydrating the client object', async () => {
+    const adminLoginRes = await request(app.getHttpServer())
+      .post('/auth/admin/login')
+      .send({
+        email: process.env.BOOTSTRAP_ADMIN_EMAIL,
+        password: process.env.BOOTSTRAP_ADMIN_PASSWORD,
+      });
+    const adminAccessToken = adminLoginRes.body.accessToken;
+
+    const res = await request(app.getHttpServer())
+      .post(`/admin/loan-requests/${loanRequestId}/approve`)
+      .set('Authorization', `Bearer ${adminAccessToken}`)
+      .expect(200);
+
+    expect(res.body.status).toBe('APPROVED');
+    expect(res.body.client).toEqual({ id: clientId, phone, status: 'VERIFIED' });
+  });
 });

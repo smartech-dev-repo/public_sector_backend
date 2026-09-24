@@ -121,5 +121,8 @@ describe('Document uploads (e2e)', () => {
       .set('Authorization', `Bearer ${accessToken}`)
       .expect(200);
     expect(detailRes.body.id).toBe(batchId);
+    expect(detailRes.body.uploadedBy).toEqual(
+      expect.objectContaining({ id: expect.any(String), fullName: expect.any(String), email: expect.any(String) }),
+    );
   });
 });

@@ -12,10 +12,12 @@ describe('Admin roles (e2e)', () => {
   const testPermissionKey = `test:role-e2e:${Date.now()}`;
   const bulkPermissionKeyA = `test:role-e2e-bulk-a:${Date.now()}`;
   const bulkPermissionKeyB = `test:role-e2e-bulk-b:${Date.now()}`;
+  const testDepartmentName = `TEST_DEPT_${Date.now()}`;
   let createdRoleId: string;
   let createdPermissionId: string;
   let bulkPermissionIdA: string;
   let bulkPermissionIdB: string;
+  let createdDepartmentId: string;
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -48,22 +50,27 @@ describe('Admin roles (e2e)', () => {
       data: { key: bulkPermissionKeyB, description: 'e2e bulk test permission B' },
     });
     bulkPermissionIdB = bulkPermissionB.id;
+
+    const department = await prisma.department.create({ data: { name: testDepartmentName } });
+    createdDepartmentId = department.id;
   });
 
   afterAll(async () => {
     await prisma.role.deleteMany({ where: { name: testRoleName } });
     await prisma.permission.deleteMany({ where: { key: testPermissionKey } });
     await prisma.permission.deleteMany({ where: { key: { in: [bulkPermissionKeyA, bulkPermissionKeyB] } } });
+    await prisma.department.deleteMany({ where: { name: testDepartmentName } });
     await app.close();
   });
 
-  it('creates a role', async () => {
+  it('creates a role with a departmentId, hydrating the department object', async () => {
     const res = await request(app.getHttpServer())
       .post('/admin/roles')
       .set('Authorization', `Bearer ${accessToken}`)
-      .send({ name: testRoleName, description: 'A test role' })
+      .send({ name: testRoleName, description: 'A test role', departmentId: createdDepartmentId })
       .expect(201);
     expect(res.body.name).toBe(testRoleName);
+    expect(res.body.department).toEqual({ id: createdDepartmentId, name: testDepartmentName });
     createdRoleId = res.body.id;
   });
 
