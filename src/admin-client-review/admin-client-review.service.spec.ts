@@ -139,9 +139,29 @@ describe('AdminClientReviewService', () => {
 
       expect(prisma.client.findUnique).toHaveBeenCalledWith({
         where: { id: 'c1' },
-        include: { onboarding: { include: { documents: true, ippisRecord: true } } },
+        include: {
+          onboarding: {
+            include: {
+              documents: true,
+              ippisRecord: true,
+              reviewedByAdmin: { select: { id: true, fullName: true, email: true } },
+            },
+          },
+        },
       });
       expect(result.onboarding.lengthOfService).toEqual({ years: 1, months: 0 });
+    });
+
+    it('surfaces the reviewedByAdmin relation when the onboarding has been reviewed', async () => {
+      prisma.client.findUnique.mockResolvedValue({
+        id: 'c1',
+        status: 'VERIFIED',
+        onboarding: { id: 'o1', reviewedByAdmin: { id: 'admin-1', fullName: 'Jane Doe', email: 'jane@x.com' } },
+      });
+
+      const result = await service.findById('c1');
+
+      expect(result.onboarding.reviewedByAdmin).toEqual({ id: 'admin-1', fullName: 'Jane Doe', email: 'jane@x.com' });
     });
 
     it('trims the nested ippisRecord and resolves identity selfie keys to signed URLs', async () => {

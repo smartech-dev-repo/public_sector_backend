@@ -78,6 +78,29 @@ describe('AdminAgentReviewService', () => {
     });
   });
 
+  describe('findById', () => {
+    it('throws NotFoundException for an unknown id', async () => {
+      prisma.agent.findUnique.mockResolvedValue(null);
+      await expect(service.findById('missing')).rejects.toThrow(NotFoundException);
+    });
+
+    it('includes reviewedByAdmin', async () => {
+      prisma.agent.findUnique.mockResolvedValue({
+        id: 'a1',
+        status: 'APPROVED',
+        reviewedByAdmin: { id: 'admin-1', fullName: 'Jane Doe', email: 'jane@x.com' },
+      });
+
+      const result = await service.findById('a1');
+
+      expect(prisma.agent.findUnique).toHaveBeenCalledWith({
+        where: { id: 'a1' },
+        include: { reviewedByAdmin: { select: { id: true, fullName: true, email: true } } },
+      });
+      expect(result.reviewedByAdmin).toEqual({ id: 'admin-1', fullName: 'Jane Doe', email: 'jane@x.com' });
+    });
+  });
+
   describe('reject', () => {
     it('throws ConflictException when the agent is not PENDING_REVIEW', async () => {
       prisma.agent.findUnique.mockResolvedValue({ id: 'a1', status: 'REJECTED' });
@@ -189,6 +212,19 @@ describe('AdminAgentReviewService', () => {
 
       expect(prisma.agent.findMany).toHaveBeenCalledWith(expect.objectContaining({ skip: 4, take: 4 }));
       expect(result.meta).toEqual({ total: 9, page: 2, limit: 4, totalPages: 3 });
+    });
+
+    it('includes reviewedByAdmin on every row', async () => {
+      prisma.agent.findMany.mockResolvedValue([]);
+      prisma.agent.count.mockResolvedValue(0);
+
+      await service.list();
+
+      expect(prisma.agent.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          include: { reviewedByAdmin: { select: { id: true, fullName: true, email: true } } },
+        }),
+      );
     });
   });
 });

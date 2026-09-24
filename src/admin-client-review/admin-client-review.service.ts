@@ -57,7 +57,15 @@ export class AdminClientReviewService {
   async findById(id: string) {
     const client = await this.prisma.client.findUnique({
       where: { id },
-      include: { onboarding: { include: { documents: true, ippisRecord: true } } },
+      include: {
+        onboarding: {
+          include: {
+            documents: true,
+            ippisRecord: true,
+            reviewedByAdmin: { select: { id: true, fullName: true, email: true } },
+          },
+        },
+      },
     });
     if (!client) {
       throw new NotFoundException('Client not found');

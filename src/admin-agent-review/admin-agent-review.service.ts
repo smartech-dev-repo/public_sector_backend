@@ -49,7 +49,13 @@ export class AdminAgentReviewService {
     };
 
     const [data, total] = await Promise.all([
-      this.prisma.agent.findMany({ where, orderBy: { createdAt: 'desc' }, skip: (page - 1) * limit, take: limit }),
+      this.prisma.agent.findMany({
+        where,
+        include: { reviewedByAdmin: { select: { id: true, fullName: true, email: true } } },
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
       this.prisma.agent.count({ where }),
     ]);
 
@@ -57,7 +63,10 @@ export class AdminAgentReviewService {
   }
 
   async findById(id: string) {
-    const agent = await this.prisma.agent.findUnique({ where: { id } });
+    const agent = await this.prisma.agent.findUnique({
+      where: { id },
+      include: { reviewedByAdmin: { select: { id: true, fullName: true, email: true } } },
+    });
     if (!agent) {
       throw new NotFoundException('Agent not found');
     }
