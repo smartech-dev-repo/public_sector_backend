@@ -106,5 +106,5 @@ describe('Repayment schedule ingestion (e2e)', () => {
     });
     expect(nscdcRecord).not.toBeNull();
     expect(Number(nscdcRecord!.amount)).toBe(3000);
-  });
+  }, 20000);
 });

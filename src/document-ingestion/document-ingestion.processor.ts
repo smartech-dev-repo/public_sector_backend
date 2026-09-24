@@ -53,7 +53,7 @@ export class DocumentIngestionProcessor extends WorkerHost {
       await this.documentBatchService.markCompleted(batchId, result);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      this.logger.error(`Batch ${batchId} failed: ${message}`);
+      this.logger.error(`Batch ${batchId} failed: ${message}`, error instanceof Error ? error.stack : undefined);
       await this.documentBatchService.markFailed(batchId, message);
     }
   }

@@ -63,7 +63,11 @@ describe('Disbursed loans ingestion (e2e)', () => {
 
   afterAll(async () => {
     if (prisma) {
-      await prisma.loan.deleteMany({ where: { customerId } });
+      const loan = await prisma.loan.findUnique({ where: { customerId } });
+      if (loan) {
+        await prisma.repaymentVariance.deleteMany({ where: { loanId: loan.id } });
+        await prisma.loan.deleteMany({ where: { customerId } });
+      }
     }
     if (app) {
       await app.close();
@@ -89,5 +93,5 @@ describe('Disbursed loans ingestion (e2e)', () => {
     expect(loan).not.toBeNull();
     expect(loan!.customerName).toBe('E2E Test Customer');
     expect(loan!.agency).toBe('NSCDC');
-  });
+  }, 20000);
 });

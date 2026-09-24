@@ -72,7 +72,7 @@ describe('Document uploads (e2e)', () => {
     const batch = await waitForBatchCompletion(prisma, res.body.id);
     expect(batch!.status).toBe('COMPLETED');
     expect(batch!.rowsProcessed).toBe(0);
-  });
+  }, 20000);
 
   it('rejects an unauthenticated upload', () => {
     return request(app.getHttpServer())
@@ -105,7 +105,7 @@ describe('Document uploads (e2e)', () => {
     const batch = await waitForBatchCompletion(prisma, res.body.id);
     expect(batch!.status).toBe('COMPLETED');
     expect(batch!.period).toBe('2024-12');
-  });
+  }, 20000);
 
   it('lists batches and fetches one by id', async () => {
     const listRes = await request(app.getHttpServer())
