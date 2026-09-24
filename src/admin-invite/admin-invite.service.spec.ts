@@ -109,7 +109,11 @@ describe('AdminInviteService', () => {
       const result = await service.list();
 
       expect(prisma.adminInvite.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({ skip: 0, take: 25, include: { role: true } }),
+        expect.objectContaining({
+          skip: 0,
+          take: 25,
+          include: { role: true, invitedBy: { select: { id: true, fullName: true, email: true } } },
+        }),
       );
       expect(result.meta).toEqual({ total: 0, page: 1, limit: 25, totalPages: 0 });
     });
@@ -126,7 +130,7 @@ describe('AdminInviteService', () => {
             status: AdminInviteStatus.PENDING,
             email: { contains: 'someone@example.com', mode: 'insensitive' },
           }),
-          include: { role: true },
+          include: { role: true, invitedBy: { select: { id: true, fullName: true, email: true } } },
         }),
       );
     });
@@ -145,7 +149,7 @@ describe('AdminInviteService', () => {
             createdAt: { gte: createdFrom, lte: undefined },
             expiresAt: { gte: undefined, lte: expiresTo },
           }),
-          include: { role: true },
+          include: { role: true, invitedBy: { select: { id: true, fullName: true, email: true } } },
         }),
       );
     });
@@ -157,7 +161,11 @@ describe('AdminInviteService', () => {
       const result = await service.list({}, { page: 2, limit: 3 });
 
       expect(prisma.adminInvite.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({ skip: 3, take: 3, include: { role: true } }),
+        expect.objectContaining({
+          skip: 3,
+          take: 3,
+          include: { role: true, invitedBy: { select: { id: true, fullName: true, email: true } } },
+        }),
       );
       expect(result.meta).toEqual({ total: 6, page: 2, limit: 3, totalPages: 2 });
     });

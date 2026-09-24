@@ -70,7 +70,7 @@ export class AdminInviteService {
   async list(
     filters: ListInvitesFilters = {},
     pagination: { page: number; limit: number } = { page: 1, limit: 25 },
-  ): Promise<PaginatedResult<AdminInviteWithRole>> {
+  ): Promise<PaginatedResult<AdminInviteWithRole & { invitedBy: { id: string; fullName: string; email: string } }>> {
     const { page, limit } = pagination;
     const where: Prisma.AdminInviteWhereInput = {
       status: filters.status,
@@ -88,7 +88,7 @@ export class AdminInviteService {
     const [data, total] = await Promise.all([
       this.prisma.adminInvite.findMany({
         where,
-        include: { role: true },
+        include: { role: true, invitedBy: { select: { id: true, fullName: true, email: true } } },
         orderBy: { createdAt: 'desc' },
         skip: (page - 1) * limit,
         take: limit,
