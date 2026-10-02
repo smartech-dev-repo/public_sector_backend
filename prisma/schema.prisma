@@ -64,7 +64,9 @@ model AdminUser {
   departmentId String?
   department   Department?     @relation(fields: [departmentId], references: [id])
   sentInvites  AdminInvite[]
-  reviewedOnboardings ClientOnboarding[]
+  reviewedOnboardings ClientOnboarding[] @relation("ClientOnboardingReviewedBy")
+  onboardedClients    ClientOnboarding[] @relation("ClientOnboardingByAdmin")
+  createdClients      Client[]           @relation("ClientCreatedByAdmin")
   reviewedAgents      Agent[]
   uploadedDocumentBatches DocumentUploadBatch[]
   createdAt    DateTime        @default(now())
@@ -133,6 +135,8 @@ model Client {
   id        String       @id @default(uuid())
   phone     String       @unique
   status    ClientStatus @default(PHONE_VERIFIED)
+  createdById String?
+  createdByAdmin AdminUser? @relation("ClientCreatedByAdmin", fields: [createdById], references: [id])
   createdAt DateTime     @default(now())
   updatedAt DateTime     @updatedAt
 
@@ -359,7 +363,9 @@ model ClientOnboarding {
   step              OnboardingStep @default(PHONE_VERIFIED)
   failureReasons    Json?
   reviewedBy String?
-  reviewedByAdmin AdminUser? @relation(fields: [reviewedBy], references: [id])
+  reviewedByAdmin AdminUser? @relation("ClientOnboardingReviewedBy", fields: [reviewedBy], references: [id])
+  onboardedById String?
+  onboardedByAdmin AdminUser? @relation("ClientOnboardingByAdmin", fields: [onboardedById], references: [id])
   reviewedAt DateTime?
   reviewNote String?
   documents         ClientDocument[]
