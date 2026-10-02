@@ -1,7 +1,8 @@
-import { ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, Inject, Injectable, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
 import { extname } from 'path';
 import { PrismaService } from '../prisma/prisma.service';
 import { IdentityVerificationService } from '../identity-verification/identity-verification.service';
+import { IdentityLookupResult } from '../identity-verification/identity-verification-provider.interface';
 import { FACE_VERIFICATION_PROVIDER, FaceVerificationProvider } from '../face-verification/face-verification-provider.interface';
 import { FILE_STORAGE_PROVIDER, FileStorageProvider } from '../file-storage/file-storage-provider.interface';
 import { ClientDocumentType, ClientStatus, OnboardingStep } from '../generated/prisma/client';
@@ -67,23 +68,28 @@ export class ClientOnboardingService {
     return onboarding;
   }
 
-  async submitIdentity(clientId: string, bvn: string, nin: string) {
-    const onboarding = await this.requireOnboarding(clientId);
-    if (onboarding.step !== OnboardingStep.IPPIS_LINKED) {
-      throw new ConflictException(`Expected step IPPIS_LINKED, but client is at ${onboarding.step}`);
-    }
-
+  private async lookupIdentity(bvn: string, nin: string) {
     const [bvnResult, ninResult] = await Promise.all([
       this.identityVerificationService.lookupBvn(bvn),
       this.identityVerificationService.lookupNin(nin),
     ]);
+    const identityVerified = Boolean(bvnResult.firstName) && Boolean(ninResult.firstName);
+    return { bvnResult, ninResult, identityVerified };
+  }
 
+  private async saveIdentity(
+    clientId: string,
+    onboarding: { id: string },
+    bvn: string,
+    nin: string,
+    bvnResult: IdentityLookupResult,
+    ninResult: IdentityLookupResult,
+    identityVerified: boolean,
+  ) {
     const bvnSelfieKey = `client-onboarding/${clientId}/bvn-selfie.jpg`;
     const ninSelfieKey = `client-onboarding/${clientId}/nin-selfie.jpg`;
     await this.fileStorageProvider.putObject(bvnSelfieKey, Buffer.from(bvnResult.photoBase64, 'base64'));
     await this.fileStorageProvider.putObject(ninSelfieKey, Buffer.from(ninResult.photoBase64, 'base64'));
-
-    const identityVerified = Boolean(bvnResult.firstName) && Boolean(ninResult.firstName);
 
     const step = await this.determineStepAfterIdentity(onboarding.id);
 
@@ -107,6 +113,27 @@ export class ClientOnboardingService {
         city: ninResult.city,
       },
     });
+  }
+
+  async submitIdentity(clientId: string, bvn: string, nin: string) {
+    const onboarding = await this.requireOnboarding(clientId);
+    if (onboarding.step !== OnboardingStep.IPPIS_LINKED) {
+      throw new ConflictException(`Expected step IPPIS_LINKED, but client is at ${onboarding.step}`);
+    }
+    const { bvnResult, ninResult, identityVerified } = await this.lookupIdentity(bvn, nin);
+    return this.saveIdentity(clientId, onboarding, bvn, nin, bvnResult, ninResult, identityVerified);
+  }
+
+  async submitIdentityVerified(clientId: string, bvn: string, nin: string) {
+    const onboarding = await this.requireOnboarding(clientId);
+    if (onboarding.step !== OnboardingStep.IPPIS_LINKED) {
+      throw new ConflictException(`Expected step IPPIS_LINKED, but client is at ${onboarding.step}`);
+    }
+    const { bvnResult, ninResult, identityVerified } = await this.lookupIdentity(bvn, nin);
+    if (!identityVerified) {
+      throw new UnprocessableEntityException('BVN/NIN verification failed — identity could not be confirmed');
+    }
+    return this.saveIdentity(clientId, onboarding, bvn, nin, bvnResult, ninResult, identityVerified);
   }
 
   async determineStepAfterIdentity(onboardingId: string): Promise<OnboardingStep> {

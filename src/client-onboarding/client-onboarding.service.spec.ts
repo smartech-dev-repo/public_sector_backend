@@ -1,4 +1,4 @@
-import { ConflictException, NotFoundException } from '@nestjs/common';
+import { ConflictException, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
 import { ClientOnboardingService } from './client-onboarding.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { IdentityVerificationService } from '../identity-verification/identity-verification.service';
@@ -177,6 +177,58 @@ describe('ClientOnboardingService', () => {
       expect(prisma.clientOnboarding.update).toHaveBeenCalledWith(
         expect.objectContaining({ data: expect.objectContaining({ identityDateOfBirth: null }) }),
       );
+    });
+  });
+
+  describe('submitIdentityVerified', () => {
+    it('rejects when the client is not at the IPPIS_LINKED step', async () => {
+      prisma.clientOnboarding.findUnique.mockResolvedValue({ step: 'IDENTITY_SUBMITTED' });
+      await expect(
+        service.submitIdentityVerified('client-1', '12345678901', '12345678901'),
+      ).rejects.toThrow(ConflictException);
+    });
+
+    it('throws UnprocessableEntityException and writes nothing when BVN/NIN do not verify', async () => {
+      prisma.clientOnboarding.findUnique.mockResolvedValue({ id: 'onboarding-1', step: 'IPPIS_LINKED' });
+      identityVerificationService.lookupBvn.mockResolvedValue({
+        firstName: '', lastName: '', dateOfBirth: null, phoneNumber: null, photoBase64: 'YnZuLXBob3Rv',
+        gender: null, stateOfOrigin: null, lgaOfOrigin: null, stateOfResidence: null, lgaOfResidence: null,
+        maritalStatus: null, address: null, city: null,
+      });
+      identityVerificationService.lookupNin.mockResolvedValue({
+        firstName: '', lastName: '', dateOfBirth: null, phoneNumber: null, photoBase64: 'bmluLXBob3Rv',
+        gender: null, stateOfOrigin: null, lgaOfOrigin: null, stateOfResidence: null, lgaOfResidence: null,
+        maritalStatus: null, address: null, city: null,
+      });
+
+      await expect(
+        service.submitIdentityVerified('client-1', '12345678901', '98765432109'),
+      ).rejects.toThrow(UnprocessableEntityException);
+      expect(fileStorageProvider.putObject).not.toHaveBeenCalled();
+      expect(prisma.clientOnboarding.update).not.toHaveBeenCalled();
+    });
+
+    it('saves and returns the record when BVN/NIN both verify', async () => {
+      prisma.clientOnboarding.findUnique.mockResolvedValue({ id: 'onboarding-1', step: 'IPPIS_LINKED' });
+      identityVerificationService.lookupBvn.mockResolvedValue({
+        firstName: 'Jane', lastName: 'Doe', dateOfBirth: '1990-01-01', phoneNumber: '08011111111', photoBase64: 'YnZuLXBob3Rv',
+        gender: 'Female', stateOfOrigin: 'Lagos', lgaOfOrigin: 'Ikeja', stateOfResidence: 'Abuja', lgaOfResidence: 'AMAC',
+        maritalStatus: 'Single', address: null, city: null,
+      });
+      identityVerificationService.lookupNin.mockResolvedValue({
+        firstName: 'Jane', lastName: 'Doe', dateOfBirth: '1990-01-01', phoneNumber: '08011111111', photoBase64: 'bmluLXBob3Rv',
+        gender: 'Female', stateOfOrigin: null, lgaOfOrigin: null, stateOfResidence: null, lgaOfResidence: null,
+        maritalStatus: null, address: '12 Example Street', city: 'Wuse',
+      });
+      prisma.clientOnboarding.update.mockResolvedValue({ id: 'onboarding-1', step: 'IDENTITY_SUBMITTED' });
+
+      const result = await service.submitIdentityVerified('client-1', '12345678901', '98765432109');
+
+      expect(result).toEqual({ id: 'onboarding-1', step: 'IDENTITY_SUBMITTED' });
+      expect(prisma.clientOnboarding.update).toHaveBeenCalledWith({
+        where: { clientId: 'client-1' },
+        data: expect.objectContaining({ identityVerified: true, step: 'IDENTITY_SUBMITTED' }),
+      });
     });
   });
 
