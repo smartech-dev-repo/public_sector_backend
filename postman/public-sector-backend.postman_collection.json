@@ -213,6 +213,10 @@
     {
       "key": "agent_2fa_code",
       "value": ""
+    },
+    {
+      "key": "onboarding_client_id",
+      "value": ""
     }
   ],
   "item": [
@@ -10289,7 +10293,7 @@
                     }
                   ],
                   "cookie": [],
-                  "body": "{\n  \"id\": \"c1a2b3c4-d5e6-4f78-9a0b-1c2d3e4f5a6b\",\n  \"phone\": \"+2348012345678\",\n  \"status\": \"MANUAL_REVIEW\",\n  \"createdAt\": \"2026-09-10T08:00:00.000Z\",\n  \"updatedAt\": \"2026-09-15T11:30:00.000Z\",\n  \"onboarding\": {\n    \"id\": \"d2b3c4d5-e6f7-4a8b-9c0d-2e3f4a5b6c7d\",\n    \"clientId\": \"c1a2b3c4-d5e6-4f78-9a0b-1c2d3e4f5a6b\",\n    \"ippisRecordId\": \"e3c4d5e6-f7a8-4b9c-0d1e-3f4a5b6c7d8e\",\n    \"employeeName\": \"Ibrahim Suleiman\",\n    \"agency\": \"Federal Ministry of Works\",\n    \"bankName\": \"GTBank\",\n    \"accountNumber\": \"0123456789\",\n    \"employeeStatus\": \"ACTIVE\",\n    \"legacyId\": \"LEGACY-0099\",\n    \"identityDateOfBirth\": \"1990-01-01T00:00:00.000Z\",\n    \"identityGender\": \"Female\",\n    \"identityPhoneNumber\": \"08011111111\",\n    \"stateOfOrigin\": \"Lagos\",\n    \"lgaOfOrigin\": \"Ikeja\",\n    \"stateOfResidence\": \"Abuja\",\n    \"lgaOfResidence\": \"AMAC\",\n    \"address\": \"12 Example Street\",\n    \"city\": \"Wuse\",\n    \"zipCode\": null,\n    \"maritalStatus\": \"Single\",\n    \"bvn\": \"12345678901\",\n    \"nin\": \"98765432109\",\n    \"bvnSelfie\": \"onboarding/selfies/bvn-c1a2b3c4.jpg\",\n    \"ninSelfie\": \"onboarding/selfies/nin-c1a2b3c4.jpg\",\n    \"liveSelfieKey\": \"onboarding/selfies/live-c1a2b3c4.jpg\",\n    \"bvnSelfieUrl\": \"/admin/documents/files/onboarding%2Fselfies%2Fbvn-c1a2b3c4.jpg\",\n    \"ninSelfieUrl\": \"/admin/documents/files/onboarding%2Fselfies%2Fnin-c1a2b3c4.jpg\",\n    \"liveSelfieUrl\": \"/admin/documents/files/onboarding%2Fselfies%2Flive-c1a2b3c4.jpg\",\n    \"identityVerified\": true,\n    \"faceMatchBvnScore\": 0.62,\n    \"faceMatchNinScore\": 0.58,\n    \"faceMatchPassed\": false,\n    \"step\": \"FACE_MATCH_PENDING\",\n    \"failureReasons\": {\n      \"identityVerified\": true,\n      \"faceMatchPassed\": false\n    },\n    \"reviewedBy\": null,\n    \"reviewedAt\": null,\n    \"reviewNote\": null,\n    \"reviewedByAdmin\": null,\n    \"createdAt\": \"2026-09-10T08:05:00.000Z\",\n    \"updatedAt\": \"2026-09-15T11:30:00.000Z\",\n    \"ippisRecord\": {\n      \"agency\": \"Federal Ministry of Works\",\n      \"staffId\": \"FMOW/1099\",\n      \"employeeName\": \"Ibrahim Suleiman\",\n      \"employeeStatus\": \"ACTIVE\",\n      \"hireDate\": \"2020-06-01T00:00:00.000Z\",\n      \"department\": \"Engineering\",\n      \"grade\": \"GL-10\",\n      \"bankName\": \"GTBank\",\n      \"accountNumber\": \"0123456789\"\n    },\n    \"documents\": [\n      {\n        \"documentType\": \"NIN_CARD\",\n        \"url\": \"/admin/documents/files/client-onboarding%2Fc1a2b3c4-d5e6-4f78-9a0b-1c2d3e4f5a6b%2Fdocuments%2Fnin_card.jpg\",\n        \"uploadedAt\": \"2026-09-15T11:00:00.000Z\"\n      },\n      {\n        \"documentType\": \"WORK_ID\",\n        \"url\": \"/admin/documents/files/client-onboarding%2Fc1a2b3c4-d5e6-4f78-9a0b-1c2d3e4f5a6b%2Fdocuments%2Fwork_id.jpg\",\n        \"uploadedAt\": \"2026-09-15T11:00:00.000Z\"\n      },\n      {\n        \"documentType\": \"PASSPORT_PHOTO\",\n        \"url\": \"/admin/documents/files/client-onboarding%2Fc1a2b3c4-d5e6-4f78-9a0b-1c2d3e4f5a6b%2Fdocuments%2Fpassport_photo.jpg\",\n        \"uploadedAt\": \"2026-09-15T11:00:00.000Z\"\n      },\n      {\n        \"documentType\": \"SIGNATURE\",\n        \"url\": \"/admin/documents/files/client-onboarding%2Fc1a2b3c4-d5e6-4f78-9a0b-1c2d3e4f5a6b%2Fdocuments%2Fsignature.jpg\",\n        \"uploadedAt\": \"2026-09-15T11:00:00.000Z\"\n      }\n    ],\n    \"lengthOfService\": {\n      \"years\": 4,\n      \"months\": 2\n    }\n  }\n}"
+                  "body": "{\n  \"id\": \"c1a2b3c4-d5e6-4f78-9a0b-1c2d3e4f5a6b\",\n  \"phone\": \"+2348012345678\",\n  \"status\": \"MANUAL_REVIEW\",\n  \"createdAt\": \"2026-09-10T08:00:00.000Z\",\n  \"updatedAt\": \"2026-09-15T11:30:00.000Z\",\n  \"createdByAdmin\": null,\n  \"onboarding\": {\n    \"id\": \"d2b3c4d5-e6f7-4a8b-9c0d-2e3f4a5b6c7d\",\n    \"clientId\": \"c1a2b3c4-d5e6-4f78-9a0b-1c2d3e4f5a6b\",\n    \"ippisRecordId\": \"e3c4d5e6-f7a8-4b9c-0d1e-3f4a5b6c7d8e\",\n    \"employeeName\": \"Ibrahim Suleiman\",\n    \"agency\": \"Federal Ministry of Works\",\n    \"bankName\": \"GTBank\",\n    \"accountNumber\": \"0123456789\",\n    \"employeeStatus\": \"ACTIVE\",\n    \"legacyId\": \"LEGACY-0099\",\n    \"identityDateOfBirth\": \"1990-01-01T00:00:00.000Z\",\n    \"identityGender\": \"Female\",\n    \"identityPhoneNumber\": \"08011111111\",\n    \"stateOfOrigin\": \"Lagos\",\n    \"lgaOfOrigin\": \"Ikeja\",\n    \"stateOfResidence\": \"Abuja\",\n    \"lgaOfResidence\": \"AMAC\",\n    \"address\": \"12 Example Street\",\n    \"city\": \"Wuse\",\n    \"zipCode\": null,\n    \"maritalStatus\": \"Single\",\n    \"bvn\": \"12345678901\",\n    \"nin\": \"98765432109\",\n    \"bvnSelfie\": \"onboarding/selfies/bvn-c1a2b3c4.jpg\",\n    \"ninSelfie\": \"onboarding/selfies/nin-c1a2b3c4.jpg\",\n    \"liveSelfieKey\": \"onboarding/selfies/live-c1a2b3c4.jpg\",\n    \"bvnSelfieUrl\": \"/admin/documents/files/onboarding%2Fselfies%2Fbvn-c1a2b3c4.jpg\",\n    \"ninSelfieUrl\": \"/admin/documents/files/onboarding%2Fselfies%2Fnin-c1a2b3c4.jpg\",\n    \"liveSelfieUrl\": \"/admin/documents/files/onboarding%2Fselfies%2Flive-c1a2b3c4.jpg\",\n    \"identityVerified\": true,\n    \"faceMatchBvnScore\": 0.62,\n    \"faceMatchNinScore\": 0.58,\n    \"faceMatchPassed\": false,\n    \"step\": \"FACE_MATCH_PENDING\",\n    \"failureReasons\": {\n      \"identityVerified\": true,\n      \"faceMatchPassed\": false\n    },\n    \"reviewedBy\": null,\n    \"reviewedAt\": null,\n    \"reviewNote\": null,\n    \"reviewedByAdmin\": null,\n    \"onboardedByAdmin\": null,\n    \"createdAt\": \"2026-09-10T08:05:00.000Z\",\n    \"updatedAt\": \"2026-09-15T11:30:00.000Z\",\n    \"ippisRecord\": {\n      \"agency\": \"Federal Ministry of Works\",\n      \"staffId\": \"FMOW/1099\",\n      \"employeeName\": \"Ibrahim Suleiman\",\n      \"employeeStatus\": \"ACTIVE\",\n      \"hireDate\": \"2020-06-01T00:00:00.000Z\",\n      \"department\": \"Engineering\",\n      \"grade\": \"GL-10\",\n      \"bankName\": \"GTBank\",\n      \"accountNumber\": \"0123456789\"\n    },\n    \"documents\": [\n      {\n        \"documentType\": \"NIN_CARD\",\n        \"url\": \"/admin/documents/files/client-onboarding%2Fc1a2b3c4-d5e6-4f78-9a0b-1c2d3e4f5a6b%2Fdocuments%2Fnin_card.jpg\",\n        \"uploadedAt\": \"2026-09-15T11:00:00.000Z\"\n      },\n      {\n        \"documentType\": \"WORK_ID\",\n        \"url\": \"/admin/documents/files/client-onboarding%2Fc1a2b3c4-d5e6-4f78-9a0b-1c2d3e4f5a6b%2Fdocuments%2Fwork_id.jpg\",\n        \"uploadedAt\": \"2026-09-15T11:00:00.000Z\"\n      },\n      {\n        \"documentType\": \"PASSPORT_PHOTO\",\n        \"url\": \"/admin/documents/files/client-onboarding%2Fc1a2b3c4-d5e6-4f78-9a0b-1c2d3e4f5a6b%2Fdocuments%2Fpassport_photo.jpg\",\n        \"uploadedAt\": \"2026-09-15T11:00:00.000Z\"\n      },\n      {\n        \"documentType\": \"SIGNATURE\",\n        \"url\": \"/admin/documents/files/client-onboarding%2Fc1a2b3c4-d5e6-4f78-9a0b-1c2d3e4f5a6b%2Fdocuments%2Fsignature.jpg\",\n        \"uploadedAt\": \"2026-09-15T11:00:00.000Z\"\n      }\n    ],\n    \"lengthOfService\": {\n      \"years\": 4,\n      \"months\": 2\n    }\n  }\n}"
                 }
               ]
             },
@@ -10755,6 +10759,692 @@
                   ],
                   "cookie": [],
                   "body": "{\n  \"statusCode\": 409,\n  \"message\": \"Client is not in MANUAL_REVIEW (currently PENDING_IPPIS)\",\n  \"error\": \"Conflict\"\n}"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Client Onboarding",
+          "description": "Admin-initiated onboarding: an admin runs the same IPPIS link -> identity -> documents -> face-match journey on a client's behalf, substituting the uploaded passport photo for a live selfie. Requires clients:onboard. See docs/superpowers/specs/2026-10-02-admin-client-onboarding-design.md.",
+          "item": [
+            {
+              "name": "POST /admin/clients/onboarding/ippis-lookup - Success (201)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/clients/onboarding/ippis-lookup",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "clients",
+                    "onboarding",
+                    "ippis-lookup"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\"ippisNumber\": \"NPF/10234\"}"
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 201', () => pm.response.to.have.status(201));",
+                      "if (pm.response.code === 201) { pm.collectionVariables.set('onboarding_client_id', pm.response.json().clientId); }"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Success - new client created (201)",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/clients/onboarding/ippis-lookup",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "clients",
+                        "onboarding",
+                        "ippis-lookup"
+                      ]
+                    },
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\"ippisNumber\": \"NPF/10234\"}"
+                    }
+                  },
+                  "status": "Created",
+                  "code": 201,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"id\": \"b7a1c2d3-1111-4a2b-8c3d-4e5f6a7b8c9d\",\n  \"clientId\": \"c1a2b3c4-d5e6-4f78-9a0b-1c2d3e4f5a6b\",\n  \"ippisRecordId\": \"e3c4d5e6-f7a8-4b9c-0d1e-3f4a5b6c7d8e\",\n  \"employeeName\": \"Ibrahim Suleiman\",\n  \"agency\": \"Nigeria Police Force\",\n  \"bankName\": \"GTBank\",\n  \"accountNumber\": \"0123456789\",\n  \"employeeStatus\": \"ACTIVE\",\n  \"legacyId\": \"LEGACY-0099\",\n  \"maritalStatus\": null,\n  \"step\": \"IPPIS_LINKED\",\n  \"onboardedById\": \"a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d\",\n  \"createdAt\": \"2026-10-02T09:00:00.000Z\",\n  \"updatedAt\": \"2026-10-02T09:00:00.000Z\"\n}"
+                },
+                {
+                  "name": "Not found - unknown IPPIS number (404)",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/clients/onboarding/ippis-lookup",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "clients",
+                        "onboarding",
+                        "ippis-lookup"
+                      ]
+                    },
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\"ippisNumber\": \"NPF/10234\"}"
+                    }
+                  },
+                  "status": "Not Found",
+                  "code": 404,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"statusCode\": 404,\n  \"message\": \"IPPIS number not found\",\n  \"error\": \"Not Found\"\n}"
+                },
+                {
+                  "name": "Unprocessable - no phone number on file for this IPPIS record (422)",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/clients/onboarding/ippis-lookup",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "clients",
+                        "onboarding",
+                        "ippis-lookup"
+                      ]
+                    },
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\"ippisNumber\": \"NPF/10234\"}"
+                    }
+                  },
+                  "status": "Unprocessable Entity",
+                  "code": 422,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"statusCode\": 422,\n  \"message\": \"No phone number on file for this IPPIS record \\u2014 cannot resolve a client\",\n  \"error\": \"Unprocessable Entity\"\n}"
+                },
+                {
+                  "name": "Forbidden - missing clients:onboard permission (403)",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/clients/onboarding/ippis-lookup",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "clients",
+                        "onboarding",
+                        "ippis-lookup"
+                      ]
+                    },
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\"ippisNumber\": \"NPF/10234\"}"
+                    }
+                  },
+                  "status": "Forbidden",
+                  "code": 403,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"statusCode\": 403,\n  \"message\": \"Insufficient permissions\",\n  \"error\": \"Forbidden\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "POST /admin/clients/:clientId/onboarding/identity - Success (201)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/clients/{{onboarding_client_id}}/onboarding/identity",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "clients",
+                    "{{onboarding_client_id}}",
+                    "onboarding",
+                    "identity"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\"bvn\": \"12345678901\", \"nin\": \"98765432109\"}"
+                },
+                "description": "clientId is populated automatically by the ippis-lookup request above."
+              },
+              "response": [
+                {
+                  "name": "Success - BVN/NIN verified (201)",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/clients/{{onboarding_client_id}}/onboarding/identity",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "clients",
+                        "{{onboarding_client_id}}",
+                        "onboarding",
+                        "identity"
+                      ]
+                    },
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\"bvn\": \"12345678901\", \"nin\": \"98765432109\"}"
+                    },
+                    "description": "clientId is populated automatically by the ippis-lookup request above."
+                  },
+                  "status": "Created",
+                  "code": 201,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"id\": \"b7a1c2d3-1111-4a2b-8c3d-4e5f6a7b8c9d\",\n  \"clientId\": \"c1a2b3c4-d5e6-4f78-9a0b-1c2d3e4f5a6b\",\n  \"identityVerified\": true,\n  \"step\": \"IDENTITY_SUBMITTED\",\n  \"identityGender\": \"Female\",\n  \"stateOfOrigin\": \"Lagos\",\n  \"address\": \"1 Mock Street\",\n  \"city\": \"Mocktown\"\n}"
+                },
+                {
+                  "name": "Unprocessable - BVN/NIN did not verify (422)",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/clients/{{onboarding_client_id}}/onboarding/identity",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "clients",
+                        "{{onboarding_client_id}}",
+                        "onboarding",
+                        "identity"
+                      ]
+                    },
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\"bvn\": \"12345678901\", \"nin\": \"98765432109\"}"
+                    },
+                    "description": "clientId is populated automatically by the ippis-lookup request above."
+                  },
+                  "status": "Unprocessable Entity",
+                  "code": 422,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"statusCode\": 422,\n  \"message\": \"BVN/NIN verification failed \\u2014 identity could not be confirmed\",\n  \"error\": \"Unprocessable Entity\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "POST /admin/clients/:clientId/onboarding/documents/:type - Success (201)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/clients/{{onboarding_client_id}}/onboarding/documents/PASSPORT_PHOTO",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "clients",
+                    "{{onboarding_client_id}}",
+                    "onboarding",
+                    "documents",
+                    "PASSPORT_PHOTO"
+                  ]
+                },
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "file",
+                      "type": "file",
+                      "src": []
+                    }
+                  ]
+                },
+                "description": "Repeat for NIN_CARD, WORK_ID, and SIGNATURE as well — all 4 document types must be uploaded before the face-match request below will succeed."
+              },
+              "response": [
+                {
+                  "name": "Success (201)",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/clients/{{onboarding_client_id}}/onboarding/documents/PASSPORT_PHOTO",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "clients",
+                        "{{onboarding_client_id}}",
+                        "onboarding",
+                        "documents",
+                        "PASSPORT_PHOTO"
+                      ]
+                    },
+                    "body": {
+                      "mode": "formdata",
+                      "formdata": [
+                        {
+                          "key": "file",
+                          "type": "file",
+                          "src": []
+                        }
+                      ]
+                    },
+                    "description": "Repeat for NIN_CARD, WORK_ID, and SIGNATURE as well — all 4 document types must be uploaded before the face-match request below will succeed."
+                  },
+                  "status": "Created",
+                  "code": 201,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"id\": \"d4e5f6a7-2222-4b3c-9d4e-5f6a7b8c9d0e\",\n  \"clientOnboardingId\": \"b7a1c2d3-1111-4a2b-8c3d-4e5f6a7b8c9d\",\n  \"documentType\": \"PASSPORT_PHOTO\",\n  \"storageKey\": \"client-onboarding/c1a2b3c4-d5e6-4f78-9a0b-1c2d3e4f5a6b/documents/passport_photo.jpg\",\n  \"uploadedAt\": \"2026-10-02T09:05:00.000Z\"\n}"
+                },
+                {
+                  "name": "Validation error - disallowed file type (400)",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/clients/{{onboarding_client_id}}/onboarding/documents/PASSPORT_PHOTO",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "clients",
+                        "{{onboarding_client_id}}",
+                        "onboarding",
+                        "documents",
+                        "PASSPORT_PHOTO"
+                      ]
+                    },
+                    "body": {
+                      "mode": "formdata",
+                      "formdata": [
+                        {
+                          "key": "file",
+                          "type": "file",
+                          "src": []
+                        }
+                      ]
+                    },
+                    "description": "Repeat for NIN_CARD, WORK_ID, and SIGNATURE as well — all 4 document types must be uploaded before the face-match request below will succeed."
+                  },
+                  "status": "Bad Request",
+                  "code": 400,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"statusCode\": 400,\n  \"message\": \"Only JPEG, PNG, or PDF files are allowed\",\n  \"error\": \"Bad Request\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "POST /admin/clients/:clientId/onboarding/face-match - Success (201)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/clients/{{onboarding_client_id}}/onboarding/face-match",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "clients",
+                    "{{onboarding_client_id}}",
+                    "onboarding",
+                    "face-match"
+                  ]
+                },
+                "description": "No file/body needed — compares the already-uploaded PASSPORT_PHOTO document against the BVN/NIN lookup photos instead of a live selfie. All 4 documents must be uploaded first."
+              },
+              "response": [
+                {
+                  "name": "Success - completed and VERIFIED (201)",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/clients/{{onboarding_client_id}}/onboarding/face-match",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "clients",
+                        "{{onboarding_client_id}}",
+                        "onboarding",
+                        "face-match"
+                      ]
+                    },
+                    "description": "No file/body needed — compares the already-uploaded PASSPORT_PHOTO document against the BVN/NIN lookup photos instead of a live selfie. All 4 documents must be uploaded first."
+                  },
+                  "status": "Created",
+                  "code": 201,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"id\": \"b7a1c2d3-1111-4a2b-8c3d-4e5f6a7b8c9d\",\n  \"clientId\": \"c1a2b3c4-d5e6-4f78-9a0b-1c2d3e4f5a6b\",\n  \"faceMatchBvnScore\": 0.95,\n  \"faceMatchNinScore\": 0.95,\n  \"faceMatchPassed\": true,\n  \"step\": \"COMPLETED\"\n}"
+                },
+                {
+                  "name": "Conflict - documents not fully submitted yet (409)",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/clients/{{onboarding_client_id}}/onboarding/face-match",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "clients",
+                        "{{onboarding_client_id}}",
+                        "onboarding",
+                        "face-match"
+                      ]
+                    },
+                    "description": "No file/body needed — compares the already-uploaded PASSPORT_PHOTO document against the BVN/NIN lookup photos instead of a live selfie. All 4 documents must be uploaded first."
+                  },
+                  "status": "Conflict",
+                  "code": 409,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"statusCode\": 409,\n  \"message\": \"Expected step DOCUMENTS_SUBMITTED, but client is at IDENTITY_SUBMITTED\",\n  \"error\": \"Conflict\"\n}"
+                },
+                {
+                  "name": "Unprocessable - passport photo uploaded as a PDF (422)",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/clients/{{onboarding_client_id}}/onboarding/face-match",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "clients",
+                        "{{onboarding_client_id}}",
+                        "onboarding",
+                        "face-match"
+                      ]
+                    },
+                    "description": "No file/body needed — compares the already-uploaded PASSPORT_PHOTO document against the BVN/NIN lookup photos instead of a live selfie. All 4 documents must be uploaded first."
+                  },
+                  "status": "Unprocessable Entity",
+                  "code": 422,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"statusCode\": 422,\n  \"message\": \"Passport photo was uploaded as a PDF \\u2014 an image (JPEG/PNG) is required for face comparison\",\n  \"error\": \"Unprocessable Entity\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "GET /admin/clients/:clientId/onboarding/status - Success (200)",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/clients/{{onboarding_client_id}}/onboarding/status",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "clients",
+                    "{{onboarding_client_id}}",
+                    "onboarding",
+                    "status"
+                  ]
+                }
+              },
+              "response": [
+                {
+                  "name": "Success (200)",
+                  "originalRequest": {
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/clients/{{onboarding_client_id}}/onboarding/status",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "clients",
+                        "{{onboarding_client_id}}",
+                        "onboarding",
+                        "status"
+                      ]
+                    }
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"step\": \"COMPLETED\",\n  \"clientStatus\": \"VERIFIED\",\n  \"onboarding\": {\n    \"employeeName\": \"Ibrahim Suleiman\",\n    \"agency\": \"Nigeria Police Force\",\n    \"step\": \"COMPLETED\"\n  },\n  \"lengthOfService\": {\n    \"years\": 4,\n    \"months\": 2\n  }\n}"
                 }
               ]
             }
