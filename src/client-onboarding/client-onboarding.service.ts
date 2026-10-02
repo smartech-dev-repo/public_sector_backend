@@ -25,10 +25,48 @@ export class ClientOnboardingService {
     return onboarding;
   }
 
+  private async createOnboardingRecord(
+    clientId: string,
+    ippisRecord: {
+      id: string;
+      employeeName: string;
+      agency: string;
+      bankName: string | null;
+      accountNumber: string | null;
+      employeeStatus: string | null;
+      legacyId: string | null;
+      maritalStatus: string | null;
+    },
+    onboardedById?: string,
+  ) {
+    const onboarding = await this.prisma.clientOnboarding.create({
+      data: {
+        clientId,
+        ippisRecordId: ippisRecord.id,
+        employeeName: ippisRecord.employeeName,
+        agency: ippisRecord.agency,
+        bankName: ippisRecord.bankName,
+        accountNumber: ippisRecord.accountNumber,
+        employeeStatus: ippisRecord.employeeStatus,
+        legacyId: ippisRecord.legacyId,
+        maritalStatus: ippisRecord.maritalStatus,
+        step: OnboardingStep.IPPIS_LINKED,
+        onboardedById,
+      },
+    });
+
+    await this.prisma.client.update({
+      where: { id: clientId },
+      data: { status: ClientStatus.PENDING_IPPIS },
+    });
+
+    return onboarding;
+  }
+
   async linkIppis(clientId: string, ippisNumber: string) {
     const existing = await this.prisma.clientOnboarding.findUnique({ where: { clientId } });
     if (existing) {
-      throw new ConflictException('Onboarding already started for this client');
+      return existing;
     }
 
     const ippisRecord = await this.prisma.ippisRecord.findFirst({
@@ -45,27 +83,37 @@ export class ClientOnboardingService {
       throw new ConflictException('This IPPIS record is already linked to another client');
     }
 
-    const onboarding = await this.prisma.clientOnboarding.create({
-      data: {
-        clientId,
-        ippisRecordId: ippisRecord.id,
-        employeeName: ippisRecord.employeeName,
-        agency: ippisRecord.agency,
-        bankName: ippisRecord.bankName,
-        accountNumber: ippisRecord.accountNumber,
-        employeeStatus: ippisRecord.employeeStatus,
-        legacyId: ippisRecord.legacyId,
-        maritalStatus: ippisRecord.maritalStatus,
-        step: OnboardingStep.IPPIS_LINKED,
-      },
+    return this.createOnboardingRecord(clientId, ippisRecord);
+  }
+
+  async adminStartOnboarding(ippisNumber: string, adminId: string) {
+    const ippisRecord = await this.prisma.ippisRecord.findFirst({
+      where: { staffId: { equals: ippisNumber, mode: 'insensitive' } },
+    });
+    if (!ippisRecord) {
+      throw new NotFoundException('IPPIS number not found');
+    }
+
+    const existing = await this.prisma.clientOnboarding.findUnique({
+      where: { ippisRecordId: ippisRecord.id },
+    });
+    if (existing) {
+      return existing;
+    }
+
+    if (!ippisRecord.phone) {
+      throw new UnprocessableEntityException(
+        'No phone number on file for this IPPIS record — cannot resolve a client',
+      );
+    }
+
+    const client = await this.prisma.client.upsert({
+      where: { phone: ippisRecord.phone },
+      update: {},
+      create: { phone: ippisRecord.phone, createdById: adminId },
     });
 
-    await this.prisma.client.update({
-      where: { id: clientId },
-      data: { status: ClientStatus.PENDING_IPPIS },
-    });
-
-    return onboarding;
+    return this.createOnboardingRecord(client.id, ippisRecord, adminId);
   }
 
   private async lookupIdentity(bvn: string, nin: string) {

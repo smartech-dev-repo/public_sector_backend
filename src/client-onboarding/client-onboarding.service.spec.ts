@@ -10,7 +10,7 @@ describe('ClientOnboardingService', () => {
   let prisma: {
     clientOnboarding: { findUnique: jest.Mock; create: jest.Mock; update: jest.Mock };
     ippisRecord: { findFirst: jest.Mock };
-    client: { findUniqueOrThrow: jest.Mock; update: jest.Mock };
+    client: { findUniqueOrThrow: jest.Mock; update: jest.Mock; upsert: jest.Mock };
     clientDocument: { count: jest.Mock; upsert: jest.Mock; findUnique: jest.Mock };
   };
   let identityVerificationService: { lookupBvn: jest.Mock; lookupNin: jest.Mock };
@@ -21,7 +21,7 @@ describe('ClientOnboardingService', () => {
     prisma = {
       clientOnboarding: { findUnique: jest.fn(), create: jest.fn(), update: jest.fn() },
       ippisRecord: { findFirst: jest.fn() },
-      client: { findUniqueOrThrow: jest.fn(), update: jest.fn() },
+      client: { findUniqueOrThrow: jest.fn(), update: jest.fn(), upsert: jest.fn() },
       clientDocument: { count: jest.fn().mockResolvedValue(0), upsert: jest.fn(), findUnique: jest.fn() },
     };
     identityVerificationService = { lookupBvn: jest.fn(), lookupNin: jest.fn() };
@@ -37,9 +37,14 @@ describe('ClientOnboardingService', () => {
   });
 
   describe('linkIppis', () => {
-    it('rejects when onboarding already started for this client', async () => {
-      prisma.clientOnboarding.findUnique.mockResolvedValue({ id: 'existing' });
-      await expect(service.linkIppis('client-1', 'NPF/1')).rejects.toThrow(ConflictException);
+    it('returns the existing onboarding when one already exists for this client', async () => {
+      const existingOnboarding = { id: 'existing', step: 'IDENTITY_SUBMITTED' };
+      prisma.clientOnboarding.findUnique.mockResolvedValue(existingOnboarding);
+
+      const result = await service.linkIppis('client-1', 'NPF/1');
+
+      expect(result).toBe(existingOnboarding);
+      expect(prisma.ippisRecord.findFirst).not.toHaveBeenCalled();
     });
 
     it('rejects when the IPPIS number is not found', async () => {
@@ -106,6 +111,65 @@ describe('ClientOnboardingService', () => {
       expect(prisma.client.update).toHaveBeenCalledWith({
         where: { id: 'client-1' },
         data: { status: 'PENDING_IPPIS' },
+      });
+    });
+  });
+
+  describe('adminStartOnboarding', () => {
+    it('rejects when the IPPIS number is not found', async () => {
+      prisma.ippisRecord.findFirst.mockResolvedValue(null);
+      await expect(service.adminStartOnboarding('NPF/1', 'admin-1')).rejects.toThrow(NotFoundException);
+    });
+
+    it('returns the existing onboarding when this IPPIS record is already linked', async () => {
+      const existingOnboarding = { id: 'existing', step: 'DOCUMENTS_SUBMITTED' };
+      prisma.ippisRecord.findFirst.mockResolvedValue({ id: 'ippis-1', phone: '+2348000000000' });
+      prisma.clientOnboarding.findUnique.mockResolvedValue(existingOnboarding);
+
+      const result = await service.adminStartOnboarding('NPF/1', 'admin-1');
+
+      expect(result).toBe(existingOnboarding);
+      expect(prisma.client.upsert).not.toHaveBeenCalled();
+    });
+
+    it('rejects with UnprocessableEntityException when the IPPIS record has no phone number on file', async () => {
+      prisma.ippisRecord.findFirst.mockResolvedValue({ id: 'ippis-1', phone: null });
+      prisma.clientOnboarding.findUnique.mockResolvedValue(null);
+
+      await expect(service.adminStartOnboarding('NPF/1', 'admin-1')).rejects.toThrow(
+        UnprocessableEntityException,
+      );
+    });
+
+    it('resolves the client by the phone on the IPPIS record and creates the onboarding with onboardedById', async () => {
+      prisma.ippisRecord.findFirst.mockResolvedValue({
+        id: 'ippis-1',
+        phone: '+2348000000000',
+        employeeName: 'Jane Doe',
+        agency: 'NPF',
+        bankName: 'GTBank',
+        accountNumber: '0123456789',
+        employeeStatus: 'ACTIVE',
+        legacyId: 'LEGACY-001',
+        maritalStatus: 'Married',
+      });
+      prisma.clientOnboarding.findUnique.mockResolvedValue(null);
+      prisma.client.upsert.mockResolvedValue({ id: 'client-1', phone: '+2348000000000' });
+      prisma.clientOnboarding.create.mockResolvedValue({ id: 'onboarding-1' });
+
+      await service.adminStartOnboarding('NPF/1', 'admin-1');
+
+      expect(prisma.client.upsert).toHaveBeenCalledWith({
+        where: { phone: '+2348000000000' },
+        update: {},
+        create: { phone: '+2348000000000', createdById: 'admin-1' },
+      });
+      expect(prisma.clientOnboarding.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          clientId: 'client-1',
+          ippisRecordId: 'ippis-1',
+          onboardedById: 'admin-1',
+        }),
       });
     });
   });
