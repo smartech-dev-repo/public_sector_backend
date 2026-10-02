@@ -58,11 +58,13 @@ export class AdminClientReviewService {
     const client = await this.prisma.client.findUnique({
       where: { id },
       include: {
+        createdByAdmin: { select: { id: true, fullName: true, email: true } },
         onboarding: {
           include: {
             documents: true,
             ippisRecord: true,
             reviewedByAdmin: { select: { id: true, fullName: true, email: true } },
+            onboardedByAdmin: { select: { id: true, fullName: true, email: true } },
           },
         },
       },

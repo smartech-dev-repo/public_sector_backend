@@ -140,11 +140,13 @@ describe('AdminClientReviewService', () => {
       expect(prisma.client.findUnique).toHaveBeenCalledWith({
         where: { id: 'c1' },
         include: {
+          createdByAdmin: { select: { id: true, fullName: true, email: true } },
           onboarding: {
             include: {
               documents: true,
               ippisRecord: true,
               reviewedByAdmin: { select: { id: true, fullName: true, email: true } },
+              onboardedByAdmin: { select: { id: true, fullName: true, email: true } },
             },
           },
         },
@@ -162,6 +164,20 @@ describe('AdminClientReviewService', () => {
       const result = await service.findById('c1');
 
       expect(result.onboarding.reviewedByAdmin).toEqual({ id: 'admin-1', fullName: 'Jane Doe', email: 'jane@x.com' });
+    });
+
+    it('surfaces createdByAdmin and onboardedByAdmin when the client/onboarding were admin-initiated', async () => {
+      prisma.client.findUnique.mockResolvedValue({
+        id: 'c1',
+        status: 'VERIFIED',
+        createdByAdmin: { id: 'admin-1', fullName: 'Jane Doe', email: 'jane@x.com' },
+        onboarding: { id: 'o1', onboardedByAdmin: { id: 'admin-1', fullName: 'Jane Doe', email: 'jane@x.com' } },
+      });
+
+      const result = await service.findById('c1');
+
+      expect(result.createdByAdmin).toEqual({ id: 'admin-1', fullName: 'Jane Doe', email: 'jane@x.com' });
+      expect(result.onboarding.onboardedByAdmin).toEqual({ id: 'admin-1', fullName: 'Jane Doe', email: 'jane@x.com' });
     });
 
     it('trims the nested ippisRecord and resolves identity selfie keys to signed URLs', async () => {
