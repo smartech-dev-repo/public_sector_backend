@@ -11,7 +11,7 @@ describe('ClientOnboardingService', () => {
     clientOnboarding: { findUnique: jest.Mock; create: jest.Mock; update: jest.Mock };
     ippisRecord: { findFirst: jest.Mock };
     client: { findUniqueOrThrow: jest.Mock; update: jest.Mock };
-    clientDocument: { count: jest.Mock; upsert: jest.Mock };
+    clientDocument: { count: jest.Mock; upsert: jest.Mock; findUnique: jest.Mock };
   };
   let identityVerificationService: { lookupBvn: jest.Mock; lookupNin: jest.Mock };
   let faceVerificationProvider: { compare: jest.Mock };
@@ -22,7 +22,7 @@ describe('ClientOnboardingService', () => {
       clientOnboarding: { findUnique: jest.fn(), create: jest.fn(), update: jest.fn() },
       ippisRecord: { findFirst: jest.fn() },
       client: { findUniqueOrThrow: jest.fn(), update: jest.fn() },
-      clientDocument: { count: jest.fn().mockResolvedValue(0), upsert: jest.fn() },
+      clientDocument: { count: jest.fn().mockResolvedValue(0), upsert: jest.fn(), findUnique: jest.fn() },
     };
     identityVerificationService = { lookupBvn: jest.fn(), lookupNin: jest.fn() };
     faceVerificationProvider = { compare: jest.fn() };
@@ -373,6 +373,73 @@ describe('ClientOnboardingService', () => {
       expect(prisma.client.update).toHaveBeenCalledWith({
         where: { id: 'client-1' },
         data: { status: 'MANUAL_REVIEW' },
+      });
+    });
+
+    it('allows re-submission when step is already COMPLETED', async () => {
+      prisma.clientOnboarding.findUnique.mockResolvedValue({
+        step: 'COMPLETED',
+        identityVerified: true,
+        bvnSelfie: 'bvn-key',
+        ninSelfie: 'nin-key',
+      });
+      faceVerificationProvider.compare.mockResolvedValue({ score: 0.95, passed: true });
+      prisma.clientOnboarding.update.mockResolvedValue({ id: 'onboarding-1', step: 'COMPLETED' });
+
+      await service.submitFaceMatch('client-1', Buffer.from('selfie'));
+
+      expect(prisma.client.update).toHaveBeenCalledWith({
+        where: { id: 'client-1' },
+        data: { status: 'VERIFIED' },
+      });
+    });
+  });
+
+  describe('submitFaceMatchFromPassportPhoto', () => {
+    it('rejects when the client is not at DOCUMENTS_SUBMITTED', async () => {
+      prisma.clientOnboarding.findUnique.mockResolvedValue({ id: 'onboarding-1', step: 'IDENTITY_SUBMITTED' });
+      await expect(service.submitFaceMatchFromPassportPhoto('client-1')).rejects.toThrow(ConflictException);
+    });
+
+    it('rejects when no passport photo has been uploaded', async () => {
+      prisma.clientOnboarding.findUnique.mockResolvedValue({ id: 'onboarding-1', step: 'DOCUMENTS_SUBMITTED' });
+      prisma.clientDocument.findUnique.mockResolvedValue(null);
+      await expect(service.submitFaceMatchFromPassportPhoto('client-1')).rejects.toThrow(ConflictException);
+    });
+
+    it('rejects with UnprocessableEntityException when the passport photo was uploaded as a PDF', async () => {
+      prisma.clientOnboarding.findUnique.mockResolvedValue({ id: 'onboarding-1', step: 'DOCUMENTS_SUBMITTED' });
+      prisma.clientDocument.findUnique.mockResolvedValue({
+        storageKey: 'client-onboarding/client-1/documents/passport_photo.pdf',
+      });
+      await expect(service.submitFaceMatchFromPassportPhoto('client-1')).rejects.toThrow(
+        UnprocessableEntityException,
+      );
+    });
+
+    it('compares the passport photo against the BVN/NIN selfies and completes on a pass', async () => {
+      prisma.clientOnboarding.findUnique.mockResolvedValue({
+        id: 'onboarding-1',
+        step: 'DOCUMENTS_SUBMITTED',
+        identityVerified: true,
+        bvnSelfie: 'bvn-key',
+        ninSelfie: 'nin-key',
+      });
+      prisma.clientDocument.findUnique.mockResolvedValue({
+        storageKey: 'client-onboarding/client-1/documents/passport_photo.jpg',
+      });
+      faceVerificationProvider.compare.mockResolvedValue({ score: 0.95, passed: true });
+      prisma.clientOnboarding.update.mockResolvedValue({ id: 'onboarding-1', step: 'COMPLETED' });
+
+      await service.submitFaceMatchFromPassportPhoto('client-1');
+
+      expect(faceVerificationProvider.compare).toHaveBeenCalledWith(
+        'bvn-key',
+        'client-onboarding/client-1/documents/passport_photo.jpg',
+      );
+      expect(prisma.client.update).toHaveBeenCalledWith({
+        where: { id: 'client-1' },
+        data: { status: 'VERIFIED' },
       });
     });
   });

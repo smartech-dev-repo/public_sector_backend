@@ -170,17 +170,11 @@ export class ClientOnboardingService {
     return document;
   }
 
-  async submitFaceMatch(clientId: string, selfieBuffer: Buffer) {
-    const onboarding = await this.requireOnboarding(clientId);
-    if (onboarding.step !== OnboardingStep.IDENTITY_SUBMITTED && onboarding.step !== OnboardingStep.DOCUMENTS_SUBMITTED) {
-      throw new ConflictException(
-        `Expected step IDENTITY_SUBMITTED or DOCUMENTS_SUBMITTED, but client is at ${onboarding.step}`,
-      );
-    }
-
-    const liveSelfieKey = `client-onboarding/${clientId}/live-selfie.jpg`;
-    await this.fileStorageProvider.putObject(liveSelfieKey, selfieBuffer);
-
+  private async completeFaceMatch(
+    clientId: string,
+    onboarding: { identityVerified: boolean | null; bvnSelfie: string | null; ninSelfie: string | null },
+    liveSelfieKey: string,
+  ) {
     const [bvnMatch, ninMatch] = await Promise.all([
       this.faceVerificationProvider.compare(onboarding.bvnSelfie!, liveSelfieKey),
       this.faceVerificationProvider.compare(onboarding.ninSelfie!, liveSelfieKey),
@@ -209,6 +203,52 @@ export class ClientOnboardingService {
     });
 
     return updated;
+  }
+
+  async submitFaceMatch(clientId: string, selfieBuffer: Buffer) {
+    const onboarding = await this.requireOnboarding(clientId);
+    if (
+      onboarding.step !== OnboardingStep.IDENTITY_SUBMITTED &&
+      onboarding.step !== OnboardingStep.DOCUMENTS_SUBMITTED &&
+      onboarding.step !== OnboardingStep.COMPLETED
+    ) {
+      throw new ConflictException(
+        `Expected step IDENTITY_SUBMITTED, DOCUMENTS_SUBMITTED, or COMPLETED, but client is at ${onboarding.step}`,
+      );
+    }
+
+    const liveSelfieKey = `client-onboarding/${clientId}/live-selfie.jpg`;
+    await this.fileStorageProvider.putObject(liveSelfieKey, selfieBuffer);
+
+    return this.completeFaceMatch(clientId, onboarding, liveSelfieKey);
+  }
+
+  async submitFaceMatchFromPassportPhoto(clientId: string) {
+    const onboarding = await this.requireOnboarding(clientId);
+    if (onboarding.step !== OnboardingStep.DOCUMENTS_SUBMITTED) {
+      throw new ConflictException(
+        `Expected step DOCUMENTS_SUBMITTED, but client is at ${onboarding.step}`,
+      );
+    }
+
+    const passportDoc = await this.prisma.clientDocument.findUnique({
+      where: {
+        clientOnboardingId_documentType: {
+          clientOnboardingId: onboarding.id,
+          documentType: ClientDocumentType.PASSPORT_PHOTO,
+        },
+      },
+    });
+    if (!passportDoc) {
+      throw new ConflictException('Passport photo has not been uploaded yet');
+    }
+    if (passportDoc.storageKey.toLowerCase().endsWith('.pdf')) {
+      throw new UnprocessableEntityException(
+        'Passport photo was uploaded as a PDF — an image (JPEG/PNG) is required for face comparison',
+      );
+    }
+
+    return this.completeFaceMatch(clientId, onboarding, passportDoc.storageKey);
   }
 
   async getStatus(clientId: string) {
