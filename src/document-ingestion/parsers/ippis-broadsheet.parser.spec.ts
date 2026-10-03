@@ -76,6 +76,42 @@ describe('IppisBroadsheetParser', () => {
     expect(result.warnings.some((w) => w.includes('SomeOtherAgency'))).toBe(true);
   });
 
+  it('warns once per expected column missing from the header row, naming the column and the field it leaves null', async () => {
+    const buffer = await buildWorkbook({
+      NPF: { headers: NPF_HEADERS, rows: [['NPF/1', 'Jane Doe', 'Active', 22345678901]] },
+    });
+
+    const result = await parser.parse({} as DocumentUploadBatch, buffer);
+
+    expect(result.warnings).toContain(
+      'Sheet "NPF": expected column "salary" not found in the header row — every row\'s "salary" will be null',
+    );
+    expect(result.warnings).toContain(
+      'Sheet "NPF": expected column "grade" not found in the header row — every row\'s "grade" will be null',
+    );
+    // Present in NPF_HEADERS, so no warning for these:
+    expect(result.warnings.some((w) => w.includes('"staff id"'))).toBe(false);
+    expect(result.warnings.some((w) => w.includes('"employee name"'))).toBe(false);
+    expect(result.warnings.some((w) => w.includes('"employee status"'))).toBe(false);
+    expect(result.warnings.some((w) => w.includes('"bvn"'))).toBe(false);
+  });
+
+  it('emits no missing-column warnings when every known header is present', async () => {
+    const fullHeaders = [
+      'Staff ID', 'Employee Name', 'Employee Status', 'Hire Date', 'Date Of Birth', 'Marital Status',
+      'Gender', 'Job Title', 'Department', 'Sub Organization', 'Grade', 'Step', 'Salary',
+      'Telephone Number', 'Bank Name', 'Account Number', 'Pfa Name', 'Pin Number', 'Date Terminated',
+      'Bvn', 'Legacy Id',
+    ];
+    const buffer = await buildWorkbook({
+      NPF: { headers: fullHeaders, rows: [['NPF/1', 'Jane Doe', 'Active', 22345678901]] },
+    });
+
+    const result = await parser.parse({} as DocumentUploadBatch, buffer);
+
+    expect(result.warnings.some((w) => w.includes('expected column'))).toBe(false);
+  });
+
   it('skips an invalid row (bad BVN) but still processes the rest of the sheet', async () => {
     const buffer = await buildWorkbook({
       NPF: {

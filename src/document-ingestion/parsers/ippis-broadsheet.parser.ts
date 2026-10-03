@@ -4,7 +4,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { SnapshotExportService } from '../snapshot-export.service';
 import { DocumentParser, ParseResult } from '../document-parser.interface';
 import { DocumentUploadBatch, DocumentType, Prisma } from '../../generated/prisma/client';
-import { isRowMappingFailure, mapIppisRow } from './ippis-row-mapper';
+import { IPPIS_KNOWN_HEADERS, isRowMappingFailure, mapIppisRow } from './ippis-row-mapper';
 import { buildRowByHeader } from './build-row-by-header';
 
 const KNOWN_AGENCIES = ['NPF', 'NSCDC', 'IMMIGRATION', 'CORRECTIONAL'];
@@ -56,6 +56,19 @@ export class IppisBroadsheetParser implements DocumentParser {
       }
 
       const headerValues = worksheet.getRow(1).values as unknown[];
+
+      const normalizedHeaders = new Set(
+        headerValues
+          .filter((h): h is string => typeof h === 'string')
+          .map((h) => h.trim().toLowerCase()),
+      );
+      for (const [headerKey, fieldName] of Object.entries(IPPIS_KNOWN_HEADERS)) {
+        if (!normalizedHeaders.has(headerKey)) {
+          warnings.push(
+            `Sheet "${agency}": expected column "${headerKey}" not found in the header row — every row's "${fieldName}" will be null`,
+          );
+        }
+      }
 
       for (let rowNumber = 2; rowNumber <= worksheet.rowCount; rowNumber++) {
         const row = worksheet.getRow(rowNumber);

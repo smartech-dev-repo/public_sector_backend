@@ -1,4 +1,4 @@
-const IPPIS_KNOWN_HEADERS: Record<string, keyof Omit<MappedIppisFields, 'rawFields'>> = {
+export const IPPIS_KNOWN_HEADERS: Record<string, keyof Omit<MappedIppisFields, 'rawFields'>> = {
   'staff id': 'staffId',
   'employee name': 'employeeName',
   'employee status': 'employeeStatus',
