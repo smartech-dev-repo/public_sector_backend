@@ -50,9 +50,19 @@ describe('Loan topup (e2e)', () => {
     // through and leave rows behind for the next run to collide with.
     await prisma.clientLoan.deleteMany({ where: { agency, staffId: { startsWith: staffId } } });
     await prisma.loanRequest.deleteMany({ where: { client: { onboarding: { ippisRecord: { staffId: { startsWith: staffId } } } } } });
+    // Captured before clientOnboarding is deleted, since the client ->
+    // ippisRecord.staffId link disappears with it, and a shared phone
+    // prefix (like the other suites in this repo used to do) risks
+    // deleting another run's leftover client that happens to share it.
+    const clientIds = (
+      await prisma.clientOnboarding.findMany({
+        where: { ippisRecord: { staffId: { startsWith: staffId } } },
+        select: { clientId: true },
+      })
+    ).map((c) => c.clientId);
     await prisma.clientOnboarding.deleteMany({ where: { ippisRecord: { staffId: { startsWith: staffId } } } });
     await prisma.ippisRecord.deleteMany({ where: { staffId: { startsWith: staffId } } });
-    await prisma.client.deleteMany({ where: { phone: { startsWith: '+234805' } } });
+    await prisma.client.deleteMany({ where: { id: { in: clientIds } } });
     await prisma.loanTermOption.deleteMany({ where: { agency, tenorMonths: 4 } });
     await app.close();
   });
