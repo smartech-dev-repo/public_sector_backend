@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { generateOpaqueToken, hashToken } from '../common/opaque-token.util';
 import { AdminInvite, AdminInviteStatus, Prisma } from '../generated/prisma/client';
@@ -33,6 +33,22 @@ export class AdminInviteService {
   constructor(private readonly prisma: PrismaService) {}
 
   async create(params: CreateInviteParams): Promise<IssuedInvite> {
+    const existingAdmin = await this.prisma.adminUser.findUnique({ where: { email: params.email } });
+    if (existingAdmin) {
+      throw new ConflictException('An admin with this email already exists');
+    }
+
+    // Scoped to expiresAt > now, not just status === PENDING: nothing in
+    // this codebase ever transitions a PENDING invite to EXPIRED once its
+    // TTL passes (that status is only ever checked, never set), so a
+    // genuinely-stale invite row must not block issuing a fresh one.
+    const existingInvite = await this.prisma.adminInvite.findFirst({
+      where: { email: params.email, status: AdminInviteStatus.PENDING, expiresAt: { gt: new Date() } },
+    });
+    if (existingInvite) {
+      throw new ConflictException('A pending invite already exists for this email');
+    }
+
     const token = generateOpaqueToken();
 
     const invite = await this.prisma.adminInvite.create({
