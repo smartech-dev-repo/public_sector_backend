@@ -1,7 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { DocumentBatchStatus, DocumentType, Prisma } from '../generated/prisma/client';
 import { buildPaginatedResult } from '../common/pagination/paginated-result';
+import { FILE_STORAGE_PROVIDER, FileStorageProvider } from '../file-storage/file-storage-provider.interface';
 
 export interface CreateBatchParams {
   documentType: DocumentType;
@@ -32,7 +33,10 @@ export interface ListBatchesFilters {
 
 @Injectable()
 export class DocumentBatchService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Inject(FILE_STORAGE_PROVIDER) private readonly fileStorageProvider: FileStorageProvider,
+  ) {}
 
   async createBatch(params: CreateBatchParams) {
     return this.prisma.documentUploadBatch.create({
@@ -77,13 +81,17 @@ export class DocumentBatchService {
   }
 
   async findById(batchId: string) {
-    return this.prisma.documentUploadBatch.findUnique({
+    const batch = await this.prisma.documentUploadBatch.findUnique({
       where: { id: batchId },
       include: {
         snapshotExport: true,
         uploadedBy: { select: { id: true, fullName: true, email: true } },
       },
     });
+    if (!batch) {
+      return batch;
+    }
+    return { ...batch, fileUrl: await this.fileStorageProvider.getSignedDownloadUrl(batch.storageKey) };
   }
 
   async list(
@@ -124,6 +132,13 @@ export class DocumentBatchService {
       this.prisma.documentUploadBatch.count({ where }),
     ]);
 
-    return buildPaginatedResult(data, total, page, limit);
+    const hydrated = await Promise.all(
+      data.map(async (batch) => ({
+        ...batch,
+        fileUrl: await this.fileStorageProvider.getSignedDownloadUrl(batch.storageKey),
+      })),
+    );
+
+    return buildPaginatedResult(hydrated, total, page, limit);
   }
 }
