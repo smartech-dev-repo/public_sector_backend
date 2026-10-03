@@ -2,6 +2,7 @@ import { ConflictException, Injectable, NotFoundException } from '@nestjs/common
 import { PrismaService } from '../prisma/prisma.service';
 import { Role, Prisma } from '../generated/prisma/client';
 import { buildPaginatedResult } from '../common/pagination/paginated-result';
+import { isUniqueConstraintError } from '../common/is-unique-constraint-error.util';
 
 const SUPER_ADMIN_ROLE_NAME = 'SUPER_ADMIN';
 
@@ -21,10 +22,6 @@ const ROLE_WITH_RELATIONS_INCLUDE = {
   permissions: { include: { permission: true } },
   department: { select: { id: true, name: true } },
 } as const;
-
-function isUniqueConstraintError(error: unknown): boolean {
-  return typeof error === 'object' && error !== null && (error as { code?: string }).code === 'P2002';
-}
 
 @Injectable()
 export class RoleService {

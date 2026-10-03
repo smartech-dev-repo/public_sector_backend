@@ -1,4 +1,4 @@
-import { NotFoundException } from '@nestjs/common';
+import { ConflictException, NotFoundException } from '@nestjs/common';
 import { LoanTermOptionService } from './loan-terms.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { ManagementChargeApplication, ManagementChargeType } from '../generated/prisma/client';
@@ -41,6 +41,21 @@ describe('LoanTermOptionService', () => {
           managementChargeApplication: ManagementChargeApplication.DEDUCT_FROM_DISBURSEMENT,
         },
       });
+    });
+
+    it('converts a duplicate (agency, tenorMonths) DB error into ConflictException', async () => {
+      prisma.loanTermOption.create.mockRejectedValue({ code: 'P2002' });
+
+      await expect(
+        service.create({
+          agency: 'NPF',
+          tenorMonths: 6,
+          interestRatePercent: 5,
+          managementChargeType: ManagementChargeType.PERCENTAGE,
+          managementChargeValue: 2,
+          managementChargeApplication: ManagementChargeApplication.DEDUCT_FROM_DISBURSEMENT,
+        }),
+      ).rejects.toThrow(ConflictException);
     });
   });
 

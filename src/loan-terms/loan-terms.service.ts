@@ -1,7 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { LoanTermOption, ManagementChargeApplication, ManagementChargeType, Prisma } from '../generated/prisma/client';
 import { buildPaginatedResult, PaginatedResult } from '../common/pagination/paginated-result';
+import { isUniqueConstraintError } from '../common/is-unique-constraint-error.util';
 
 export interface ListLoanTermsFilters {
   agency?: string;
@@ -30,7 +31,16 @@ export class LoanTermOptionService {
   constructor(private readonly prisma: PrismaService) {}
 
   async create(input: CreateLoanTermOptionInput): Promise<LoanTermOption> {
-    return this.prisma.loanTermOption.create({ data: input });
+    try {
+      return await this.prisma.loanTermOption.create({ data: input });
+    } catch (error) {
+      if (isUniqueConstraintError(error)) {
+        throw new ConflictException(
+          `A loan term for agency "${input.agency}" at ${input.tenorMonths} months already exists`,
+        );
+      }
+      throw error;
+    }
   }
 
   async list(

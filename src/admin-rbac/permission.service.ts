@@ -2,6 +2,7 @@ import { ConflictException, Injectable, NotFoundException } from '@nestjs/common
 import { PrismaService } from '../prisma/prisma.service';
 import { Permission, Prisma } from '../generated/prisma/client';
 import { buildPaginatedResult, PaginatedResult } from '../common/pagination/paginated-result';
+import { isUniqueConstraintError } from '../common/is-unique-constraint-error.util';
 
 export interface CreatePermissionParams {
   key: string;
@@ -10,10 +11,6 @@ export interface CreatePermissionParams {
 
 export interface UpdatePermissionParams {
   description: string;
-}
-
-function isUniqueConstraintError(error: unknown): boolean {
-  return typeof error === 'object' && error !== null && (error as { code?: string }).code === 'P2002';
 }
 
 @Injectable()
