@@ -10,7 +10,7 @@ describe('Spend wallet balance toward a loan payment (e2e)', () => {
   let prisma: PrismaService;
   let adminAccessToken: string;
   const staffId = `E2E-WALLETPAY-${Date.now()}`;
-  const agency = 'NPF';
+  const agency = 'NPF-WALLETPAY';
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -43,11 +43,16 @@ describe('Spend wallet balance toward a loan payment (e2e)', () => {
   });
 
   afterAll(async () => {
+    // Every step below is scoped by this run's own staffId prefix (not the
+    // shared `employeeName` literal, which is identical across every run of
+    // this file) so a concurrent or previous run's rows can never cause an
+    // FK violation here -- that's what used to abort this afterAll partway
+    // through and leave rows behind for the next run to collide with.
     await prisma.clientLoanRepaymentVariance.deleteMany({ where: { clientLoan: { agency, staffId: { startsWith: staffId } } } });
-    await prisma.walletEntry.deleteMany({ where: { client: { onboarding: { agency, employeeName: 'E2E WalletPay Test' } } } });
+    await prisma.walletEntry.deleteMany({ where: { client: { onboarding: { ippisRecord: { staffId: { startsWith: staffId } } } } } });
     await prisma.clientLoan.deleteMany({ where: { agency, staffId: { startsWith: staffId } } });
-    await prisma.loanRequest.deleteMany({ where: { client: { onboarding: { agency, employeeName: 'E2E WalletPay Test' } } } });
-    await prisma.clientOnboarding.deleteMany({ where: { agency, employeeName: 'E2E WalletPay Test' } });
+    await prisma.loanRequest.deleteMany({ where: { client: { onboarding: { ippisRecord: { staffId: { startsWith: staffId } } } } } });
+    await prisma.clientOnboarding.deleteMany({ where: { ippisRecord: { staffId: { startsWith: staffId } } } });
     await prisma.ippisRecord.deleteMany({ where: { staffId: { startsWith: staffId } } });
     await prisma.client.deleteMany({ where: { phone: { startsWith: '+234807' } } });
     await prisma.loanTermOption.deleteMany({ where: { agency, tenorMonths: 2 } });

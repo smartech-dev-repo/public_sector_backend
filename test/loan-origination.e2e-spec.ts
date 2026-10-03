@@ -48,7 +48,9 @@ describe('Loan origination (e2e)', () => {
     // would delete nothing and leave the ClientLoan FK-referencing its
     // LoanRequest when the next line runs — hence `startsWith`.
     await prisma.clientLoan.deleteMany({ where: { agency, staffId: { startsWith: staffId } } });
-    await prisma.loanRequest.deleteMany({ where: { client: { onboarding: { agency } } } });
+    await prisma.loanRequest.deleteMany({
+      where: { client: { onboarding: { ippisRecord: { staffId: { startsWith: staffId } } } } },
+    });
     await prisma.clientOnboarding.deleteMany({ where: { agency, employeeName: { contains: 'E2E Origination' } } });
     await prisma.ippisRecord.deleteMany({ where: { staffId: { startsWith: staffId } } });
     await prisma.client.deleteMany({ where: { phone: { startsWith: '+234804' } } });
@@ -84,8 +86,13 @@ describe('Loan origination (e2e)', () => {
       .set('Authorization', `Bearer ${accessToken}`)
       .expect(200);
 
-    expect(res.body.data).toHaveLength(1);
-    expect(res.body.data[0].tenorMonths).toBe(3);
+    // Not toHaveLength(1): other e2e suites running concurrently against this
+    // same shared DB also create active NPF loan terms (different
+    // tenorMonths) -- the endpoint correctly returns every active term for
+    // the agency, so this only asserts that *this* fixture's term is present.
+    expect(res.body.data).toEqual(
+      expect.arrayContaining([expect.objectContaining({ agency: 'NPF', tenorMonths: 3 })]),
+    );
   });
 
   it(
