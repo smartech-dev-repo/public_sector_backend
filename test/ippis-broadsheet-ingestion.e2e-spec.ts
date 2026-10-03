@@ -29,6 +29,7 @@ describe('IPPIS broadsheet ingestion (e2e)', () => {
   let app: INestApplication;
   let prisma: PrismaService;
   let accessToken: string;
+  let batchId: string | undefined;
   const staffId = `E2E-STAFF-${Date.now()}`;
   const bvn = 20000000000 + Math.floor(Math.random() * 999999999);
 
@@ -53,6 +54,16 @@ describe('IPPIS broadsheet ingestion (e2e)', () => {
 
   afterAll(async () => {
     if (prisma) {
+      // The batch row (and the DataSnapshotExport it points to) are never
+      // cleaned up by the app itself -- they're this test's own data, so
+      // this test must remove them, same as every other row it creates.
+      if (batchId) {
+        const batch = await prisma.documentUploadBatch.findUnique({ where: { id: batchId } });
+        await prisma.documentUploadBatch.deleteMany({ where: { id: batchId } });
+        if (batch?.snapshotExportId) {
+          await prisma.dataSnapshotExport.deleteMany({ where: { id: batch.snapshotExportId } });
+        }
+      }
       await prisma.ippisRecord.deleteMany({ where: { staffId } });
     }
     if (app) {
@@ -69,6 +80,7 @@ describe('IPPIS broadsheet ingestion (e2e)', () => {
       .attach('file', buffer, 'broadsheet.xlsx')
       .expect(201);
 
+    batchId = uploadRes.body.id;
     const batch = await waitForBatchCompletion(prisma, uploadRes.body.id);
     expect(batch!.status).toBe('COMPLETED');
     expect(batch!.rowsProcessed).toBe(1);
