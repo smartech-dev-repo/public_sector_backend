@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { OtpService } from './otp.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { OtpProvider } from './otp-provider.interface';
+import { EmailService } from '../email/email.service';
 import { hashPassword } from '../common/password-hash.util';
 
 function fakeProvider(name: string, send: jest.Mock): OtpProvider {
@@ -100,7 +101,7 @@ describe('OtpService', () => {
     ]);
     prisma.otpCode.findFirst.mockResolvedValue(null);
     const result = await service.verify('+2348000000000', '123456');
-    expect(result).toBe(false);
+    expect(result.valid).toBe(false);
   });
 
   it('accepts a correct, unexpired code and marks it consumed', async () => {
@@ -111,16 +112,34 @@ describe('OtpService', () => {
     prisma.otpCode.findFirst.mockResolvedValue({
       id: 'otp-1',
       codeHash,
+      email: null,
       expiresAt: new Date(Date.now() + 60_000),
     });
 
     const result = await service.verify('+2348000000000', '123456');
 
-    expect(result).toBe(true);
+    expect(result).toEqual({ valid: true, email: null });
     expect(prisma.otpCode.update).toHaveBeenCalledWith({
       where: { id: 'otp-1' },
       data: { consumedAt: expect.any(Date) },
     });
+  });
+
+  it('returns the matched row\'s pending email on success', async () => {
+    service = new OtpService(prisma as unknown as PrismaService, [
+      fakeProvider('primary', jest.fn()),
+    ]);
+    const codeHash = await hashPassword('123456');
+    prisma.otpCode.findFirst.mockResolvedValue({
+      id: 'otp-1',
+      codeHash,
+      email: 'client@example.com',
+      expiresAt: new Date(Date.now() + 60_000),
+    });
+
+    const result = await service.verify('+2348000000000', '123456');
+
+    expect(result).toEqual({ valid: true, email: 'client@example.com' });
   });
 
   describe('mock OTP support', () => {
@@ -132,7 +151,7 @@ describe('OtpService', () => {
 
       const result = await service.verify('+2348000000000', '0000');
 
-      expect(result).toBe(false);
+      expect(result.valid).toBe(false);
       expect(prisma.otpCode.findFirst).toHaveBeenCalled();
     });
 
@@ -152,7 +171,7 @@ describe('OtpService', () => {
 
       const result = await service.verify('+2348000000000', '0000');
 
-      expect(result).toBe(true);
+      expect(result).toEqual({ valid: true });
       expect(prisma.otpCode.findFirst).not.toHaveBeenCalled();
     });
 
@@ -183,6 +202,85 @@ describe('OtpService', () => {
       const result = await service.request('+2348000000000');
 
       expect(result.mockCode).toBeUndefined();
+    });
+  });
+
+  describe('email CC', () => {
+    let emailService: { send: jest.Mock };
+
+    beforeEach(() => {
+      emailService = { send: jest.fn().mockResolvedValue(undefined) };
+    });
+
+    it('stores the email on the OtpCode row when given', async () => {
+      service = new OtpService(
+        prisma as unknown as PrismaService,
+        [fakeProvider('primary', jest.fn().mockResolvedValue(undefined))],
+        undefined,
+        emailService as unknown as EmailService,
+      );
+
+      await service.request('+2348000000000', 'client@example.com');
+
+      expect(prisma.otpCode.create).toHaveBeenCalledWith(
+        expect.objectContaining({ data: expect.objectContaining({ email: 'client@example.com' }) }),
+      );
+    });
+
+    it('sends an email copy of the code when an email is given', async () => {
+      service = new OtpService(
+        prisma as unknown as PrismaService,
+        [fakeProvider('primary', jest.fn().mockResolvedValue(undefined))],
+        undefined,
+        emailService as unknown as EmailService,
+      );
+
+      await service.request('+2348000000000', 'client@example.com');
+
+      expect(emailService.send).toHaveBeenCalledWith(
+        expect.objectContaining({
+          to: 'client@example.com',
+          html: expect.stringContaining('verification code'),
+        }),
+      );
+    });
+
+    it('does not call emailService when no email is given', async () => {
+      service = new OtpService(
+        prisma as unknown as PrismaService,
+        [fakeProvider('primary', jest.fn().mockResolvedValue(undefined))],
+        undefined,
+        emailService as unknown as EmailService,
+      );
+
+      await service.request('+2348000000000');
+
+      expect(emailService.send).not.toHaveBeenCalled();
+    });
+
+    it('does not throw when the email copy fails -- the request still resolves', async () => {
+      emailService.send.mockRejectedValue(new Error('smtp down'));
+      service = new OtpService(
+        prisma as unknown as PrismaService,
+        [fakeProvider('primary', jest.fn().mockResolvedValue(undefined))],
+        undefined,
+        emailService as unknown as EmailService,
+      );
+
+      await expect(service.request('+2348000000000', 'client@example.com')).resolves.toBeDefined();
+    });
+
+    it('still throws when every SMS provider fails, even with an email given', async () => {
+      service = new OtpService(
+        prisma as unknown as PrismaService,
+        [fakeProvider('primary', jest.fn().mockRejectedValue(new Error('vendor down')))],
+        undefined,
+        emailService as unknown as EmailService,
+      );
+
+      await expect(service.request('+2348000000000', 'client@example.com')).rejects.toThrow(
+        InternalServerErrorException,
+      );
     });
   });
 });
