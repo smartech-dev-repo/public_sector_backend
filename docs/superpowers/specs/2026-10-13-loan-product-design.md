@@ -251,7 +251,34 @@ was always meant to be superseded by.
 `EligibilityService`/`TopupEligibilityService`'s rule chains exactly as
 today, run before the new resolver.
 
-## 6. API surface
+## 6. Sectors lookup endpoint
+
+An admin building a product's `sectors` list needs to know the valid
+values. Today the set of recognized agencies is hardcoded independently
+in two places that have already drifted apart:
+`ippis-broadsheet.parser.ts`'s `KNOWN_AGENCIES` (4: NPF, NSCDC,
+IMMIGRATION, CORRECTIONAL) and `repayment-row-mapper.ts`'s `AgencyKey`
+type / `repayment-schedule.parser.ts`'s `KNOWN_AGENCIES` (6: adds CUSTOM,
+LASG). That drift is pre-existing and out of scope here — not touched by
+this change.
+
+New shared constant, `src/common/known-agencies.constant.ts`:
+
+```typescript
+export const KNOWN_AGENCIES = ['NPF', 'NSCDC', 'IMMIGRATION', 'CORRECTIONAL', 'CUSTOM', 'LASG'] as const;
+export type KnownAgency = (typeof KNOWN_AGENCIES)[number];
+```
+
+Sourced from the broader (6-agency) existing list, since a loan product's
+`sectors` conceptually spans every agency the system recognizes at all,
+not just the subset `ippis-broadsheet` parsing happens to handle.
+
+New endpoint: `GET /admin/loan-products/sectors` (same `loan-products:manage`
+permission), returning `{ sectors: KNOWN_AGENCIES }` — lets the admin UI
+populate a `sectors` picker when creating/editing a product, instead of
+hardcoding or guessing valid values.
+
+## 7. API surface
 
 - `admin/loan-terms` → **`admin/loan-products`**: `POST` (validates tier
   bounds/overlap as in §2, rejects duplicate `productCode` via the shared
@@ -274,7 +301,7 @@ today, run before the new resolver.
   unchanged** (`amount`, `tenorMonths`); internally resolves via §5.
 - New `admin/loan-settings` (`GET`/`PATCH`) per §3.
 
-## 7. Testing
+## 8. Testing
 
 - Unit: `computeServiceWindow` — both dates present (earlier of the two
   wins); only `dateOfBirth`; only `hireDate`; neither (both results
@@ -297,15 +324,16 @@ today, run before the new resolver.
   `LoanTermOption`; `admin/loan-settings` GET/PATCH roundtrip;
   `client/loan-products` reflects a client's own agency/eligibility only.
 
-## 8. Postman
+## 9. Postman
 
 Per this repo's `CLAUDE.md`: "Loan Terms" folder (both Admin and Client
 groups) renamed to "Loan Products," all saved examples rewritten to the
 new shapes; new "Loan Settings" sub-folder under Admin
 (`GET`/`PATCH admin/loan-settings`, success + `403` + validation
-examples).
+examples); new `GET /admin/loan-products/sectors` request (success +
+`403` examples).
 
-## 9. Out of scope
+## 10. Out of scope
 
 - Migrating existing `LoanTermOption` rows into equivalent `LoanProduct`
   rows (§2 — none are believed to be real production config).
