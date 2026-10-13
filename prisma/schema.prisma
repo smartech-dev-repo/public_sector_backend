@@ -134,6 +134,7 @@ enum ClientStatus {
 model Client {
   id        String       @id @default(uuid())
   phone     String       @unique
+  email     String?      @unique
   status    ClientStatus @default(PHONE_VERIFIED)
   createdById String?
   createdByAdmin AdminUser? @relation("ClientCreatedByAdmin", fields: [createdById], references: [id])
@@ -153,6 +154,7 @@ enum OtpPurpose {
 model OtpCode {
   id         String     @id @default(uuid())
   phone      String
+  email      String?
   codeHash   String
   purpose    OtpPurpose
   expiresAt  DateTime
