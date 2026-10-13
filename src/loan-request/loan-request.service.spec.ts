@@ -7,6 +7,7 @@ import { EligibilityService } from './eligibility/eligibility.service';
 import { TopupEligibilityService } from './eligibility/topup-eligibility.service';
 import { TwoWaySmsProvider } from '../two-way-sms/two-way-sms-provider.interface';
 import { WalletService } from '../wallet/wallet.service';
+import { EmailService } from '../email/email.service';
 import { LoanRequestType } from '../generated/prisma/client';
 
 describe('LoanRequestService', () => {
@@ -40,6 +41,7 @@ describe('LoanRequestService', () => {
   let topupEligibilityService: { check: jest.Mock };
   let walletService: { debit: jest.Mock };
   let smsProvider: { send: jest.Mock };
+  let emailService: { send: jest.Mock };
   let expiryQueue: { add: jest.Mock };
 
   beforeEach(() => {
@@ -72,6 +74,7 @@ describe('LoanRequestService', () => {
     topupEligibilityService = { check: jest.fn() };
     walletService = { debit: jest.fn() };
     smsProvider = { send: jest.fn().mockResolvedValue(undefined) };
+    emailService = { send: jest.fn().mockResolvedValue(undefined) };
     expiryQueue = { add: jest.fn().mockResolvedValue(undefined) };
 
     service = new LoanRequestService(
@@ -81,6 +84,8 @@ describe('LoanRequestService', () => {
       expiryQueue as unknown as Queue,
       topupEligibilityService as unknown as TopupEligibilityService,
       walletService as unknown as WalletService,
+      undefined,
+      emailService as unknown as EmailService,
     );
   });
 
@@ -130,6 +135,76 @@ describe('LoanRequestService', () => {
       expect(expiryQueue.add).toHaveBeenCalledWith('expire', { loanRequestId: 'lr1' }, { delay: 24 * 60 * 60 * 1000 });
     });
 
+    it('also emails a confirmation copy when the client has an email on file', async () => {
+      prisma.client.findUniqueOrThrow.mockResolvedValue({
+        id: 'c1',
+        phone: '+2348000000000',
+        email: 'client@example.com',
+        status: 'VERIFIED',
+      });
+      prisma.clientOnboarding.findUnique.mockResolvedValue({ ippisRecord: { salary: 1000000, agency: 'NPF' } });
+      eligibilityService.check.mockResolvedValue({ eligible: true });
+      prisma.loanTermOption.findUnique.mockResolvedValue({
+        interestRatePercent: 5,
+        managementChargeType: 'PERCENTAGE',
+        managementChargeValue: 2,
+        managementChargeApplication: 'DEDUCT_FROM_DISBURSEMENT',
+        isActive: true,
+      });
+      prisma.loanRequest.create.mockResolvedValue({ id: 'lr1' });
+
+      await service.create('c1', 5000, 6);
+
+      expect(emailService.send).toHaveBeenCalledWith(
+        expect.objectContaining({ to: 'client@example.com', text: expect.stringContaining('5000') }),
+      );
+    });
+
+    it('does not email when the client has no email on file', async () => {
+      prisma.client.findUniqueOrThrow.mockResolvedValue({
+        id: 'c1',
+        phone: '+2348000000000',
+        email: null,
+        status: 'VERIFIED',
+      });
+      prisma.clientOnboarding.findUnique.mockResolvedValue({ ippisRecord: { salary: 1000000, agency: 'NPF' } });
+      eligibilityService.check.mockResolvedValue({ eligible: true });
+      prisma.loanTermOption.findUnique.mockResolvedValue({
+        interestRatePercent: 5,
+        managementChargeType: 'PERCENTAGE',
+        managementChargeValue: 2,
+        managementChargeApplication: 'DEDUCT_FROM_DISBURSEMENT',
+        isActive: true,
+      });
+      prisma.loanRequest.create.mockResolvedValue({ id: 'lr1' });
+
+      await service.create('c1', 5000, 6);
+
+      expect(emailService.send).not.toHaveBeenCalled();
+    });
+
+    it('still creates the loan request when the email copy fails', async () => {
+      emailService.send.mockRejectedValue(new Error('smtp down'));
+      prisma.client.findUniqueOrThrow.mockResolvedValue({
+        id: 'c1',
+        phone: '+2348000000000',
+        email: 'client@example.com',
+        status: 'VERIFIED',
+      });
+      prisma.clientOnboarding.findUnique.mockResolvedValue({ ippisRecord: { salary: 1000000, agency: 'NPF' } });
+      eligibilityService.check.mockResolvedValue({ eligible: true });
+      prisma.loanTermOption.findUnique.mockResolvedValue({
+        interestRatePercent: 5,
+        managementChargeType: 'PERCENTAGE',
+        managementChargeValue: 2,
+        managementChargeApplication: 'DEDUCT_FROM_DISBURSEMENT',
+        isActive: true,
+      });
+      prisma.loanRequest.create.mockResolvedValue({ id: 'lr1' });
+
+      await expect(service.create('c1', 5000, 6)).resolves.toEqual({ id: 'lr1' });
+    });
+
     it('rejects when there is no active loan term for the requested tenor', async () => {
       prisma.client.findUniqueOrThrow.mockResolvedValue({ id: 'c1', phone: '+2348000000000', status: 'VERIFIED' });
       prisma.clientOnboarding.findUnique.mockResolvedValue({ ippisRecord: { salary: 1000000, agency: 'NPF' } });
@@ -164,6 +239,18 @@ describe('LoanRequestService', () => {
         where: { id: 'lr1' },
         data: { confirmationSmsSentAt: expect.any(Date) },
       });
+    });
+
+    it('also emails a confirmation copy on resend when the client has an email on file', async () => {
+      prisma.loanRequest.findUnique.mockResolvedValue({ id: 'lr1', clientId: 'c1', status: 'PENDING', amount: 5000 });
+      prisma.client.findUniqueOrThrow.mockResolvedValue({ id: 'c1', phone: '+2348000000000', email: 'client@example.com' });
+      prisma.loanRequest.update.mockResolvedValue({ id: 'lr1' });
+
+      await service.resend('c1', 'lr1');
+
+      expect(emailService.send).toHaveBeenCalledWith(
+        expect.objectContaining({ to: 'client@example.com', text: expect.stringContaining('5000') }),
+      );
     });
   });
 
@@ -473,6 +560,27 @@ describe('LoanRequestService', () => {
         }),
       });
       expect(expiryQueue.add).toHaveBeenCalledWith('expire', { loanRequestId: 'lr2' }, { delay: 24 * 60 * 60 * 1000 });
+    });
+
+    it('also emails a top-up confirmation copy when the client has an email on file', async () => {
+      prisma.client.findUniqueOrThrow.mockResolvedValue({ id: 'c1', phone: '+2348000000000', email: 'client@example.com' });
+      prisma.clientOnboarding.findUnique.mockResolvedValue({ ippisRecord: { agency: 'NPF' } });
+      topupEligibilityService.check.mockResolvedValue({ eligible: true });
+      prisma.loanTermOption.findUnique.mockResolvedValue({
+        interestRatePercent: 6,
+        managementChargeType: 'PERCENTAGE',
+        managementChargeValue: 2,
+        managementChargeApplication: 'DEDUCT_FROM_DISBURSEMENT',
+        isActive: true,
+      });
+      prisma.clientLoan.findFirstOrThrow.mockResolvedValue({ id: 'cl1' });
+      prisma.loanRequest.create.mockResolvedValue({ id: 'lr2' });
+
+      await service.createTopup('c1', 2000, 12);
+
+      expect(emailService.send).toHaveBeenCalledWith(
+        expect.objectContaining({ to: 'client@example.com', text: expect.stringContaining('top-up') }),
+      );
     });
   });
 

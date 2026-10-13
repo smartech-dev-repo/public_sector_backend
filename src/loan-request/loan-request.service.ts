@@ -3,6 +3,7 @@ import {
   ConflictException,
   Inject,
   Injectable,
+  Logger,
   NotFoundException,
   UnprocessableEntityException,
 } from '@nestjs/common';
@@ -18,6 +19,7 @@ import { LOAN_REQUEST_EXPIRY_QUEUE } from './loan-request-queue.constants';
 import { generatePeriodRange, toPeriodKey } from '../reconciliation/period.util';
 import { computeExpectedInstallment } from '../reconciliation/amortization.util';
 import { WalletService } from '../wallet/wallet.service';
+import { EmailService } from '../email/email.service';
 import { classifyVariance } from '../reconciliation/variance-classification.util';
 import { computeClientLoanStatus } from '../reconciliation/client-loan-status.util';
 import {
@@ -41,6 +43,8 @@ export interface LoanRequestExpiryJobData {
 
 @Injectable()
 export class LoanRequestService {
+  private readonly logger = new Logger(LoanRequestService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly eligibilityService: EligibilityService,
@@ -49,12 +53,28 @@ export class LoanRequestService {
     private readonly topupEligibilityService: TopupEligibilityService,
     private readonly walletService: WalletService,
     private readonly configService?: ConfigService,
+    private readonly emailService?: EmailService,
   ) {}
 
   private confirmationMessage(amount: number, type: LoanRequestType = LoanRequestType.ORIGINATION): string {
     return type === LoanRequestType.TOPUP
       ? `Reply YES to confirm your loan top-up of ₦${amount}`
       : `Reply YES to confirm your loan request of ₦${amount}`;
+  }
+
+  private async sendEmailCopy(email: string | null, message: string): Promise<void> {
+    if (!email) return;
+    try {
+      await this.emailService?.send({
+        to: email,
+        subject: 'Confirm your loan request',
+        html: `<p>${message}</p>`,
+        text: message,
+      });
+    } catch (error) {
+      const err = error instanceof Error ? error.message : String(error);
+      this.logger.warn(`Loan-request confirmation email to ${email} failed: ${err}`);
+    }
   }
 
   private async createClientLoanFromRequest(loanRequestId: string): Promise<void> {
@@ -222,6 +242,7 @@ export class LoanRequestService {
         : Number(termOption.managementChargeValue);
 
     await this.smsProvider.send(client.phone, this.confirmationMessage(amount));
+    await this.sendEmailCopy(client.email, this.confirmationMessage(amount));
 
     const loanRequest = await this.prisma.loanRequest.create({
       data: {
@@ -275,6 +296,7 @@ export class LoanRequestService {
         : Number(termOption.managementChargeValue);
 
     await this.smsProvider.send(client.phone, this.confirmationMessage(amount, LoanRequestType.TOPUP));
+    await this.sendEmailCopy(client.email, this.confirmationMessage(amount, LoanRequestType.TOPUP));
 
     const loanRequest = await this.prisma.loanRequest.create({
       data: {
@@ -309,6 +331,7 @@ export class LoanRequestService {
 
     const client = await this.prisma.client.findUniqueOrThrow({ where: { id: clientId } });
     await this.smsProvider.send(client.phone, this.confirmationMessage(Number(loanRequest.amount)));
+    await this.sendEmailCopy(client.email, this.confirmationMessage(Number(loanRequest.amount)));
 
     return this.prisma.loanRequest.update({
       where: { id },

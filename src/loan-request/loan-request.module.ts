@@ -19,6 +19,7 @@ import { TwoWaySmsModule } from '../two-way-sms/two-way-sms.module';
 import { ClientLoansModule } from '../client-loans/client-loans.module';
 import { AuditModule } from '../audit/audit.module';
 import { WalletModule } from '../wallet/wallet.module';
+import { EmailModule } from '../email/email.module';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { WalletModule } from '../wallet/wallet.module';
     ClientLoansModule,
     AuditModule,
     WalletModule,
+    EmailModule,
   ],
   controllers: [
     LoanRequestController,
