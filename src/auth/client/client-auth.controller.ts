@@ -14,8 +14,8 @@ export class ClientAuthController {
   @Post('otp/request')
   @HttpCode(200)
   async requestOtp(@Body() dto: RequestOtpDto) {
-    const { mockCode } = await this.clientAuthService.requestOtp(dto.phone);
-    return { sent: true, ...(mockCode ? { mockCode } : {}) };
+    const { mockCode, emailSent } = await this.clientAuthService.requestOtp(dto.phone, dto.email);
+    return { sent: true, emailSent, ...(mockCode ? { mockCode } : {}) };
   }
 
   @Throttle({ default: { limit: 5, ttl: 900000 } })
