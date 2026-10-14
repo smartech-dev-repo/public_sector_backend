@@ -2,7 +2,6 @@ import { Injectable } from '@nestjs/common';
 import { Client, IppisRecord } from '../../generated/prisma/client';
 import { EligibilityCheckResult, EligibilityRule } from './eligibility-rule.interface';
 import { ClientMustBeVerifiedRule } from './client-must-be-verified.rule';
-import { AmountWithinSalaryCapRule } from './amount-within-salary-cap.rule';
 import { HasActiveLoanRule } from './has-active-loan.rule';
 import { NoTopupInProgressRule } from './no-topup-in-progress.rule';
 
@@ -12,11 +11,10 @@ export class TopupEligibilityService {
 
   constructor(
     clientMustBeVerifiedRule: ClientMustBeVerifiedRule,
-    amountWithinSalaryCapRule: AmountWithinSalaryCapRule,
     hasActiveLoanRule: HasActiveLoanRule,
     noTopupInProgressRule: NoTopupInProgressRule,
   ) {
-    this.rules = [clientMustBeVerifiedRule, amountWithinSalaryCapRule, hasActiveLoanRule, noTopupInProgressRule];
+    this.rules = [clientMustBeVerifiedRule, hasActiveLoanRule, noTopupInProgressRule];
   }
 
   async check(client: Client, ippisRecord: IppisRecord, amount: number): Promise<EligibilityCheckResult> {

@@ -1,15 +1,12 @@
-import { ConfigService } from '@nestjs/config';
 import { EligibilityService } from './eligibility.service';
 import { ClientMustBeVerifiedRule } from './client-must-be-verified.rule';
-import { AmountWithinSalaryCapRule } from './amount-within-salary-cap.rule';
 import { NoActiveLoanRule } from './no-active-loan.rule';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ClientLoansService } from '../../client-loans/client-loans.service';
 import { Client, IppisRecord } from '../../generated/prisma/client';
 
 describe('EligibilityService', () => {
-  function buildService(capMultiple = '3') {
-    const configService = { get: () => capMultiple } as unknown as ConfigService;
+  function buildService() {
     const prisma = {
       loanRequest: { findFirst: jest.fn().mockResolvedValue(null) },
       clientLoan: { findFirst: jest.fn().mockResolvedValue(null) },
@@ -17,11 +14,7 @@ describe('EligibilityService', () => {
     const clientLoansService = {
       hasActiveLoan: jest.fn().mockResolvedValue(false),
     } as unknown as ClientLoansService;
-    return new EligibilityService(
-      new ClientMustBeVerifiedRule(),
-      new AmountWithinSalaryCapRule(configService),
-      new NoActiveLoanRule(prisma, clientLoansService),
-    );
+    return new EligibilityService(new ClientMustBeVerifiedRule(), new NoActiveLoanRule(prisma, clientLoansService));
   }
 
   const verifiedClient = { status: 'VERIFIED' } as Client;
@@ -39,12 +32,5 @@ describe('EligibilityService', () => {
     const result = await service.check(unverifiedClient, ippisRecordWithSalary, 999999999);
     expect(result.eligible).toBe(false);
     expect(result.reason).toMatch(/VERIFIED/);
-  });
-
-  it('fails the salary cap rule when the amount exceeds it', async () => {
-    const service = buildService();
-    const result = await service.check(verifiedClient, ippisRecordWithSalary, 400000);
-    expect(result.eligible).toBe(false);
-    expect(result.reason).toMatch(/exceeds/);
   });
 });

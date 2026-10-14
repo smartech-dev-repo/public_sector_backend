@@ -1,6 +1,5 @@
 import { TopupEligibilityService } from './topup-eligibility.service';
 import { ClientMustBeVerifiedRule } from './client-must-be-verified.rule';
-import { AmountWithinSalaryCapRule } from './amount-within-salary-cap.rule';
 import { HasActiveLoanRule } from './has-active-loan.rule';
 import { NoTopupInProgressRule } from './no-topup-in-progress.rule';
 import { Client, IppisRecord } from '../../generated/prisma/client';
@@ -8,7 +7,6 @@ import { Client, IppisRecord } from '../../generated/prisma/client';
 describe('TopupEligibilityService', () => {
   function buildService(overrides: { hasActiveLoan?: boolean; noTopupInProgress?: boolean } = {}) {
     const clientMustBeVerifiedRule = { check: () => ({ eligible: true }) } as unknown as ClientMustBeVerifiedRule;
-    const amountWithinSalaryCapRule = { check: () => ({ eligible: true }) } as unknown as AmountWithinSalaryCapRule;
     const hasActiveLoanRule = {
       check: () =>
         overrides.hasActiveLoan === false
@@ -21,12 +19,7 @@ describe('TopupEligibilityService', () => {
           ? { eligible: false, reason: 'A previous loan request is still in progress' }
           : { eligible: true },
     } as unknown as NoTopupInProgressRule;
-    return new TopupEligibilityService(
-      clientMustBeVerifiedRule,
-      amountWithinSalaryCapRule,
-      hasActiveLoanRule,
-      noTopupInProgressRule,
-    );
+    return new TopupEligibilityService(clientMustBeVerifiedRule, hasActiveLoanRule, noTopupInProgressRule);
   }
 
   const client = {} as Client;
