@@ -15,6 +15,7 @@ import { buildPaginatedResult } from '../common/pagination/paginated-result';
 import { EligibilityService } from './eligibility/eligibility.service';
 import { TopupEligibilityService } from './eligibility/topup-eligibility.service';
 import { TWO_WAY_SMS_PROVIDER, TwoWaySmsProvider } from '../two-way-sms/two-way-sms-provider.interface';
+import { LoanProductResolverService } from './eligibility/loan-product-resolver.service';
 import { LOAN_REQUEST_EXPIRY_QUEUE } from './loan-request-queue.constants';
 import { generatePeriodRange, toPeriodKey } from '../reconciliation/period.util';
 import { computeExpectedInstallment } from '../reconciliation/amortization.util';
@@ -52,6 +53,7 @@ export class LoanRequestService {
     @InjectQueue(LOAN_REQUEST_EXPIRY_QUEUE) private readonly expiryQueue: Queue<LoanRequestExpiryJobData>,
     private readonly topupEligibilityService: TopupEligibilityService,
     private readonly walletService: WalletService,
+    private readonly loanProductResolverService: LoanProductResolverService,
     private readonly configService?: ConfigService,
     private readonly emailService?: EmailService,
   ) {}
@@ -229,17 +231,12 @@ export class LoanRequestService {
       throw new UnprocessableEntityException(eligibility.reason);
     }
 
-    const termOption = await this.prisma.loanTermOption.findUnique({
-      where: { agency_tenorMonths: { agency: onboarding.ippisRecord.agency, tenorMonths } },
-    });
-    if (!termOption || !termOption.isActive) {
-      throw new UnprocessableEntityException(`No active loan term available for ${tenorMonths} months`);
-    }
+    const { product, tier } = await this.loanProductResolverService.resolve(onboarding.ippisRecord, amount, tenorMonths);
 
     const managementChargeAmount =
-      termOption.managementChargeType === ManagementChargeType.PERCENTAGE
-        ? (amount * Number(termOption.managementChargeValue)) / 100
-        : Number(termOption.managementChargeValue);
+      product.managementChargeType === ManagementChargeType.PERCENTAGE
+        ? (amount * Number(product.managementChargeValue)) / 100
+        : Number(product.managementChargeValue);
 
     await this.smsProvider.send(client.phone, this.confirmationMessage(amount));
     await this.sendEmailCopy(client.email, this.confirmationMessage(amount));
@@ -249,10 +246,10 @@ export class LoanRequestService {
         clientId,
         amount,
         tenorMonths,
-        interestRatePercent: termOption.interestRatePercent,
-        managementChargeType: termOption.managementChargeType,
-        managementChargeValue: termOption.managementChargeValue,
-        managementChargeApplication: termOption.managementChargeApplication,
+        interestRatePercent: tier.interestRatePercent,
+        managementChargeType: product.managementChargeType,
+        managementChargeValue: product.managementChargeValue,
+        managementChargeApplication: product.managementChargeApplication,
         managementChargeAmount,
         expiresAt: new Date(Date.now() + EXPIRY_MS),
         confirmationSmsSentAt: new Date(),
@@ -283,17 +280,12 @@ export class LoanRequestService {
       where: { clientId, status: ClientLoanStatus.ACTIVE },
     });
 
-    const termOption = await this.prisma.loanTermOption.findUnique({
-      where: { agency_tenorMonths: { agency: onboarding.ippisRecord.agency, tenorMonths } },
-    });
-    if (!termOption || !termOption.isActive) {
-      throw new UnprocessableEntityException(`No active loan term available for ${tenorMonths} months`);
-    }
+    const { product, tier } = await this.loanProductResolverService.resolve(onboarding.ippisRecord, amount, tenorMonths);
 
     const managementChargeAmount =
-      termOption.managementChargeType === ManagementChargeType.PERCENTAGE
-        ? (amount * Number(termOption.managementChargeValue)) / 100
-        : Number(termOption.managementChargeValue);
+      product.managementChargeType === ManagementChargeType.PERCENTAGE
+        ? (amount * Number(product.managementChargeValue)) / 100
+        : Number(product.managementChargeValue);
 
     await this.smsProvider.send(client.phone, this.confirmationMessage(amount, LoanRequestType.TOPUP));
     await this.sendEmailCopy(client.email, this.confirmationMessage(amount, LoanRequestType.TOPUP));
@@ -305,10 +297,10 @@ export class LoanRequestService {
         tenorMonths,
         type: LoanRequestType.TOPUP,
         topupTargetId: activeLoan.id,
-        interestRatePercent: termOption.interestRatePercent,
-        managementChargeType: termOption.managementChargeType,
-        managementChargeValue: termOption.managementChargeValue,
-        managementChargeApplication: termOption.managementChargeApplication,
+        interestRatePercent: tier.interestRatePercent,
+        managementChargeType: product.managementChargeType,
+        managementChargeValue: product.managementChargeValue,
+        managementChargeApplication: product.managementChargeApplication,
         managementChargeAmount,
         expiresAt: new Date(Date.now() + EXPIRY_MS),
         confirmationSmsSentAt: new Date(),

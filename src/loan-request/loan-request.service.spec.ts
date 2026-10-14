@@ -6,6 +6,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { EligibilityService } from './eligibility/eligibility.service';
 import { TopupEligibilityService } from './eligibility/topup-eligibility.service';
 import { TwoWaySmsProvider } from '../two-way-sms/two-way-sms-provider.interface';
+import { LoanProductResolverService } from './eligibility/loan-product-resolver.service';
 import { WalletService } from '../wallet/wallet.service';
 import { EmailService } from '../email/email.service';
 import { LoanRequestType } from '../generated/prisma/client';
@@ -24,7 +25,6 @@ describe('LoanRequestService', () => {
       findMany: jest.Mock;
       count: jest.Mock;
     };
-    loanTermOption: { findUnique: jest.Mock };
     clientLoan: {
       create: jest.Mock;
       findMany: jest.Mock;
@@ -39,6 +39,7 @@ describe('LoanRequestService', () => {
   };
   let eligibilityService: { check: jest.Mock };
   let topupEligibilityService: { check: jest.Mock };
+  let loanProductResolverService: { resolve: jest.Mock };
   let walletService: { debit: jest.Mock };
   let smsProvider: { send: jest.Mock };
   let emailService: { send: jest.Mock };
@@ -57,7 +58,6 @@ describe('LoanRequestService', () => {
         findMany: jest.fn(),
         count: jest.fn(),
       },
-      loanTermOption: { findUnique: jest.fn() },
       clientLoan: {
         create: jest.fn(),
         findMany: jest.fn(),
@@ -72,6 +72,7 @@ describe('LoanRequestService', () => {
     };
     eligibilityService = { check: jest.fn() };
     topupEligibilityService = { check: jest.fn() };
+    loanProductResolverService = { resolve: jest.fn() };
     walletService = { debit: jest.fn() };
     smsProvider = { send: jest.fn().mockResolvedValue(undefined) };
     emailService = { send: jest.fn().mockResolvedValue(undefined) };
@@ -84,6 +85,7 @@ describe('LoanRequestService', () => {
       expiryQueue as unknown as Queue,
       topupEligibilityService as unknown as TopupEligibilityService,
       walletService as unknown as WalletService,
+      loanProductResolverService as unknown as LoanProductResolverService,
       undefined,
       emailService as unknown as EmailService,
     );
@@ -108,12 +110,13 @@ describe('LoanRequestService', () => {
       prisma.client.findUniqueOrThrow.mockResolvedValue({ id: 'c1', phone: '+2348000000000', status: 'VERIFIED' });
       prisma.clientOnboarding.findUnique.mockResolvedValue({ ippisRecord: { salary: 1000000, agency: 'NPF' } });
       eligibilityService.check.mockResolvedValue({ eligible: true });
-      prisma.loanTermOption.findUnique.mockResolvedValue({
-        interestRatePercent: 5,
-        managementChargeType: 'PERCENTAGE',
-        managementChargeValue: 2,
-        managementChargeApplication: 'DEDUCT_FROM_DISBURSEMENT',
-        isActive: true,
+      loanProductResolverService.resolve.mockResolvedValue({
+        product: {
+          managementChargeType: 'PERCENTAGE',
+          managementChargeValue: 2,
+          managementChargeApplication: 'DEDUCT_FROM_DISBURSEMENT',
+        },
+        tier: { minTenorMonths: 1, maxTenorMonths: 12, interestRatePercent: 5 },
       });
       prisma.loanRequest.create.mockResolvedValue({ id: 'lr1' });
 
@@ -144,12 +147,13 @@ describe('LoanRequestService', () => {
       });
       prisma.clientOnboarding.findUnique.mockResolvedValue({ ippisRecord: { salary: 1000000, agency: 'NPF' } });
       eligibilityService.check.mockResolvedValue({ eligible: true });
-      prisma.loanTermOption.findUnique.mockResolvedValue({
-        interestRatePercent: 5,
-        managementChargeType: 'PERCENTAGE',
-        managementChargeValue: 2,
-        managementChargeApplication: 'DEDUCT_FROM_DISBURSEMENT',
-        isActive: true,
+      loanProductResolverService.resolve.mockResolvedValue({
+        product: {
+          managementChargeType: 'PERCENTAGE',
+          managementChargeValue: 2,
+          managementChargeApplication: 'DEDUCT_FROM_DISBURSEMENT',
+        },
+        tier: { minTenorMonths: 1, maxTenorMonths: 12, interestRatePercent: 5 },
       });
       prisma.loanRequest.create.mockResolvedValue({ id: 'lr1' });
 
@@ -169,12 +173,13 @@ describe('LoanRequestService', () => {
       });
       prisma.clientOnboarding.findUnique.mockResolvedValue({ ippisRecord: { salary: 1000000, agency: 'NPF' } });
       eligibilityService.check.mockResolvedValue({ eligible: true });
-      prisma.loanTermOption.findUnique.mockResolvedValue({
-        interestRatePercent: 5,
-        managementChargeType: 'PERCENTAGE',
-        managementChargeValue: 2,
-        managementChargeApplication: 'DEDUCT_FROM_DISBURSEMENT',
-        isActive: true,
+      loanProductResolverService.resolve.mockResolvedValue({
+        product: {
+          managementChargeType: 'PERCENTAGE',
+          managementChargeValue: 2,
+          managementChargeApplication: 'DEDUCT_FROM_DISBURSEMENT',
+        },
+        tier: { minTenorMonths: 1, maxTenorMonths: 12, interestRatePercent: 5 },
       });
       prisma.loanRequest.create.mockResolvedValue({ id: 'lr1' });
 
@@ -193,23 +198,26 @@ describe('LoanRequestService', () => {
       });
       prisma.clientOnboarding.findUnique.mockResolvedValue({ ippisRecord: { salary: 1000000, agency: 'NPF' } });
       eligibilityService.check.mockResolvedValue({ eligible: true });
-      prisma.loanTermOption.findUnique.mockResolvedValue({
-        interestRatePercent: 5,
-        managementChargeType: 'PERCENTAGE',
-        managementChargeValue: 2,
-        managementChargeApplication: 'DEDUCT_FROM_DISBURSEMENT',
-        isActive: true,
+      loanProductResolverService.resolve.mockResolvedValue({
+        product: {
+          managementChargeType: 'PERCENTAGE',
+          managementChargeValue: 2,
+          managementChargeApplication: 'DEDUCT_FROM_DISBURSEMENT',
+        },
+        tier: { minTenorMonths: 1, maxTenorMonths: 12, interestRatePercent: 5 },
       });
       prisma.loanRequest.create.mockResolvedValue({ id: 'lr1' });
 
       await expect(service.create('c1', 5000, 6)).resolves.toEqual({ id: 'lr1' });
     });
 
-    it('rejects when there is no active loan term for the requested tenor', async () => {
+    it('rejects when the loan product resolver throws (no matching product for the requested tenor)', async () => {
       prisma.client.findUniqueOrThrow.mockResolvedValue({ id: 'c1', phone: '+2348000000000', status: 'VERIFIED' });
       prisma.clientOnboarding.findUnique.mockResolvedValue({ ippisRecord: { salary: 1000000, agency: 'NPF' } });
       eligibilityService.check.mockResolvedValue({ eligible: true });
-      prisma.loanTermOption.findUnique.mockResolvedValue(null);
+      loanProductResolverService.resolve.mockRejectedValue(
+        new UnprocessableEntityException('No loan product matches this amount/tenor for your agency'),
+      );
 
       await expect(service.create('c1', 5000, 99)).rejects.toThrow(UnprocessableEntityException);
       expect(smsProvider.send).not.toHaveBeenCalled();
@@ -295,6 +303,7 @@ describe('LoanRequestService', () => {
         expiryQueue as unknown as Queue,
         topupEligibilityService as unknown as TopupEligibilityService,
         walletService as unknown as WalletService,
+        loanProductResolverService as unknown as LoanProductResolverService,
         configService,
       );
       prisma.client.findUnique.mockResolvedValue({ id: 'c1' });
@@ -344,6 +353,7 @@ describe('LoanRequestService', () => {
         expiryQueue as unknown as Queue,
         topupEligibilityService as unknown as TopupEligibilityService,
         walletService as unknown as WalletService,
+        loanProductResolverService as unknown as LoanProductResolverService,
         configService,
       );
       prisma.client.findUnique.mockResolvedValue({ id: 'c1' });
@@ -522,11 +532,13 @@ describe('LoanRequestService', () => {
       expect(smsProvider.send).not.toHaveBeenCalled();
     });
 
-    it('rejects when there is no active loan term for the requested tenor', async () => {
+    it('rejects when the loan product resolver throws (no matching product for the requested tenor)', async () => {
       prisma.client.findUniqueOrThrow.mockResolvedValue({ id: 'c1', phone: '+2348000000000' });
       prisma.clientOnboarding.findUnique.mockResolvedValue({ ippisRecord: { agency: 'NPF' } });
       topupEligibilityService.check.mockResolvedValue({ eligible: true });
-      prisma.loanTermOption.findUnique.mockResolvedValue(null);
+      loanProductResolverService.resolve.mockRejectedValue(
+        new UnprocessableEntityException('No loan product matches this amount/tenor for your agency'),
+      );
 
       await expect(service.createTopup('c1', 2000, 99)).rejects.toThrow(UnprocessableEntityException);
       expect(smsProvider.send).not.toHaveBeenCalled();
@@ -536,12 +548,13 @@ describe('LoanRequestService', () => {
       prisma.client.findUniqueOrThrow.mockResolvedValue({ id: 'c1', phone: '+2348000000000' });
       prisma.clientOnboarding.findUnique.mockResolvedValue({ ippisRecord: { agency: 'NPF' } });
       topupEligibilityService.check.mockResolvedValue({ eligible: true });
-      prisma.loanTermOption.findUnique.mockResolvedValue({
-        interestRatePercent: 6,
-        managementChargeType: 'PERCENTAGE',
-        managementChargeValue: 2,
-        managementChargeApplication: 'DEDUCT_FROM_DISBURSEMENT',
-        isActive: true,
+      loanProductResolverService.resolve.mockResolvedValue({
+        product: {
+          managementChargeType: 'PERCENTAGE',
+          managementChargeValue: 2,
+          managementChargeApplication: 'DEDUCT_FROM_DISBURSEMENT',
+        },
+        tier: { minTenorMonths: 1, maxTenorMonths: 12, interestRatePercent: 6 },
       });
       prisma.clientLoan.findFirstOrThrow.mockResolvedValue({ id: 'cl1' });
       prisma.loanRequest.create.mockResolvedValue({ id: 'lr2' });
@@ -566,12 +579,13 @@ describe('LoanRequestService', () => {
       prisma.client.findUniqueOrThrow.mockResolvedValue({ id: 'c1', phone: '+2348000000000', email: 'client@example.com' });
       prisma.clientOnboarding.findUnique.mockResolvedValue({ ippisRecord: { agency: 'NPF' } });
       topupEligibilityService.check.mockResolvedValue({ eligible: true });
-      prisma.loanTermOption.findUnique.mockResolvedValue({
-        interestRatePercent: 6,
-        managementChargeType: 'PERCENTAGE',
-        managementChargeValue: 2,
-        managementChargeApplication: 'DEDUCT_FROM_DISBURSEMENT',
-        isActive: true,
+      loanProductResolverService.resolve.mockResolvedValue({
+        product: {
+          managementChargeType: 'PERCENTAGE',
+          managementChargeValue: 2,
+          managementChargeApplication: 'DEDUCT_FROM_DISBURSEMENT',
+        },
+        tier: { minTenorMonths: 1, maxTenorMonths: 12, interestRatePercent: 6 },
       });
       prisma.clientLoan.findFirstOrThrow.mockResolvedValue({ id: 'cl1' });
       prisma.loanRequest.create.mockResolvedValue({ id: 'lr2' });
