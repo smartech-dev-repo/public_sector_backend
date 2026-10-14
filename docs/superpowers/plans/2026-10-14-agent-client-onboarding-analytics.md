@@ -2097,7 +2097,7 @@ describe('Agent-initiated client onboarding (e2e)', () => {
 - [ ] **Step 2: Run it to verify it passes**
 
 Run: `npx jest --config ./test/jest-e2e.json agent-client-onboarding`
-Expected: PASS (8 tests). Per established project practice, re-run in isolation before treating any failure as a real regression — this is a shared UAT database with known DB-contention flakiness under concurrent load.
+Expected: PASS (7 tests). Per established project practice, re-run in isolation before treating any failure as a real regression — this is a shared UAT database with known DB-contention flakiness under concurrent load.
 
 - [ ] **Step 3: Commit**
 
