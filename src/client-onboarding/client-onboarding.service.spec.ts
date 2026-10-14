@@ -174,6 +174,92 @@ describe('ClientOnboardingService', () => {
     });
   });
 
+  describe('agentStartOnboarding', () => {
+    it('rejects when the IPPIS number is not found', async () => {
+      prisma.ippisRecord.findFirst.mockResolvedValue(null);
+      await expect(service.agentStartOnboarding('NPF/1', 'agent-1')).rejects.toThrow(NotFoundException);
+    });
+
+    it('resumes its own prior attempt when onboardedByAgentId matches this agent', async () => {
+      const existingOnboarding = { id: 'existing', step: 'DOCUMENTS_SUBMITTED', onboardedByAgentId: 'agent-1' };
+      prisma.ippisRecord.findFirst.mockResolvedValue({ id: 'ippis-1', phone: '+2348000000000' });
+      prisma.clientOnboarding.findUnique.mockResolvedValue(existingOnboarding);
+
+      const result = await service.agentStartOnboarding('NPF/1', 'agent-1');
+
+      expect(result).toBe(existingOnboarding);
+      expect(prisma.client.upsert).not.toHaveBeenCalled();
+    });
+
+    it('rejects when the client was already onboarded by a different agent', async () => {
+      prisma.ippisRecord.findFirst.mockResolvedValue({ id: 'ippis-1', phone: '+2348000000000' });
+      prisma.clientOnboarding.findUnique.mockResolvedValue({ id: 'existing', onboardedByAgentId: 'other-agent' });
+
+      await expect(service.agentStartOnboarding('NPF/1', 'agent-1')).rejects.toThrow(ConflictException);
+    });
+
+    it('rejects when the client was already self-onboarded', async () => {
+      prisma.ippisRecord.findFirst.mockResolvedValue({ id: 'ippis-1', phone: '+2348000000000' });
+      prisma.clientOnboarding.findUnique.mockResolvedValue({
+        id: 'existing',
+        onboardedById: null,
+        onboardedByAgentId: null,
+      });
+
+      await expect(service.agentStartOnboarding('NPF/1', 'agent-1')).rejects.toThrow(ConflictException);
+    });
+
+    it('rejects when the client was already admin-onboarded', async () => {
+      prisma.ippisRecord.findFirst.mockResolvedValue({ id: 'ippis-1', phone: '+2348000000000' });
+      prisma.clientOnboarding.findUnique.mockResolvedValue({
+        id: 'existing',
+        onboardedById: 'admin-1',
+        onboardedByAgentId: null,
+      });
+
+      await expect(service.agentStartOnboarding('NPF/1', 'agent-1')).rejects.toThrow(ConflictException);
+    });
+
+    it('rejects with UnprocessableEntityException when the IPPIS record has no phone number on file', async () => {
+      prisma.ippisRecord.findFirst.mockResolvedValue({ id: 'ippis-1', phone: null });
+      prisma.clientOnboarding.findUnique.mockResolvedValue(null);
+
+      await expect(service.agentStartOnboarding('NPF/1', 'agent-1')).rejects.toThrow(UnprocessableEntityException);
+    });
+
+    it('resolves the client by phone and creates the onboarding with onboardedByAgentId', async () => {
+      prisma.ippisRecord.findFirst.mockResolvedValue({
+        id: 'ippis-1',
+        phone: '+2348000000000',
+        employeeName: 'Jane Doe',
+        agency: 'NPF',
+        bankName: 'GTBank',
+        accountNumber: '0123456789',
+        employeeStatus: 'ACTIVE',
+        legacyId: 'LEGACY-001',
+        maritalStatus: 'Married',
+      });
+      prisma.clientOnboarding.findUnique.mockResolvedValue(null);
+      prisma.client.upsert.mockResolvedValue({ id: 'client-1', phone: '+2348000000000' });
+      prisma.clientOnboarding.create.mockResolvedValue({ id: 'onboarding-1' });
+
+      await service.agentStartOnboarding('NPF/1', 'agent-1');
+
+      expect(prisma.client.upsert).toHaveBeenCalledWith({
+        where: { phone: '+2348000000000' },
+        update: {},
+        create: { phone: '+2348000000000' },
+      });
+      expect(prisma.clientOnboarding.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          clientId: 'client-1',
+          ippisRecordId: 'ippis-1',
+          onboardedByAgentId: 'agent-1',
+        }),
+      });
+    });
+  });
+
   describe('submitIdentity', () => {
     it('rejects when the client has no onboarding row yet', async () => {
       prisma.clientOnboarding.findUnique.mockResolvedValue(null);
