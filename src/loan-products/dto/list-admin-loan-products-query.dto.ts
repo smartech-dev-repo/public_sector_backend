@@ -2,10 +2,10 @@ import { Transform } from 'class-transformer';
 import { IsBoolean, IsOptional, IsString } from 'class-validator';
 import { PaginationDto } from '../../common/pagination/pagination.dto';
 
-export class ListAdminLoanTermsQueryDto extends PaginationDto {
+export class ListAdminLoanProductsQueryDto extends PaginationDto {
   @IsOptional()
   @IsString()
-  agency?: string;
+  sectors?: string;
 
   @IsOptional()
   @Transform(({ value }) => (value === 'true' ? true : value === 'false' ? false : value))
