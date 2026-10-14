@@ -66,6 +66,12 @@ to:
   reviewedAt DateTime?
 ```
 
+Prisma requires the opposite side of this relation to be declared too — add a back-relation field to the `Agent` model (in the same model block as Step 1, anywhere after `canOnboardClients`):
+
+```prisma
+  onboardedClients ClientOnboarding[]
+```
+
 - [ ] **Step 3: Run the migration**
 
 Run: `npx prisma migrate dev --name agent_client_onboarding_tracking`
