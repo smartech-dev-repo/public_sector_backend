@@ -441,19 +441,31 @@ enum ManagementChargeApplication {
   ADD_TO_REPAYMENT
 }
 
-model LoanTermOption {
+model LoanProduct {
   id                           String                       @id @default(uuid())
-  agency                       String
-  tenorMonths                  Int
-  interestRatePercent          Decimal
+  productName                  String
+  productCode                  String                       @unique
+  sectors                      String[]
+  minimumAmount                Decimal
+  maximumAmount                Decimal
+  minimumTenorMonths           Int
+  maximumTenorMonths           Int
+  interestTiers                Json
   managementChargeType         ManagementChargeType
   managementChargeValue        Decimal
   managementChargeApplication  ManagementChargeApplication
+  minimumServiceMonthsLeft     Int?
+  maximumMonthsInService       Int?
   isActive                     Boolean                      @default(true)
   createdAt                    DateTime                     @default(now())
   updatedAt                    DateTime                     @updatedAt
+}
 
-  @@unique([agency, tenorMonths])
+model LoanSettings {
+  id                 String   @id @default(uuid())
+  retirementAgeYears Int      @default(60)
+  maxServiceYears    Int      @default(35)
+  updatedAt          DateTime @updatedAt
 }
 
 enum LoanRequestStatus {
