@@ -36,7 +36,7 @@ describe('AdminClientReviewService', () => {
 
       expect(prisma.client.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: { status: undefined, phone: undefined, createdAt: undefined },
+          where: { status: undefined, phone: undefined, createdAt: undefined, onboarding: undefined },
           include: { onboarding: true },
           skip: 0,
           take: 25,
@@ -71,6 +71,47 @@ describe('AdminClientReviewService', () => {
 
       expect(prisma.client.findMany).toHaveBeenCalledWith(
         expect.objectContaining({ where: expect.objectContaining({ createdAt: { gte: createdFrom, lte: createdTo } }) }),
+      );
+    });
+
+    it('attaches a derived onboardingSource to each row', async () => {
+      prisma.client.findMany.mockResolvedValue([
+        { id: 'c1', onboarding: { onboardedById: null, onboardedByAgentId: null } },
+        { id: 'c2', onboarding: { onboardedById: null, onboardedByAgentId: 'agent-1' } },
+        { id: 'c3', onboarding: { onboardedById: 'admin-1', onboardedByAgentId: null } },
+        { id: 'c4', onboarding: null },
+      ]);
+      prisma.client.count.mockResolvedValue(4);
+
+      const result = await service.list();
+
+      expect(result.data.map((c: { onboardingSource: string | null }) => c.onboardingSource)).toEqual([
+        'SELF',
+        'AGENT',
+        'ADMIN',
+        null,
+      ]);
+    });
+
+    it('translates the onboardingSource filter into the matching where clause', async () => {
+      prisma.client.findMany.mockResolvedValue([]);
+      prisma.client.count.mockResolvedValue(0);
+
+      await service.list({ onboardingSource: 'AGENT' });
+      expect(prisma.client.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({ where: expect.objectContaining({ onboarding: { onboardedByAgentId: { not: null } } }) }),
+      );
+
+      await service.list({ onboardingSource: 'ADMIN' });
+      expect(prisma.client.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({ where: expect.objectContaining({ onboarding: { onboardedById: { not: null } } }) }),
+      );
+
+      await service.list({ onboardingSource: 'SELF' });
+      expect(prisma.client.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ onboarding: { onboardedById: null, onboardedByAgentId: null } }),
+        }),
       );
     });
 
@@ -126,6 +167,16 @@ describe('AdminClientReviewService', () => {
       expect(result.onboarding).toBeNull();
     });
 
+    it('includes a derived onboardingSource', async () => {
+      prisma.client.findUnique.mockResolvedValue({
+        id: 'c1',
+        status: 'VERIFIED',
+        onboarding: { id: 'o1', onboardedById: null, onboardedByAgentId: 'agent-1' },
+      });
+      const result = await service.findById('c1');
+      expect(result.onboardingSource).toBe('AGENT');
+    });
+
     it('includes a computed lengthOfService from the linked IppisRecord', async () => {
       const now = new Date();
       const hireDate = new Date(now.getFullYear() - 1, now.getMonth(), 1);
@@ -147,6 +198,7 @@ describe('AdminClientReviewService', () => {
               ippisRecord: true,
               reviewedByAdmin: { select: { id: true, fullName: true, email: true } },
               onboardedByAdmin: { select: { id: true, fullName: true, email: true } },
+              onboardedByAgent: { select: { id: true, fullName: true, email: true } },
             },
           },
         },

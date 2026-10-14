@@ -31,6 +31,7 @@ export class AdminClientReviewController {
         q: query.q,
         createdFrom: query.createdFrom ? new Date(query.createdFrom) : undefined,
         createdTo: query.createdTo ? new Date(query.createdTo) : undefined,
+        onboardingSource: query.onboardingSource,
       },
       { page: query.page, limit: query.limit },
     );

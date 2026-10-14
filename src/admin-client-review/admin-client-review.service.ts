@@ -5,6 +5,7 @@ import { ClientOnboardingService } from '../client-onboarding/client-onboarding.
 import { computeLengthOfService } from '../client-onboarding/length-of-service.util';
 import { FILE_STORAGE_PROVIDER, FileStorageProvider } from '../file-storage/file-storage-provider.interface';
 import { buildPaginatedResult } from '../common/pagination/paginated-result';
+import { deriveOnboardingSource, OnboardingSource } from '../client-onboarding/onboarding-source.util';
 
 interface FailureReasons {
   identityVerified?: boolean;
@@ -16,6 +17,7 @@ export interface ListClientsFilters {
   q?: string;
   createdFrom?: Date;
   createdTo?: Date;
+  onboardingSource?: OnboardingSource;
 }
 
 @Injectable()
@@ -38,6 +40,7 @@ export class AdminClientReviewService {
         filters.createdFrom || filters.createdTo
           ? { gte: filters.createdFrom, lte: filters.createdTo }
           : undefined,
+      onboarding: this.buildOnboardingSourceWhere(filters.onboardingSource),
     };
 
     const [data, total] = await Promise.all([
@@ -51,7 +54,19 @@ export class AdminClientReviewService {
       this.prisma.client.count({ where }),
     ]);
 
-    return buildPaginatedResult(data, total, page, limit);
+    return buildPaginatedResult(
+      data.map((client) => ({ ...client, onboardingSource: deriveOnboardingSource(client.onboarding) })),
+      total,
+      page,
+      limit,
+    );
+  }
+
+  private buildOnboardingSourceWhere(onboardingSource?: OnboardingSource) {
+    if (!onboardingSource) return undefined;
+    if (onboardingSource === 'AGENT') return { onboardedByAgentId: { not: null } };
+    if (onboardingSource === 'ADMIN') return { onboardedById: { not: null } };
+    return { onboardedById: null, onboardedByAgentId: null }; // SELF
   }
 
   async findById(id: string) {
@@ -65,6 +80,7 @@ export class AdminClientReviewService {
             ippisRecord: true,
             reviewedByAdmin: { select: { id: true, fullName: true, email: true } },
             onboardedByAdmin: { select: { id: true, fullName: true, email: true } },
+            onboardedByAgent: { select: { id: true, fullName: true, email: true } },
           },
         },
       },
@@ -109,6 +125,7 @@ export class AdminClientReviewService {
 
       return {
         ...client,
+        onboardingSource: deriveOnboardingSource(client.onboarding),
         onboarding: {
           ...client.onboarding,
           documents,
@@ -121,7 +138,7 @@ export class AdminClientReviewService {
       };
     }
 
-    return { ...client, onboarding: null };
+    return { ...client, onboardingSource: deriveOnboardingSource(client.onboarding), onboarding: null };
   }
 
   async approve(id: string, adminId: string) {
