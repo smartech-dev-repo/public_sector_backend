@@ -52,4 +52,36 @@ describe('Admin agents list endpoint (e2e)', () => {
     expect(res.body.data.some((a: { email: string }) => a.email === 'wave3.agent1@test.com')).toBe(true);
     expect(res.body.data.every((a: { status: string }) => a.status === 'APPROVED')).toBe(true);
   });
+
+  it("grants and revokes an agent's client-onboarding access, rejecting the grant for a non-APPROVED agent", async () => {
+    const pendingAgent = await prisma.agent.findFirstOrThrow({ where: { email: 'wave3.agent2@test.com' } });
+    await request(app.getHttpServer())
+      .patch(`/admin/agents/${pendingAgent.id}/onboarding-access`)
+      .set('Authorization', `Bearer ${adminAccessToken}`)
+      .send({ canOnboardClients: true })
+      .expect(422);
+
+    const approvedAgent = await prisma.agent.findFirstOrThrow({ where: { email: 'wave3.agent1@test.com' } });
+    const grantRes = await request(app.getHttpServer())
+      .patch(`/admin/agents/${approvedAgent.id}/onboarding-access`)
+      .set('Authorization', `Bearer ${adminAccessToken}`)
+      .send({ canOnboardClients: true })
+      .expect(200);
+    expect(grantRes.body.canOnboardClients).toBe(true);
+
+    const revokeRes = await request(app.getHttpServer())
+      .patch(`/admin/agents/${approvedAgent.id}/onboarding-access`)
+      .set('Authorization', `Bearer ${adminAccessToken}`)
+      .send({ canOnboardClients: false })
+      .expect(200);
+    expect(revokeRes.body.canOnboardClients).toBe(false);
+  });
+
+  it('returns 404 for an unknown agent id', async () => {
+    await request(app.getHttpServer())
+      .patch('/admin/agents/00000000-0000-0000-0000-000000000000/onboarding-access')
+      .set('Authorization', `Bearer ${adminAccessToken}`)
+      .send({ canOnboardClients: true })
+      .expect(404);
+  });
 });

@@ -92,6 +92,71 @@ describe('Admin client review (e2e)', () => {
     expect(res.body.onboarding.liveSelfieUrl.length).toBeGreaterThan(0);
   });
 
+  it('returns onboardingSource on the list and detail views', async () => {
+    const listRes = await request(app.getHttpServer())
+      .get('/admin/clients')
+      .query({ status: 'MANUAL_REVIEW' })
+      .set('Authorization', `Bearer ${adminAccessToken}`)
+      .expect(200);
+    const row = listRes.body.data.find((c: { id: string }) => c.id === clientId);
+    expect(row.onboardingSource).toBe('SELF');
+
+    const detailRes = await request(app.getHttpServer())
+      .get(`/admin/clients/${clientId}`)
+      .set('Authorization', `Bearer ${adminAccessToken}`)
+      .expect(200);
+    expect(detailRes.body.onboardingSource).toBe('SELF');
+  });
+
+  it('filters the list by onboardingSource', async () => {
+    const selfRes = await request(app.getHttpServer())
+      .get('/admin/clients')
+      .query({ onboardingSource: 'SELF' })
+      .set('Authorization', `Bearer ${adminAccessToken}`)
+      .expect(200);
+    expect(selfRes.body.data.some((c: { id: string }) => c.id === clientId)).toBe(true);
+
+    const agentRes = await request(app.getHttpServer())
+      .get('/admin/clients')
+      .query({ onboardingSource: 'AGENT' })
+      .set('Authorization', `Bearer ${adminAccessToken}`)
+      .expect(200);
+    expect(agentRes.body.data.some((c: { id: string }) => c.id === clientId)).toBe(false);
+  });
+
+  it('returns an analytics summary with totals and breakdowns', async () => {
+    const res = await request(app.getHttpServer())
+      .get('/admin/clients/analytics')
+      .set('Authorization', `Bearer ${adminAccessToken}`)
+      .expect(200);
+
+    expect(res.body.totalClients).toBeGreaterThanOrEqual(1);
+    expect(res.body.bySource).toEqual(
+      expect.objectContaining({
+        SELF: expect.any(Number),
+        AGENT: expect.any(Number),
+        ADMIN: expect.any(Number),
+        NONE: expect.any(Number),
+      }),
+    );
+    expect(Object.keys(res.body.byOnboardingStep).sort()).toEqual(
+      ['COMPLETED', 'DOCUMENTS_SUBMITTED', 'FACE_MATCH_PENDING', 'IDENTITY_SUBMITTED', 'IPPIS_LINKED', 'PHONE_VERIFIED'].sort(),
+    );
+    expect(Object.keys(res.body.byClientStatus).sort()).toEqual(
+      ['MANUAL_REVIEW', 'PENDING_IPPIS', 'PHONE_VERIFIED', 'VERIFIED'].sort(),
+    );
+    expect(Array.isArray(res.body.agentLeaderboard)).toBe(true);
+    expect(res.body.activity).toEqual(
+      expect.objectContaining({
+        clientsWithAtLeastOneLoanRequest: expect.any(Number),
+        clientsWithAtLeastOneDisbursedLoan: expect.any(Number),
+        clientsWithAtLeastOneSession: expect.any(Number),
+        totalLoanRequests: expect.any(Number),
+        totalWalletEntries: expect.any(Number),
+      }),
+    );
+  });
+
   it('retries: resets to IDENTITY_SUBMITTED since only the face match failed', async () => {
     const res = await request(app.getHttpServer())
       .post(`/admin/clients/${clientId}/retry`)
