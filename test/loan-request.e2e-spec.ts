@@ -12,6 +12,7 @@ describe('Loan request workflow (e2e)', () => {
   let accessToken: string;
   const phone = `+234802${Date.now().toString().slice(-7)}`;
   const staffId = `E2E-LOAN-${Date.now()}`;
+  const productCode = `E2E-LOAN-PRODUCT-${Date.now()}`;
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -38,11 +39,16 @@ describe('Loan request workflow (e2e)', () => {
       },
     });
 
-    await prisma.loanTermOption.create({
+    await prisma.loanProduct.create({
       data: {
-        agency: 'NPF',
-        tenorMonths: 6,
-        interestRatePercent: 5,
+        productName: 'E2E Loan Product',
+        productCode,
+        sectors: ['NPF'],
+        minimumAmount: 1000,
+        maximumAmount: 1000000,
+        minimumTenorMonths: 6,
+        maximumTenorMonths: 6,
+        interestTiers: [{ minTenorMonths: 6, maxTenorMonths: 6, interestRatePercent: 5 }],
         managementChargeType: 'PERCENTAGE',
         managementChargeValue: 2,
         managementChargeApplication: 'DEDUCT_FROM_DISBURSEMENT',
@@ -58,13 +64,13 @@ describe('Loan request workflow (e2e)', () => {
     await prisma.clientOnboarding.deleteMany({ where: { clientId } });
     await prisma.ippisRecord.deleteMany({ where: { staffId } });
     await prisma.client.deleteMany({ where: { id: clientId } });
-    await prisma.loanTermOption.deleteMany({ where: { agency: 'NPF', tenorMonths: 6 } });
+    await prisma.loanProduct.deleteMany({ where: { productCode } });
     await app.close();
   });
 
   let loanRequestId: string;
 
-  it('rejects a request that exceeds the salary cap', async () => {
+  it('rejects a request that exceeds the loan product\'s maximum amount', async () => {
     await request(app.getHttpServer())
       .post('/client/loan-requests')
       .set('Authorization', `Bearer ${accessToken}`)

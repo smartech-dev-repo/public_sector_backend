@@ -11,6 +11,7 @@ describe('Admin client visibility (e2e)', () => {
   let adminAccessToken: string;
   const staffId = `E2E-VISIBILITY-${Date.now()}`;
   const agency = 'NPF';
+  const productCode = `E2E-VISIBILITY-PRODUCT-${Date.now()}`;
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -30,11 +31,16 @@ describe('Admin client visibility (e2e)', () => {
       });
     adminAccessToken = loginRes.body.accessToken;
 
-    await prisma.loanTermOption.create({
+    await prisma.loanProduct.create({
       data: {
-        agency,
-        tenorMonths: 2,
-        interestRatePercent: 0,
+        productName: 'E2E Visibility Product',
+        productCode,
+        sectors: [agency],
+        minimumAmount: 1000,
+        maximumAmount: 1000000,
+        minimumTenorMonths: 2,
+        maximumTenorMonths: 2,
+        interestTiers: [{ minTenorMonths: 2, maxTenorMonths: 2, interestRatePercent: 0 }],
         managementChargeType: 'PERCENTAGE',
         managementChargeValue: 0,
         managementChargeApplication: 'ADD_TO_REPAYMENT',
@@ -64,7 +70,7 @@ describe('Admin client visibility (e2e)', () => {
     await prisma.clientOnboarding.deleteMany({ where: { ippisRecord: { staffId: { startsWith: staffId } } } });
     await prisma.ippisRecord.deleteMany({ where: { staffId: { startsWith: staffId } } });
     await prisma.client.deleteMany({ where: { id: { in: clientIds } } });
-    await prisma.loanTermOption.deleteMany({ where: { agency, tenorMonths: 2 } });
+    await prisma.loanProduct.deleteMany({ where: { productCode } });
     await app.close();
   });
 

@@ -11,6 +11,7 @@ describe('Loan origination (e2e)', () => {
   let adminAccessToken: string;
   const staffId = `E2E-ORIGIN-${Date.now()}`;
   const agency = 'NPF';
+  const productCode = `E2E-ORIGIN-PRODUCT-${Date.now()}`;
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -30,11 +31,16 @@ describe('Loan origination (e2e)', () => {
       });
     adminAccessToken = loginRes.body.accessToken;
 
-    await prisma.loanTermOption.create({
+    await prisma.loanProduct.create({
       data: {
-        agency,
-        tenorMonths: 3,
-        interestRatePercent: 5,
+        productName: 'E2E Origination Product',
+        productCode,
+        sectors: [agency],
+        minimumAmount: 1000,
+        maximumAmount: 1000000,
+        minimumTenorMonths: 3,
+        maximumTenorMonths: 3,
+        interestTiers: [{ minTenorMonths: 3, maxTenorMonths: 3, interestRatePercent: 5 }],
         managementChargeType: 'PERCENTAGE',
         managementChargeValue: 2,
         managementChargeApplication: 'DEDUCT_FROM_DISBURSEMENT',
@@ -64,7 +70,7 @@ describe('Loan origination (e2e)', () => {
     await prisma.clientOnboarding.deleteMany({ where: { agency, employeeName: { contains: 'E2E Origination' } } });
     await prisma.ippisRecord.deleteMany({ where: { staffId: { startsWith: staffId } } });
     await prisma.client.deleteMany({ where: { id: { in: clientIds } } });
-    await prisma.loanTermOption.deleteMany({ where: { agency, tenorMonths: 3 } });
+    await prisma.loanProduct.deleteMany({ where: { productCode } });
     await app.close();
   });
 
@@ -88,21 +94,19 @@ describe('Loan origination (e2e)', () => {
     return { client, accessToken };
   }
 
-  it('lists the active loan terms for the client\'s own agency', async () => {
+  it('lists the active loan products for the client\'s own agency', async () => {
     const { accessToken } = await createVerifiedClient('0000001', 'A');
 
     const res = await request(app.getHttpServer())
-      .get('/client/loan-terms')
+      .get('/client/loan-products')
       .set('Authorization', `Bearer ${accessToken}`)
       .expect(200);
 
     // Not toHaveLength(1): other e2e suites running concurrently against this
-    // same shared DB also create active NPF loan terms (different
-    // tenorMonths) -- the endpoint correctly returns every active term for
-    // the agency, so this only asserts that *this* fixture's term is present.
-    expect(res.body.data).toEqual(
-      expect.arrayContaining([expect.objectContaining({ agency: 'NPF', tenorMonths: 3 })]),
-    );
+    // same shared DB also create active NPF loan products -- the endpoint
+    // correctly returns every eligible product for the agency, so this only
+    // asserts that *this* fixture's product is present.
+    expect(res.body.data).toEqual(expect.arrayContaining([expect.objectContaining({ productCode })]));
   });
 
   it(
