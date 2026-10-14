@@ -7,9 +7,11 @@ import { AuditInterceptor } from '../audit/audit.interceptor';
 import { AuditLogService } from '../audit/audit-log.service';
 import { AdminClientReviewService } from './admin-client-review.service';
 import { AdminClientActivityService } from './admin-client-activity.service';
+import { AdminClientAnalyticsService } from './admin-client-analytics.service';
 import { RetryReviewDto } from './dto/retry-review.dto';
 import { ListActivitiesQueryDto } from './dto/list-activities-query.dto';
 import { ListClientsQueryDto } from './dto/list-clients-query.dto';
+import { ClientAnalyticsQueryDto } from './dto/client-analytics-query.dto';
 import { AuditActorType, ClientStatus } from '../generated/prisma/client';
 
 @Controller('admin/clients')
@@ -20,6 +22,7 @@ export class AdminClientReviewController {
     private readonly adminClientReviewService: AdminClientReviewService,
     private readonly auditLogService: AuditLogService,
     private readonly adminClientActivityService: AdminClientActivityService,
+    private readonly adminClientAnalyticsService: AdminClientAnalyticsService,
   ) {}
 
   @Get()
@@ -35,6 +38,15 @@ export class AdminClientReviewController {
       },
       { page: query.page, limit: query.limit },
     );
+  }
+
+  @Get('analytics')
+  @RequirePermissions('clients:analytics:read')
+  getAnalytics(@Query() query: ClientAnalyticsQueryDto) {
+    return this.adminClientAnalyticsService.getSummary({
+      createdFrom: query.createdFrom ? new Date(query.createdFrom) : undefined,
+      createdTo: query.createdTo ? new Date(query.createdTo) : undefined,
+    });
   }
 
   @Get(':id')
