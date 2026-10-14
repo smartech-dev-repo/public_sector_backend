@@ -67,7 +67,7 @@ describe('Loan origination (e2e)', () => {
         select: { clientId: true },
       })
     ).map((c) => c.clientId);
-    await prisma.clientOnboarding.deleteMany({ where: { agency, employeeName: { contains: 'E2E Origination' } } });
+    await prisma.clientOnboarding.deleteMany({ where: { clientId: { in: clientIds } } });
     await prisma.ippisRecord.deleteMany({ where: { staffId: { startsWith: staffId } } });
     await prisma.client.deleteMany({ where: { id: { in: clientIds } } });
     await prisma.loanProduct.deleteMany({ where: { productCode } });
