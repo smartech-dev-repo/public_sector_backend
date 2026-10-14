@@ -22,7 +22,8 @@ import { AdminClientReviewModule } from './admin-client-review/admin-client-revi
 import { LoanRequestModule } from './loan-request/loan-request.module';
 import { ClientLoansModule } from './client-loans/client-loans.module';
 import { WalletModule } from './wallet/wallet.module';
-import { LoanTermsModule } from './loan-terms/loan-terms.module';
+import { LoanProductsModule } from './loan-products/loan-products.module';
+import { LoanSettingsModule } from './loan-settings/loan-settings.module';
 import { AgentEnrollmentModule } from './agent-enrollment/agent-enrollment.module';
 import { AdminAgentReviewModule } from './admin-agent-review/admin-agent-review.module';
 import { ReconciliationModule } from './reconciliation/reconciliation.module';
@@ -99,7 +100,8 @@ import { HealthModule } from './health/health.module';
     LoanRequestModule,
     ClientLoansModule,
     WalletModule,
-    LoanTermsModule,
+    LoanProductsModule,
+    LoanSettingsModule,
     AgentEnrollmentModule,
     AdminAgentReviewModule,
     ReconciliationModule,

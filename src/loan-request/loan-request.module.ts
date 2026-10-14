@@ -10,16 +10,17 @@ import { LoanRequestExpiryProcessor } from './loan-request-expiry.processor';
 import { LOAN_REQUEST_EXPIRY_QUEUE } from './loan-request-queue.constants';
 import { EligibilityService } from './eligibility/eligibility.service';
 import { ClientMustBeVerifiedRule } from './eligibility/client-must-be-verified.rule';
-import { AmountWithinSalaryCapRule } from './eligibility/amount-within-salary-cap.rule';
 import { NoActiveLoanRule } from './eligibility/no-active-loan.rule';
 import { HasActiveLoanRule } from './eligibility/has-active-loan.rule';
 import { NoTopupInProgressRule } from './eligibility/no-topup-in-progress.rule';
 import { TopupEligibilityService } from './eligibility/topup-eligibility.service';
+import { LoanProductResolverService } from './eligibility/loan-product-resolver.service';
 import { TwoWaySmsModule } from '../two-way-sms/two-way-sms.module';
 import { ClientLoansModule } from '../client-loans/client-loans.module';
 import { AuditModule } from '../audit/audit.module';
 import { WalletModule } from '../wallet/wallet.module';
 import { EmailModule } from '../email/email.module';
+import { LoanSettingsModule } from '../loan-settings/loan-settings.module';
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { EmailModule } from '../email/email.module';
     AuditModule,
     WalletModule,
     EmailModule,
+    LoanSettingsModule,
   ],
   controllers: [
     LoanRequestController,
@@ -42,11 +44,11 @@ import { EmailModule } from '../email/email.module';
     LoanRequestExpiryProcessor,
     EligibilityService,
     ClientMustBeVerifiedRule,
-    AmountWithinSalaryCapRule,
     NoActiveLoanRule,
     HasActiveLoanRule,
     NoTopupInProgressRule,
     TopupEligibilityService,
+    LoanProductResolverService,
   ],
 })
 export class LoanRequestModule {}
