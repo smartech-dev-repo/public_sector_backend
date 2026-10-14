@@ -31,6 +31,8 @@ const BOOTSTRAP_PERMISSIONS: Array<{ key: string; description: string }> = [
   { key: 'clients:read', description: "View a client's loan requests, loans, and activity history" },
   { key: 'departments:manage', description: 'Create, edit, and delete department definitions' },
   { key: 'clients:onboard', description: "Onboard a client on the client's behalf (admin-initiated onboarding)" },
+  { key: 'agents:onboarding-access:manage', description: "Grant or revoke an agent's ability to onboard clients" },
+  { key: 'clients:analytics:read', description: 'View aggregate client onboarding and activity analytics' },
 ];
 
 async function main() {
