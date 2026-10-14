@@ -107,6 +107,24 @@ describe('AgentAuthService', () => {
       });
       expect(result).toEqual({ accessToken: 'access-token', refreshToken: 'refresh-token' });
     });
+
+    it('includes canOnboardClients in the payload when the agent has it enabled', async () => {
+      const passwordHash = await hashPassword('secret-password');
+      prisma.agent.findUnique.mockResolvedValue({
+        id: 'agent-1',
+        email: 'agent@example.com',
+        passwordHash,
+        status: 'APPROVED',
+        mustChangePassword: false,
+        canOnboardClients: true,
+      });
+
+      await service.login('agent@example.com', 'secret-password');
+
+      expect(tokenService.signAccessToken).toHaveBeenCalledWith(
+        expect.objectContaining({ canOnboardClients: true }),
+      );
+    });
   });
 
   describe('getMustChangePasswordForAgent', () => {
@@ -118,6 +136,18 @@ describe('AgentAuthService', () => {
     it('returns false when the agent no longer exists', async () => {
       prisma.agent.findUnique.mockResolvedValue(null);
       await expect(service.getMustChangePasswordForAgent('missing')).resolves.toBe(false);
+    });
+  });
+
+  describe('getCanOnboardClientsForAgent', () => {
+    it("returns the agent's current flag", async () => {
+      prisma.agent.findUnique.mockResolvedValue({ canOnboardClients: true });
+      await expect(service.getCanOnboardClientsForAgent('agent-1')).resolves.toBe(true);
+    });
+
+    it('returns false when the agent no longer exists', async () => {
+      prisma.agent.findUnique.mockResolvedValue(null);
+      await expect(service.getCanOnboardClientsForAgent('missing')).resolves.toBe(false);
     });
   });
 

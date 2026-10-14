@@ -36,11 +36,17 @@ export class SessionAuthController {
         ? await this.agentAuthService.getMustChangePasswordForAgent(result.principalId)
         : undefined;
 
+    const canOnboardClients =
+      result.principalType === SessionPrincipalType.AGENT
+        ? await this.agentAuthService.getCanOnboardClientsForAgent(result.principalId)
+        : undefined;
+
     const payload: JwtPayload = {
       sub: result.principalId,
       type: toJwtPrincipalType(result.principalType),
       permissions,
       mustChangePassword,
+      canOnboardClients,
     };
 
     return {

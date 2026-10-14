@@ -50,6 +50,11 @@ export class AgentAuthService {
     return agent?.mustChangePassword ?? false;
   }
 
+  async getCanOnboardClientsForAgent(agentId: string): Promise<boolean> {
+    const agent = await this.prisma.agent.findUnique({ where: { id: agentId } });
+    return agent?.canOnboardClients ?? false;
+  }
+
   async changePassword(agentId: string, currentPassword: string, newPassword: string): Promise<void> {
     const agent = await this.prisma.agent.findUniqueOrThrow({ where: { id: agentId } });
 
@@ -312,8 +317,16 @@ export class AgentAuthService {
     return this.issueTokens(agent, meta);
   }
 
-  private async issueTokens(agent: { id: string; mustChangePassword: boolean }, meta?: { userAgent?: string; ip?: string }) {
-    const payload = { sub: agent.id, type: 'agent' as const, mustChangePassword: agent.mustChangePassword };
+  private async issueTokens(
+    agent: { id: string; mustChangePassword: boolean; canOnboardClients: boolean },
+    meta?: { userAgent?: string; ip?: string },
+  ) {
+    const payload = {
+      sub: agent.id,
+      type: 'agent' as const,
+      mustChangePassword: agent.mustChangePassword,
+      canOnboardClients: agent.canOnboardClients,
+    };
 
     const refreshToken = await this.sessionService.createSession({
       principalType: SessionPrincipalType.AGENT,
