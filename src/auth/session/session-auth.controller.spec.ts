@@ -11,13 +11,16 @@ describe('SessionAuthController', () => {
   let sessionService: { rotate: jest.Mock };
   let tokenService: { signAccessToken: jest.Mock };
   let adminAuthService: { getPermissionsForAdmin: jest.Mock };
-  let agentAuthService: { getMustChangePasswordForAgent: jest.Mock };
+  let agentAuthService: { getMustChangePasswordForAgent: jest.Mock; getCanOnboardClientsForAgent: jest.Mock };
 
   beforeEach(() => {
     sessionService = { rotate: jest.fn() };
     tokenService = { signAccessToken: jest.fn().mockReturnValue('new-access-token') };
     adminAuthService = { getPermissionsForAdmin: jest.fn().mockResolvedValue(['roles:manage']) };
-    agentAuthService = { getMustChangePasswordForAgent: jest.fn().mockResolvedValue(true) };
+    agentAuthService = {
+      getMustChangePasswordForAgent: jest.fn().mockResolvedValue(true),
+      getCanOnboardClientsForAgent: jest.fn().mockResolvedValue(false),
+    };
 
     controller = new SessionAuthController(
       sessionService as unknown as SessionService,
@@ -38,11 +41,13 @@ describe('SessionAuthController', () => {
 
     expect(adminAuthService.getPermissionsForAdmin).toHaveBeenCalledWith('admin-1');
     expect(agentAuthService.getMustChangePasswordForAgent).not.toHaveBeenCalled();
+    expect(agentAuthService.getCanOnboardClientsForAgent).not.toHaveBeenCalled();
     expect(tokenService.signAccessToken).toHaveBeenCalledWith({
       sub: 'admin-1',
       type: 'admin',
       permissions: ['roles:manage'],
       mustChangePassword: undefined,
+      canOnboardClients: undefined,
     });
   });
 
@@ -56,12 +61,14 @@ describe('SessionAuthController', () => {
     await controller.refresh({ refreshToken: 'old-refresh' }, { headers: {} } as Request);
 
     expect(agentAuthService.getMustChangePasswordForAgent).toHaveBeenCalledWith('agent-1');
+    expect(agentAuthService.getCanOnboardClientsForAgent).toHaveBeenCalledWith('agent-1');
     expect(adminAuthService.getPermissionsForAdmin).not.toHaveBeenCalled();
     expect(tokenService.signAccessToken).toHaveBeenCalledWith({
       sub: 'agent-1',
       type: 'agent',
       permissions: undefined,
       mustChangePassword: true,
+      canOnboardClients: false,
     });
   });
 
@@ -76,11 +83,13 @@ describe('SessionAuthController', () => {
 
     expect(adminAuthService.getPermissionsForAdmin).not.toHaveBeenCalled();
     expect(agentAuthService.getMustChangePasswordForAgent).not.toHaveBeenCalled();
+    expect(agentAuthService.getCanOnboardClientsForAgent).not.toHaveBeenCalled();
     expect(tokenService.signAccessToken).toHaveBeenCalledWith({
       sub: 'client-1',
       type: 'client',
       permissions: undefined,
       mustChangePassword: undefined,
+      canOnboardClients: undefined,
     });
   });
 });
