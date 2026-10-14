@@ -1,4 +1,4 @@
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
@@ -71,6 +71,18 @@ export class AdminAgentReviewService {
       throw new NotFoundException('Agent not found');
     }
     return agent;
+  }
+
+  async setOnboardingAccess(id: string, canOnboardClients: boolean): Promise<Agent> {
+    const agent = await this.prisma.agent.findUnique({ where: { id } });
+    if (!agent) {
+      throw new NotFoundException('Agent not found');
+    }
+    if (canOnboardClients && agent.status !== AgentStatus.APPROVED) {
+      throw new UnprocessableEntityException('Agent must be APPROVED before granting client-onboarding access');
+    }
+
+    return this.prisma.agent.update({ where: { id }, data: { canOnboardClients } });
   }
 
   async approve(id: string, reviewerId: string): Promise<void> {

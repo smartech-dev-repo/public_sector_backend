@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpCode, Param, Post, Query, Req, UseGuards, UseInterceptors } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Param, Patch, Post, Query, Req, UseGuards, UseInterceptors } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { PermissionsGuard } from '../auth/permissions.guard';
 import { RequirePermissions } from '../auth/permissions.decorator';
@@ -8,6 +8,7 @@ import { AuditLogService } from '../audit/audit-log.service';
 import { AdminAgentReviewService } from './admin-agent-review.service';
 import { RejectAgentDto } from './dto/reject-agent.dto';
 import { ListAgentsQueryDto } from './dto/list-agents-query.dto';
+import { SetOnboardingAccessDto } from './dto/set-onboarding-access.dto';
 import { AuditActorType } from '../generated/prisma/client';
 
 @Controller('admin/agents')
@@ -85,5 +86,12 @@ export class AdminAgentReviewController {
       targetId: id,
     });
     return { resent: true };
+  }
+
+  @Patch(':id/onboarding-access')
+  @HttpCode(200)
+  @RequirePermissions('agents:onboarding-access:manage')
+  setOnboardingAccess(@Param('id') id: string, @Body() dto: SetOnboardingAccessDto) {
+    return this.adminAgentReviewService.setOnboardingAccess(id, dto.canOnboardClients);
   }
 }

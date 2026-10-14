@@ -1,4 +1,4 @@
-import { ConflictException, NotFoundException } from '@nestjs/common';
+import { ConflictException, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AdminAgentReviewService } from './admin-agent-review.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -75,6 +75,36 @@ describe('AdminAgentReviewService', () => {
 
       const sentMessage = emailService.send.mock.calls[0][0];
       expect(sentMessage.text).toContain('https://example.com/download');
+    });
+  });
+
+  describe('setOnboardingAccess', () => {
+    it('throws NotFoundException when the agent does not exist', async () => {
+      prisma.agent.findUnique.mockResolvedValue(null);
+      await expect(service.setOnboardingAccess('missing', true)).rejects.toThrow(NotFoundException);
+    });
+
+    it('rejects enabling access for a non-APPROVED agent', async () => {
+      prisma.agent.findUnique.mockResolvedValue({ id: 'a1', status: 'PENDING_REVIEW' });
+      await expect(service.setOnboardingAccess('a1', true)).rejects.toThrow(UnprocessableEntityException);
+    });
+
+    it('allows disabling access regardless of status', async () => {
+      prisma.agent.findUnique.mockResolvedValue({ id: 'a1', status: 'PENDING_REVIEW' });
+      prisma.agent.update.mockResolvedValue({ id: 'a1', canOnboardClients: false });
+
+      await service.setOnboardingAccess('a1', false);
+
+      expect(prisma.agent.update).toHaveBeenCalledWith({ where: { id: 'a1' }, data: { canOnboardClients: false } });
+    });
+
+    it('enables access for an APPROVED agent', async () => {
+      prisma.agent.findUnique.mockResolvedValue({ id: 'a1', status: 'APPROVED' });
+      prisma.agent.update.mockResolvedValue({ id: 'a1', canOnboardClients: true });
+
+      const result = await service.setOnboardingAccess('a1', true);
+
+      expect(result.canOnboardClients).toBe(true);
     });
   });
 
