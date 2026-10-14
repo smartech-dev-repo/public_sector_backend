@@ -609,9 +609,13 @@ describe('LoanProductResolverService', () => {
         interestTiers: [{ minTenorMonths: 1, maxTenorMonths: 12, interestRatePercent: 5 }],
       },
     ]);
-    const hireDate = new Date();
-    hireDate.setFullYear(hireDate.getFullYear() - 1);
-    await expect(service.resolve(ippisRecord({ hireDate }), 5000, 6)).rejects.toThrow(UnprocessableEntityException);
+    // dateOfBirth (age-based retirement), not hireDate (service-based cap), is what
+    // drives monthsLeft low here: a fresh hireDate leaves ~420 months until the
+    // 35-year service cap, which would NOT exclude a minimumServiceMonthsLeft: 24
+    // product -- only a near-retirement-age dateOfBirth does.
+    const dateOfBirth = new Date();
+    dateOfBirth.setFullYear(dateOfBirth.getFullYear() - 59);
+    await expect(service.resolve(ippisRecord({ dateOfBirth }), 5000, 6)).rejects.toThrow(UnprocessableEntityException);
   });
 
   it('resolves the single eligible match and its matching tier', async () => {
@@ -1862,7 +1866,7 @@ rm -rf src/loan-terms
 - [ ] **Step 11: Run the full new module's tests to verify they pass**
 
 Run: `npx jest src/loan-products`
-Expected: PASS (13 tests total across the validator spec and service spec)
+Expected: PASS (14 tests total across the validator spec and service spec)
 
 - [ ] **Step 12: Commit**
 
