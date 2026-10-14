@@ -9542,10 +9542,10 @@
           ]
         },
         {
-          "name": "Loan Terms",
+          "name": "Loan Products",
           "item": [
             {
-              "name": "POST /admin/loan-terms - Success",
+              "name": "POST /admin/loan-products - Success",
               "request": {
                 "method": "POST",
                 "header": [
@@ -9560,16 +9560,16 @@
                 ],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"agency\": \"NPF\",\n  \"tenorMonths\": 6,\n  \"interestRatePercent\": 5,\n  \"managementChargeType\": \"PERCENTAGE\",\n  \"managementChargeValue\": 2,\n  \"managementChargeApplication\": \"DEDUCT_FROM_DISBURSEMENT\"\n}"
+                  "raw": "{\n  \"productName\": \"Standard NPF Loan\",\n  \"productCode\": \"STD-NPF-001\",\n  \"sectors\": [\n    \"NPF\"\n  ],\n  \"minimumAmount\": 10000,\n  \"maximumAmount\": 2000000,\n  \"minimumTenorMonths\": 1,\n  \"maximumTenorMonths\": 18,\n  \"interestTiers\": [\n    {\n      \"minTenorMonths\": 1,\n      \"maxTenorMonths\": 4,\n      \"interestRatePercent\": 3\n    },\n    {\n      \"minTenorMonths\": 6,\n      \"maxTenorMonths\": 12,\n      \"interestRatePercent\": 5\n    },\n    {\n      \"minTenorMonths\": 13,\n      \"maxTenorMonths\": 18,\n      \"interestRatePercent\": 6\n    }\n  ],\n  \"managementChargeType\": \"PERCENTAGE\",\n  \"managementChargeValue\": 2,\n  \"managementChargeApplication\": \"DEDUCT_FROM_DISBURSEMENT\"\n}"
                 },
                 "url": {
-                  "raw": "{{base_url}}/admin/loan-terms",
+                  "raw": "{{base_url}}/admin/loan-products",
                   "host": [
                     "{{base_url}}"
                   ],
                   "path": [
                     "admin",
-                    "loan-terms"
+                    "loan-products"
                   ]
                 }
               },
@@ -9580,8 +9580,8 @@
                     "exec": [
                       "pm.test('status 201', () => pm.response.to.have.status(201));",
                       "const json = pm.response.json();",
-                      "pm.test('tenorMonths matches', () => pm.expect(json.tenorMonths).to.eql(6));",
-                      "pm.collectionVariables.set('loan_term_option_id', json.id);"
+                      "pm.test('productCode matches', () => pm.expect(json.productCode).to.eql('STD-NPF-001'));",
+                      "pm.collectionVariables.set('loan_product_id', json.id);"
                     ]
                   }
                 }
@@ -9599,39 +9599,12 @@
                     }
                   ],
                   "cookie": [],
-                  "body": "{\n  \"id\": \"b3c4d5e6-f7a8-4b9c-0d1e-2f3a4b5c6d7e\",\n  \"agency\": \"NPF\",\n  \"tenorMonths\": 6,\n  \"interestRatePercent\": \"5\",\n  \"managementChargeType\": \"PERCENTAGE\",\n  \"managementChargeValue\": \"2\",\n  \"managementChargeApplication\": \"DEDUCT_FROM_DISBURSEMENT\",\n  \"isActive\": true,\n  \"createdAt\": \"2026-09-21T10:00:00.000Z\",\n  \"updatedAt\": \"2026-09-21T10:00:00.000Z\"\n}",
-                  "originalRequest": {
-                    "method": "POST",
-                    "header": [
-                      {
-                        "key": "Content-Type",
-                        "value": "application/json"
-                      },
-                      {
-                        "key": "Authorization",
-                        "value": "Bearer {{admin_access_token}}"
-                      }
-                    ],
-                    "body": {
-                      "mode": "raw",
-                      "raw": "{\n  \"agency\": \"NPF\",\n  \"tenorMonths\": 6,\n  \"interestRatePercent\": 5,\n  \"managementChargeType\": \"PERCENTAGE\",\n  \"managementChargeValue\": 2,\n  \"managementChargeApplication\": \"DEDUCT_FROM_DISBURSEMENT\"\n}"
-                    },
-                    "url": {
-                      "raw": "{{base_url}}/admin/loan-terms",
-                      "host": [
-                        "{{base_url}}"
-                      ],
-                      "path": [
-                        "admin",
-                        "loan-terms"
-                      ]
-                    }
-                  }
+                  "body": "{\n  \"id\": \"c5d6e7f8-a9b0-4c1d-2e3f-4a5b6c7d8e9f\",\n  \"productName\": \"Standard NPF Loan\",\n  \"productCode\": \"STD-NPF-001\",\n  \"sectors\": [\n    \"NPF\"\n  ],\n  \"minimumAmount\": \"10000\",\n  \"maximumAmount\": \"2000000\",\n  \"minimumTenorMonths\": 1,\n  \"maximumTenorMonths\": 18,\n  \"interestTiers\": [\n    {\n      \"minTenorMonths\": 1,\n      \"maxTenorMonths\": 4,\n      \"interestRatePercent\": 3\n    },\n    {\n      \"minTenorMonths\": 6,\n      \"maxTenorMonths\": 12,\n      \"interestRatePercent\": 5\n    },\n    {\n      \"minTenorMonths\": 13,\n      \"maxTenorMonths\": 18,\n      \"interestRatePercent\": 6\n    }\n  ],\n  \"managementChargeType\": \"PERCENTAGE\",\n  \"managementChargeValue\": \"2\",\n  \"managementChargeApplication\": \"DEDUCT_FROM_DISBURSEMENT\",\n  \"minimumServiceMonthsLeft\": null,\n  \"maximumMonthsInService\": null,\n  \"isActive\": true,\n  \"createdAt\": \"2026-10-13T10:00:00.000Z\",\n  \"updatedAt\": \"2026-10-13T10:00:00.000Z\"\n}"
                 }
               ]
             },
             {
-              "name": "POST /admin/loan-terms - Conflict, duplicate (agency, tenorMonths) (409)",
+              "name": "POST /admin/loan-products - Validation error (400)",
               "request": {
                 "method": "POST",
                 "header": [
@@ -9646,19 +9619,76 @@
                 ],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"agency\": \"NPF\",\n  \"tenorMonths\": 6,\n  \"interestRatePercent\": 5,\n  \"managementChargeType\": \"PERCENTAGE\",\n  \"managementChargeValue\": 2,\n  \"managementChargeApplication\": \"DEDUCT_FROM_DISBURSEMENT\"\n}"
+                  "raw": "{\n  \"productName\": \"Broken Product\",\n  \"productCode\": \"BROKEN-001\",\n  \"sectors\": [\n    \"NPF\"\n  ],\n  \"minimumAmount\": 10000,\n  \"maximumAmount\": 2000000,\n  \"minimumTenorMonths\": 1,\n  \"maximumTenorMonths\": 6,\n  \"interestTiers\": [\n    {\n      \"minTenorMonths\": 1,\n      \"maxTenorMonths\": 24,\n      \"interestRatePercent\": 5\n    }\n  ],\n  \"managementChargeType\": \"PERCENTAGE\",\n  \"managementChargeValue\": 2,\n  \"managementChargeApplication\": \"DEDUCT_FROM_DISBURSEMENT\"\n}"
                 },
                 "url": {
-                  "raw": "{{base_url}}/admin/loan-terms",
+                  "raw": "{{base_url}}/admin/loan-products",
                   "host": [
                     "{{base_url}}"
                   ],
                   "path": [
                     "admin",
-                    "loan-terms"
+                    "loan-products"
                   ]
                 },
-                "description": "Run 'POST /admin/loan-terms - Success' first so (agency: NPF, tenorMonths: 6) already exists, then run this request with the same body."
+                "description": "Tier [1-24] falls outside the product's own tenor range [1-6] -- rejected by the service-level interestTiers validation."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 400', () => pm.response.to.have.status(400));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "400 Bad Request",
+                  "status": "Bad Request",
+                  "code": 400,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"statusCode\": 400,\n  \"message\": \"Interest tier [1-24] must fall within the product's tenor range [1-6]\",\n  \"error\": \"Bad Request\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "POST /admin/loan-products - Conflict, duplicate productCode (409)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"productName\": \"Standard NPF Loan\",\n  \"productCode\": \"STD-NPF-001\",\n  \"sectors\": [\n    \"NPF\"\n  ],\n  \"minimumAmount\": 10000,\n  \"maximumAmount\": 2000000,\n  \"minimumTenorMonths\": 1,\n  \"maximumTenorMonths\": 18,\n  \"interestTiers\": [\n    {\n      \"minTenorMonths\": 1,\n      \"maxTenorMonths\": 18,\n      \"interestRatePercent\": 5\n    }\n  ],\n  \"managementChargeType\": \"PERCENTAGE\",\n  \"managementChargeValue\": 2,\n  \"managementChargeApplication\": \"DEDUCT_FROM_DISBURSEMENT\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/admin/loan-products",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "loan-products"
+                  ]
+                },
+                "description": "Run 'POST /admin/loan-products - Success' first so productCode STD-NPF-001 already exists."
               },
               "event": [
                 {
@@ -9673,33 +9703,6 @@
               "response": [
                 {
                   "name": "409 Conflict",
-                  "originalRequest": {
-                    "method": "POST",
-                    "header": [
-                      {
-                        "key": "Content-Type",
-                        "value": "application/json"
-                      },
-                      {
-                        "key": "Authorization",
-                        "value": "Bearer {{admin_access_token}}"
-                      }
-                    ],
-                    "body": {
-                      "mode": "raw",
-                      "raw": "{\n  \"agency\": \"NPF\",\n  \"tenorMonths\": 6,\n  \"interestRatePercent\": 5,\n  \"managementChargeType\": \"PERCENTAGE\",\n  \"managementChargeValue\": 2,\n  \"managementChargeApplication\": \"DEDUCT_FROM_DISBURSEMENT\"\n}"
-                    },
-                    "url": {
-                      "raw": "{{base_url}}/admin/loan-terms",
-                      "host": [
-                        "{{base_url}}"
-                      ],
-                      "path": [
-                        "admin",
-                        "loan-terms"
-                      ]
-                    }
-                  },
                   "status": "Conflict",
                   "code": 409,
                   "_postman_previewlanguage": "json",
@@ -9710,85 +9713,12 @@
                     }
                   ],
                   "cookie": [],
-                  "body": "{\n  \"statusCode\": 409,\n  \"message\": \"A loan term for agency \\\"NPF\\\" at 6 months already exists\",\n  \"error\": \"Conflict\"\n}"
+                  "body": "{\n  \"statusCode\": 409,\n  \"message\": \"A loan product with code \\\"STD-NPF-001\\\" already exists\",\n  \"error\": \"Conflict\"\n}"
                 }
               ]
             },
             {
-              "name": "POST /admin/loan-terms - Validation error (400)",
-              "request": {
-                "method": "POST",
-                "header": [
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                  },
-                  {
-                    "key": "Authorization",
-                    "value": "Bearer {{admin_access_token}}"
-                  }
-                ],
-                "body": {
-                  "mode": "raw",
-                  "raw": "{}"
-                },
-                "url": {
-                  "raw": "{{base_url}}/admin/loan-terms",
-                  "host": [
-                    "{{base_url}}"
-                  ],
-                  "path": [
-                    "admin",
-                    "loan-terms"
-                  ]
-                }
-              },
-              "response": [
-                {
-                  "name": "400 Bad Request",
-                  "status": "Bad Request",
-                  "code": 400,
-                  "_postman_previewlanguage": "json",
-                  "header": [
-                    {
-                      "key": "Content-Type",
-                      "value": "application/json"
-                    }
-                  ],
-                  "cookie": [],
-                  "body": "{\n  \"statusCode\": 400,\n  \"message\": [\n    \"agency must be longer than or equal to 1 characters\",\n    \"agency must be a string\",\n    \"tenorMonths must be a positive number\",\n    \"tenorMonths must be an integer number\",\n    \"interestRatePercent must be a positive number\",\n    \"interestRatePercent must be a number conforming to the specified constraints\",\n    \"managementChargeType must be one of the following values: PERCENTAGE, FLAT\",\n    \"managementChargeValue must be a positive number\",\n    \"managementChargeValue must be a number conforming to the specified constraints\",\n    \"managementChargeApplication must be one of the following values: DEDUCT_FROM_DISBURSEMENT, ADD_TO_REPAYMENT\"\n  ],\n  \"error\": \"Bad Request\"\n}",
-                  "originalRequest": {
-                    "method": "POST",
-                    "header": [
-                      {
-                        "key": "Content-Type",
-                        "value": "application/json"
-                      },
-                      {
-                        "key": "Authorization",
-                        "value": "Bearer {{admin_access_token}}"
-                      }
-                    ],
-                    "body": {
-                      "mode": "raw",
-                      "raw": "{}"
-                    },
-                    "url": {
-                      "raw": "{{base_url}}/admin/loan-terms",
-                      "host": [
-                        "{{base_url}}"
-                      ],
-                      "path": [
-                        "admin",
-                        "loan-terms"
-                      ]
-                    }
-                  }
-                }
-              ]
-            },
-            {
-              "name": "POST /admin/loan-terms - Missing permission (403)",
+              "name": "POST /admin/loan-products - Missing permission (403)",
               "request": {
                 "method": "POST",
                 "header": [
@@ -9803,16 +9733,16 @@
                 ],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"agency\": \"NPF\",\n  \"tenorMonths\": 6,\n  \"interestRatePercent\": 5,\n  \"managementChargeType\": \"PERCENTAGE\",\n  \"managementChargeValue\": 2,\n  \"managementChargeApplication\": \"DEDUCT_FROM_DISBURSEMENT\"\n}"
+                  "raw": "{\n  \"productName\": \"Standard NPF Loan\",\n  \"productCode\": \"STD-NPF-002\",\n  \"sectors\": [\n    \"NPF\"\n  ],\n  \"minimumAmount\": 10000,\n  \"maximumAmount\": 2000000,\n  \"minimumTenorMonths\": 1,\n  \"maximumTenorMonths\": 18,\n  \"interestTiers\": [\n    {\n      \"minTenorMonths\": 1,\n      \"maxTenorMonths\": 18,\n      \"interestRatePercent\": 5\n    }\n  ],\n  \"managementChargeType\": \"PERCENTAGE\",\n  \"managementChargeValue\": 2,\n  \"managementChargeApplication\": \"DEDUCT_FROM_DISBURSEMENT\"\n}"
                 },
                 "url": {
-                  "raw": "{{base_url}}/admin/loan-terms",
+                  "raw": "{{base_url}}/admin/loan-products",
                   "host": [
                     "{{base_url}}"
                   ],
                   "path": [
                     "admin",
-                    "loan-terms"
+                    "loan-products"
                   ]
                 }
               },
@@ -9829,39 +9759,12 @@
                     }
                   ],
                   "cookie": [],
-                  "body": "{\n  \"statusCode\": 403,\n  \"message\": \"Insufficient permissions\",\n  \"error\": \"Forbidden\"\n}",
-                  "originalRequest": {
-                    "method": "POST",
-                    "header": [
-                      {
-                        "key": "Content-Type",
-                        "value": "application/json"
-                      },
-                      {
-                        "key": "Authorization",
-                        "value": "Bearer {{agent_access_token}}"
-                      }
-                    ],
-                    "body": {
-                      "mode": "raw",
-                      "raw": "{\n  \"agency\": \"NPF\",\n  \"tenorMonths\": 6,\n  \"interestRatePercent\": 5,\n  \"managementChargeType\": \"PERCENTAGE\",\n  \"managementChargeValue\": 2,\n  \"managementChargeApplication\": \"DEDUCT_FROM_DISBURSEMENT\"\n}"
-                    },
-                    "url": {
-                      "raw": "{{base_url}}/admin/loan-terms",
-                      "host": [
-                        "{{base_url}}"
-                      ],
-                      "path": [
-                        "admin",
-                        "loan-terms"
-                      ]
-                    }
-                  }
+                  "body": "{\n  \"statusCode\": 403,\n  \"message\": \"Insufficient permissions\",\n  \"error\": \"Forbidden\"\n}"
                 }
               ]
             },
             {
-              "name": "GET /admin/loan-terms - Success (all)",
+              "name": "GET /admin/loan-products - Success (all)",
               "request": {
                 "method": "GET",
                 "header": [
@@ -9871,19 +9774,19 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{base_url}}/admin/loan-terms",
+                  "raw": "{{base_url}}/admin/loan-products",
                   "host": [
                     "{{base_url}}"
                   ],
                   "path": [
                     "admin",
-                    "loan-terms"
+                    "loan-products"
                   ],
                   "query": [
                     {
-                      "key": "agency",
+                      "key": "sectors",
                       "value": "NPF",
-                      "description": "Optional. Exact match on the loan term option's agency.",
+                      "description": "Optional. Products whose sectors include this agency.",
                       "disabled": true
                     },
                     {
@@ -9901,12 +9804,12 @@
                     {
                       "key": "limit",
                       "value": "25",
-                      "description": "Optional. Page size, defaults to 25, hard max 100 (a request above 100 is a 400, not a silent clamp).",
+                      "description": "Optional. Page size, defaults to 25, hard max 100.",
                       "disabled": true
                     }
                   ]
                 },
-                "description": "Lists loan term options, filterable by agency/isActive. Paginated (page/limit, default 1/25, limit capped at 100). Requires loan-terms:manage. Response is { data, meta }."
+                "description": "Lists loan products, filterable by sectors/isActive. Paginated (page/limit, default 1/25, limit capped at 100). Requires loan-products:manage. Response is { data, meta }."
               },
               "event": [
                 {
@@ -9936,57 +9839,12 @@
                     }
                   ],
                   "cookie": [],
-                  "body": "{\n  \"data\": [\n    {\n      \"id\": \"b3c4d5e6-f7a8-4b9c-0d1e-2f3a4b5c6d7e\",\n      \"agency\": \"NPF\",\n      \"tenorMonths\": 6,\n      \"interestRatePercent\": \"5\",\n      \"managementChargeType\": \"PERCENTAGE\",\n      \"managementChargeValue\": \"2\",\n      \"managementChargeApplication\": \"DEDUCT_FROM_DISBURSEMENT\",\n      \"isActive\": true,\n      \"createdAt\": \"2026-09-21T10:00:00.000Z\",\n      \"updatedAt\": \"2026-09-21T10:00:00.000Z\"\n    },\n    {\n      \"id\": \"d4e5f6a7-b8c9-4d0e-1f2a-3b4c5d6e7f8a\",\n      \"agency\": \"NSCDC\",\n      \"tenorMonths\": 12,\n      \"interestRatePercent\": \"6\",\n      \"managementChargeType\": \"PERCENTAGE\",\n      \"managementChargeValue\": \"3\",\n      \"managementChargeApplication\": \"DEDUCT_FROM_DISBURSEMENT\",\n      \"isActive\": true,\n      \"createdAt\": \"2026-09-21T10:00:00.000Z\",\n      \"updatedAt\": \"2026-09-21T10:00:00.000Z\"\n    }\n  ],\n  \"meta\": {\n    \"total\": 2,\n    \"page\": 1,\n    \"limit\": 25,\n    \"totalPages\": 1\n  }\n}",
-                  "originalRequest": {
-                    "method": "GET",
-                    "header": [
-                      {
-                        "key": "Authorization",
-                        "value": "Bearer {{admin_access_token}}"
-                      }
-                    ],
-                    "url": {
-                      "raw": "{{base_url}}/admin/loan-terms",
-                      "host": [
-                        "{{base_url}}"
-                      ],
-                      "path": [
-                        "admin",
-                        "loan-terms"
-                      ],
-                      "query": [
-                        {
-                          "key": "agency",
-                          "value": "NPF",
-                          "description": "Optional. Exact match on the loan term option's agency.",
-                          "disabled": true
-                        },
-                        {
-                          "key": "isActive",
-                          "value": "true",
-                          "description": "Optional. true | false.",
-                          "disabled": true
-                        },
-                        {
-                          "key": "page",
-                          "value": "1",
-                          "description": "Optional. Page number, defaults to 1.",
-                          "disabled": true
-                        },
-                        {
-                          "key": "limit",
-                          "value": "25",
-                          "description": "Optional. Page size, defaults to 25, hard max 100 (a request above 100 is a 400, not a silent clamp).",
-                          "disabled": true
-                        }
-                      ]
-                    }
-                  }
+                  "body": "{\n  \"data\": [\n    {\n      \"id\": \"c5d6e7f8-a9b0-4c1d-2e3f-4a5b6c7d8e9f\",\n      \"productName\": \"Standard NPF Loan\",\n      \"productCode\": \"STD-NPF-001\",\n      \"sectors\": [\n        \"NPF\"\n      ],\n      \"minimumAmount\": \"10000\",\n      \"maximumAmount\": \"2000000\",\n      \"minimumTenorMonths\": 1,\n      \"maximumTenorMonths\": 18,\n      \"interestTiers\": [\n        {\n          \"minTenorMonths\": 1,\n          \"maxTenorMonths\": 4,\n          \"interestRatePercent\": 3\n        },\n        {\n          \"minTenorMonths\": 6,\n          \"maxTenorMonths\": 12,\n          \"interestRatePercent\": 5\n        },\n        {\n          \"minTenorMonths\": 13,\n          \"maxTenorMonths\": 18,\n          \"interestRatePercent\": 6\n        }\n      ],\n      \"managementChargeType\": \"PERCENTAGE\",\n      \"managementChargeValue\": \"2\",\n      \"managementChargeApplication\": \"DEDUCT_FROM_DISBURSEMENT\",\n      \"minimumServiceMonthsLeft\": null,\n      \"maximumMonthsInService\": null,\n      \"isActive\": true,\n      \"createdAt\": \"2026-10-13T10:00:00.000Z\",\n      \"updatedAt\": \"2026-10-13T10:00:00.000Z\"\n    }\n  ],\n  \"meta\": {\n    \"total\": 1,\n    \"page\": 1,\n    \"limit\": 25,\n    \"totalPages\": 1\n  }\n}"
                 }
               ]
             },
             {
-              "name": "GET /admin/loan-terms - Filtered by agency",
+              "name": "GET /admin/loan-products - Filtered by sectors",
               "request": {
                 "method": "GET",
                 "header": [
@@ -9996,17 +9854,17 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{base_url}}/admin/loan-terms?agency=NPF",
+                  "raw": "{{base_url}}/admin/loan-products?sectors=NPF",
                   "host": [
                     "{{base_url}}"
                   ],
                   "path": [
                     "admin",
-                    "loan-terms"
+                    "loan-products"
                   ],
                   "query": [
                     {
-                      "key": "agency",
+                      "key": "sectors",
                       "value": "NPF"
                     }
                   ]
@@ -10025,37 +9883,12 @@
                     }
                   ],
                   "cookie": [],
-                  "body": "{\n  \"data\": [\n    {\n      \"id\": \"b3c4d5e6-f7a8-4b9c-0d1e-2f3a4b5c6d7e\",\n      \"agency\": \"NPF\",\n      \"tenorMonths\": 6,\n      \"interestRatePercent\": \"5\",\n      \"managementChargeType\": \"PERCENTAGE\",\n      \"managementChargeValue\": \"2\",\n      \"managementChargeApplication\": \"DEDUCT_FROM_DISBURSEMENT\",\n      \"isActive\": true,\n      \"createdAt\": \"2026-09-21T10:00:00.000Z\",\n      \"updatedAt\": \"2026-09-21T10:00:00.000Z\"\n    }\n  ],\n  \"meta\": {\n    \"total\": 1,\n    \"page\": 1,\n    \"limit\": 25,\n    \"totalPages\": 1\n  }\n}",
-                  "originalRequest": {
-                    "method": "GET",
-                    "header": [
-                      {
-                        "key": "Authorization",
-                        "value": "Bearer {{admin_access_token}}"
-                      }
-                    ],
-                    "url": {
-                      "raw": "{{base_url}}/admin/loan-terms?agency=NPF",
-                      "host": [
-                        "{{base_url}}"
-                      ],
-                      "path": [
-                        "admin",
-                        "loan-terms"
-                      ],
-                      "query": [
-                        {
-                          "key": "agency",
-                          "value": "NPF"
-                        }
-                      ]
-                    }
-                  }
+                  "body": "{\n  \"data\": [\n    {\n      \"id\": \"c5d6e7f8-a9b0-4c1d-2e3f-4a5b6c7d8e9f\",\n      \"productName\": \"Standard NPF Loan\",\n      \"productCode\": \"STD-NPF-001\",\n      \"sectors\": [\n        \"NPF\"\n      ],\n      \"minimumAmount\": \"10000\",\n      \"maximumAmount\": \"2000000\",\n      \"minimumTenorMonths\": 1,\n      \"maximumTenorMonths\": 18,\n      \"interestTiers\": [\n        {\n          \"minTenorMonths\": 1,\n          \"maxTenorMonths\": 18,\n          \"interestRatePercent\": 5\n        }\n      ],\n      \"managementChargeType\": \"PERCENTAGE\",\n      \"managementChargeValue\": \"2\",\n      \"managementChargeApplication\": \"DEDUCT_FROM_DISBURSEMENT\",\n      \"minimumServiceMonthsLeft\": null,\n      \"maximumMonthsInService\": null,\n      \"isActive\": true,\n      \"createdAt\": \"2026-10-13T10:00:00.000Z\",\n      \"updatedAt\": \"2026-10-13T10:00:00.000Z\"\n    }\n  ],\n  \"meta\": {\n    \"total\": 1,\n    \"page\": 1,\n    \"limit\": 25,\n    \"totalPages\": 1\n  }\n}"
                 }
               ]
             },
             {
-              "name": "PATCH /admin/loan-terms/:id - Success",
+              "name": "PATCH /admin/loan-products/:id - Success",
               "request": {
                 "method": "PATCH",
                 "header": [
@@ -10073,14 +9906,14 @@
                   "raw": "{\n  \"isActive\": false\n}"
                 },
                 "url": {
-                  "raw": "{{base_url}}/admin/loan-terms/{{loan_term_option_id}}",
+                  "raw": "{{base_url}}/admin/loan-products/{{loan_product_id}}",
                   "host": [
                     "{{base_url}}"
                   ],
                   "path": [
                     "admin",
-                    "loan-terms",
-                    "{{loan_term_option_id}}"
+                    "loan-products",
+                    "{{loan_product_id}}"
                   ]
                 }
               },
@@ -10108,40 +9941,12 @@
                     }
                   ],
                   "cookie": [],
-                  "body": "{\n  \"id\": \"b3c4d5e6-f7a8-4b9c-0d1e-2f3a4b5c6d7e\",\n  \"agency\": \"NPF\",\n  \"tenorMonths\": 6,\n  \"interestRatePercent\": \"5\",\n  \"managementChargeType\": \"PERCENTAGE\",\n  \"managementChargeValue\": \"2\",\n  \"managementChargeApplication\": \"DEDUCT_FROM_DISBURSEMENT\",\n  \"isActive\": false,\n  \"createdAt\": \"2026-09-21T10:00:00.000Z\",\n  \"updatedAt\": \"2026-09-21T10:00:00.000Z\"\n}",
-                  "originalRequest": {
-                    "method": "PATCH",
-                    "header": [
-                      {
-                        "key": "Content-Type",
-                        "value": "application/json"
-                      },
-                      {
-                        "key": "Authorization",
-                        "value": "Bearer {{admin_access_token}}"
-                      }
-                    ],
-                    "body": {
-                      "mode": "raw",
-                      "raw": "{\n  \"isActive\": false\n}"
-                    },
-                    "url": {
-                      "raw": "{{base_url}}/admin/loan-terms/{{loan_term_option_id}}",
-                      "host": [
-                        "{{base_url}}"
-                      ],
-                      "path": [
-                        "admin",
-                        "loan-terms",
-                        "{{loan_term_option_id}}"
-                      ]
-                    }
-                  }
+                  "body": "{\n  \"id\": \"c5d6e7f8-a9b0-4c1d-2e3f-4a5b6c7d8e9f\",\n  \"productName\": \"Standard NPF Loan\",\n  \"productCode\": \"STD-NPF-001\",\n  \"sectors\": [\n    \"NPF\"\n  ],\n  \"minimumAmount\": \"10000\",\n  \"maximumAmount\": \"2000000\",\n  \"minimumTenorMonths\": 1,\n  \"maximumTenorMonths\": 18,\n  \"interestTiers\": [\n    {\n      \"minTenorMonths\": 1,\n      \"maxTenorMonths\": 18,\n      \"interestRatePercent\": 5\n    }\n  ],\n  \"managementChargeType\": \"PERCENTAGE\",\n  \"managementChargeValue\": \"2\",\n  \"managementChargeApplication\": \"DEDUCT_FROM_DISBURSEMENT\",\n  \"minimumServiceMonthsLeft\": null,\n  \"maximumMonthsInService\": null,\n  \"isActive\": false,\n  \"createdAt\": \"2026-10-13T10:00:00.000Z\",\n  \"updatedAt\": \"2026-10-13T10:05:00.000Z\"\n}"
                 }
               ]
             },
             {
-              "name": "PATCH /admin/loan-terms/:id - Not found (404)",
+              "name": "PATCH /admin/loan-products/:id - Not found (404)",
               "request": {
                 "method": "PATCH",
                 "header": [
@@ -10159,13 +9964,13 @@
                   "raw": "{\n  \"isActive\": false\n}"
                 },
                 "url": {
-                  "raw": "{{base_url}}/admin/loan-terms/00000000-0000-0000-0000-000000000000",
+                  "raw": "{{base_url}}/admin/loan-products/00000000-0000-0000-0000-000000000000",
                   "host": [
                     "{{base_url}}"
                   ],
                   "path": [
                     "admin",
-                    "loan-terms",
+                    "loan-products",
                     "00000000-0000-0000-0000-000000000000"
                   ]
                 }
@@ -10183,35 +9988,317 @@
                     }
                   ],
                   "cookie": [],
-                  "body": "{\n  \"statusCode\": 404,\n  \"message\": \"Loan term option not found\",\n  \"error\": \"Not Found\"\n}",
-                  "originalRequest": {
-                    "method": "PATCH",
-                    "header": [
-                      {
-                        "key": "Content-Type",
-                        "value": "application/json"
-                      },
-                      {
-                        "key": "Authorization",
-                        "value": "Bearer {{admin_access_token}}"
-                      }
-                    ],
-                    "body": {
-                      "mode": "raw",
-                      "raw": "{\n  \"isActive\": false\n}"
-                    },
-                    "url": {
-                      "raw": "{{base_url}}/admin/loan-terms/00000000-0000-0000-0000-000000000000",
-                      "host": [
-                        "{{base_url}}"
-                      ],
-                      "path": [
-                        "admin",
-                        "loan-terms",
-                        "00000000-0000-0000-0000-000000000000"
-                      ]
-                    }
+                  "body": "{\n  \"statusCode\": 404,\n  \"message\": \"Loan product not found\",\n  \"error\": \"Not Found\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "GET /admin/loan-products/sectors - Success",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
                   }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/loan-products/sectors",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "loan-products",
+                    "sectors"
+                  ]
+                },
+                "description": "Returns the full set of agencies this system recognizes, for populating a sectors picker when creating/editing a product."
+              },
+              "response": [
+                {
+                  "name": "Success (200)",
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"sectors\": [\n    \"NPF\",\n    \"NSCDC\",\n    \"IMMIGRATION\",\n    \"CORRECTIONAL\",\n    \"CUSTOM\",\n    \"LASG\"\n  ]\n}"
+                }
+              ]
+            },
+            {
+              "name": "GET /admin/loan-products/sectors - Missing permission (403)",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{agent_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/loan-products/sectors",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "loan-products",
+                    "sectors"
+                  ]
+                }
+              },
+              "response": [
+                {
+                  "name": "403 Forbidden",
+                  "status": "Forbidden",
+                  "code": 403,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"statusCode\": 403,\n  \"message\": \"Insufficient permissions\",\n  \"error\": \"Forbidden\"\n}"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Loan Settings",
+          "item": [
+            {
+              "name": "GET /admin/loan-settings - Success",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/loan-settings",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "loan-settings"
+                  ]
+                },
+                "description": "Lazily initialized singleton (created with schema defaults retirementAgeYears=60/maxServiceYears=35 on first read). Requires loan-settings:manage."
+              },
+              "response": [
+                {
+                  "name": "Success (200)",
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"id\": \"e1f2a3b4-c5d6-4e7f-8a9b-0c1d2e3f4a5b\",\n  \"retirementAgeYears\": 60,\n  \"maxServiceYears\": 35,\n  \"updatedAt\": \"2026-10-13T10:00:00.000Z\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "GET /admin/loan-settings - Missing permission (403)",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{agent_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/loan-settings",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "loan-settings"
+                  ]
+                }
+              },
+              "response": [
+                {
+                  "name": "403 Forbidden",
+                  "status": "Forbidden",
+                  "code": 403,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"statusCode\": 403,\n  \"message\": \"Insufficient permissions\",\n  \"error\": \"Forbidden\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "PATCH /admin/loan-settings - Success",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"retirementAgeYears\": 62\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/admin/loan-settings",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "loan-settings"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));",
+                      "pm.test('retirementAgeYears updated', () => pm.expect(pm.response.json().retirementAgeYears).to.eql(62));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Success (200)",
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"id\": \"e1f2a3b4-c5d6-4e7f-8a9b-0c1d2e3f4a5b\",\n  \"retirementAgeYears\": 62,\n  \"maxServiceYears\": 35,\n  \"updatedAt\": \"2026-10-13T10:05:00.000Z\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "PATCH /admin/loan-settings - Validation error (400)",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"retirementAgeYears\": -5\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/admin/loan-settings",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "loan-settings"
+                  ]
+                }
+              },
+              "response": [
+                {
+                  "name": "400 Bad Request",
+                  "status": "Bad Request",
+                  "code": 400,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"statusCode\": 400,\n  \"message\": [\n    \"retirementAgeYears must be a positive number\"\n  ],\n  \"error\": \"Bad Request\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "PATCH /admin/loan-settings - Missing permission (403)",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{agent_access_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"retirementAgeYears\": 62\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/admin/loan-settings",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "loan-settings"
+                  ]
+                }
+              },
+              "response": [
+                {
+                  "name": "403 Forbidden",
+                  "status": "Forbidden",
+                  "code": 403,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"statusCode\": 403,\n  \"message\": \"Insufficient permissions\",\n  \"error\": \"Forbidden\"\n}"
                 }
               ]
             }
@@ -19156,10 +19243,10 @@
           ]
         },
         {
-          "name": "Loan Terms",
+          "name": "Loan Products",
           "item": [
             {
-              "name": "GET /client/loan-terms - Success",
+              "name": "GET /client/loan-products - Success",
               "request": {
                 "method": "GET",
                 "header": [
@@ -19169,13 +19256,13 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{base_url}}/client/loan-terms",
+                  "raw": "{{base_url}}/client/loan-products",
                   "host": [
                     "{{base_url}}"
                   ],
                   "path": [
                     "client",
-                    "loan-terms"
+                    "loan-products"
                   ],
                   "query": [
                     {
@@ -19187,11 +19274,12 @@
                     {
                       "key": "limit",
                       "value": "25",
-                      "description": "Optional. Page size, defaults to 25, hard max 100 (a request above 100 is a 400, not a silent clamp).",
+                      "description": "Optional. Page size, defaults to 25, hard max 100.",
                       "disabled": true
                     }
                   ]
-                }
+                },
+                "description": "Lists active loan products matching the client's own IPPIS agency and service-length eligibility (no amount/tenor filter -- the client hasn't chosen those yet). Each item carries its full interestTiers array."
               },
               "event": [
                 {
@@ -19221,40 +19309,7 @@
                     }
                   ],
                   "cookie": [],
-                  "body": "{\n  \"data\": [\n    {\n      \"id\": \"b3c4d5e6-f7a8-4b9c-0d1e-2f3a4b5c6d7e\",\n      \"agency\": \"NPF\",\n      \"tenorMonths\": 6,\n      \"interestRatePercent\": \"5\",\n      \"managementChargeType\": \"PERCENTAGE\",\n      \"managementChargeValue\": \"2\",\n      \"managementChargeApplication\": \"DEDUCT_FROM_DISBURSEMENT\",\n      \"isActive\": true,\n      \"createdAt\": \"2026-09-21T10:00:00.000Z\",\n      \"updatedAt\": \"2026-09-21T10:00:00.000Z\"\n    }\n  ],\n  \"meta\": {\n    \"total\": 1,\n    \"page\": 1,\n    \"limit\": 25,\n    \"totalPages\": 1\n  }\n}",
-                  "originalRequest": {
-                    "method": "GET",
-                    "header": [
-                      {
-                        "key": "Authorization",
-                        "value": "Bearer {{client_access_token}}"
-                      }
-                    ],
-                    "url": {
-                      "raw": "{{base_url}}/client/loan-terms",
-                      "host": [
-                        "{{base_url}}"
-                      ],
-                      "path": [
-                        "client",
-                        "loan-terms"
-                      ],
-                      "query": [
-                        {
-                          "key": "page",
-                          "value": "1",
-                          "description": "Optional. Page number, defaults to 1.",
-                          "disabled": true
-                        },
-                        {
-                          "key": "limit",
-                          "value": "25",
-                          "description": "Optional. Page size, defaults to 25, hard max 100 (a request above 100 is a 400, not a silent clamp).",
-                          "disabled": true
-                        }
-                      ]
-                    }
-                  }
+                  "body": "{\n  \"data\": [\n    {\n      \"id\": \"c5d6e7f8-a9b0-4c1d-2e3f-4a5b6c7d8e9f\",\n      \"productName\": \"Standard NPF Loan\",\n      \"productCode\": \"STD-NPF-001\",\n      \"sectors\": [\n        \"NPF\"\n      ],\n      \"minimumAmount\": \"10000\",\n      \"maximumAmount\": \"2000000\",\n      \"minimumTenorMonths\": 1,\n      \"maximumTenorMonths\": 18,\n      \"interestTiers\": [\n        {\n          \"minTenorMonths\": 1,\n          \"maxTenorMonths\": 4,\n          \"interestRatePercent\": 3\n        },\n        {\n          \"minTenorMonths\": 6,\n          \"maxTenorMonths\": 12,\n          \"interestRatePercent\": 5\n        },\n        {\n          \"minTenorMonths\": 13,\n          \"maxTenorMonths\": 18,\n          \"interestRatePercent\": 6\n        }\n      ],\n      \"managementChargeType\": \"PERCENTAGE\",\n      \"managementChargeValue\": \"2\",\n      \"managementChargeApplication\": \"DEDUCT_FROM_DISBURSEMENT\",\n      \"minimumServiceMonthsLeft\": null,\n      \"maximumMonthsInService\": null,\n      \"isActive\": true,\n      \"createdAt\": \"2026-10-13T10:00:00.000Z\",\n      \"updatedAt\": \"2026-10-13T10:00:00.000Z\"\n    }\n  ],\n  \"meta\": {\n    \"total\": 1,\n    \"page\": 1,\n    \"limit\": 25,\n    \"totalPages\": 1\n  }\n}"
                 }
               ]
             }
