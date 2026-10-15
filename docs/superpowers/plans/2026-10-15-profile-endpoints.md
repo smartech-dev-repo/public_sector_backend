@@ -354,7 +354,7 @@ describe('AdminService', () => {
 - [ ] **Step 4: Run it to verify it passes**
 
 Run: `npx jest src/admin/admin.service.spec.ts`
-Expected: PASS (8 tests)
+Expected: PASS (7 tests)
 
 - [ ] **Step 5: Rebuild the controller**
 
