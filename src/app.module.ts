@@ -26,6 +26,8 @@ import { LoanProductsModule } from './loan-products/loan-products.module';
 import { LoanSettingsModule } from './loan-settings/loan-settings.module';
 import { AgentEnrollmentModule } from './agent-enrollment/agent-enrollment.module';
 import { AgentClientsModule } from './agent-clients/agent-clients.module';
+import { AgentProfileModule } from './agent-profile/agent-profile.module';
+import { ClientProfileModule } from './client-profile/client-profile.module';
 import { AdminAgentReviewModule } from './admin-agent-review/admin-agent-review.module';
 import { ReconciliationModule } from './reconciliation/reconciliation.module';
 import { AdminCatalogModule } from './admin-catalog/admin-catalog.module';
@@ -105,6 +107,8 @@ import { HealthModule } from './health/health.module';
     LoanSettingsModule,
     AgentEnrollmentModule,
     AgentClientsModule,
+    AgentProfileModule,
+    ClientProfileModule,
     AdminAgentReviewModule,
     ReconciliationModule,
     AdminCatalogModule,
