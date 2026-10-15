@@ -14,7 +14,8 @@ and its own Session sub-folder using that group's own tokens), plus a
 standalone Health check:
 
 - **Health** — the one endpoint that isn't tied to any principal type.
-- **Admin** — Auth, Session (admin tokens), Reference (`/admin/me`),
+- **Admin** — Auth, Session (admin tokens), Profile (`/admin/me` — resolved
+  role/department, name self-update, profile-image upload/delete),
   **Permissions** (full CRUD, blocked-delete-if-in-use), **Roles** (full
   CRUD, SUPER_ADMIN protections, role↔permission assignment),
   **Departments** (full CRUD, blocked-delete-if-assigned-to-a-role,
@@ -39,16 +40,18 @@ standalone Health check:
   approve/reject/resend-credentials them, gated by `agents:read`/
   `agents:review` — it lives under Admin, not Agent, because an Admin is
   the one authenticating to call it).
-- **Agent** — Auth, this agent's own Session (agent tokens), and
-  **Enrollment** (the public `POST /agents/register` and the
-  `POST /auth/agent/change-password` an agent uses to clear a
-  `mustChangePassword: true` JWT after being approved).
+- **Agent** — Auth, this agent's own Session (agent tokens), Profile
+  (`GET /agent/me`, read-only), and **Enrollment** (the public
+  `POST /agents/register` and the `POST /auth/agent/change-password` an
+  agent uses to clear a `mustChangePassword: true` JWT after being
+  approved).
 - **Client** — Auth (phone + OTP), this client's own Session (client
-  tokens), **Onboarding** (IPPIS number linking, BVN/NIN identity
-  submission, and selfie face-match, walking the client from
-  `PHONE_VERIFIED` to `Client.status = VERIFIED`/`MANUAL_REVIEW`), and
-  **Loan Requests** (a `VERIFIED` client requesting a loan, confirming via
-  the inbound SMS webhook, resend, and listing their own requests). In this
+  tokens), Profile (`GET /client/me`, read-only), **Onboarding** (IPPIS
+  number linking, BVN/NIN identity submission, and selfie face-match,
+  walking the client from `PHONE_VERIFIED` to `Client.status =
+  VERIFIED`/`MANUAL_REVIEW`), and **Loan Requests** (a `VERIFIED` client
+  requesting a loan, confirming via the inbound SMS webhook, resend, and
+  listing their own requests). In this
   codebase an IPPIS civil servant is onboarded and logs in *as* a Client —
   see `docs/specs/2026-09-09-public-sector-backend-spec.md`.
 
