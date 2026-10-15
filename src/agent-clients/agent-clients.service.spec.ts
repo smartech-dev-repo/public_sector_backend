@@ -44,6 +44,54 @@ describe('AgentClientsService', () => {
       );
     });
 
+    it('resolves ippisRecord and reviewedByAdmin, narrowing ippisRecord to the public-safe subset', async () => {
+      prisma.client.findMany.mockResolvedValue([
+        {
+          id: 'c1',
+          onboarding: {
+            reviewedByAdmin: { id: 'admin-1', fullName: 'Admin One', email: 'admin1@example.com' },
+            ippisRecord: {
+              agency: 'NPF',
+              staffId: 'S1',
+              employeeName: 'Jane Doe',
+              employeeStatus: 'ACTIVE',
+              hireDate: null,
+              department: 'IT',
+              grade: 'GL07',
+              bankName: 'GTBank',
+              accountNumber: '0123456789',
+              bvn: '12345678901',
+              salary: 500000,
+            },
+          },
+        },
+      ]);
+      prisma.client.count.mockResolvedValue(1);
+
+      const result = await service.listMyClients('agent-1');
+
+      expect(prisma.client.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          include: {
+            onboarding: {
+              include: {
+                ippisRecord: true,
+                reviewedByAdmin: { select: { id: true, fullName: true, email: true } },
+              },
+            },
+          },
+        }),
+      );
+      expect(result.data[0].onboarding.reviewedByAdmin).toEqual({
+        id: 'admin-1',
+        fullName: 'Admin One',
+        email: 'admin1@example.com',
+      });
+      expect(result.data[0].onboarding.ippisRecord).not.toHaveProperty('bvn');
+      expect(result.data[0].onboarding.ippisRecord).not.toHaveProperty('salary');
+      expect(result.data[0].onboarding.ippisRecord.employeeName).toBe('Jane Doe');
+    });
+
     it('computes skip/take from page and limit', async () => {
       prisma.client.findMany.mockResolvedValue([]);
       prisma.client.count.mockResolvedValue(0);

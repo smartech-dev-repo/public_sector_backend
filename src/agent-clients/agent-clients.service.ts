@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { ClientStatus, Prisma } from '../generated/prisma/client';
 import { buildPaginatedResult } from '../common/pagination/paginated-result';
+import { narrowIppisRecord } from '../client-onboarding/narrow-ippis-record.util';
 
 export interface ListMyClientsFilters {
   status?: ClientStatus;
@@ -33,7 +34,14 @@ export class AgentClientsService {
     const [data, total] = await Promise.all([
       this.prisma.client.findMany({
         where,
-        include: { onboarding: true },
+        include: {
+          onboarding: {
+            include: {
+              ippisRecord: true,
+              reviewedByAdmin: { select: { id: true, fullName: true, email: true } },
+            },
+          },
+        },
         orderBy: { createdAt: 'desc' },
         skip: (page - 1) * limit,
         take: limit,
@@ -41,6 +49,16 @@ export class AgentClientsService {
       this.prisma.client.count({ where }),
     ]);
 
-    return buildPaginatedResult(data, total, page, limit);
+    return buildPaginatedResult(
+      data.map((client) => ({
+        ...client,
+        onboarding: client.onboarding
+          ? { ...client.onboarding, ippisRecord: narrowIppisRecord(client.onboarding.ippisRecord) }
+          : null,
+      })),
+      total,
+      page,
+      limit,
+    );
   }
 }

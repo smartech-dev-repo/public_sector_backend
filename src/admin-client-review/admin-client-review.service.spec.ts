@@ -37,7 +37,17 @@ describe('AdminClientReviewService', () => {
       expect(prisma.client.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: { status: undefined, phone: undefined, createdAt: undefined, onboarding: undefined },
-          include: { onboarding: true },
+          include: {
+            createdByAdmin: { select: { id: true, fullName: true, email: true } },
+            onboarding: {
+              include: {
+                ippisRecord: true,
+                reviewedByAdmin: { select: { id: true, fullName: true, email: true } },
+                onboardedByAdmin: { select: { id: true, fullName: true, email: true } },
+                onboardedByAgent: { select: { id: true, fullName: true, email: true } },
+              },
+            },
+          },
           skip: 0,
           take: 25,
         }),
@@ -91,6 +101,56 @@ describe('AdminClientReviewService', () => {
         'ADMIN',
         null,
       ]);
+    });
+
+    it('resolves the onboarding relations (ippisRecord, onboardedByAgent) and createdByAdmin, narrowing ippisRecord the same way findById does', async () => {
+      prisma.client.findMany.mockResolvedValue([
+        {
+          id: 'c1',
+          createdByAdmin: { id: 'admin-1', fullName: 'Admin One', email: 'admin1@example.com' },
+          onboarding: {
+            onboardedById: null,
+            onboardedByAgentId: 'agent-1',
+            onboardedByAgent: { id: 'agent-1', fullName: 'Agent One', email: 'agent1@example.com' },
+            ippisRecord: {
+              agency: 'NPF',
+              staffId: 'S1',
+              employeeName: 'Jane Doe',
+              employeeStatus: 'ACTIVE',
+              hireDate: null,
+              department: 'IT',
+              grade: 'GL07',
+              bankName: 'GTBank',
+              accountNumber: '0123456789',
+              bvn: '12345678901',
+              salary: 500000,
+            },
+          },
+        },
+      ]);
+      prisma.client.count.mockResolvedValue(1);
+
+      const result = await service.list();
+
+      expect(result.data[0].createdByAdmin).toEqual({ id: 'admin-1', fullName: 'Admin One', email: 'admin1@example.com' });
+      expect(result.data[0].onboarding.onboardedByAgent).toEqual({
+        id: 'agent-1',
+        fullName: 'Agent One',
+        email: 'agent1@example.com',
+      });
+      expect(result.data[0].onboarding.ippisRecord).toEqual({
+        agency: 'NPF',
+        staffId: 'S1',
+        employeeName: 'Jane Doe',
+        employeeStatus: 'ACTIVE',
+        hireDate: null,
+        department: 'IT',
+        grade: 'GL07',
+        bankName: 'GTBank',
+        accountNumber: '0123456789',
+      });
+      expect(result.data[0].onboarding.ippisRecord).not.toHaveProperty('bvn');
+      expect(result.data[0].onboarding.ippisRecord).not.toHaveProperty('salary');
     });
 
     it('translates the onboardingSource filter into the matching where clause', async () => {

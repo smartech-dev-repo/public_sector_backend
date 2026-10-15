@@ -6,6 +6,7 @@ import { computeLengthOfService } from '../client-onboarding/length-of-service.u
 import { FILE_STORAGE_PROVIDER, FileStorageProvider } from '../file-storage/file-storage-provider.interface';
 import { buildPaginatedResult } from '../common/pagination/paginated-result';
 import { deriveOnboardingSource, OnboardingSource } from '../client-onboarding/onboarding-source.util';
+import { narrowIppisRecord } from '../client-onboarding/narrow-ippis-record.util';
 
 interface FailureReasons {
   identityVerified?: boolean;
@@ -46,7 +47,17 @@ export class AdminClientReviewService {
     const [data, total] = await Promise.all([
       this.prisma.client.findMany({
         where,
-        include: { onboarding: true },
+        include: {
+          createdByAdmin: { select: { id: true, fullName: true, email: true } },
+          onboarding: {
+            include: {
+              ippisRecord: true,
+              reviewedByAdmin: { select: { id: true, fullName: true, email: true } },
+              onboardedByAdmin: { select: { id: true, fullName: true, email: true } },
+              onboardedByAgent: { select: { id: true, fullName: true, email: true } },
+            },
+          },
+        },
         orderBy: { createdAt: 'desc' },
         skip: (page - 1) * limit,
         take: limit,
@@ -55,7 +66,13 @@ export class AdminClientReviewService {
     ]);
 
     return buildPaginatedResult(
-      data.map((client) => ({ ...client, onboardingSource: deriveOnboardingSource(client.onboarding) })),
+      data.map((client) => ({
+        ...client,
+        onboardingSource: deriveOnboardingSource(client.onboarding),
+        onboarding: client.onboarding
+          ? { ...client.onboarding, ippisRecord: narrowIppisRecord(client.onboarding.ippisRecord) }
+          : null,
+      })),
       total,
       page,
       limit,
@@ -98,20 +115,7 @@ export class AdminClientReviewService {
         })),
       );
       const lengthOfService = computeLengthOfService(client.onboarding.ippisRecord?.hireDate ?? null);
-
-      const ippisRecord = client.onboarding.ippisRecord
-        ? {
-            agency: client.onboarding.ippisRecord.agency,
-            staffId: client.onboarding.ippisRecord.staffId,
-            employeeName: client.onboarding.ippisRecord.employeeName,
-            employeeStatus: client.onboarding.ippisRecord.employeeStatus,
-            hireDate: client.onboarding.ippisRecord.hireDate,
-            department: client.onboarding.ippisRecord.department,
-            grade: client.onboarding.ippisRecord.grade,
-            bankName: client.onboarding.ippisRecord.bankName,
-            accountNumber: client.onboarding.ippisRecord.accountNumber,
-          }
-        : undefined;
+      const ippisRecord = narrowIppisRecord(client.onboarding.ippisRecord);
 
       const bvnSelfieUrl = client.onboarding.bvnSelfie
         ? await this.fileStorageProvider.getSignedDownloadUrl(client.onboarding.bvnSelfie)
