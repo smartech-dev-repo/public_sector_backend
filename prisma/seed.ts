@@ -34,6 +34,9 @@ const BOOTSTRAP_PERMISSIONS: Array<{ key: string; description: string }> = [
   { key: 'agents:onboarding-access:manage', description: "Grant or revoke an agent's ability to onboard clients" },
   { key: 'clients:analytics:read', description: 'View aggregate client onboarding and activity analytics' },
   { key: 'agents:analytics:read', description: 'View aggregate agent-application analytics' },
+  { key: 'agents:recruitment:read', description: 'View in-progress and completed agent recruitment applications' },
+  { key: 'agents:recruitment:analytics:read', description: 'View agent recruitment funnel analytics' },
+  { key: 'agents:recruitment:manage', description: 'Delete an abandoned agent recruitment application' },
 ];
 
 async function main() {
