@@ -35,16 +35,28 @@ standalone Health check:
   agency-filterable listings over the underlying ingested tables — closely
   related to Documents but its own controllers), **Client Review** (list/inspect
   clients stuck at `Client.status = MANUAL_REVIEW` and approve or retry
-  them, gated by `clients:review`), and **Review** (agents) (list/inspect
-  Agent submissions stuck at `Agent.status = PENDING_REVIEW` and
-  approve/reject/resend-credentials them, gated by `agents:read`/
-  `agents:review` — it lives under Admin, not Agent, because an Admin is
-  the one authenticating to call it).
+  them, gated by `clients:review`; the list also takes an `agentId` filter
+  to see one agent's onboarded clients, plus a `GET /admin/clients/analytics`
+  summary), **Review** (agents) (list/inspect Agent submissions stuck at
+  `Agent.status = PENDING_REVIEW` and approve/reject/resend-credentials
+  them, gated by `agents:read`/`agents:review`, plus a
+  `GET /admin/agents/analytics` summary gated by `agents:analytics:read`
+  — it lives under Admin, not Agent, because an Admin is the one
+  authenticating to call it), and **Agent Recruitment Applications**
+  (`GET`/`GET .../analytics`/`GET .../:id`/`DELETE .../:id` over the
+  `AgentApplication` draft table — applicants who verified their email or
+  started the recruitment form but haven't finished `POST
+  /agents/recruitment/submit` yet, otherwise invisible anywhere else;
+  gated by `agents:recruitment:read`/`:analytics:read`/`:manage`; mounted
+  at a path disjoint from `admin/agents/:id` on purpose, so it never
+  competes with that route for match order).
 - **Agent** — Auth, this agent's own Session (agent tokens), Profile
-  (`GET /agent/me`, read-only), and **Enrollment** (the public
-  `POST /agents/register` and the `POST /auth/agent/change-password` an
-  agent uses to clear a `mustChangePassword: true` JWT after being
-  approved).
+  (`GET /agent/me`, read-only), and **Recruitment** (the public,
+  multi-step `agents/recruitment/*` flow — email verification by code,
+  NIN self-check, resumable status, and final submission, each gated by
+  a short-lived application token issued after email confirmation — plus
+  the `POST /auth/agent/change-password` an agent uses to clear a
+  `mustChangePassword: true` JWT after being approved).
 - **Client** — Auth (phone + OTP), this client's own Session (client
   tokens), Profile (`GET /client/me`, read-only), **Onboarding** (IPPIS
   number linking, BVN/NIN identity submission, and selfie face-match,
