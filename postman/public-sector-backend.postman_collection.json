@@ -221,6 +221,18 @@
     {
       "key": "agent_onboarding_client_id",
       "value": ""
+    },
+    {
+      "key": "agent_recruitment_email",
+      "value": "new.agent.applicant@example.com"
+    },
+    {
+      "key": "agent_recruitment_email_code",
+      "value": ""
+    },
+    {
+      "key": "agent_application_token",
+      "value": ""
     }
   ],
   "item": [
@@ -14297,7 +14309,7 @@
                     "{{target_agent_id}}"
                   ]
                 },
-                "description": "Run 'GET /admin/agents - Success' above first (or register a new agent via Agent > Enrollment) to populate target_agent_id."
+                "description": "Run 'GET /admin/agents - Success' above first (or create a new agent via Agent > Recruitment (complete the request-code / confirm-code / submit flow)) to populate target_agent_id."
               },
               "event": [
                 {
@@ -14331,7 +14343,7 @@
                         "{{target_agent_id}}"
                       ]
                     },
-                    "description": "Run 'GET /admin/agents - Success' above first (or register a new agent via Agent > Enrollment) to populate target_agent_id."
+                    "description": "Run 'GET /admin/agents - Success' above first (or create a new agent via Agent > Recruitment (complete the request-code / confirm-code / submit flow)) to populate target_agent_id."
                   },
                   "status": "OK",
                   "code": 200,
@@ -14344,6 +14356,113 @@
                   ],
                   "cookie": [],
                   "body": "{\n  \"id\": \"b7c1a2d3-4e5f-4a6b-8c9d-0e1f2a3b4c5d\",\n  \"email\": \"priscilla.agent@example.com\",\n  \"phone\": \"+2348012345678\",\n  \"fullName\": \"Priscilla Okafor\",\n  \"address\": \"14 Adeyemi Street, Ikeja, Lagos\",\n  \"passwordHash\": null,\n  \"status\": \"PENDING_REVIEW\",\n  \"cvKey\": \"agent-documents/b7c1a2d3-4e5f-4a6b-8c9d-0e1f2a3b4c5d/cv-1.pdf\",\n  \"supportingDocumentKeys\": [],\n  \"mustChangePassword\": true,\n  \"hasLoggedIn\": false,\n  \"reviewedBy\": null,\n  \"reviewedAt\": null,\n  \"rejectionReason\": null,\n  \"createdAt\": \"2026-09-17T09:00:00.000Z\",\n  \"updatedAt\": \"2026-09-17T09:05:00.000Z\",\n  \"reviewedByAdmin\": null\n}"
+                }
+              ]
+            },
+            {
+              "name": "GET /admin/agents/analytics - Success",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/agents/analytics",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "agents",
+                    "analytics"
+                  ],
+                  "query": [
+                    {
+                      "key": "createdFrom",
+                      "value": "2026-01-01",
+                      "description": "Optional. ISO8601 date. Filters agents whose createdAt >= this value.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "createdTo",
+                      "value": "2026-12-31",
+                      "description": "Optional. ISO8601 date. Filters agents whose createdAt <= this value.",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "description": "Summary of agent-application activity: total applications, counts by AgentStatus, a per-reviewer-admin leaderboard (approved/rejected counts), and activity (average review turnaround in hours, total approved, total rejected). Requires agents:analytics:read."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));",
+                      "pm.test('has the expected top-level shape', () => {",
+                      "  const body = pm.response.json();",
+                      "  pm.expect(body).to.have.all.keys('totalApplications', 'byStatus', 'reviewerLeaderboard', 'activity');",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Success (200)",
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"totalApplications\": 42,\n  \"byStatus\": {\n    \"PENDING_REVIEW\": 10,\n    \"APPROVED\": 25,\n    \"REJECTED\": 7\n  },\n  \"reviewerLeaderboard\": [\n    {\n      \"adminId\": \"a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d\",\n      \"adminName\": \"Chinedu Okafor\",\n      \"approvedCount\": 15,\n      \"rejectedCount\": 4\n    },\n    {\n      \"adminId\": \"d1e2f3a4-b5c6-4d7e-8f9a-0b1c2d3e4f5a\",\n      \"adminName\": \"Amaka Nwosu\",\n      \"approvedCount\": 10,\n      \"rejectedCount\": 3\n    }\n  ],\n  \"activity\": {\n    \"averageReviewTimeHours\": 18.5,\n    \"totalApproved\": 25,\n    \"totalRejected\": 7\n  }\n}"
+                }
+              ]
+            },
+            {
+              "name": "GET /admin/agents/analytics - Missing permission (403)",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{agent_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/agents/analytics",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "agents",
+                    "analytics"
+                  ]
+                }
+              },
+              "response": [
+                {
+                  "name": "403 Forbidden",
+                  "status": "Forbidden",
+                  "code": 403,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"statusCode\": 403,\n  \"message\": \"Insufficient permissions\",\n  \"error\": \"Forbidden\"\n}"
                 }
               ]
             },
@@ -14524,7 +14643,7 @@
                     "reject"
                   ]
                 },
-                "description": "Needs a PENDING_REVIEW agent, so this uses a different agent than the one approved above — register another one via Agent > Enrollment > POST /agents/register - Success (that overwrites target_agent_id) before running this, or substitute any real PENDING_REVIEW agent id in the URL."
+                "description": "Needs a PENDING_REVIEW agent, so this uses a different agent than the one approved above — create another one via Agent > Recruitment > POST /agents/recruitment/submit - Success (that overwrites target_agent_id) before running this, or substitute any real PENDING_REVIEW agent id in the URL. As of the agent-recruitment work, a successful reject also emails the applicant (mock console provider) that their application was not approved, including the given reason — no change to this endpoint's request/response shape."
               },
               "event": [
                 {
@@ -14567,7 +14686,7 @@
                         "reject"
                       ]
                     },
-                    "description": "Needs a PENDING_REVIEW agent, so this uses a different agent than the one approved above — register another one via Agent > Enrollment > POST /agents/register - Success (that overwrites target_agent_id) before running this, or substitute any real PENDING_REVIEW agent id in the URL."
+                    "description": "Needs a PENDING_REVIEW agent, so this uses a different agent than the one approved above — create another one via Agent > Recruitment > POST /agents/recruitment/submit - Success (that overwrites target_agent_id) before running this, or substitute any real PENDING_REVIEW agent id in the URL. As of the agent-recruitment work, a successful reject also emails the applicant (mock console provider) that their application was not approved, including the given reason — no change to this endpoint's request/response shape."
                   },
                   "status": "OK",
                   "code": 200,
@@ -14906,7 +15025,7 @@
                     "onboarding-access"
                   ]
                 },
-                "description": "Needs a PENDING_REVIEW (or REJECTED) agent — register a fresh one via Agent > Enrollment > POST /agents/register - Success (that overwrites target_agent_id) before running this, since the agent approved earlier in this folder is already APPROVED."
+                "description": "Needs a PENDING_REVIEW (or REJECTED) agent — create a fresh one via Agent > Recruitment > POST /agents/recruitment/submit - Success (that overwrites target_agent_id) before running this, since the agent approved earlier in this folder is already APPROVED."
               },
               "event": [
                 {
@@ -16903,118 +17022,78 @@
           ]
         },
         {
-          "name": "Enrollment",
+          "name": "Recruitment",
           "item": [
             {
-              "name": "POST /agents/register - Success",
+              "name": "POST /agents/recruitment/email/request-code - Success",
               "request": {
                 "method": "POST",
-                "header": [],
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
                 "body": {
-                  "mode": "formdata",
-                  "formdata": [
-                    {
-                      "key": "fullName",
-                      "value": "Priscilla Okafor",
-                      "type": "text"
-                    },
-                    {
-                      "key": "email",
-                      "value": "priscilla.agent@example.com",
-                      "type": "text"
-                    },
-                    {
-                      "key": "phone",
-                      "value": "+2348012345678",
-                      "type": "text"
-                    },
-                    {
-                      "key": "address",
-                      "value": "14 Adeyemi Street, Ikeja, Lagos",
-                      "type": "text"
-                    },
-                    {
-                      "key": "cv",
-                      "type": "file",
-                      "src": []
-                    }
-                  ]
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"{{agent_recruitment_email}}\"\n}"
                 },
                 "url": {
-                  "raw": "{{base_url}}/agents/register",
+                  "raw": "{{base_url}}/agents/recruitment/email/request-code",
                   "host": [
                     "{{base_url}}"
                   ],
                   "path": [
                     "agents",
-                    "register"
+                    "recruitment",
+                    "email",
+                    "request-code"
                   ]
                 },
-                "description": "Public endpoint, multipart form-data. Attach any file as the CV (not validated by file type) and optionally up to 5 files under supportingDocuments. Sets target_agent_id from the response for the Admin > Review requests below."
+                "description": "Public endpoint, rate-limited to 5 requests per 15 minutes. Upserts an AgentApplication draft (status EMAIL_PENDING) and emails (mock console provider) a numeric verification code, valid for 10 minutes (EMAIL_CODE_LENGTH, default 6 digits, configurable 6-8). Re-running this with the same email just rotates the code. Check the running server's console log for a line like 'Email to ... — Your agent application verification code\\nYour verification code is: <code>', then paste it into agent_recruitment_email_code before running 'POST /agents/recruitment/email/confirm-code - Success'."
               },
               "event": [
                 {
                   "listen": "test",
                   "script": {
                     "exec": [
-                      "pm.test('status 201', () => pm.response.to.have.status(201));",
-                      "const json = pm.response.json();",
-                      "pm.test('status is PENDING_REVIEW', () => pm.expect(json.status).to.eql('PENDING_REVIEW'));",
-                      "pm.collectionVariables.set('target_agent_id', json.id);"
+                      "pm.test('status 200', () => pm.response.to.have.status(200));",
+                      "pm.test('reports sent', () => { pm.expect(pm.response.json()).to.eql({ sent: true }); });"
                     ]
                   }
                 }
               ],
               "response": [
                 {
-                  "name": "Success - agent created, pending review (201)",
+                  "name": "OK",
                   "originalRequest": {
                     "method": "POST",
-                    "header": [],
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
                     "body": {
-                      "mode": "formdata",
-                      "formdata": [
-                        {
-                          "key": "fullName",
-                          "value": "Priscilla Okafor",
-                          "type": "text"
-                        },
-                        {
-                          "key": "email",
-                          "value": "priscilla.agent@example.com",
-                          "type": "text"
-                        },
-                        {
-                          "key": "phone",
-                          "value": "+2348012345678",
-                          "type": "text"
-                        },
-                        {
-                          "key": "address",
-                          "value": "14 Adeyemi Street, Ikeja, Lagos",
-                          "type": "text"
-                        },
-                        {
-                          "key": "cv",
-                          "type": "file",
-                          "src": []
-                        }
-                      ]
+                      "mode": "raw",
+                      "raw": "{\n  \"email\": \"{{agent_recruitment_email}}\"\n}"
                     },
                     "url": {
-                      "raw": "{{base_url}}/agents/register",
+                      "raw": "{{base_url}}/agents/recruitment/email/request-code",
                       "host": [
                         "{{base_url}}"
                       ],
                       "path": [
                         "agents",
-                        "register"
+                        "recruitment",
+                        "email",
+                        "request-code"
                       ]
                     },
-                    "description": "Public endpoint, multipart form-data. Attach any file as the CV (not validated by file type) and optionally up to 5 files under supportingDocuments. Sets target_agent_id from the response for the Admin > Review requests below."
+                    "description": "Public endpoint, rate-limited to 5 requests per 15 minutes. Upserts an AgentApplication draft (status EMAIL_PENDING) and emails (mock console provider) a numeric verification code, valid for 10 minutes (EMAIL_CODE_LENGTH, default 6 digits, configurable 6-8). Re-running this with the same email just rotates the code. Check the running server's console log for a line like 'Email to ... — Your agent application verification code\\nYour verification code is: <code>', then paste it into agent_recruitment_email_code before running 'POST /agents/recruitment/email/confirm-code - Success'."
                   },
-                  "status": "Created",
-                  "code": 201,
+                  "status": "OK",
+                  "code": 200,
                   "_postman_previewlanguage": "json",
                   "header": [
                     {
@@ -17023,56 +17102,116 @@
                     }
                   ],
                   "cookie": [],
-                  "body": "{\n  \"id\": \"b7c1a2d3-4e5f-4a6b-8c9d-0e1f2a3b4c5d\",\n  \"email\": \"priscilla.agent@example.com\",\n  \"phone\": \"+2348012345678\",\n  \"fullName\": \"Priscilla Okafor\",\n  \"address\": \"14 Adeyemi Street, Ikeja, Lagos\",\n  \"passwordHash\": null,\n  \"status\": \"PENDING_REVIEW\",\n  \"cvKey\": \"agent-documents/b7c1a2d3-4e5f-4a6b-8c9d-0e1f2a3b4c5d/cv-3f4a5b6c-7d8e-49f0-a1b2-c3d4e5f6a7b8.pdf\",\n  \"supportingDocumentKeys\": [],\n  \"mustChangePassword\": true,\n  \"hasLoggedIn\": false,\n  \"reviewedBy\": null,\n  \"reviewedAt\": null,\n  \"rejectionReason\": null,\n  \"createdAt\": \"2026-09-17T09:00:00.000Z\",\n  \"updatedAt\": \"2026-09-17T09:05:00.000Z\"\n}"
+                  "body": "{\n  \"sent\": true\n}"
                 }
               ]
             },
             {
-              "name": "POST /agents/register - Duplicate email (409)",
+              "name": "POST /agents/recruitment/email/request-code - Validation error (400)",
               "request": {
                 "method": "POST",
-                "header": [],
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
                 "body": {
-                  "mode": "formdata",
-                  "formdata": [
-                    {
-                      "key": "fullName",
-                      "value": "Priscilla Okafor",
-                      "type": "text"
-                    },
-                    {
-                      "key": "email",
-                      "value": "priscilla.agent@example.com",
-                      "type": "text"
-                    },
-                    {
-                      "key": "phone",
-                      "value": "+2348012345678",
-                      "type": "text"
-                    },
-                    {
-                      "key": "address",
-                      "value": "14 Adeyemi Street, Ikeja, Lagos",
-                      "type": "text"
-                    },
-                    {
-                      "key": "cv",
-                      "type": "file",
-                      "src": []
-                    }
-                  ]
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"not-an-email\"\n}"
                 },
                 "url": {
-                  "raw": "{{base_url}}/agents/register",
+                  "raw": "{{base_url}}/agents/recruitment/email/request-code",
                   "host": [
                     "{{base_url}}"
                   ],
                   "path": [
                     "agents",
-                    "register"
+                    "recruitment",
+                    "email",
+                    "request-code"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 400', () => pm.response.to.have.status(400));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Bad Request - invalid email (400)",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"email\": \"not-an-email\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/agents/recruitment/email/request-code",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "agents",
+                        "recruitment",
+                        "email",
+                        "request-code"
+                      ]
+                    }
+                  },
+                  "status": "Bad Request",
+                  "code": 400,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"statusCode\": 400,\n  \"message\": [\n    \"email must be an email\"\n  ],\n  \"error\": \"Bad Request\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "POST /agents/recruitment/email/request-code - Duplicate email (409)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"{{agent_email}}\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/agents/recruitment/email/request-code",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "agents",
+                    "recruitment",
+                    "email",
+                    "request-code"
                   ]
                 },
-                "description": "Run 'POST /agents/register - Success' above first so this email is already registered."
+                "description": "agent_email is a seeded, already-APPROVED Agent (used elsewhere in this collection for the Agent > Auth/Session requests) — requestCode only checks for a collision against the real Agent table (not AgentApplication), so this always 409s regardless of any in-progress application."
               },
               "event": [
                 {
@@ -17086,51 +17225,32 @@
               ],
               "response": [
                 {
-                  "name": "Conflict - email already registered (409)",
+                  "name": "Conflict - agent already exists (409)",
                   "originalRequest": {
                     "method": "POST",
-                    "header": [],
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
                     "body": {
-                      "mode": "formdata",
-                      "formdata": [
-                        {
-                          "key": "fullName",
-                          "value": "Priscilla Okafor",
-                          "type": "text"
-                        },
-                        {
-                          "key": "email",
-                          "value": "priscilla.agent@example.com",
-                          "type": "text"
-                        },
-                        {
-                          "key": "phone",
-                          "value": "+2348012345678",
-                          "type": "text"
-                        },
-                        {
-                          "key": "address",
-                          "value": "14 Adeyemi Street, Ikeja, Lagos",
-                          "type": "text"
-                        },
-                        {
-                          "key": "cv",
-                          "type": "file",
-                          "src": []
-                        }
-                      ]
+                      "mode": "raw",
+                      "raw": "{\n  \"email\": \"{{agent_email}}\"\n}"
                     },
                     "url": {
-                      "raw": "{{base_url}}/agents/register",
+                      "raw": "{{base_url}}/agents/recruitment/email/request-code",
                       "host": [
                         "{{base_url}}"
                       ],
                       "path": [
                         "agents",
-                        "register"
+                        "recruitment",
+                        "email",
+                        "request-code"
                       ]
                     },
-                    "description": "Run 'POST /agents/register - Success' above first so this email is already registered."
+                    "description": "agent_email is a seeded, already-APPROVED Agent (used elsewhere in this collection for the Agent > Auth/Session requests) — requestCode only checks for a collision against the real Agent table (not AgentApplication), so this always 409s regardless of any in-progress application."
                   },
                   "status": "Conflict",
                   "code": 409,
@@ -17142,51 +17262,1129 @@
                     }
                   ],
                   "cookie": [],
-                  "body": "{\n  \"statusCode\": 409,\n  \"message\": \"Email already registered\",\n  \"error\": \"Conflict\"\n}"
+                  "body": "{\n  \"statusCode\": 409,\n  \"message\": \"An agent application with this email already exists\",\n  \"error\": \"Conflict\"\n}"
                 }
               ]
             },
             {
-              "name": "POST /agents/register - Missing cv (400)",
+              "name": "POST /agents/recruitment/email/confirm-code - Success",
               "request": {
                 "method": "POST",
-                "header": [],
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
                 "body": {
-                  "mode": "formdata",
-                  "formdata": [
-                    {
-                      "key": "fullName",
-                      "value": "No CV Agent",
-                      "type": "text"
-                    },
-                    {
-                      "key": "email",
-                      "value": "missing.cv.agent@example.com",
-                      "type": "text"
-                    },
-                    {
-                      "key": "phone",
-                      "value": "+2348012345680",
-                      "type": "text"
-                    },
-                    {
-                      "key": "address",
-                      "value": "1 Missing CV Way, Abuja",
-                      "type": "text"
-                    }
-                  ]
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"{{agent_recruitment_email}}\",\n  \"code\": \"{{agent_recruitment_email_code}}\"\n}"
                 },
                 "url": {
-                  "raw": "{{base_url}}/agents/register",
+                  "raw": "{{base_url}}/agents/recruitment/email/confirm-code",
                   "host": [
                     "{{base_url}}"
                   ],
                   "path": [
                     "agents",
-                    "register"
+                    "recruitment",
+                    "email",
+                    "confirm-code"
                   ]
                 },
-                "description": "No cv file field attached, so the controller rejects it before any DTO validation of the other fields."
+                "description": "Requires agent_recruitment_email_code to be set from the server console log after running 'POST /agents/recruitment/email/request-code - Success' above — it's never captured automatically by this collection. On success, marks the application EMAIL_VERIFIED (first time only) and issues a short-lived (45-min) applicationToken, signed with its own secret (JWT_AGENT_APPLICATION_SECRET), that gates every other /agents/recruitment/* route. Captures it into agent_application_token for the requests below."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 200 or 401 (401 if agent_recruitment_email_code was not set from server logs)', () => {",
+                      "  pm.expect([200, 401]).to.include(pm.response.code);",
+                      "});",
+                      "if (pm.response.code === 200) {",
+                      "  const json = pm.response.json();",
+                      "  pm.test('returns applicationToken', () => pm.expect(json.applicationToken).to.be.a('string'));",
+                      "  pm.collectionVariables.set('agent_application_token', json.applicationToken);",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "OK",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"email\": \"{{agent_recruitment_email}}\",\n  \"code\": \"{{agent_recruitment_email_code}}\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/agents/recruitment/email/confirm-code",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "agents",
+                        "recruitment",
+                        "email",
+                        "confirm-code"
+                      ]
+                    },
+                    "description": "Requires agent_recruitment_email_code to be set from the server console log after running 'POST /agents/recruitment/email/request-code - Success' above — it's never captured automatically by this collection. On success, marks the application EMAIL_VERIFIED (first time only) and issues a short-lived (45-min) applicationToken, signed with its own secret (JWT_AGENT_APPLICATION_SECRET), that gates every other /agents/recruitment/* route. Captures it into agent_application_token for the requests below."
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"applicationToken\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI0ZjNlMmQxYy1iYTA5LTQ4NzYtOTU0My0yMTBmZWRjYmE5ODcifQ.fake-signature-do-not-use\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "POST /agents/recruitment/email/confirm-code - Validation error (400)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"{{agent_recruitment_email}}\",\n  \"code\": \"123\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/agents/recruitment/email/confirm-code",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "agents",
+                    "recruitment",
+                    "email",
+                    "confirm-code"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 400', () => pm.response.to.have.status(400));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Bad Request - code too short (400)",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"email\": \"{{agent_recruitment_email}}\",\n  \"code\": \"123\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/agents/recruitment/email/confirm-code",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "agents",
+                        "recruitment",
+                        "email",
+                        "confirm-code"
+                      ]
+                    }
+                  },
+                  "status": "Bad Request",
+                  "code": 400,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"statusCode\": 400,\n  \"message\": [\n    \"code must be longer than or equal to 6 characters\"\n  ],\n  \"error\": \"Bad Request\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "POST /agents/recruitment/email/confirm-code - Invalid or expired code (401)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"{{agent_recruitment_email}}\",\n  \"code\": \"000000\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/agents/recruitment/email/confirm-code",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "agents",
+                    "recruitment",
+                    "email",
+                    "confirm-code"
+                  ]
+                },
+                "description": "Wrong code (or no outstanding code at all / an already-consumed one) — the service reports the same error for invalid and expired codes so it never reveals which."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 401', () => pm.response.to.have.status(401));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Unauthorized - invalid or expired code (401)",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"email\": \"{{agent_recruitment_email}}\",\n  \"code\": \"000000\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/agents/recruitment/email/confirm-code",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "agents",
+                        "recruitment",
+                        "email",
+                        "confirm-code"
+                      ]
+                    },
+                    "description": "Wrong code (or no outstanding code at all / an already-consumed one) — the service reports the same error for invalid and expired codes so it never reveals which."
+                  },
+                  "status": "Unauthorized",
+                  "code": 401,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"statusCode\": 401,\n  \"message\": \"Invalid or expired verification code\",\n  \"error\": \"Unauthorized\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "GET /agents/recruitment/status - Success",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{agent_application_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/agents/recruitment/status",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "agents",
+                    "recruitment",
+                    "status"
+                  ]
+                },
+                "description": "Requires agent_application_token from 'POST /agents/recruitment/email/confirm-code - Success' above. Shown here mid-flow, after 'POST /agents/recruitment/nin/verify - Success' has also been run but before 'POST /agents/recruitment/submit' — once the application reaches SUBMITTED, the shape changes to just { status, reviewedAt, rejectionReason } reflecting the created Agent's review state instead."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "OK - draft application, mid-flow (200)",
+                  "originalRequest": {
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{agent_application_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/agents/recruitment/status",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "agents",
+                        "recruitment",
+                        "status"
+                      ]
+                    },
+                    "description": "Requires agent_application_token from 'POST /agents/recruitment/email/confirm-code - Success' above. Shown here mid-flow, after 'POST /agents/recruitment/nin/verify - Success' has also been run but before 'POST /agents/recruitment/submit' — once the application reaches SUBMITTED, the shape changes to just { status, reviewedAt, rejectionReason } reflecting the created Agent's review state instead."
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"status\": \"EMAIL_VERIFIED\",\n  \"fullName\": null,\n  \"phone\": null,\n  \"gender\": null,\n  \"address\": null,\n  \"city\": null,\n  \"state\": null,\n  \"localGovernment\": null,\n  \"nin\": \"12345678901\",\n  \"ninVerified\": true,\n  \"ninVerifiedName\": \"Test Client\",\n  \"coverLetter\": null,\n  \"hasCv\": false,\n  \"hasPassportPhoto\": false,\n  \"hasIdentityDocument\": false\n}"
+                }
+              ]
+            },
+            {
+              "name": "GET /agents/recruitment/status - Missing token (401)",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/agents/recruitment/status",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "agents",
+                    "recruitment",
+                    "status"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 401', () => pm.response.to.have.status(401));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Unauthorized - missing application token (401)",
+                  "originalRequest": {
+                    "method": "GET",
+                    "header": [],
+                    "url": {
+                      "raw": "{{base_url}}/agents/recruitment/status",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "agents",
+                        "recruitment",
+                        "status"
+                      ]
+                    }
+                  },
+                  "status": "Unauthorized",
+                  "code": 401,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"statusCode\": 401,\n  \"message\": \"Missing application token\",\n  \"error\": \"Unauthorized\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "POST /agents/recruitment/nin/verify - Success",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{agent_application_token}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"nin\": \"12345678901\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/agents/recruitment/nin/verify",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "agents",
+                    "recruitment",
+                    "nin",
+                    "verify"
+                  ]
+                },
+                "description": "Requires agent_application_token from the confirm-code request above. Looks the NIN up via IdentityVerificationService (the mock provider locally, since IDENTITY_VERIFICATION_PROVIDER defaults to 'mock') and stores the result on the draft, but never blocks submission on a mismatch — ninVerifiedName is informational only. The mock provider always returns firstName 'Test', lastName 'Client' regardless of the NIN supplied."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));",
+                      "pm.test('reports ninVerified', () => { const json = pm.response.json(); pm.expect(json.ninVerified).to.eql(true); pm.expect(json.ninVerifiedName).to.eql('Test Client'); });"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "OK",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{agent_application_token}}"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"nin\": \"12345678901\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/agents/recruitment/nin/verify",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "agents",
+                        "recruitment",
+                        "nin",
+                        "verify"
+                      ]
+                    },
+                    "description": "Requires agent_application_token from the confirm-code request above. Looks the NIN up via IdentityVerificationService (the mock provider locally, since IDENTITY_VERIFICATION_PROVIDER defaults to 'mock') and stores the result on the draft, but never blocks submission on a mismatch — ninVerifiedName is informational only. The mock provider always returns firstName 'Test', lastName 'Client' regardless of the NIN supplied."
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"ninVerified\": true,\n  \"ninVerifiedName\": \"Test Client\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "POST /agents/recruitment/nin/verify - Validation error (400)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{agent_application_token}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"nin\": \"123\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/agents/recruitment/nin/verify",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "agents",
+                    "recruitment",
+                    "nin",
+                    "verify"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 400', () => pm.response.to.have.status(400));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Bad Request - nin wrong length (400)",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{agent_application_token}}"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"nin\": \"123\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/agents/recruitment/nin/verify",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "agents",
+                        "recruitment",
+                        "nin",
+                        "verify"
+                      ]
+                    }
+                  },
+                  "status": "Bad Request",
+                  "code": 400,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"statusCode\": 400,\n  \"message\": [\n    \"nin must be longer than or equal to 11 characters\"\n  ],\n  \"error\": \"Bad Request\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "POST /agents/recruitment/nin/verify - Missing token (401)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"nin\": \"12345678901\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/agents/recruitment/nin/verify",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "agents",
+                    "recruitment",
+                    "nin",
+                    "verify"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 401', () => pm.response.to.have.status(401));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Unauthorized - missing application token (401)",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"nin\": \"12345678901\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/agents/recruitment/nin/verify",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "agents",
+                        "recruitment",
+                        "nin",
+                        "verify"
+                      ]
+                    }
+                  },
+                  "status": "Unauthorized",
+                  "code": 401,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"statusCode\": 401,\n  \"message\": \"Missing application token\",\n  \"error\": \"Unauthorized\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "POST /agents/recruitment/submit - Success",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{agent_application_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "fullName",
+                      "value": "Priscilla Okafor",
+                      "type": "text"
+                    },
+                    {
+                      "key": "phone",
+                      "value": "+2348012345678",
+                      "type": "text"
+                    },
+                    {
+                      "key": "gender",
+                      "value": "Female",
+                      "type": "text"
+                    },
+                    {
+                      "key": "address",
+                      "value": "14 Adeyemi Street, Ikeja, Lagos",
+                      "type": "text"
+                    },
+                    {
+                      "key": "city",
+                      "value": "Ikeja",
+                      "type": "text"
+                    },
+                    {
+                      "key": "state",
+                      "value": "Lagos",
+                      "type": "text"
+                    },
+                    {
+                      "key": "localGovernment",
+                      "value": "Ikeja",
+                      "type": "text"
+                    },
+                    {
+                      "key": "nin",
+                      "value": "12345678901",
+                      "type": "text"
+                    },
+                    {
+                      "key": "coverLetter",
+                      "value": "I would like to join as a field agent.",
+                      "type": "text"
+                    },
+                    {
+                      "key": "cv",
+                      "type": "file",
+                      "src": []
+                    },
+                    {
+                      "key": "passportPhoto",
+                      "type": "file",
+                      "src": []
+                    },
+                    {
+                      "key": "identityDocument",
+                      "type": "file",
+                      "src": []
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "{{base_url}}/agents/recruitment/submit",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "agents",
+                    "recruitment",
+                    "submit"
+                  ]
+                },
+                "description": "Requires agent_application_token from the confirm-code request above. Multipart form-data: cv and passportPhoto are required files (not validated by file type), identityDocument is optional. Creates the real Agent record (status PENDING_REVIEW) and marks the AgentApplication SUBMITTED — after this, 'GET /agents/recruitment/status' switches to the { status, reviewedAt, rejectionReason } shape and this endpoint can't be called again for the same application."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 201', () => pm.response.to.have.status(201));",
+                      "pm.test('status is PENDING_REVIEW', () => pm.expect(pm.response.json().status).to.eql('PENDING_REVIEW'));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Created - agent created, pending review (201)",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{agent_application_token}}"
+                      }
+                    ],
+                    "body": {
+                      "mode": "formdata",
+                      "formdata": [
+                        {
+                          "key": "fullName",
+                          "value": "Priscilla Okafor",
+                          "type": "text"
+                        },
+                        {
+                          "key": "phone",
+                          "value": "+2348012345678",
+                          "type": "text"
+                        },
+                        {
+                          "key": "gender",
+                          "value": "Female",
+                          "type": "text"
+                        },
+                        {
+                          "key": "address",
+                          "value": "14 Adeyemi Street, Ikeja, Lagos",
+                          "type": "text"
+                        },
+                        {
+                          "key": "city",
+                          "value": "Ikeja",
+                          "type": "text"
+                        },
+                        {
+                          "key": "state",
+                          "value": "Lagos",
+                          "type": "text"
+                        },
+                        {
+                          "key": "localGovernment",
+                          "value": "Ikeja",
+                          "type": "text"
+                        },
+                        {
+                          "key": "nin",
+                          "value": "12345678901",
+                          "type": "text"
+                        },
+                        {
+                          "key": "coverLetter",
+                          "value": "I would like to join as a field agent.",
+                          "type": "text"
+                        },
+                        {
+                          "key": "cv",
+                          "type": "file",
+                          "src": []
+                        },
+                        {
+                          "key": "passportPhoto",
+                          "type": "file",
+                          "src": []
+                        },
+                        {
+                          "key": "identityDocument",
+                          "type": "file",
+                          "src": []
+                        }
+                      ]
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/agents/recruitment/submit",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "agents",
+                        "recruitment",
+                        "submit"
+                      ]
+                    },
+                    "description": "Requires agent_application_token from the confirm-code request above. Multipart form-data: cv and passportPhoto are required files (not validated by file type), identityDocument is optional. Creates the real Agent record (status PENDING_REVIEW) and marks the AgentApplication SUBMITTED — after this, 'GET /agents/recruitment/status' switches to the { status, reviewedAt, rejectionReason } shape and this endpoint can't be called again for the same application."
+                  },
+                  "status": "Created",
+                  "code": 201,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"id\": \"b7c1a2d3-4e5f-4a6b-8c9d-0e1f2a3b4c5d\",\n  \"email\": \"new.agent.applicant@example.com\",\n  \"fullName\": \"Priscilla Okafor\",\n  \"status\": \"PENDING_REVIEW\",\n  \"createdAt\": \"2026-10-16T09:00:00.000Z\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "POST /agents/recruitment/submit - Validation error (400)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{agent_application_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "fullName",
+                      "value": "Priscilla Okafor",
+                      "type": "text"
+                    },
+                    {
+                      "key": "phone",
+                      "value": "12345",
+                      "type": "text"
+                    },
+                    {
+                      "key": "gender",
+                      "value": "Female",
+                      "type": "text"
+                    },
+                    {
+                      "key": "address",
+                      "value": "14 Adeyemi Street, Ikeja, Lagos",
+                      "type": "text"
+                    },
+                    {
+                      "key": "city",
+                      "value": "Ikeja",
+                      "type": "text"
+                    },
+                    {
+                      "key": "state",
+                      "value": "Lagos",
+                      "type": "text"
+                    },
+                    {
+                      "key": "localGovernment",
+                      "value": "Ikeja",
+                      "type": "text"
+                    },
+                    {
+                      "key": "nin",
+                      "value": "12345678901",
+                      "type": "text"
+                    },
+                    {
+                      "key": "coverLetter",
+                      "value": "I would like to join as a field agent.",
+                      "type": "text"
+                    },
+                    {
+                      "key": "cv",
+                      "type": "file",
+                      "src": []
+                    },
+                    {
+                      "key": "passportPhoto",
+                      "type": "file",
+                      "src": []
+                    },
+                    {
+                      "key": "identityDocument",
+                      "type": "file",
+                      "src": []
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "{{base_url}}/agents/recruitment/submit",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "agents",
+                    "recruitment",
+                    "submit"
+                  ]
+                },
+                "description": "Invalid phone format — DTO validation runs before the cv/passportPhoto presence check below."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 400', () => pm.response.to.have.status(400));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Bad Request - invalid phone (400)",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{agent_application_token}}"
+                      }
+                    ],
+                    "body": {
+                      "mode": "formdata",
+                      "formdata": [
+                        {
+                          "key": "fullName",
+                          "value": "Priscilla Okafor",
+                          "type": "text"
+                        },
+                        {
+                          "key": "phone",
+                          "value": "12345",
+                          "type": "text"
+                        },
+                        {
+                          "key": "gender",
+                          "value": "Female",
+                          "type": "text"
+                        },
+                        {
+                          "key": "address",
+                          "value": "14 Adeyemi Street, Ikeja, Lagos",
+                          "type": "text"
+                        },
+                        {
+                          "key": "city",
+                          "value": "Ikeja",
+                          "type": "text"
+                        },
+                        {
+                          "key": "state",
+                          "value": "Lagos",
+                          "type": "text"
+                        },
+                        {
+                          "key": "localGovernment",
+                          "value": "Ikeja",
+                          "type": "text"
+                        },
+                        {
+                          "key": "nin",
+                          "value": "12345678901",
+                          "type": "text"
+                        },
+                        {
+                          "key": "coverLetter",
+                          "value": "I would like to join as a field agent.",
+                          "type": "text"
+                        },
+                        {
+                          "key": "cv",
+                          "type": "file",
+                          "src": []
+                        },
+                        {
+                          "key": "passportPhoto",
+                          "type": "file",
+                          "src": []
+                        },
+                        {
+                          "key": "identityDocument",
+                          "type": "file",
+                          "src": []
+                        }
+                      ]
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/agents/recruitment/submit",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "agents",
+                        "recruitment",
+                        "submit"
+                      ]
+                    },
+                    "description": "Invalid phone format — DTO validation runs before the cv/passportPhoto presence check below."
+                  },
+                  "status": "Bad Request",
+                  "code": 400,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"statusCode\": 400,\n  \"message\": [\n    \"phone must be a valid phone number\"\n  ],\n  \"error\": \"Bad Request\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "POST /agents/recruitment/submit - Missing cv (400)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{agent_application_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "fullName",
+                      "value": "Priscilla Okafor",
+                      "type": "text"
+                    },
+                    {
+                      "key": "phone",
+                      "value": "+2348012345678",
+                      "type": "text"
+                    },
+                    {
+                      "key": "gender",
+                      "value": "Female",
+                      "type": "text"
+                    },
+                    {
+                      "key": "address",
+                      "value": "14 Adeyemi Street, Ikeja, Lagos",
+                      "type": "text"
+                    },
+                    {
+                      "key": "city",
+                      "value": "Ikeja",
+                      "type": "text"
+                    },
+                    {
+                      "key": "state",
+                      "value": "Lagos",
+                      "type": "text"
+                    },
+                    {
+                      "key": "localGovernment",
+                      "value": "Ikeja",
+                      "type": "text"
+                    },
+                    {
+                      "key": "nin",
+                      "value": "12345678901",
+                      "type": "text"
+                    },
+                    {
+                      "key": "coverLetter",
+                      "value": "I would like to join as a field agent.",
+                      "type": "text"
+                    },
+                    {
+                      "key": "passportPhoto",
+                      "type": "file",
+                      "src": []
+                    },
+                    {
+                      "key": "identityDocument",
+                      "type": "file",
+                      "src": []
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "{{base_url}}/agents/recruitment/submit",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "agents",
+                    "recruitment",
+                    "submit"
+                  ]
+                },
+                "description": "No cv file field attached, so the controller rejects it before calling the service."
               },
               "event": [
                 {
@@ -17203,43 +18401,84 @@
                   "name": "Bad Request - cv is required (400)",
                   "originalRequest": {
                     "method": "POST",
-                    "header": [],
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{agent_application_token}}"
+                      }
+                    ],
                     "body": {
                       "mode": "formdata",
                       "formdata": [
                         {
                           "key": "fullName",
-                          "value": "No CV Agent",
-                          "type": "text"
-                        },
-                        {
-                          "key": "email",
-                          "value": "missing.cv.agent@example.com",
+                          "value": "Priscilla Okafor",
                           "type": "text"
                         },
                         {
                           "key": "phone",
-                          "value": "+2348012345680",
+                          "value": "+2348012345678",
+                          "type": "text"
+                        },
+                        {
+                          "key": "gender",
+                          "value": "Female",
                           "type": "text"
                         },
                         {
                           "key": "address",
-                          "value": "1 Missing CV Way, Abuja",
+                          "value": "14 Adeyemi Street, Ikeja, Lagos",
                           "type": "text"
+                        },
+                        {
+                          "key": "city",
+                          "value": "Ikeja",
+                          "type": "text"
+                        },
+                        {
+                          "key": "state",
+                          "value": "Lagos",
+                          "type": "text"
+                        },
+                        {
+                          "key": "localGovernment",
+                          "value": "Ikeja",
+                          "type": "text"
+                        },
+                        {
+                          "key": "nin",
+                          "value": "12345678901",
+                          "type": "text"
+                        },
+                        {
+                          "key": "coverLetter",
+                          "value": "I would like to join as a field agent.",
+                          "type": "text"
+                        },
+                        {
+                          "key": "passportPhoto",
+                          "type": "file",
+                          "src": []
+                        },
+                        {
+                          "key": "identityDocument",
+                          "type": "file",
+                          "src": []
                         }
                       ]
                     },
                     "url": {
-                      "raw": "{{base_url}}/agents/register",
+                      "raw": "{{base_url}}/agents/recruitment/submit",
                       "host": [
                         "{{base_url}}"
                       ],
                       "path": [
                         "agents",
-                        "register"
+                        "recruitment",
+                        "submit"
                       ]
                     },
-                    "description": "No cv file field attached, so the controller rejects it before any DTO validation of the other fields."
+                    "description": "No cv file field attached, so the controller rejects it before calling the service."
                   },
                   "status": "Bad Request",
                   "code": 400,
@@ -17252,6 +18491,195 @@
                   ],
                   "cookie": [],
                   "body": "{\n  \"statusCode\": 400,\n  \"message\": \"cv is required\",\n  \"error\": \"Bad Request\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "POST /agents/recruitment/submit - Missing token (401)",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "fullName",
+                      "value": "Priscilla Okafor",
+                      "type": "text"
+                    },
+                    {
+                      "key": "phone",
+                      "value": "+2348012345678",
+                      "type": "text"
+                    },
+                    {
+                      "key": "gender",
+                      "value": "Female",
+                      "type": "text"
+                    },
+                    {
+                      "key": "address",
+                      "value": "14 Adeyemi Street, Ikeja, Lagos",
+                      "type": "text"
+                    },
+                    {
+                      "key": "city",
+                      "value": "Ikeja",
+                      "type": "text"
+                    },
+                    {
+                      "key": "state",
+                      "value": "Lagos",
+                      "type": "text"
+                    },
+                    {
+                      "key": "localGovernment",
+                      "value": "Ikeja",
+                      "type": "text"
+                    },
+                    {
+                      "key": "nin",
+                      "value": "12345678901",
+                      "type": "text"
+                    },
+                    {
+                      "key": "coverLetter",
+                      "value": "I would like to join as a field agent.",
+                      "type": "text"
+                    },
+                    {
+                      "key": "cv",
+                      "type": "file",
+                      "src": []
+                    },
+                    {
+                      "key": "passportPhoto",
+                      "type": "file",
+                      "src": []
+                    },
+                    {
+                      "key": "identityDocument",
+                      "type": "file",
+                      "src": []
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "{{base_url}}/agents/recruitment/submit",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "agents",
+                    "recruitment",
+                    "submit"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 401', () => pm.response.to.have.status(401));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Unauthorized - missing application token (401)",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [],
+                    "body": {
+                      "mode": "formdata",
+                      "formdata": [
+                        {
+                          "key": "fullName",
+                          "value": "Priscilla Okafor",
+                          "type": "text"
+                        },
+                        {
+                          "key": "phone",
+                          "value": "+2348012345678",
+                          "type": "text"
+                        },
+                        {
+                          "key": "gender",
+                          "value": "Female",
+                          "type": "text"
+                        },
+                        {
+                          "key": "address",
+                          "value": "14 Adeyemi Street, Ikeja, Lagos",
+                          "type": "text"
+                        },
+                        {
+                          "key": "city",
+                          "value": "Ikeja",
+                          "type": "text"
+                        },
+                        {
+                          "key": "state",
+                          "value": "Lagos",
+                          "type": "text"
+                        },
+                        {
+                          "key": "localGovernment",
+                          "value": "Ikeja",
+                          "type": "text"
+                        },
+                        {
+                          "key": "nin",
+                          "value": "12345678901",
+                          "type": "text"
+                        },
+                        {
+                          "key": "coverLetter",
+                          "value": "I would like to join as a field agent.",
+                          "type": "text"
+                        },
+                        {
+                          "key": "cv",
+                          "type": "file",
+                          "src": []
+                        },
+                        {
+                          "key": "passportPhoto",
+                          "type": "file",
+                          "src": []
+                        },
+                        {
+                          "key": "identityDocument",
+                          "type": "file",
+                          "src": []
+                        }
+                      ]
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/agents/recruitment/submit",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "agents",
+                        "recruitment",
+                        "submit"
+                      ]
+                    }
+                  },
+                  "status": "Unauthorized",
+                  "code": 401,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"statusCode\": 401,\n  \"message\": \"Missing application token\",\n  \"error\": \"Unauthorized\"\n}"
                 }
               ]
             },
