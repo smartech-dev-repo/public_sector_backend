@@ -175,6 +175,32 @@ describe('AdminClientReviewService', () => {
       );
     });
 
+    it('filters by agentId', async () => {
+      prisma.client.findMany.mockResolvedValue([]);
+      prisma.client.count.mockResolvedValue(0);
+
+      await service.list({ agentId: 'agent-1' });
+
+      expect(prisma.client.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ onboarding: { onboardedByAgentId: 'agent-1' } }),
+        }),
+      );
+    });
+
+    it('overrides onboardingSource with the exact agentId when both are given', async () => {
+      prisma.client.findMany.mockResolvedValue([]);
+      prisma.client.count.mockResolvedValue(0);
+
+      await service.list({ onboardingSource: 'AGENT' as never, agentId: 'agent-1' });
+
+      expect(prisma.client.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ onboarding: { onboardedByAgentId: 'agent-1' } }),
+        }),
+      );
+    });
+
     it('computes skip/take from page and limit and reports the total', async () => {
       prisma.client.findMany.mockResolvedValue([]);
       prisma.client.count.mockResolvedValue(60);

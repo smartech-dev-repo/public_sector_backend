@@ -1,4 +1,4 @@
-import { IsEnum, IsIn, IsISO8601, IsOptional, IsString } from 'class-validator';
+import { IsEnum, IsIn, IsISO8601, IsOptional, IsString, IsUUID } from 'class-validator';
 import { PaginationDto } from '../../common/pagination/pagination.dto';
 import { ClientStatus } from '../../generated/prisma/client';
 
@@ -22,4 +22,8 @@ export class ListClientsQueryDto extends PaginationDto {
   @IsOptional()
   @IsIn(['SELF', 'AGENT', 'ADMIN'])
   onboardingSource?: 'SELF' | 'AGENT' | 'ADMIN';
+
+  @IsOptional()
+  @IsUUID()
+  agentId?: string;
 }

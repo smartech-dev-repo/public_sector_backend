@@ -19,6 +19,7 @@ export interface ListClientsFilters {
   createdFrom?: Date;
   createdTo?: Date;
   onboardingSource?: OnboardingSource;
+  agentId?: string;
 }
 
 @Injectable()
@@ -41,7 +42,7 @@ export class AdminClientReviewService {
         filters.createdFrom || filters.createdTo
           ? { gte: filters.createdFrom, lte: filters.createdTo }
           : undefined,
-      onboarding: this.buildOnboardingSourceWhere(filters.onboardingSource),
+      onboarding: this.buildOnboardingWhere(filters.onboardingSource, filters.agentId),
     };
 
     const [data, total] = await Promise.all([
@@ -84,6 +85,17 @@ export class AdminClientReviewService {
     if (onboardingSource === 'AGENT') return { onboardedByAgentId: { not: null } };
     if (onboardingSource === 'ADMIN') return { onboardedById: { not: null } };
     return { onboardedById: null, onboardedByAgentId: null }; // SELF
+  }
+
+  private buildOnboardingWhere(
+    onboardingSource?: OnboardingSource,
+    agentId?: string,
+  ): Prisma.ClientOnboardingWhereInput | undefined {
+    const sourceWhere = this.buildOnboardingSourceWhere(onboardingSource);
+    if (agentId) {
+      return { ...sourceWhere, onboardedByAgentId: agentId };
+    }
+    return sourceWhere;
   }
 
   async findById(id: string) {
