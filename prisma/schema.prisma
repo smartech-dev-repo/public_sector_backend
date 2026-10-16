@@ -104,6 +104,16 @@ model Agent {
   status                 AgentStatus @default(PENDING_REVIEW)
   cvKey                  String
   supportingDocumentKeys String[]    @default([])
+  gender                 String?
+  city                   String?
+  state                  String?
+  localGovernment        String?
+  nin                    String?
+  ninVerified            Boolean?
+  ninVerifiedName        String?
+  coverLetter            String?
+  passportPhotoKey       String?
+  identityDocumentKey    String?
   mustChangePassword     Boolean     @default(true)
   hasLoggedIn            Boolean     @default(false)
   canOnboardClients      Boolean     @default(false)
@@ -114,6 +124,7 @@ model Agent {
   createdAt              DateTime    @default(now())
   updatedAt              DateTime    @updatedAt
   onboardedClients       ClientOnboarding[]
+  agentApplication       AgentApplication?
   passwordResetTokenHash      String?
   passwordResetTokenExpiresAt DateTime?
   twoFactorMethod             TwoFactorMethod?
@@ -125,6 +136,39 @@ model Agent {
   twoFactorEmailCodeExpiresAt DateTime?
   passwordResetCodeHash       String?
   passwordResetCodeExpiresAt  DateTime?
+}
+
+enum AgentApplicationStatus {
+  EMAIL_PENDING
+  EMAIL_VERIFIED
+  SUBMITTED
+}
+
+model AgentApplication {
+  id                  String                 @id @default(uuid())
+  email               String                 @unique
+  status              AgentApplicationStatus @default(EMAIL_PENDING)
+  emailCodeHash       String?
+  emailCodeExpiresAt  DateTime?
+  emailVerifiedAt     DateTime?
+  fullName            String?
+  phone               String?
+  gender              String?
+  address             String?
+  city                String?
+  state               String?
+  localGovernment     String?
+  nin                 String?
+  ninVerified         Boolean?
+  ninVerifiedName     String?
+  coverLetter         String?
+  cvKey               String?
+  passportPhotoKey    String?
+  identityDocumentKey String?
+  submittedAgentId    String?                @unique
+  submittedAgent      Agent?                 @relation(fields: [submittedAgentId], references: [id])
+  createdAt           DateTime               @default(now())
+  updatedAt           DateTime               @updatedAt
 }
 
 enum ClientStatus {
