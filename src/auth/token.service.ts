@@ -32,4 +32,20 @@ export class TokenService {
       secret: this.configService.getOrThrow<string>('JWT_TWO_FACTOR_PENDING_SECRET'),
     });
   }
+
+  signAgentApplicationToken(applicationId: string): string {
+    return this.jwtService.sign(
+      { sub: applicationId },
+      {
+        secret: this.configService.getOrThrow<string>('JWT_AGENT_APPLICATION_SECRET'),
+        expiresIn: '45m',
+      },
+    );
+  }
+
+  verifyAgentApplicationToken(token: string): { sub: string } {
+    return this.jwtService.verify(token, {
+      secret: this.configService.getOrThrow<string>('JWT_AGENT_APPLICATION_SECRET'),
+    });
+  }
 }
