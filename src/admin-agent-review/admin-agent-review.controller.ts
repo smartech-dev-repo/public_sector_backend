@@ -6,9 +6,11 @@ import { JwtPayload } from '../auth/jwt-payload.interface';
 import { AuditInterceptor } from '../audit/audit.interceptor';
 import { AuditLogService } from '../audit/audit-log.service';
 import { AdminAgentReviewService } from './admin-agent-review.service';
+import { AdminAgentAnalyticsService } from './admin-agent-analytics.service';
 import { RejectAgentDto } from './dto/reject-agent.dto';
 import { ListAgentsQueryDto } from './dto/list-agents-query.dto';
 import { SetOnboardingAccessDto } from './dto/set-onboarding-access.dto';
+import { AgentAnalyticsQueryDto } from './dto/agent-analytics-query.dto';
 import { AuditActorType } from '../generated/prisma/client';
 
 @Controller('admin/agents')
@@ -18,6 +20,7 @@ export class AdminAgentReviewController {
   constructor(
     private readonly adminAgentReviewService: AdminAgentReviewService,
     private readonly auditLogService: AuditLogService,
+    private readonly adminAgentAnalyticsService: AdminAgentAnalyticsService,
   ) {}
 
   @Get()
@@ -34,6 +37,15 @@ export class AdminAgentReviewController {
       },
       { page: query.page, limit: query.limit },
     );
+  }
+
+  @Get('analytics')
+  @RequirePermissions('agents:analytics:read')
+  getAnalytics(@Query() query: AgentAnalyticsQueryDto) {
+    return this.adminAgentAnalyticsService.getSummary({
+      createdFrom: query.createdFrom ? new Date(query.createdFrom) : undefined,
+      createdTo: query.createdTo ? new Date(query.createdTo) : undefined,
+    });
   }
 
   @Get(':id')
