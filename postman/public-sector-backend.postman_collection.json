@@ -233,6 +233,14 @@
     {
       "key": "agent_application_token",
       "value": ""
+    },
+    {
+      "key": "recruitment_application_id",
+      "value": ""
+    },
+    {
+      "key": "submitted_recruitment_application_id",
+      "value": ""
     }
   ],
   "item": [
@@ -11520,6 +11528,93 @@
               ]
             },
             {
+              "name": "GET /admin/clients - Filtered by agentId",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/clients?agentId={{agent_id}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "clients"
+                  ],
+                  "query": [
+                    {
+                      "key": "agentId",
+                      "value": "{{agent_id}}",
+                      "description": "Optional. UUID of an Agent (ListClientsQueryDto.agentId, validated with @IsUUID). Scopes the list to clients onboarded by that agent (onboarding.onboardedByAgentId). Overrides onboardingSource when both are supplied."
+                    }
+                  ]
+                },
+                "description": "Filters the client list to clients onboarded by a specific Agent. AdminClientReviewService.buildOnboardingWhere() merges this with any onboardingSource filter, but agentId's exact onboardedByAgentId match always wins. Requires clients:review. Response is { data, meta }. Scoped here to the agent captured in agent_id (see Admin > Review > POST /admin/agents/:id/approve - Success) — run that first, or substitute any Agent id directly; an id with no onboarded clients returns an empty data array."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));",
+                      "pm.test('every row is onboarded by the requested agent', () => {",
+                      "  const body = pm.response.json();",
+                      "  const agentId = pm.collectionVariables.get('agent_id');",
+                      "  if (!agentId) return;",
+                      "  body.data.forEach((row) => pm.expect(row.onboarding.onboardedByAgentId).to.eql(agentId));",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Success - filtered by agentId (200)",
+                  "originalRequest": {
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/clients?agentId=d1e2f3a4-b5c6-4d7e-8f9a-0b1c2d3e4f5a",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "clients"
+                      ],
+                      "query": [
+                        {
+                          "key": "agentId",
+                          "value": "d1e2f3a4-b5c6-4d7e-8f9a-0b1c2d3e4f5a"
+                        }
+                      ]
+                    }
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"data\": [\n    {\n      \"id\": \"b5c6d7e8-f9a0-4b1c-2d3e-4f5a6b7c8d9e\",\n      \"phone\": \"+2348022223333\",\n      \"email\": null,\n      \"status\": \"VERIFIED\",\n      \"createdById\": null,\n      \"createdAt\": \"2026-10-14T09:00:00.000Z\",\n      \"updatedAt\": \"2026-10-14T09:10:00.000Z\",\n      \"createdByAdmin\": null,\n      \"onboarding\": {\n        \"id\": \"a4b5c6d7-2222-4e8f-9a0b-1c2d3e4f5a6b\",\n        \"clientId\": \"b5c6d7e8-f9a0-4b1c-2d3e-4f5a6b7c8d9e\",\n        \"ippisRecordId\": \"c6d7e8f9-a0b1-4c2d-3e4f-5a6b7c8d9e0f\",\n        \"employeeName\": \"Grace Adeyemi\",\n        \"agency\": \"Nigeria Police Force\",\n        \"step\": \"COMPLETED\",\n        \"onboardedById\": null,\n        \"onboardedByAgentId\": \"d1e2f3a4-b5c6-4d7e-8f9a-0b1c2d3e4f5a\",\n        \"createdAt\": \"2026-10-14T09:00:00.000Z\",\n        \"updatedAt\": \"2026-10-14T09:10:00.000Z\",\n        \"ippisRecord\": {\n          \"agency\": \"Nigeria Police Force\",\n          \"staffId\": \"NPF0098765\",\n          \"employeeName\": \"Grace Adeyemi\",\n          \"employeeStatus\": \"Active Employee\",\n          \"hireDate\": \"2005-06-15T00:00:00.000Z\",\n          \"department\": null,\n          \"grade\": \"GL08\",\n          \"bankName\": \"Access Bank\",\n          \"accountNumber\": \"0987654321\"\n        },\n        \"reviewedByAdmin\": null,\n        \"onboardedByAdmin\": null,\n        \"onboardedByAgent\": {\n          \"id\": \"d1e2f3a4-b5c6-4d7e-8f9a-0b1c2d3e4f5a\",\n          \"fullName\": \"Chidi Okonkwo\",\n          \"email\": \"chidi.okonkwo@example.com\"\n        }\n      },\n      \"onboardingSource\": \"AGENT\"\n    }\n  ],\n  \"meta\": {\n    \"total\": 1,\n    \"page\": 1,\n    \"limit\": 25,\n    \"totalPages\": 1\n  }\n}"
+                }
+              ]
+            },
+            {
               "name": "GET /admin/clients/analytics - Success",
               "request": {
                 "method": "GET",
@@ -15147,6 +15242,474 @@
                   ],
                   "cookie": [],
                   "body": "{\n  \"statusCode\": 403,\n  \"message\": \"Insufficient permissions\",\n  \"error\": \"Forbidden\"\n}"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Agent Recruitment Applications",
+          "item": [
+            {
+              "name": "GET /admin/agent-recruitment-applications - Success",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/agent-recruitment-applications",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "agent-recruitment-applications"
+                  ],
+                  "query": [
+                    {
+                      "key": "status",
+                      "value": "EMAIL_VERIFIED",
+                      "description": "Optional. Any AgentApplicationStatus (EMAIL_PENDING, EMAIL_VERIFIED, SUBMITTED).",
+                      "disabled": true
+                    },
+                    {
+                      "key": "q",
+                      "value": "jane",
+                      "description": "Optional. Case-insensitive search across email, fullName.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "createdFrom",
+                      "value": "2026-01-01",
+                      "description": "Optional. ISO8601 date. Filters createdAt >= this value.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "createdTo",
+                      "value": "2026-12-31",
+                      "description": "Optional. ISO8601 date. Filters createdAt <= this value.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "page",
+                      "value": "1",
+                      "description": "Optional. Page number, defaults to 1.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "limit",
+                      "value": "25",
+                      "description": "Optional. Page size, defaults to 25, hard max 100 (a request above 100 is a 400, not a silent clamp).",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "description": "Lists in-progress and completed AgentApplication recruitment drafts (not yet-or-already-submitted Agent rows), filterable by status, searchable by q across email/fullName, plus a createdFrom/createdTo date range over createdAt. Paginated (page/limit, default 1/25, limit capped at 100). Requires agents:recruitment:read. Response is { data, meta }; each row is narrowed to exclude emailCodeHash/emailCodeExpiresAt and includes a submittedAgent summary ({ id, status }) when the application has been submitted."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));",
+                      "pm.test('is a paginated result', () => {",
+                      "  const body = pm.response.json();",
+                      "  pm.expect(body.data).to.be.an('array');",
+                      "  pm.expect(body.meta).to.have.all.keys('total', 'page', 'limit', 'totalPages');",
+                      "});",
+                      "const json = pm.response.json();",
+                      "const draft = json.data.find((a) => a.status !== 'SUBMITTED');",
+                      "if (draft) { pm.collectionVariables.set('recruitment_application_id', draft.id); }"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Success - list recruitment applications (200)",
+                  "originalRequest": {
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/agent-recruitment-applications",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "agent-recruitment-applications"
+                      ]
+                    }
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"data\": [\n    {\n      \"id\": \"3f9b2a1c-7d4e-4b8a-9c6f-2e5d8a1b4c7e\",\n      \"email\": \"jane.applicant@example.com\",\n      \"status\": \"EMAIL_VERIFIED\",\n      \"emailVerifiedAt\": \"2026-10-15T09:05:00.000Z\",\n      \"fullName\": \"Jane Doe\",\n      \"phone\": \"+2348000000000\",\n      \"gender\": \"Female\",\n      \"address\": \"1 Example Street\",\n      \"city\": \"Lagos\",\n      \"state\": \"Lagos\",\n      \"localGovernment\": \"Ikeja\",\n      \"nin\": \"12345678901\",\n      \"ninVerified\": null,\n      \"ninVerifiedName\": null,\n      \"coverLetter\": \"I would like to join as a recruitment agent.\",\n      \"cvKey\": null,\n      \"passportPhotoKey\": null,\n      \"identityDocumentKey\": null,\n      \"submittedAgent\": null,\n      \"createdAt\": \"2026-10-15T09:00:00.000Z\",\n      \"updatedAt\": \"2026-10-15T09:05:00.000Z\"\n    },\n    {\n      \"id\": \"8c1d4e7f-2a5b-4c8d-9e1f-3a6b9c2d5e8f\",\n      \"email\": \"tolu.applicant@example.com\",\n      \"status\": \"SUBMITTED\",\n      \"emailVerifiedAt\": \"2026-10-10T08:00:00.000Z\",\n      \"fullName\": \"Tolu Adebayo\",\n      \"phone\": \"+2348012399999\",\n      \"gender\": \"Male\",\n      \"address\": \"1 Example Street\",\n      \"city\": \"Lagos\",\n      \"state\": \"Lagos\",\n      \"localGovernment\": \"Ikeja\",\n      \"nin\": \"12345678901\",\n      \"ninVerified\": true,\n      \"ninVerifiedName\": \"Tolu Adebayo\",\n      \"coverLetter\": \"Cover letter.\",\n      \"cvKey\": \"agent-recruitment/8c1d4e7f-2a5b-4c8d-9e1f-3a6b9c2d5e8f/cv.pdf\",\n      \"passportPhotoKey\": \"agent-recruitment/8c1d4e7f-2a5b-4c8d-9e1f-3a6b9c2d5e8f/photo.jpg\",\n      \"identityDocumentKey\": null,\n      \"submittedAgent\": {\n        \"id\": \"9e0f1a2b-3c4d-45e6-8f70-1a2b3c4d5e6f\",\n        \"status\": \"PENDING_REVIEW\"\n      },\n      \"createdAt\": \"2026-10-10T07:50:00.000Z\",\n      \"updatedAt\": \"2026-10-10T08:10:00.000Z\"\n    }\n  ],\n  \"meta\": {\n    \"total\": 2,\n    \"page\": 1,\n    \"limit\": 25,\n    \"totalPages\": 1\n  }\n}"
+                }
+              ]
+            },
+            {
+              "name": "GET /admin/agent-recruitment-applications/analytics - Success",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/agent-recruitment-applications/analytics",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "agent-recruitment-applications",
+                    "analytics"
+                  ],
+                  "query": [
+                    {
+                      "key": "createdFrom",
+                      "value": "2026-01-01",
+                      "description": "Optional. ISO8601 date. Filters applications whose createdAt >= this value.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "createdTo",
+                      "value": "2026-12-31",
+                      "description": "Optional. ISO8601 date. Filters applications whose createdAt <= this value.",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "description": "Recruitment funnel summary: totalApplications, a count per AgentApplicationStatus (byStatus), conversionRate (SUBMITTED / total, null when there are no applications), and averageTimeToSubmitHours (mean hours between an application's createdAt and its submittedAgent.createdAt across SUBMITTED rows, null when none have submitted). Requires agents:recruitment:analytics:read. Registered ahead of GET /admin/agent-recruitment-applications/:id so \"analytics\" never matches the :id param route."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));",
+                      "pm.test('has the expected top-level shape', () => {",
+                      "  const body = pm.response.json();",
+                      "  pm.expect(body).to.have.all.keys('totalApplications', 'byStatus', 'conversionRate', 'averageTimeToSubmitHours');",
+                      "  pm.expect(body.byStatus).to.have.all.keys('EMAIL_PENDING', 'EMAIL_VERIFIED', 'SUBMITTED');",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Success (200)",
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"totalApplications\": 12,\n  \"byStatus\": {\n    \"EMAIL_PENDING\": 3,\n    \"EMAIL_VERIFIED\": 4,\n    \"SUBMITTED\": 5\n  },\n  \"conversionRate\": 0.4166666666666667,\n  \"averageTimeToSubmitHours\": 6.5\n}"
+                }
+              ]
+            },
+            {
+              "name": "GET /admin/agent-recruitment-applications/:id - Success",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/agent-recruitment-applications/{{recruitment_application_id}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "agent-recruitment-applications",
+                    "{{recruitment_application_id}}"
+                  ]
+                },
+                "description": "Run 'GET /admin/agent-recruitment-applications - Success' above first to populate recruitment_application_id with an in-progress draft. Requires agents:recruitment:read."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Success - recruitment application detail (200)",
+                  "originalRequest": {
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/agent-recruitment-applications/{{recruitment_application_id}}",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "agent-recruitment-applications",
+                        "{{recruitment_application_id}}"
+                      ]
+                    }
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"id\": \"3f9b2a1c-7d4e-4b8a-9c6f-2e5d8a1b4c7e\",\n  \"email\": \"jane.applicant@example.com\",\n  \"status\": \"EMAIL_VERIFIED\",\n  \"emailVerifiedAt\": \"2026-10-15T09:05:00.000Z\",\n  \"fullName\": \"Jane Doe\",\n  \"phone\": \"+2348000000000\",\n  \"gender\": \"Female\",\n  \"address\": \"1 Example Street\",\n  \"city\": \"Lagos\",\n  \"state\": \"Lagos\",\n  \"localGovernment\": \"Ikeja\",\n  \"nin\": \"12345678901\",\n  \"ninVerified\": null,\n  \"ninVerifiedName\": null,\n  \"coverLetter\": \"I would like to join as a recruitment agent.\",\n  \"cvKey\": null,\n  \"passportPhotoKey\": null,\n  \"identityDocumentKey\": null,\n  \"submittedAgent\": null,\n  \"createdAt\": \"2026-10-15T09:00:00.000Z\",\n  \"updatedAt\": \"2026-10-15T09:05:00.000Z\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "GET /admin/agent-recruitment-applications/:id - Not found (404)",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/agent-recruitment-applications/00000000-0000-0000-0000-000000000000",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "agent-recruitment-applications",
+                    "00000000-0000-0000-0000-000000000000"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 404', () => pm.response.to.have.status(404));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "404 Not Found",
+                  "originalRequest": {
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/agent-recruitment-applications/00000000-0000-0000-0000-000000000000",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "agent-recruitment-applications",
+                        "00000000-0000-0000-0000-000000000000"
+                      ]
+                    }
+                  },
+                  "status": "Not Found",
+                  "code": 404,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"statusCode\": 404,\n  \"message\": \"Recruitment application not found\",\n  \"error\": \"Not Found\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "DELETE /admin/agent-recruitment-applications/:id - Success",
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/agent-recruitment-applications/{{recruitment_application_id}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "agent-recruitment-applications",
+                    "{{recruitment_application_id}}"
+                  ]
+                },
+                "description": "Run 'GET /admin/agent-recruitment-applications - Success' above first to populate recruitment_application_id with a draft that hasn't been submitted (status !== SUBMITTED) — otherwise this 409s, see the 'Already submitted' example below. Hard-deletes the AgentApplication row and records an audit log entry. Requires agents:recruitment:manage."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));",
+                      "pm.test('deleted: true', () => pm.expect(pm.response.json()).to.eql({ deleted: true }));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "200 OK",
+                  "originalRequest": {
+                    "method": "DELETE",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/agent-recruitment-applications/{{recruitment_application_id}}",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "agent-recruitment-applications",
+                        "{{recruitment_application_id}}"
+                      ]
+                    }
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"deleted\": true\n}"
+                }
+              ]
+            },
+            {
+              "name": "DELETE /admin/agent-recruitment-applications/:id - Already submitted (409)",
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/agent-recruitment-applications/{{submitted_recruitment_application_id}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "agent-recruitment-applications",
+                    "{{submitted_recruitment_application_id}}"
+                  ]
+                },
+                "description": "AdminAgentRecruitmentReviewService.remove() blocks deleting an AgentApplication whose status is SUBMITTED (it's tied to a real Agent via the unique submittedAgentId FK) with a 409, regardless of permission. Populate submitted_recruitment_application_id with a SUBMITTED application's id — e.g. complete Agent > Enrollment's recruitment email/confirm/submit flow, then find it via 'GET /admin/agent-recruitment-applications - Success' with status=SUBMITTED — there is no request in this collection that produces one without that manual flow."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 409', () => pm.response.to.have.status(409));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Conflict - already submitted (409)",
+                  "originalRequest": {
+                    "method": "DELETE",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/agent-recruitment-applications/{{submitted_recruitment_application_id}}",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "agent-recruitment-applications",
+                        "{{submitted_recruitment_application_id}}"
+                      ]
+                    }
+                  },
+                  "status": "Conflict",
+                  "code": 409,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"statusCode\": 409,\n  \"message\": \"Cannot delete an application that has already been submitted\",\n  \"error\": \"Conflict\"\n}"
                 }
               ]
             }
