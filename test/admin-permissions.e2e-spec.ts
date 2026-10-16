@@ -64,6 +64,7 @@ describe('Admin permissions (e2e)', () => {
   it('lists permissions including the new one', async () => {
     const res = await request(app.getHttpServer())
       .get('/admin/permissions')
+      .query({ q: testKey })
       .set('Authorization', `Bearer ${accessToken}`)
       .expect(200);
     expect(res.body.data.some((p: { key: string }) => p.key === testKey)).toBe(true);
