@@ -91,7 +91,7 @@ export class AdminAgentReviewService {
   }
 
   async reject(id: string, reviewerId: string, reason: string): Promise<void> {
-    await this.loadPendingReview(id);
+    const agent = await this.loadPendingReview(id);
 
     await this.prisma.agent.update({
       where: { id },
@@ -101,6 +101,13 @@ export class AdminAgentReviewService {
         reviewedBy: reviewerId,
         reviewedAt: new Date(),
       },
+    });
+
+    await this.emailService.send({
+      to: agent.email,
+      subject: 'Your agent application was not approved',
+      html: `<p>Your application was not approved.</p><p>Reason: ${reason}</p>`,
+      text: `Your application was not approved.\nReason: ${reason}`,
     });
   }
 

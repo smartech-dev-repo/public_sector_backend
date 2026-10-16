@@ -137,8 +137,8 @@ describe('AdminAgentReviewService', () => {
       await expect(service.reject('a1', 'admin-1', 'Incomplete CV')).rejects.toThrow(ConflictException);
     });
 
-    it('sets REJECTED with the reason and reviewer, and sends no email', async () => {
-      prisma.agent.findUnique.mockResolvedValue({ id: 'a1', status: 'PENDING_REVIEW' });
+    it('sets REJECTED with the reason and reviewer, and emails the agent', async () => {
+      prisma.agent.findUnique.mockResolvedValue({ id: 'a1', status: 'PENDING_REVIEW', email: 'a@example.com' });
       prisma.agent.update.mockResolvedValue({ id: 'a1' });
 
       await service.reject('a1', 'admin-1', 'Incomplete CV');
@@ -152,7 +152,9 @@ describe('AdminAgentReviewService', () => {
           reviewedAt: expect.any(Date),
         },
       });
-      expect(emailService.send).not.toHaveBeenCalled();
+      expect(emailService.send).toHaveBeenCalledWith(
+        expect.objectContaining({ to: 'a@example.com', text: expect.stringContaining('Incomplete CV') }),
+      );
     });
   });
 
