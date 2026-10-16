@@ -12,6 +12,10 @@ describe('Admin client review (e2e)', () => {
   let clientId: string;
   const phone = `+234801${Date.now().toString().slice(-7)}`;
   const staffId = `E2E-REVIEW-${Date.now()}`;
+  let agentOnboardedClientId: string;
+  let throwawayAgentId: string;
+  const agentOnboardedPhone = `+234802${Date.now().toString().slice(-7)}`;
+  const agentStaffId = `E2E-AGENT-FILTER-${Date.now()}`;
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -56,12 +60,44 @@ describe('Admin client review (e2e)', () => {
       },
     });
     await prisma.client.update({ where: { id: clientId }, data: { status: 'MANUAL_REVIEW' } });
+
+    const throwawayAgent = await prisma.agent.create({
+      data: {
+        email: `e2e-agent-filter-${Date.now()}@example.com`,
+        phone: '+2348099999999',
+        fullName: 'E2E Agent Filter Test',
+        address: '1 St',
+        cvKey: '',
+        status: 'APPROVED',
+      },
+    });
+    throwawayAgentId = throwawayAgent.id;
+
+    const agentOnboardedClient = await prisma.client.create({ data: { phone: agentOnboardedPhone } });
+    agentOnboardedClientId = agentOnboardedClient.id;
+    const agentIppisRecord = await prisma.ippisRecord.create({
+      data: { agency: 'NPF', staffId: agentStaffId, employeeName: 'E2E Agent Filter Test Client' },
+    });
+    await prisma.clientOnboarding.create({
+      data: {
+        clientId: agentOnboardedClientId,
+        ippisRecordId: agentIppisRecord.id,
+        employeeName: 'E2E Agent Filter Test Client',
+        agency: 'NPF',
+        onboardedByAgentId: throwawayAgentId,
+        step: 'COMPLETED',
+      },
+    });
   });
 
   afterAll(async () => {
     await prisma.clientOnboarding.deleteMany({ where: { clientId } });
     await prisma.ippisRecord.deleteMany({ where: { staffId } });
     await prisma.client.deleteMany({ where: { id: clientId } });
+    await prisma.clientOnboarding.deleteMany({ where: { clientId: agentOnboardedClientId } });
+    await prisma.ippisRecord.deleteMany({ where: { staffId: agentStaffId } });
+    await prisma.client.deleteMany({ where: { id: agentOnboardedClientId } });
+    await prisma.agent.deleteMany({ where: { id: throwawayAgentId } });
     await app.close();
   });
 
@@ -122,6 +158,17 @@ describe('Admin client review (e2e)', () => {
       .set('Authorization', `Bearer ${adminAccessToken}`)
       .expect(200);
     expect(agentRes.body.data.some((c: { id: string }) => c.id === clientId)).toBe(false);
+  });
+
+  it('filters the list by agentId', async () => {
+    const res = await request(app.getHttpServer())
+      .get('/admin/clients')
+      .query({ agentId: throwawayAgentId })
+      .set('Authorization', `Bearer ${adminAccessToken}`)
+      .expect(200);
+
+    expect(res.body.data.every((c: { id: string }) => c.id === agentOnboardedClientId)).toBe(true);
+    expect(res.body.data.some((c: { id: string }) => c.id === agentOnboardedClientId)).toBe(true);
   });
 
   it('returns an analytics summary with totals and breakdowns', async () => {
