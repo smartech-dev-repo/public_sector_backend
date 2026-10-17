@@ -25,7 +25,9 @@ describe('Client profile (e2e)', () => {
     prisma = moduleFixture.get(PrismaService);
     tokenService = moduleFixture.get(TokenService);
 
-    const client = await prisma.client.create({ data: { phone, status: 'VERIFIED' } });
+    const client = await prisma.client.create({
+      data: { phone, status: 'VERIFIED', email: `e2e-client-profile-${Date.now()}@example.com` },
+    });
     clientId = client.id;
     accessToken = tokenService.signAccessToken({ sub: clientId, type: 'client' });
   });

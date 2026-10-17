@@ -58,7 +58,9 @@ describe('Agent profile (e2e)', () => {
   });
 
   it('rejects a client token', async () => {
-    const client = await prisma.client.create({ data: { phone: `+2348099${Date.now().toString().slice(-6)}` } });
+    const client = await prisma.client.create({
+      data: { phone: `+2348099${Date.now().toString().slice(-6)}`, email: `e2e-agent-vs-client-${Date.now()}@example.com` },
+    });
     createdClientIds.push(client.id);
     const clientToken = tokenService.signAccessToken({ sub: client.id, type: 'client' });
 
