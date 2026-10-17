@@ -172,6 +172,26 @@ describe('ClientOnboardingService', () => {
         }),
       });
     });
+
+    it('normalizes a bare, unprefixed IPPIS phone before resolving/creating the client', async () => {
+      prisma.ippisRecord.findFirst.mockResolvedValue({
+        id: 'ippis-1',
+        phone: '8038847641',
+        employeeName: 'Jane Doe',
+        agency: 'NPF',
+      });
+      prisma.clientOnboarding.findUnique.mockResolvedValue(null);
+      prisma.client.upsert.mockResolvedValue({ id: 'client-1', phone: '+2348038847641' });
+      prisma.clientOnboarding.create.mockResolvedValue({ id: 'onboarding-1' });
+
+      await service.adminStartOnboarding('NPF/1', 'admin-1');
+
+      expect(prisma.client.upsert).toHaveBeenCalledWith({
+        where: { phone: '+2348038847641' },
+        update: {},
+        create: { phone: '+2348038847641', createdById: 'admin-1' },
+      });
+    });
   });
 
   describe('agentStartOnboarding', () => {
@@ -256,6 +276,26 @@ describe('ClientOnboardingService', () => {
           ippisRecordId: 'ippis-1',
           onboardedByAgentId: 'agent-1',
         }),
+      });
+    });
+
+    it('normalizes a bare, unprefixed IPPIS phone before resolving/creating the client', async () => {
+      prisma.ippisRecord.findFirst.mockResolvedValue({
+        id: 'ippis-1',
+        phone: '8038847641',
+        employeeName: 'Jane Doe',
+        agency: 'NPF',
+      });
+      prisma.clientOnboarding.findUnique.mockResolvedValue(null);
+      prisma.client.upsert.mockResolvedValue({ id: 'client-1', phone: '+2348038847641' });
+      prisma.clientOnboarding.create.mockResolvedValue({ id: 'onboarding-1' });
+
+      await service.agentStartOnboarding('NPF/1', 'agent-1');
+
+      expect(prisma.client.upsert).toHaveBeenCalledWith({
+        where: { phone: '+2348038847641' },
+        update: {},
+        create: { phone: '+2348038847641' },
       });
     });
   });

@@ -7,6 +7,7 @@ import { FACE_VERIFICATION_PROVIDER, FaceVerificationProvider } from '../face-ve
 import { FILE_STORAGE_PROVIDER, FileStorageProvider } from '../file-storage/file-storage-provider.interface';
 import { ClientDocumentType, ClientStatus, OnboardingStep } from '../generated/prisma/client';
 import { computeLengthOfService } from './length-of-service.util';
+import { normalizeNigerianPhone } from '../common/normalize-nigerian-phone.util';
 
 @Injectable()
 export class ClientOnboardingService {
@@ -109,10 +110,11 @@ export class ClientOnboardingService {
       );
     }
 
+    const phone = normalizeNigerianPhone(ippisRecord.phone);
     const client = await this.prisma.client.upsert({
-      where: { phone: ippisRecord.phone },
+      where: { phone },
       update: {},
-      create: { phone: ippisRecord.phone, createdById: adminId },
+      create: { phone, createdById: adminId },
     });
 
     return this.createOnboardingRecord(client.id, ippisRecord, adminId);
@@ -142,10 +144,11 @@ export class ClientOnboardingService {
       );
     }
 
+    const phone = normalizeNigerianPhone(ippisRecord.phone);
     const client = await this.prisma.client.upsert({
-      where: { phone: ippisRecord.phone },
+      where: { phone },
       update: {},
-      create: { phone: ippisRecord.phone },
+      create: { phone },
     });
 
     return this.createOnboardingRecord(client.id, ippisRecord, undefined, agentId);
