@@ -35,7 +35,7 @@ describe('Admin client review (e2e)', () => {
       });
     adminAccessToken = loginRes.body.accessToken;
 
-    const client = await prisma.client.create({ data: { phone } });
+    const client = await prisma.client.create({ data: { phone, email: `e2e-review-${Date.now()}@example.com` } });
     clientId = client.id;
     const ippisRecord = await prisma.ippisRecord.create({
       data: { agency: 'NPF', staffId, employeeName: 'E2E Review Test' },
@@ -73,7 +73,9 @@ describe('Admin client review (e2e)', () => {
     });
     throwawayAgentId = throwawayAgent.id;
 
-    const agentOnboardedClient = await prisma.client.create({ data: { phone: agentOnboardedPhone } });
+    const agentOnboardedClient = await prisma.client.create({
+      data: { phone: agentOnboardedPhone, email: `e2e-agent-filter-client-${Date.now()}@example.com` },
+    });
     agentOnboardedClientId = agentOnboardedClient.id;
     const agentIppisRecord = await prisma.ippisRecord.create({
       data: { agency: 'NPF', staffId: agentStaffId, employeeName: 'E2E Agent Filter Test Client' },
