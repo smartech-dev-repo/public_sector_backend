@@ -9,6 +9,7 @@ import { IdentityVerificationService } from '../identity-verification/identity-v
 import { FILE_STORAGE_PROVIDER, FileStorageProvider } from '../file-storage/file-storage-provider.interface';
 import { generateNumericCode } from '../common/generate-numeric-code.util';
 import { hashToken } from '../common/opaque-token.util';
+import { devCodeEcho } from '../common/dev-code-echo.util';
 import { AgentApplicationStatus, AgentStatus } from '../generated/prisma/client';
 import { agentRecruitmentVerificationCodeEmail } from '../email/templates/verification-code-emails';
 
@@ -43,7 +44,7 @@ export class AgentRecruitmentService {
     @Inject(FILE_STORAGE_PROVIDER) private readonly fileStorageProvider: FileStorageProvider,
   ) {}
 
-  async requestCode(email: string): Promise<void> {
+  async requestCode(email: string): Promise<{ devCode?: string }> {
     const existingAgent = await this.prisma.agent.findUnique({ where: { email } });
     if (existingAgent) {
       throw new ConflictException('An agent application with this email already exists');
@@ -64,6 +65,8 @@ export class AgentRecruitmentService {
       to: email,
       ...agentRecruitmentVerificationCodeEmail({ code, ttlMinutes: EMAIL_CODE_TTL_MS / 60000 }),
     });
+
+    return { devCode: devCodeEcho(this.configService, code) };
   }
 
   async confirmCode(email: string, code: string): Promise<{ applicationToken: string }> {

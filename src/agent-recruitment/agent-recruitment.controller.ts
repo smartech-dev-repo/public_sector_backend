@@ -31,8 +31,8 @@ export class AgentRecruitmentController {
   @HttpCode(200)
   @Throttle({ default: { limit: 5, ttl: 900000 } })
   async requestCode(@Body() dto: RequestRecruitmentCodeDto) {
-    await this.agentRecruitmentService.requestCode(dto.email);
-    return { sent: true };
+    const result = await this.agentRecruitmentService.requestCode(dto.email);
+    return { sent: true, ...result };
   }
 
   @Post('email/confirm-code')
