@@ -232,7 +232,7 @@ describe('Agent recruitment (e2e)', () => {
 
       const rejectionEmail = [...capturedEmails]
         .reverse()
-        .find((m) => m.to === email && /not approved/.test(m.subject ?? ''));
+        .find((m) => m.to === email && /update on your agent application/.test(m.subject ?? ''));
       expect(rejectionEmail).toBeDefined();
       expect(rejectionEmail?.text).toContain('Incomplete documentation');
     },
