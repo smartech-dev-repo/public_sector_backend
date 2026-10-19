@@ -1,10 +1,33 @@
-import { wrapEmailLayout, wrapEmailLayoutText, highlightBox } from './layout';
+import { wrapEmailLayout, wrapEmailLayoutText, highlightBox, ctaButton, credentialsBox } from './layout';
 
 describe('highlightBox', () => {
   it('wraps the value in a bordered box', () => {
     const html = highlightBox('123456');
     expect(html).toContain('123456');
     expect(html).toContain('#2B6830');
+  });
+});
+
+describe('ctaButton', () => {
+  it('renders a clickable link with the given label', () => {
+    const html = ctaButton('https://example.com/accept', 'Accept Invitation');
+    expect(html).toContain('href="https://example.com/accept"');
+    expect(html).toContain('Accept Invitation');
+    expect(html).toContain('#2B6830');
+  });
+});
+
+describe('credentialsBox', () => {
+  it('renders each labeled row with its value, plain and copiable', () => {
+    const html = credentialsBox([
+      { label: 'Email', value: 'jane@example.com' },
+      { label: 'Password', value: 'temp123' },
+    ]);
+    expect(html).toContain('Email:');
+    expect(html).toContain('jane@example.com');
+    expect(html).toContain('Password:');
+    expect(html).toContain('temp123');
+    expect(html).not.toContain('<img');
   });
 });
 

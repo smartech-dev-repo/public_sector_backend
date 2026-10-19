@@ -1,4 +1,5 @@
 import { Body, Controller, Delete, Get, HttpCode, Param, Post, Query, Req, UseGuards, UseInterceptors } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { PermissionsGuard } from '../auth/permissions.guard';
 import { RequirePermissions } from '../auth/permissions.decorator';
@@ -20,7 +21,13 @@ export class AdminInviteController {
     private readonly adminInviteService: AdminInviteService,
     private readonly emailService: EmailService,
     private readonly auditLogService: AuditLogService,
+    private readonly configService: ConfigService,
   ) {}
+
+  private buildAcceptUrl(token: string): string | undefined {
+    const dashboardUrl = this.configService.get<string>('ADMIN_DASHBOARD_URL');
+    return dashboardUrl ? `${dashboardUrl}/accept-invite?token=${token}` : undefined;
+  }
 
   @Post()
   @RequirePermissions('admins:create')
@@ -31,7 +38,7 @@ export class AdminInviteController {
       invitedById: req.user.sub,
     });
 
-    await this.emailService.send({ to: dto.email, ...adminInviteEmail({ token }) });
+    await this.emailService.send({ to: dto.email, ...adminInviteEmail({ token, acceptUrl: this.buildAcceptUrl(token) }) });
 
     await this.auditLogService.record({
       actorType: AuditActorType.ADMIN,
@@ -56,7 +63,7 @@ export class AdminInviteController {
   async resend(@Param('id') id: string, @Req() req: { user: JwtPayload }) {
     const { invite, token } = await this.adminInviteService.resend(id);
 
-    await this.emailService.send({ to: invite.email, ...adminInviteResentEmail({ token }) });
+    await this.emailService.send({ to: invite.email, ...adminInviteResentEmail({ token, acceptUrl: this.buildAcceptUrl(token) }) });
 
     await this.auditLogService.record({
       actorType: AuditActorType.ADMIN,

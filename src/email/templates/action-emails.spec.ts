@@ -17,6 +17,14 @@ describe('agentCredentialsEmail', () => {
     expect(result.text).toContain('temp123');
   });
 
+  it('shows email and password together in one credentials block', () => {
+    const result = agentCredentialsEmail({ fullName: 'Jane Doe', email: 'jane@example.com', temporaryPassword: 'temp123' });
+    expect(result.text).toContain('Email: jane@example.com');
+    expect(result.text).toContain('Password: temp123');
+    expect(result.html).toContain('jane@example.com');
+    expect(result.html).toContain('temp123');
+  });
+
   it('includes the download line and URL when downloadUrl is given', () => {
     const result = agentCredentialsEmail({
       fullName: 'Jane Doe',

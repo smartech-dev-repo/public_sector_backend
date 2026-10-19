@@ -1,5 +1,5 @@
 // src/email/templates/action-emails.ts
-import { wrapEmailLayout, wrapEmailLayoutText, highlightBox } from './layout';
+import { wrapEmailLayout, wrapEmailLayoutText, credentialsBox } from './layout';
 
 export function agentApplicationRejectedEmail(params: { fullName: string; reason: string }): { subject: string; html: string; text: string } {
   // "Reason: " must stay immediately before the reason text — src/admin-agent-review/admin-agent-review.service.spec.ts
@@ -19,8 +19,11 @@ export function agentCredentialsEmail(params: { fullName: string; email: string;
   // both the absence (no downloadUrl) and presence+URL (with downloadUrl) cases.
   const downloadText = params.downloadUrl ? `\n\nDownload the app: ${params.downloadUrl}` : '';
   const downloadHtml = params.downloadUrl ? `<p>Download the app: <a href="${params.downloadUrl}">${params.downloadUrl}</a></p>` : '';
-  const bodyText = `Hi ${params.fullName}, your agent account has been approved. Here are your login details:\n\nEmail: ${params.email}\nTemporary password: ${params.temporaryPassword}${downloadText}\n\nYou'll be asked to set a new password the first time you log in.`;
-  const bodyHtml = `<p>Hi ${params.fullName}, your agent account has been approved. Here are your login details:</p><p>Email: ${params.email}</p>${highlightBox(params.temporaryPassword)}${downloadHtml}<p>You'll be asked to set a new password the first time you log in.</p>`;
+  const bodyText = `Hi ${params.fullName}, your agent account has been approved. Here are your login details:\n\nEmail: ${params.email}\nPassword: ${params.temporaryPassword}${downloadText}\n\nYou'll be asked to set a new password the first time you log in.`;
+  const bodyHtml = `<p>Hi ${params.fullName}, your agent account has been approved. Here are your login details:</p>${credentialsBox([
+    { label: 'Email', value: params.email },
+    { label: 'Password', value: params.temporaryPassword },
+  ])}${downloadHtml}<p>You'll be asked to set a new password the first time you log in.</p>`;
   return {
     subject: 'Welcome to Moneyfield — your account is ready',
     html: wrapEmailLayout({ headline: 'Your account is ready', bodyHtml }),

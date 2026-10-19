@@ -25,6 +25,20 @@ export function highlightBox(value: string): string {
   return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding: 16px 0;"><div style="display: inline-block; background-color: #EAF5EA; border: 2px solid ${PRIMARY_GREEN}; border-radius: 6px; padding: 12px 24px; font-family: monospace; font-size: 22px; font-weight: 700; letter-spacing: 2px; color: ${PRIMARY_GREEN};">${value}</div></td></tr></table>`;
 }
 
+export function ctaButton(url: string, label: string): string {
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding: 16px 0;"><a href="${url}" style="display: inline-block; background-color: ${PRIMARY_GREEN}; color: #FFFFFF; text-decoration: none; font-weight: 600; font-size: 15px; padding: 14px 32px; border-radius: 6px;">${label}</a></td></tr></table>`;
+}
+
+export function credentialsBox(rows: Array<{ label: string; value: string }>): string {
+  const rowsHtml = rows
+    .map(
+      (row) =>
+        `<tr><td style="padding: 4px 12px 4px 0; font-weight: 600; color: ${PRIMARY_GREEN}; white-space: nowrap;">${row.label}:</td><td style="padding: 4px 0; font-family: monospace; font-size: 15px; word-break: break-all;">${row.value}</td></tr>`,
+    )
+    .join('');
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td style="padding: 16px 0;"><table role="presentation" cellpadding="0" cellspacing="0" style="background-color: #EAF5EA; border: 2px solid ${PRIMARY_GREEN}; border-radius: 6px; padding: 16px 20px;">${rowsHtml}</table></td></tr></table>`;
+}
+
 export function wrapEmailLayout(params: { headline: string; bodyHtml: string }): string {
   return `<!doctype html>
 <html>

@@ -27,6 +27,21 @@ describe('adminInviteEmail', () => {
     expect(result.text).toContain('accept: invite-tok');
     expect(result.html).toContain('invite-tok');
   });
+
+  it('omits the CTA link/button when no acceptUrl is given', () => {
+    const result = adminInviteEmail({ token: 'invite-tok' });
+    expect(result.text).not.toContain('Accept your invitation:');
+    expect(result.html).not.toContain('Accept Invitation');
+  });
+
+  it('includes a clickable CTA link/button when acceptUrl is given', () => {
+    const result = adminInviteEmail({ token: 'invite-tok', acceptUrl: 'https://admin.moneyfieldmfb.com/accept-invite?token=invite-tok' });
+    expect(result.text).toContain('Accept your invitation: https://admin.moneyfieldmfb.com/accept-invite?token=invite-tok');
+    expect(result.html).toContain('href="https://admin.moneyfieldmfb.com/accept-invite?token=invite-tok"');
+    expect(result.html).toContain('Accept Invitation');
+    // the token fallback must still be present and copiable alongside the link
+    expect(result.text).toContain('accept: invite-tok');
+  });
 });
 
 describe('adminInviteResentEmail', () => {
@@ -34,5 +49,11 @@ describe('adminInviteResentEmail', () => {
     const result = adminInviteResentEmail({ token: 'invite-tok-2' });
     expect(result.subject).toBe('Your admin invitation (resent)');
     expect(result.text).toContain('accept: invite-tok-2');
+  });
+
+  it('includes a clickable CTA link/button when acceptUrl is given', () => {
+    const result = adminInviteResentEmail({ token: 'invite-tok-2', acceptUrl: 'https://admin.moneyfieldmfb.com/accept-invite?token=invite-tok-2' });
+    expect(result.text).toContain('Accept your invitation: https://admin.moneyfieldmfb.com/accept-invite?token=invite-tok-2');
+    expect(result.html).toContain('Accept Invitation');
   });
 });
