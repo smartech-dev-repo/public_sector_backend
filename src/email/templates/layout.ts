@@ -26,7 +26,11 @@ export function highlightBox(value: string): string {
 }
 
 export function ctaButton(url: string, label: string): string {
-  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding: 16px 0;"><a href="${url}" style="display: inline-block; background-color: ${PRIMARY_GREEN}; color: #FFFFFF; text-decoration: none; font-weight: 600; font-size: 15px; padding: 14px 32px; border-radius: 6px;">${label}</a></td></tr></table>`;
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding: 16px 0 8px;"><a href="${url}" style="display: inline-block; background-color: ${PRIMARY_GREEN}; color: #FFFFFF; text-decoration: none; font-weight: 600; font-size: 15px; padding: 14px 32px; border-radius: 6px;">${label}</a></td></tr></table>`;
+}
+
+export function copyableLink(url: string): string {
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding: 0 0 16px;"><p style="margin: 0 0 6px; font-size: 13px; color: #6B6B6B;">Or copy this link:</p><div style="display: inline-block; max-width: 100%; background-color: #EAF5EA; border: 1px solid ${PRIMARY_GREEN}; border-radius: 6px; padding: 10px 16px; font-family: monospace; font-size: 13px; word-break: break-all; color: ${PRIMARY_GREEN};">${url}</div></td></tr></table>`;
 }
 
 export function credentialsBox(rows: Array<{ label: string; value: string }>): string {

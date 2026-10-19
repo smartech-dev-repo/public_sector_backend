@@ -42,6 +42,13 @@ describe('adminInviteEmail', () => {
     // the token fallback must still be present and copiable alongside the link
     expect(result.text).toContain('accept: invite-tok');
   });
+
+  it('also shows the link itself as plain, copiable text in the HTML (not just inside the button)', () => {
+    const result = adminInviteEmail({ token: 'invite-tok', acceptUrl: 'https://admin.moneyfieldmfb.com/accept-invite?token=invite-tok' });
+    // the URL must appear as visible text outside of an href= attribute
+    const htmlWithoutHrefs = result.html.replace(/href="[^"]*"/g, '');
+    expect(htmlWithoutHrefs).toContain('https://admin.moneyfieldmfb.com/accept-invite?token=invite-tok');
+  });
 });
 
 describe('adminInviteResentEmail', () => {

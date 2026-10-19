@@ -1,5 +1,5 @@
 // src/email/templates/token-emails.ts
-import { wrapEmailLayout, wrapEmailLayoutText, highlightBox, ctaButton } from './layout';
+import { wrapEmailLayout, wrapEmailLayoutText, highlightBox, ctaButton, copyableLink } from './layout';
 
 export function adminPasswordResetEmail(params: { token: string }): { subject: string; html: string; text: string } {
   // "reset your password: " must stay immediately before the token, on
@@ -32,7 +32,7 @@ export function adminInviteEmail(params: { token: string; acceptUrl?: string }):
   // "accept: " must stay immediately before the token, on one line, in
   // `text` — test/admin-invite.e2e-spec.ts regex-matches this exact phrase.
   const linkText = params.acceptUrl ? `\n\nAccept your invitation: ${params.acceptUrl}` : '';
-  const linkHtml = params.acceptUrl ? ctaButton(params.acceptUrl, 'Accept Invitation') : '';
+  const linkHtml = params.acceptUrl ? ctaButton(params.acceptUrl, 'Accept Invitation') + copyableLink(params.acceptUrl) : '';
   const bodyText = `You've been invited to join Moneyfield Microfinance Bank's admin team.${linkText}\n\nOr use this token to accept: ${params.token}`;
   const bodyHtml = `<p>You've been invited to join Moneyfield Microfinance Bank's admin team.</p>${linkHtml}<p>Or use this token to accept your invitation and set up your account:</p>${highlightBox(params.token)}`;
   return {
@@ -45,7 +45,7 @@ export function adminInviteEmail(params: { token: string; acceptUrl?: string }):
 export function adminInviteResentEmail(params: { token: string; acceptUrl?: string }): { subject: string; html: string; text: string } {
   // Same "accept: " constraint as adminInviteEmail.
   const linkText = params.acceptUrl ? `\n\nAccept your invitation: ${params.acceptUrl}` : '';
-  const linkHtml = params.acceptUrl ? ctaButton(params.acceptUrl, 'Accept Invitation') : '';
+  const linkHtml = params.acceptUrl ? ctaButton(params.acceptUrl, 'Accept Invitation') + copyableLink(params.acceptUrl) : '';
   const bodyText = `You've been invited to join Moneyfield Microfinance Bank's admin team.${linkText}\n\nOr use this token to accept: ${params.token}`;
   const bodyHtml = `<p>You've been invited to join Moneyfield Microfinance Bank's admin team.</p>${linkHtml}<p>Or use this token to accept your invitation and set up your account:</p>${highlightBox(params.token)}`;
   return {

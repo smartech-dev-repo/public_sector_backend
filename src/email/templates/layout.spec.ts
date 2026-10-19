@@ -1,4 +1,4 @@
-import { wrapEmailLayout, wrapEmailLayoutText, highlightBox, ctaButton, credentialsBox } from './layout';
+import { wrapEmailLayout, wrapEmailLayoutText, highlightBox, ctaButton, copyableLink, credentialsBox } from './layout';
 
 describe('highlightBox', () => {
   it('wraps the value in a bordered box', () => {
@@ -14,6 +14,15 @@ describe('ctaButton', () => {
     expect(html).toContain('href="https://example.com/accept"');
     expect(html).toContain('Accept Invitation');
     expect(html).toContain('#2B6830');
+  });
+});
+
+describe('copyableLink', () => {
+  it('renders the URL as plain selectable text, not just a link label', () => {
+    const html = copyableLink('https://example.com/accept-invite?token=abc123');
+    expect(html).toContain('https://example.com/accept-invite?token=abc123');
+    expect(html).toContain('Or copy this link');
+    expect(html).not.toContain('<img');
   });
 });
 
