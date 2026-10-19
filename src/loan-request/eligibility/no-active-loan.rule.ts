@@ -1,8 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ClientLoansService } from '../../client-loans/client-loans.service';
-import { Client, ClientLoanStatus, IppisRecord, LoanRequestStatus } from '../../generated/prisma/client';
+import { Client, IppisRecord, LoanRequestStatus } from '../../generated/prisma/client';
 import { EligibilityCheckResult, EligibilityRule } from './eligibility-rule.interface';
+import { hasLifetimeLoan } from './has-lifetime-loan.util';
 
 const NON_TERMINAL_LOAN_REQUEST_STATUSES = [
   LoanRequestStatus.PENDING,
@@ -25,16 +26,8 @@ export class NoActiveLoanRule implements EligibilityRule {
       return { eligible: false, reason: 'Client already has a loan request in progress' };
     }
 
-    const activeClientLoan = await this.prisma.clientLoan.findFirst({
-      where: { clientId: client.id, status: ClientLoanStatus.ACTIVE },
-    });
-    if (activeClientLoan) {
-      return { eligible: false, reason: 'Client already has an active loan' };
-    }
-
-    const hasActiveIngestedLoan = await this.clientLoansService.hasActiveLoan(client.id);
-    if (hasActiveIngestedLoan) {
-      return { eligible: false, reason: 'Client already has an active loan on record' };
+    if (await hasLifetimeLoan(this.prisma, this.clientLoansService, client.id)) {
+      return { eligible: false, reason: 'Client has already taken a loan — only a renewal is available now' };
     }
 
     return { eligible: true };
