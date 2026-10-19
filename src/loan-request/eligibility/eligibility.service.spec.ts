@@ -13,6 +13,7 @@ describe('EligibilityService', () => {
     } as unknown as PrismaService;
     const clientLoansService = {
       hasActiveLoan: jest.fn().mockResolvedValue(false),
+      hasAnyMatchedLoan: jest.fn().mockResolvedValue(false),
     } as unknown as ClientLoansService;
     return new EligibilityService(new ClientMustBeVerifiedRule(), new NoActiveLoanRule(prisma, clientLoansService));
   }
