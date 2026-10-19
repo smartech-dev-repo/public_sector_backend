@@ -149,10 +149,11 @@ export function agentRecruitmentVerificationCodeEmail(params: { code: string; tt
 }
 
 export function clientOtpCodeEmail(params: { code: string; ttlMinutes: number }): { subject: string; html: string; text: string } {
-  // No e2e test parses this body (confirmed by grep) — free to word
-  // however reads best, no exact-phrase constraint.
-  const bodyText = `Use this code to log in to your Moneyfield account:\n\n${params.code}\n\nThis code expires in ${params.ttlMinutes} minutes. This is a backup copy — you should also have received it by SMS.`;
-  const bodyHtml = `<p>Use this code to log in to your Moneyfield account:</p>${highlightBox(params.code)}<p>This code expires in ${params.ttlMinutes} minutes. This is a backup copy — you should also have received it by SMS.</p>`;
+  // No e2e test parses this body, but src/otp/otp.service.spec.ts:243
+  // asserts `html` contains the substring "verification code" — keep
+  // that phrase present (unit-test constraint, found during plan research).
+  const bodyText = `Use this verification code to log in to your Moneyfield account:\n\n${params.code}\n\nThis code expires in ${params.ttlMinutes} minutes. This is a backup copy — you should also have received it by SMS.`;
+  const bodyHtml = `<p>Use this verification code to log in to your Moneyfield account:</p>${highlightBox(params.code)}<p>This code expires in ${params.ttlMinutes} minutes. This is a backup copy — you should also have received it by SMS.</p>`;
   return {
     subject: 'Your login code',
     html: wrapEmailLayout({ headline: 'Your one-time login code', bodyHtml }),
@@ -308,6 +309,11 @@ SUPPORT_EMAIL=support@moneyfieldmfb.com
   per the earlier Agent Recruitment/Admin Agent Review work this
   session) get updated to assert against the new template function's
   output shape instead of a raw inline string.
+- Plan research also checked every existing unit spec for the 13 call
+  sites for content-dependent assertions (not just e2e): all pass
+  unchanged against the new templates except `src/otp/otp.service.spec.ts`,
+  which asserts `html` contains "verification code" —
+  `clientOtpCodeEmail`'s copy keeps that exact phrase for this reason.
 - No e2e test file needs to change. 6 of the 11 templates deliberately
   keep the exact old phrase-adjacent-to-value substring in `text` (see
   the per-function comments in §5) specifically so every existing
