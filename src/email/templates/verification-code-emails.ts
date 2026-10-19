@@ -51,3 +51,13 @@ export function clientOtpCodeEmail(params: { code: string; ttlMinutes: number })
     text: wrapEmailLayoutText({ headline: 'Your one-time login code', bodyText }),
   };
 }
+
+export function changePasswordConfirmationCodeEmail(params: { code: string; ttlMinutes: number }): { subject: string; html: string; text: string } {
+  const bodyText = `Hello,\n\nWe received a request to change your password.\n\nYour verification code is: ${params.code}\n\nThis code expires in ${params.ttlMinutes} minutes. If you didn't request this, you can safely ignore this email — your password won't change.\n\n${CLOSING_TEXT}`;
+  const bodyHtml = `<p>Hello,</p><p>We received a request to change your password.</p><p>Your verification code is:</p>${highlightBox(params.code)}<p>This code expires in ${params.ttlMinutes} minutes. If you didn't request this, you can safely ignore this email — your password won't change.</p>${CLOSING_HTML}`;
+  return {
+    subject: 'Confirm your password change',
+    html: wrapEmailLayout({ headline: 'Confirm your password change', bodyHtml }),
+    text: wrapEmailLayoutText({ headline: 'Confirm your password change', bodyText }),
+  };
+}
