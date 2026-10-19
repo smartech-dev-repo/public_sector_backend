@@ -136,6 +136,9 @@ model Agent {
   twoFactorEmailCodeExpiresAt DateTime?
   passwordResetCodeHash       String?
   passwordResetCodeExpiresAt  DateTime?
+  changePasswordPendingHash   String?
+  changePasswordCodeHash      String?
+  changePasswordCodeExpiresAt DateTime?
 }
 
 enum AgentApplicationStatus {
