@@ -121,33 +121,49 @@ export class LoanRequestService {
   }
 
   private async applyTopupToClientLoan(loanRequest: LoanRequest): Promise<void> {
-    const clientLoan = await this.prisma.clientLoan.findUniqueOrThrow({
-      where: { id: loanRequest.topupTargetId! },
-    });
-
     const topupAmount = Number(loanRequest.amount);
     const managementChargeAmount = Number(loanRequest.managementChargeAmount);
-    const topupDisbursedAmount =
+    const disbursedAmount =
       loanRequest.managementChargeApplication === ManagementChargeApplication.DEDUCT_FROM_DISBURSEMENT
         ? topupAmount - managementChargeAmount
         : topupAmount;
 
     const disbursementDate = new Date();
-    const topupMaturationDate = new Date(disbursementDate);
-    topupMaturationDate.setMonth(topupMaturationDate.getMonth() + loanRequest.tenorMonths);
+    const maturationDate = new Date(disbursementDate);
+    maturationDate.setMonth(maturationDate.getMonth() + loanRequest.tenorMonths);
 
-    const newMaturationDate =
-      topupMaturationDate.getTime() > clientLoan.maturationDate.getTime()
-        ? topupMaturationDate
-        : clientLoan.maturationDate;
+    const fields = {
+      principalAmount: topupAmount,
+      disbursedAmount,
+      principalBalance: topupAmount,
+      tenorMonths: loanRequest.tenorMonths,
+      interestRatePercent: loanRequest.interestRatePercent,
+      managementChargeType: loanRequest.managementChargeType,
+      managementChargeValue: loanRequest.managementChargeValue,
+      managementChargeApplication: loanRequest.managementChargeApplication,
+      managementChargeAmount,
+      disbursementDate,
+      maturationDate,
+      status: ClientLoanStatus.ACTIVE,
+    };
 
-    await this.prisma.clientLoan.update({
-      where: { id: clientLoan.id },
+    if (loanRequest.topupTargetId) {
+      await this.prisma.clientLoan.update({ where: { id: loanRequest.topupTargetId }, data: fields });
+      return;
+    }
+
+    const onboarding = await this.prisma.clientOnboarding.findUniqueOrThrow({
+      where: { clientId: loanRequest.clientId },
+      include: { ippisRecord: true },
+    });
+
+    await this.prisma.clientLoan.create({
       data: {
-        principalAmount: Number(clientLoan.principalAmount) + topupAmount,
-        principalBalance: Number(clientLoan.principalBalance) + topupAmount,
-        disbursedAmount: Number(clientLoan.disbursedAmount) + topupDisbursedAmount,
-        maturationDate: newMaturationDate,
+        clientId: loanRequest.clientId,
+        loanRequestId: loanRequest.id,
+        agency: onboarding.ippisRecord.agency,
+        staffId: onboarding.ippisRecord.staffId,
+        ...fields,
       },
     });
   }
@@ -272,8 +288,9 @@ export class LoanRequestService {
       throw new UnprocessableEntityException(eligibility.reason);
     }
 
-    const activeLoan = await this.prisma.clientLoan.findFirstOrThrow({
-      where: { clientId, status: ClientLoanStatus.ACTIVE },
+    const existingClientLoan = await this.prisma.clientLoan.findFirst({
+      where: { clientId },
+      orderBy: { disbursementDate: 'desc' },
     });
 
     const { product, tier } = await this.loanProductResolverService.resolve(onboarding.ippisRecord, amount, tenorMonths);
@@ -292,7 +309,7 @@ export class LoanRequestService {
         amount,
         tenorMonths,
         type: LoanRequestType.TOPUP,
-        topupTargetId: activeLoan.id,
+        topupTargetId: existingClientLoan?.id,
         interestRatePercent: tier.interestRatePercent,
         managementChargeType: product.managementChargeType,
         managementChargeValue: product.managementChargeValue,

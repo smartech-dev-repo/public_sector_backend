@@ -544,7 +544,7 @@ describe('LoanRequestService', () => {
       expect(smsProvider.send).not.toHaveBeenCalled();
     });
 
-    it('sends a top-up-worded SMS and creates a TOPUP LoanRequest pointing at the active loan', async () => {
+    it('sends a top-up-worded SMS and creates a TOPUP LoanRequest pointing at the existing ClientLoan', async () => {
       prisma.client.findUniqueOrThrow.mockResolvedValue({ id: 'c1', phone: '+2348000000000' });
       prisma.clientOnboarding.findUnique.mockResolvedValue({ ippisRecord: { agency: 'NPF' } });
       topupEligibilityService.check.mockResolvedValue({ eligible: true });
@@ -556,11 +556,15 @@ describe('LoanRequestService', () => {
         },
         tier: { minTenorMonths: 1, maxTenorMonths: 12, interestRatePercent: 6 },
       });
-      prisma.clientLoan.findFirstOrThrow.mockResolvedValue({ id: 'cl1' });
+      prisma.clientLoan.findFirst.mockResolvedValue({ id: 'cl1' });
       prisma.loanRequest.create.mockResolvedValue({ id: 'lr2' });
 
       await service.createTopup('c1', 2000, 12);
 
+      expect(prisma.clientLoan.findFirst).toHaveBeenCalledWith({
+        where: { clientId: 'c1' },
+        orderBy: { disbursementDate: 'desc' },
+      });
       expect(smsProvider.send).toHaveBeenCalledWith('+2348000000000', expect.stringContaining('top-up'));
       expect(prisma.loanRequest.create).toHaveBeenCalledWith({
         data: expect.objectContaining({
@@ -573,6 +577,28 @@ describe('LoanRequestService', () => {
         }),
       });
       expect(expiryQueue.add).toHaveBeenCalledWith('expire', { loanRequestId: 'lr2' }, { delay: 24 * 60 * 60 * 1000 });
+    });
+
+    it('creates a TOPUP LoanRequest with no topupTargetId when the client has no ClientLoan row yet (ingested-only lifetime loan)', async () => {
+      prisma.client.findUniqueOrThrow.mockResolvedValue({ id: 'c1', phone: '+2348000000000' });
+      prisma.clientOnboarding.findUnique.mockResolvedValue({ ippisRecord: { agency: 'NPF' } });
+      topupEligibilityService.check.mockResolvedValue({ eligible: true });
+      loanProductResolverService.resolve.mockResolvedValue({
+        product: {
+          managementChargeType: 'PERCENTAGE',
+          managementChargeValue: 2,
+          managementChargeApplication: 'DEDUCT_FROM_DISBURSEMENT',
+        },
+        tier: { minTenorMonths: 1, maxTenorMonths: 12, interestRatePercent: 6 },
+      });
+      prisma.clientLoan.findFirst.mockResolvedValue(null);
+      prisma.loanRequest.create.mockResolvedValue({ id: 'lr2' });
+
+      await service.createTopup('c1', 2000, 12);
+
+      expect(prisma.loanRequest.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({ topupTargetId: undefined }),
+      });
     });
 
     it('also emails a top-up confirmation copy when the client has an email on file', async () => {
@@ -599,25 +625,21 @@ describe('LoanRequestService', () => {
   });
 
   describe('disburse with a TOPUP request', () => {
-    it('updates the existing ClientLoan and extends maturity when the topup tenor pushes it further out', async () => {
+    it('resets the existing ClientLoan row in place with the new terms, flipping status back to ACTIVE', async () => {
       prisma.loanRequest.findUnique.mockResolvedValue({ id: 'lr2', status: 'APPROVED' });
       prisma.loanRequest.update.mockResolvedValue({ id: 'lr2', status: 'DISBURSED' });
       prisma.loanRequest.findUniqueOrThrow.mockResolvedValue({
         id: 'lr2',
+        clientId: 'c1',
         type: 'TOPUP',
         topupTargetId: 'cl1',
-        amount: 2000,
-        tenorMonths: 12,
-        managementChargeAmount: 40,
+        amount: 7000,
+        tenorMonths: 6,
+        interestRatePercent: 6,
+        managementChargeType: 'PERCENTAGE',
+        managementChargeValue: 2,
+        managementChargeAmount: 140,
         managementChargeApplication: 'DEDUCT_FROM_DISBURSEMENT',
-      });
-      const nearFutureMaturity = new Date(Date.now() + 1000 * 60 * 60 * 24 * 30);
-      prisma.clientLoan.findUniqueOrThrow.mockResolvedValue({
-        id: 'cl1',
-        principalAmount: 5000,
-        principalBalance: 4000,
-        disbursedAmount: 4900,
-        maturationDate: nearFutureMaturity,
       });
       prisma.clientLoan.update.mockResolvedValue({ id: 'cl1' });
 
@@ -627,48 +649,56 @@ describe('LoanRequestService', () => {
         where: { id: 'cl1' },
         data: expect.objectContaining({
           principalAmount: 7000,
-          principalBalance: 6000,
+          principalBalance: 7000,
           disbursedAmount: 6860,
+          tenorMonths: 6,
+          interestRatePercent: 6,
+          managementChargeType: 'PERCENTAGE',
+          managementChargeValue: 2,
+          managementChargeAmount: 140,
+          managementChargeApplication: 'DEDUCT_FROM_DISBURSEMENT',
+          status: 'ACTIVE',
         }),
       });
-      const call = (prisma.clientLoan.update.mock.calls[0] as [{ data: { maturationDate: Date } }])[0];
-      expect(call.data.maturationDate.getTime()).toBeGreaterThan(nearFutureMaturity.getTime());
       expect(prisma.clientLoan.create).not.toHaveBeenCalled();
     });
 
-    it('keeps the existing maturationDate when the topup tenor does not extend beyond it', async () => {
+    it('creates the client\'s first ClientLoan row when no topupTargetId is set (renewal of an ingested-only lifetime loan)', async () => {
       prisma.loanRequest.findUnique.mockResolvedValue({ id: 'lr2', status: 'APPROVED' });
       prisma.loanRequest.update.mockResolvedValue({ id: 'lr2', status: 'DISBURSED' });
       prisma.loanRequest.findUniqueOrThrow.mockResolvedValue({
         id: 'lr2',
+        clientId: 'c1',
         type: 'TOPUP',
-        topupTargetId: 'cl1',
-        amount: 1000,
-        tenorMonths: 1,
-        managementChargeAmount: 20,
-        managementChargeApplication: 'ADD_TO_REPAYMENT',
+        topupTargetId: null,
+        amount: 7000,
+        tenorMonths: 6,
+        interestRatePercent: 6,
+        managementChargeType: 'PERCENTAGE',
+        managementChargeValue: 2,
+        managementChargeAmount: 140,
+        managementChargeApplication: 'DEDUCT_FROM_DISBURSEMENT',
       });
-      const veryFarFutureMaturity = new Date(Date.now() + 1000 * 60 * 60 * 24 * 365 * 5);
-      prisma.clientLoan.findUniqueOrThrow.mockResolvedValue({
-        id: 'cl1',
-        principalAmount: 5000,
-        principalBalance: 4000,
-        disbursedAmount: 5000,
-        maturationDate: veryFarFutureMaturity,
+      prisma.clientOnboarding.findUniqueOrThrow.mockResolvedValue({
+        ippisRecord: { agency: 'NPF', staffId: 'NPF-001' },
       });
-      prisma.clientLoan.update.mockResolvedValue({ id: 'cl1' });
+      prisma.clientLoan.create.mockResolvedValue({ id: 'cl-new' });
 
       await service.disburse('lr2');
 
-      expect(prisma.clientLoan.update).toHaveBeenCalledWith({
-        where: { id: 'cl1' },
+      expect(prisma.clientLoan.create).toHaveBeenCalledWith({
         data: expect.objectContaining({
-          principalAmount: 6000,
-          principalBalance: 5000,
-          disbursedAmount: 6000,
-          maturationDate: veryFarFutureMaturity,
+          clientId: 'c1',
+          loanRequestId: 'lr2',
+          agency: 'NPF',
+          staffId: 'NPF-001',
+          principalAmount: 7000,
+          principalBalance: 7000,
+          disbursedAmount: 6860,
+          status: 'ACTIVE',
         }),
       });
+      expect(prisma.clientLoan.update).not.toHaveBeenCalled();
     });
   });
 
