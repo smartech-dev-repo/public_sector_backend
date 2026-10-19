@@ -6,6 +6,10 @@ import { isUniqueConstraintError } from '../common/is-unique-constraint-error.ut
 import { LoanSettingsService } from '../loan-settings/loan-settings.service';
 import { computeServiceWindow } from '../loan-request/eligibility/compute-service-window.util';
 import { isServiceLengthEligible } from '../loan-request/eligibility/service-length-eligible.util';
+import { hasLifetimeLoan } from '../loan-request/eligibility/has-lifetime-loan.util';
+import { EligibilityService } from '../loan-request/eligibility/eligibility.service';
+import { TopupEligibilityService } from '../loan-request/eligibility/topup-eligibility.service';
+import { ClientLoansService } from '../client-loans/client-loans.service';
 import { validateInterestTiers } from './validate-interest-tiers.util';
 import { InterestTier } from './interest-tier.interface';
 
@@ -51,6 +55,9 @@ export class LoanProductsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly loanSettingsService: LoanSettingsService,
+    private readonly eligibilityService: EligibilityService,
+    private readonly topupEligibilityService: TopupEligibilityService,
+    private readonly clientLoansService: ClientLoansService,
   ) {}
 
   async create(input: CreateLoanProductInput): Promise<LoanProduct> {
@@ -112,16 +119,34 @@ export class LoanProductsService {
     });
   }
 
-  async listActiveForClient(
+  async listEligibleForClient(
     clientId: string,
+    filters: { amount?: number } = {},
     pagination: { page: number; limit: number } = { page: 1, limit: 25 },
-  ): Promise<PaginatedResult<LoanProduct>> {
+  ): Promise<{ mode: 'NEW_LOAN' | 'TOPUP'; eligible: boolean; reason?: string; data: LoanProduct[]; meta: PaginatedResult<LoanProduct>['meta'] }> {
+    const { page, limit } = pagination;
+    const emptyMeta = buildPaginatedResult<LoanProduct>([], 0, page, limit).meta;
+
     const onboarding = await this.prisma.clientOnboarding.findUnique({
       where: { clientId },
       include: { ippisRecord: true },
     });
     if (!onboarding) {
-      return buildPaginatedResult([], 0, pagination.page, pagination.limit);
+      return { mode: 'NEW_LOAN', eligible: false, reason: 'Client has not completed onboarding', data: [], meta: emptyMeta };
+    }
+
+    const client = await this.prisma.client.findUniqueOrThrow({ where: { id: clientId } });
+    const mode: 'NEW_LOAN' | 'TOPUP' = (await hasLifetimeLoan(this.prisma, this.clientLoansService, clientId))
+      ? 'TOPUP'
+      : 'NEW_LOAN';
+
+    const eligibility =
+      mode === 'TOPUP'
+        ? await this.topupEligibilityService.check(client, onboarding.ippisRecord, 0)
+        : await this.eligibilityService.check(client, onboarding.ippisRecord, 0);
+
+    if (!eligibility.eligible) {
+      return { mode, eligible: false, reason: eligibility.reason, data: [], meta: emptyMeta };
     }
 
     const settings = await this.loanSettingsService.get();
@@ -133,15 +158,20 @@ export class LoanProductsService {
     );
 
     const candidates = await this.prisma.loanProduct.findMany({
-      where: { isActive: true, sectors: { has: onboarding.ippisRecord.agency } },
+      where: {
+        isActive: true,
+        sectors: { has: onboarding.ippisRecord.agency },
+        ...(filters.amount !== undefined
+          ? { minimumAmount: { lte: filters.amount }, maximumAmount: { gte: filters.amount } }
+          : {}),
+      },
       orderBy: { createdAt: 'desc' },
     });
-    const eligible = candidates.filter((p) => isServiceLengthEligible(p, monthsLeft, monthsServed));
+    const eligibleProducts = candidates.filter((p) => isServiceLengthEligible(p, monthsLeft, monthsServed));
 
-    const { page, limit } = pagination;
-    const total = eligible.length;
-    const data = eligible.slice((page - 1) * limit, (page - 1) * limit + limit);
+    const total = eligibleProducts.length;
+    const data = eligibleProducts.slice((page - 1) * limit, (page - 1) * limit + limit);
 
-    return buildPaginatedResult(data, total, page, limit);
+    return { mode, eligible: true, data, meta: buildPaginatedResult(data, total, page, limit).meta };
   }
 }

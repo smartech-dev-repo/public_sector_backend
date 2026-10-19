@@ -12,6 +12,10 @@ export class ClientLoanProductsController {
 
   @Get()
   list(@Query() query: ListClientLoanProductsQueryDto, @Req() req: { user: JwtPayload }) {
-    return this.loanProductsService.listActiveForClient(req.user.sub, { page: query.page, limit: query.limit });
+    return this.loanProductsService.listEligibleForClient(
+      req.user.sub,
+      { amount: query.amount },
+      { page: query.page, limit: query.limit },
+    );
   }
 }
