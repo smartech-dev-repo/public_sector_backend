@@ -13,6 +13,7 @@ import { generateNumericCode } from '../../common/generate-numeric-code.util';
 import { JwtPayload } from '../jwt-payload.interface';
 import { adminPasswordResetEmail } from '../../email/templates/token-emails';
 import { twoFactorSetupCodeEmail, loginVerificationCodeEmail } from '../../email/templates/verification-code-emails';
+import { devCodeEcho } from '../../common/dev-code-echo.util';
 import { SessionPrincipalType, TwoFactorMethod } from '../../generated/prisma/client';
 
 const PASSWORD_RESET_TTL_MS = 60 * 60 * 1000;
@@ -173,7 +174,7 @@ export class AdminAuthService {
       },
     });
     await this.emailService.send({ to: admin.email, ...twoFactorSetupCodeEmail({ code, ttlMinutes: 10 }) });
-    return { method: TwoFactorMethod.EMAIL };
+    return { method: TwoFactorMethod.EMAIL, devCode: devCodeEcho(this.configService, code) };
   }
 
   async confirmTwoFactor(adminId: string, code: string): Promise<void> {
@@ -250,6 +251,7 @@ export class AdminAuthService {
   }
 
   private async beginTwoFactorLogin(admin: { id: string; email: string; twoFactorMethod: TwoFactorMethod | null }) {
+    let devCode: string | undefined;
     if (admin.twoFactorMethod === TwoFactorMethod.EMAIL) {
       const length = Number(this.configService?.get('EMAIL_CODE_LENGTH') ?? 6);
       const code = generateNumericCode(length);
@@ -261,10 +263,11 @@ export class AdminAuthService {
         },
       });
       await this.emailService.send({ to: admin.email, ...loginVerificationCodeEmail({ code, ttlMinutes: 10 }) });
+      devCode = devCodeEcho(this.configService, code);
     }
 
     const pendingToken = this.tokenService.signTwoFactorPendingToken(admin.id);
-    return { twoFactorRequired: true, method: admin.twoFactorMethod, pendingToken };
+    return { twoFactorRequired: true, method: admin.twoFactorMethod, pendingToken, devCode };
   }
 
   async verifyTwoFactorLogin(pendingToken: string, code: string, meta?: { userAgent?: string; ip?: string }) {
