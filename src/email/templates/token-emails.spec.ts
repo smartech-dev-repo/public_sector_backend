@@ -20,6 +20,18 @@ describe('agentPasswordResetEmail', () => {
   });
 });
 
+describe('adminPasswordResetEmail and agentPasswordResetEmail', () => {
+  it('both open with a greeting and close with a sign-off', () => {
+    const admin = adminPasswordResetEmail({ token: 'abc123tok' });
+    const agent = agentPasswordResetEmail({ token: 'tok456', code: '998877' });
+    for (const result of [admin, agent]) {
+      expect(result.text).toContain('Hello,');
+      expect(result.text).toContain('Warm regards,\nThe Moneyfield Team');
+      expect(result.html).toContain('Warm regards');
+    }
+  });
+});
+
 describe('adminInviteEmail', () => {
   it('has a greeting and sign-off, and falls back to the token when no acceptUrl is given', () => {
     const result = adminInviteEmail({ token: 'invite-tok' });

@@ -51,3 +51,18 @@ describe('loanRequestConfirmationEmail', () => {
     expect(result.text).toContain('5000');
   });
 });
+
+describe('every action-email template', () => {
+  it('opens with a greeting and closes with a sign-off', () => {
+    const rejected = agentApplicationRejectedEmail({ fullName: 'Jane Doe', reason: 'Incomplete CV' });
+    const credentials = agentCredentialsEmail({ fullName: 'Jane Doe', email: 'jane@example.com', temporaryPassword: 'temp123' });
+    const loanConfirmation = loanRequestConfirmationEmail({ amount: 5000, type: 'ORIGINATION' });
+    for (const result of [rejected, credentials, loanConfirmation]) {
+      expect(result.text).toContain('Warm regards,\nThe Moneyfield Team');
+      expect(result.html).toContain('Warm regards');
+    }
+    expect(rejected.text).toContain('Hi Jane Doe,');
+    expect(credentials.text).toContain('Hi Jane Doe,');
+    expect(loanConfirmation.text).toContain('Hello,');
+  });
+});

@@ -43,3 +43,22 @@ describe('clientOtpCodeEmail', () => {
     expect(result.text).toContain('5 minutes');
   });
 });
+
+describe('every verification-code template', () => {
+  const builders = [
+    () => twoFactorSetupCodeEmail({ code: '123456', ttlMinutes: 10 }),
+    () => loginVerificationCodeEmail({ code: '123456', ttlMinutes: 10 }),
+    () => agentRecruitmentVerificationCodeEmail({ code: '123456', ttlMinutes: 10 }),
+    () => clientOtpCodeEmail({ code: '1234', ttlMinutes: 5 }),
+  ];
+
+  it('opens with a greeting and closes with a sign-off', () => {
+    for (const build of builders) {
+      const result = build();
+      expect(result.text).toContain('Hello,');
+      expect(result.text).toContain('Warm regards,\nThe Moneyfield Team');
+      expect(result.html).toContain('Warm regards');
+      expect(result.html).toContain('The Moneyfield Team');
+    }
+  });
+});
