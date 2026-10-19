@@ -5,7 +5,7 @@ import { AppModule } from '../src/app.module';
 import { PrismaService } from '../src/prisma/prisma.service';
 import { TokenService } from '../src/auth/token.service';
 
-describe('Loan topup (e2e)', () => {
+describe('Loan topup/renewal (e2e)', () => {
   let app: INestApplication;
   let prisma: PrismaService;
   let adminAccessToken: string;
@@ -49,23 +49,16 @@ describe('Loan topup (e2e)', () => {
   });
 
   afterAll(async () => {
-    // Every step below is scoped by this run's own staffId prefix (not the
-    // shared `employeeName` literal, which is identical across every run of
-    // this file) so a concurrent or previous run's rows can never cause an
-    // FK violation here -- that's what used to abort this afterAll partway
-    // through and leave rows behind for the next run to collide with.
+    await prisma.clientLoanRepaymentVariance.deleteMany({ where: { clientLoan: { agency, staffId: { startsWith: staffId } } } });
     await prisma.clientLoan.deleteMany({ where: { agency, staffId: { startsWith: staffId } } });
     await prisma.loanRequest.deleteMany({ where: { client: { onboarding: { ippisRecord: { staffId: { startsWith: staffId } } } } } });
-    // Captured before clientOnboarding is deleted, since the client ->
-    // ippisRecord.staffId link disappears with it, and a shared phone
-    // prefix (like the other suites in this repo used to do) risks
-    // deleting another run's leftover client that happens to share it.
     const clientIds = (
       await prisma.clientOnboarding.findMany({
         where: { ippisRecord: { staffId: { startsWith: staffId } } },
         select: { clientId: true },
       })
     ).map((c) => c.clientId);
+    await prisma.walletEntry.deleteMany({ where: { clientId: { in: clientIds } } });
     await prisma.clientOnboarding.deleteMany({ where: { ippisRecord: { staffId: { startsWith: staffId } } } });
     await prisma.ippisRecord.deleteMany({ where: { staffId: { startsWith: staffId } } });
     await prisma.client.deleteMany({ where: { id: { in: clientIds } } });
@@ -120,16 +113,50 @@ describe('Loan topup (e2e)', () => {
     return { client, accessToken };
   }
 
+  async function closeLoanBalance(clientId: string, accessToken: string, agencyStaffId: string) {
+    const loan = await prisma.clientLoan.findFirst({ where: { agency, staffId: agencyStaffId } });
+    const balance = Number(loan!.principalBalance);
+    await request(app.getHttpServer())
+      .post(`/admin/clients/${clientId}/wallet/credit`)
+      .set('Authorization', `Bearer ${adminAccessToken}`)
+      .send({ amount: balance, description: 'E2E test credit' })
+      .expect(200);
+    await request(app.getHttpServer())
+      .post('/client/client-loans/me/apply-wallet')
+      .set('Authorization', `Bearer ${accessToken}`)
+      .send({ amount: balance })
+      .expect(200);
+  }
+
   it(
-    'runs a full topup flow: existing active loan -> topup request -> confirm -> admin approve/disburse -> ClientLoan updated',
+    'rejects a renewal while the existing loan still has an outstanding balance',
     async () => {
-      const { client, accessToken } = await originateAndDisburseLoan('0000001', 'A');
-      const before = await prisma.clientLoan.findFirst({ where: { agency, staffId: `${staffId}-A` } });
+      const { accessToken } = await originateAndDisburseLoan('0000001', 'A');
+
+      await request(app.getHttpServer())
+        .post('/client/loan-requests/topup')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({ amount: 20000, tenorMonths: 4 })
+        .expect(422)
+        .expect((res) => expect(res.body.message).toMatch(/outstanding balance/));
+    },
+    30000,
+  );
+
+  it(
+    'runs a full renewal flow once the balance reaches 0: request -> confirm -> admin approve -> admin disburse -> ClientLoan reset in place',
+    async () => {
+      const { client, accessToken } = await originateAndDisburseLoan('0000002', 'B');
+      await closeLoanBalance(client.id, accessToken, `${staffId}-B`);
+
+      const beforeClosed = await prisma.clientLoan.findFirst({ where: { agency, staffId: `${staffId}-B` } });
+      expect(Number(beforeClosed!.principalBalance)).toBe(0);
+      expect(beforeClosed!.status).toBe('CLOSED');
 
       const topupRes = await request(app.getHttpServer())
         .post('/client/loan-requests/topup')
         .set('Authorization', `Bearer ${accessToken}`)
-        .send({ amount: 20000, tenorMonths: 4 })
+        .send({ amount: 50000, tenorMonths: 4 })
         .expect(201);
       const topupId = topupRes.body.id;
       expect(topupRes.body.type).toBe('TOPUP');
@@ -148,20 +175,22 @@ describe('Loan topup (e2e)', () => {
         .set('Authorization', `Bearer ${adminAccessToken}`)
         .expect(200);
 
-      const after = await prisma.clientLoan.findFirst({ where: { agency, staffId: `${staffId}-A` } });
-      expect(Number(after!.principalAmount)).toBe(Number(before!.principalAmount) + 20000);
-      expect(Number(after!.principalBalance)).toBe(Number(before!.principalBalance) + 20000);
+      const after = await prisma.clientLoan.findFirst({ where: { agency, staffId: `${staffId}-B` } });
+      expect(Number(after!.principalAmount)).toBe(50000);
+      expect(Number(after!.principalBalance)).toBe(50000);
+      expect(after!.status).toBe('ACTIVE');
 
-      const secondLoanCount = await prisma.clientLoan.count({ where: { agency, staffId: `${staffId}-A` } });
-      expect(secondLoanCount).toBe(1);
+      const rowCount = await prisma.clientLoan.count({ where: { agency, staffId: `${staffId}-B` } });
+      expect(rowCount).toBe(1);
     },
     30000,
   );
 
   it(
-    'rejects a second topup while the first is still in progress',
+    'rejects a second renewal request while the first is still in progress',
     async () => {
-      const { client, accessToken } = await originateAndDisburseLoan('0000002', 'B');
+      const { client, accessToken } = await originateAndDisburseLoan('0000003', 'C');
+      await closeLoanBalance(client.id, accessToken, `${staffId}-C`);
 
       await request(app.getHttpServer())
         .post('/client/loan-requests/topup')
@@ -178,13 +207,14 @@ describe('Loan topup (e2e)', () => {
     30000,
   );
 
-  it('rejects a topup when the client has no active loan', async () => {
-    const { accessToken } = await createVerifiedClient('0000003', 'C');
+  it('rejects a renewal when the client has never had a loan at all', async () => {
+    const { accessToken } = await createVerifiedClient('0000004', 'D');
 
     await request(app.getHttpServer())
       .post('/client/loan-requests/topup')
       .set('Authorization', `Bearer ${accessToken}`)
       .send({ amount: 10000, tenorMonths: 4 })
-      .expect(422);
+      .expect(422)
+      .expect((res) => expect(res.body.message).toMatch(/no existing loan to renew/));
   });
 });

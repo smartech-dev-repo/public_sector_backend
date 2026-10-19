@@ -94,7 +94,7 @@ describe('Loan origination (e2e)', () => {
     return { client, accessToken };
   }
 
-  it('lists the active loan products for the client\'s own agency', async () => {
+  it('lists the active loan products for the client\'s own agency, in NEW_LOAN mode', async () => {
     const { accessToken } = await createVerifiedClient('0000001', 'A');
 
     const res = await request(app.getHttpServer())
@@ -102,6 +102,8 @@ describe('Loan origination (e2e)', () => {
       .set('Authorization', `Bearer ${accessToken}`)
       .expect(200);
 
+    expect(res.body.mode).toBe('NEW_LOAN');
+    expect(res.body.eligible).toBe(true);
     // Not toHaveLength(1): other e2e suites running concurrently against this
     // same shared DB also create active NPF loan products -- the endpoint
     // correctly returns every eligible product for the agency, so this only
