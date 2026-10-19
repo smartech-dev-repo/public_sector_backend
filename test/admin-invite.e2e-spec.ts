@@ -130,7 +130,7 @@ describe('Admin invite (e2e)', () => {
       .send({ email: acceptEmail, roleId: superAdminRoleId })
       .expect(201);
 
-    const capturedToken = capturedEmail?.text?.match(/accept: (\S+)/)?.[1];
+    const capturedToken = capturedEmail?.text?.match(/accept-invite\?token=(\S+)/)?.[1];
     expect(capturedToken).toBeTruthy();
 
     const acceptRes = await request(app.getHttpServer())

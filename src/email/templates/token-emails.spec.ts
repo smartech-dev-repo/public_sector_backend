@@ -21,46 +21,51 @@ describe('agentPasswordResetEmail', () => {
 });
 
 describe('adminInviteEmail', () => {
-  it('includes the exact phrase and token on one line in text', () => {
+  it('has a greeting and sign-off, and falls back to the token when no acceptUrl is given', () => {
     const result = adminInviteEmail({ token: 'invite-tok' });
     expect(result.subject).toBe("You've been invited to Moneyfield Admin");
-    expect(result.text).toContain('accept: invite-tok');
+    expect(result.text).toContain('Hello,');
+    expect(result.text).toContain('Warm regards,\nThe Moneyfield Team');
+    expect(result.text).toContain('invite-tok');
     expect(result.html).toContain('invite-tok');
   });
 
-  it('omits the CTA link/button when no acceptUrl is given', () => {
+  it('omits the CTA button and token box when no acceptUrl is given (button only)', () => {
     const result = adminInviteEmail({ token: 'invite-tok' });
-    expect(result.text).not.toContain('Accept your invitation:');
+    expect(result.text).not.toContain('Accept your invitation here:');
     expect(result.html).not.toContain('Accept Invitation');
   });
 
-  it('includes a clickable CTA link/button when acceptUrl is given', () => {
+  it('includes a clickable button and the link as plain text in a sentence when acceptUrl is given, with no separate token section', () => {
     const result = adminInviteEmail({ token: 'invite-tok', acceptUrl: 'https://admin.moneyfieldmfb.com/accept-invite?token=invite-tok' });
-    expect(result.text).toContain('Accept your invitation: https://admin.moneyfieldmfb.com/accept-invite?token=invite-tok');
+    expect(result.text).toContain('Accept your invitation here: https://admin.moneyfieldmfb.com/accept-invite?token=invite-tok');
     expect(result.html).toContain('href="https://admin.moneyfieldmfb.com/accept-invite?token=invite-tok"');
     expect(result.html).toContain('Accept Invitation');
-    // the token fallback must still be present and copiable alongside the link
-    expect(result.text).toContain('accept: invite-tok');
+    expect(result.html).toContain('copy and paste this link into your browser');
+    // the link already carries the token — no separate "use this code" section when it's present
+    expect(result.text).not.toContain('Use this invitation code');
+    expect(result.text).toContain('Warm regards,\nThe Moneyfield Team');
   });
 
-  it('also shows the link itself as plain, copiable text in the HTML (not just inside the button)', () => {
+  it('shows the link as visible text in the HTML, not just inside the button href', () => {
     const result = adminInviteEmail({ token: 'invite-tok', acceptUrl: 'https://admin.moneyfieldmfb.com/accept-invite?token=invite-tok' });
-    // the URL must appear as visible text outside of an href= attribute
     const htmlWithoutHrefs = result.html.replace(/href="[^"]*"/g, '');
     expect(htmlWithoutHrefs).toContain('https://admin.moneyfieldmfb.com/accept-invite?token=invite-tok');
   });
 });
 
 describe('adminInviteResentEmail', () => {
-  it('includes the exact phrase and token on one line in text', () => {
+  it('has a greeting, acknowledges the resend, and falls back to the token when no acceptUrl is given', () => {
     const result = adminInviteResentEmail({ token: 'invite-tok-2' });
     expect(result.subject).toBe('Your admin invitation (resent)');
-    expect(result.text).toContain('accept: invite-tok-2');
+    expect(result.text).toContain('Hello,');
+    expect(result.text).toContain('As requested');
+    expect(result.text).toContain('invite-tok-2');
   });
 
-  it('includes a clickable CTA link/button when acceptUrl is given', () => {
+  it('includes a clickable button and the link in a sentence when acceptUrl is given', () => {
     const result = adminInviteResentEmail({ token: 'invite-tok-2', acceptUrl: 'https://admin.moneyfieldmfb.com/accept-invite?token=invite-tok-2' });
-    expect(result.text).toContain('Accept your invitation: https://admin.moneyfieldmfb.com/accept-invite?token=invite-tok-2');
+    expect(result.text).toContain('Accept your invitation here: https://admin.moneyfieldmfb.com/accept-invite?token=invite-tok-2');
     expect(result.html).toContain('Accept Invitation');
   });
 });
