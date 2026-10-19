@@ -10,6 +10,7 @@ import { AdminInviteService } from './admin-invite.service';
 import { CreateInviteDto } from './dto/create-invite.dto';
 import { ListInvitesQueryDto } from './dto/list-invites-query.dto';
 import { AuditActorType } from '../generated/prisma/client';
+import { adminInviteEmail, adminInviteResentEmail } from '../email/templates/token-emails';
 
 @Controller('admin/invites')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
@@ -30,12 +31,7 @@ export class AdminInviteController {
       invitedById: req.user.sub,
     });
 
-    await this.emailService.send({
-      to: dto.email,
-      subject: 'You have been invited as an admin',
-      html: `<p>You have been invited. Use this token to accept: ${token}</p>`,
-      text: `You have been invited. Use this token to accept: ${token}`,
-    });
+    await this.emailService.send({ to: dto.email, ...adminInviteEmail({ token }) });
 
     await this.auditLogService.record({
       actorType: AuditActorType.ADMIN,
@@ -60,12 +56,7 @@ export class AdminInviteController {
   async resend(@Param('id') id: string, @Req() req: { user: JwtPayload }) {
     const { invite, token } = await this.adminInviteService.resend(id);
 
-    await this.emailService.send({
-      to: invite.email,
-      subject: 'Your admin invitation (resent)',
-      html: `<p>Use this token to accept: ${token}</p>`,
-      text: `Use this token to accept: ${token}`,
-    });
+    await this.emailService.send({ to: invite.email, ...adminInviteResentEmail({ token }) });
 
     await this.auditLogService.record({
       actorType: AuditActorType.ADMIN,

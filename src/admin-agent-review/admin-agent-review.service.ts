@@ -6,6 +6,7 @@ import { generateOpaqueToken } from '../common/opaque-token.util';
 import { hashPassword } from '../common/password-hash.util';
 import { buildPaginatedResult } from '../common/pagination/paginated-result';
 import { Agent, AgentStatus, Prisma } from '../generated/prisma/client';
+import { agentApplicationRejectedEmail, agentCredentialsEmail } from '../email/templates/action-emails';
 
 export interface ListAgentsFilters {
   status?: AgentStatus;
@@ -103,12 +104,7 @@ export class AdminAgentReviewService {
       },
     });
 
-    await this.emailService.send({
-      to: agent.email,
-      subject: 'Your agent application was not approved',
-      html: `<p>Your application was not approved.</p><p>Reason: ${reason}</p>`,
-      text: `Your application was not approved.\nReason: ${reason}`,
-    });
+    await this.emailService.send({ to: agent.email, ...agentApplicationRejectedEmail({ fullName: agent.fullName, reason }) });
   }
 
   async resendCredentials(id: string, reviewerId: string): Promise<void> {
@@ -152,14 +148,10 @@ export class AdminAgentReviewService {
     });
 
     const downloadUrl = this.configService.get<string>('AGENT_APP_DOWNLOAD_URL');
-    const downloadHtml = downloadUrl ? `<p>Download the app: ${downloadUrl}</p>` : '';
-    const downloadText = downloadUrl ? `Download the app: ${downloadUrl}\n` : '';
 
     await this.emailService.send({
       to: agent.email,
-      subject: 'Your agent account has been approved',
-      html: `<p>Email: ${agent.email}</p><p>Temporary password: ${temporaryPassword}</p>${downloadHtml}<p>You will be required to change this password on first login.</p>`,
-      text: `Email: ${agent.email}\nTemporary password: ${temporaryPassword}\n${downloadText}You will be required to change this password on first login.`,
+      ...agentCredentialsEmail({ fullName: agent.fullName, email: agent.email, temporaryPassword, downloadUrl }),
     });
   }
 }
