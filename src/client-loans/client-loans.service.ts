@@ -89,6 +89,17 @@ export class ClientLoansService {
     return matched ? matched.loans.some((loan) => loan.status === 'ACTIVE') : false;
   }
 
+  // Unpaginated on purpose — same reasoning as hasActiveLoan above.
+  async hasAnyMatchedLoan(clientId: string): Promise<boolean> {
+    const matched = await this.getMatchedLoansWithStatus(clientId);
+    return matched ? matched.loans.length > 0 : false;
+  }
+
+  async hasOutstandingMatchedLoan(clientId: string): Promise<boolean> {
+    const matched = await this.getMatchedLoansWithStatus(clientId);
+    return matched ? matched.loans.some((loan) => loan.status !== 'CLOSED') : false;
+  }
+
   private async getMatchedLoansWithStatus(clientId: string, filters: ListLoansFilters = {}) {
     const onboarding = await this.prisma.clientOnboarding.findUnique({
       where: { clientId },
