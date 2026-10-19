@@ -11,6 +11,7 @@ import { OTP_PROVIDERS, OtpProvider } from './otp-provider.interface';
 import { EmailService } from '../email/email.service';
 import { hashPassword } from '../common/password-hash.util';
 import { generateNumericCode } from '../common/generate-numeric-code.util';
+import { clientOtpCodeEmail } from '../email/templates/verification-code-emails';
 
 export interface OtpVerifyResult {
   valid: boolean;
@@ -76,14 +77,9 @@ export class OtpService {
   }
 
   private async sendEmailCopy(email: string, code: string): Promise<void> {
-    const minutes = Math.round(this.ttlSeconds() / 60);
+    const ttlMinutes = Math.round(this.ttlSeconds() / 60);
     try {
-      await this.emailService?.send({
-        to: email,
-        subject: 'Your login code',
-        html: `<p>Your verification code is <strong>${code}</strong>. It expires in ${minutes} minutes.</p>`,
-        text: `Your verification code is ${code}. It expires in ${minutes} minutes.`,
-      });
+      await this.emailService?.send({ to: email, ...clientOtpCodeEmail({ code, ttlMinutes }) });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       this.logger.warn(`OTP email copy to ${email} failed: ${message}`);

@@ -10,6 +10,7 @@ import { FILE_STORAGE_PROVIDER, FileStorageProvider } from '../file-storage/file
 import { generateNumericCode } from '../common/generate-numeric-code.util';
 import { hashToken } from '../common/opaque-token.util';
 import { AgentApplicationStatus, AgentStatus } from '../generated/prisma/client';
+import { agentRecruitmentVerificationCodeEmail } from '../email/templates/verification-code-emails';
 
 const EMAIL_CODE_TTL_MS = 10 * 60 * 1000;
 
@@ -61,9 +62,7 @@ export class AgentRecruitmentService {
 
     await this.emailService.send({
       to: email,
-      subject: 'Your agent application verification code',
-      html: `<p>Your verification code is: ${code}</p>`,
-      text: `Your verification code is: ${code}`,
+      ...agentRecruitmentVerificationCodeEmail({ code, ttlMinutes: EMAIL_CODE_TTL_MS / 60000 }),
     });
   }
 

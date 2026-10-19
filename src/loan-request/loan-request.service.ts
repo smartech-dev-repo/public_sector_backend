@@ -21,6 +21,7 @@ import { generatePeriodRange, toPeriodKey } from '../reconciliation/period.util'
 import { computeExpectedInstallment } from '../reconciliation/amortization.util';
 import { WalletService } from '../wallet/wallet.service';
 import { EmailService } from '../email/email.service';
+import { loanRequestConfirmationEmail } from '../email/templates/action-emails';
 import { classifyVariance } from '../reconciliation/variance-classification.util';
 import { computeClientLoanStatus } from '../reconciliation/client-loan-status.util';
 import {
@@ -64,15 +65,10 @@ export class LoanRequestService {
       : `Reply YES to confirm your loan request of ₦${amount}`;
   }
 
-  private async sendEmailCopy(email: string | null, message: string): Promise<void> {
+  private async sendEmailCopy(email: string | null, amount: number, type: LoanRequestType): Promise<void> {
     if (!email) return;
     try {
-      await this.emailService?.send({
-        to: email,
-        subject: 'Confirm your loan request',
-        html: `<p>${message}</p>`,
-        text: message,
-      });
+      await this.emailService?.send({ to: email, ...loanRequestConfirmationEmail({ amount, type }) });
     } catch (error) {
       const err = error instanceof Error ? error.message : String(error);
       this.logger.warn(`Loan-request confirmation email to ${email} failed: ${err}`);
@@ -239,7 +235,7 @@ export class LoanRequestService {
         : Number(product.managementChargeValue);
 
     await this.smsProvider.send(client.phone, this.confirmationMessage(amount));
-    await this.sendEmailCopy(client.email, this.confirmationMessage(amount));
+    await this.sendEmailCopy(client.email, amount, LoanRequestType.ORIGINATION);
 
     const loanRequest = await this.prisma.loanRequest.create({
       data: {
@@ -288,7 +284,7 @@ export class LoanRequestService {
         : Number(product.managementChargeValue);
 
     await this.smsProvider.send(client.phone, this.confirmationMessage(amount, LoanRequestType.TOPUP));
-    await this.sendEmailCopy(client.email, this.confirmationMessage(amount, LoanRequestType.TOPUP));
+    await this.sendEmailCopy(client.email, amount, LoanRequestType.TOPUP);
 
     const loanRequest = await this.prisma.loanRequest.create({
       data: {
@@ -323,7 +319,7 @@ export class LoanRequestService {
 
     const client = await this.prisma.client.findUniqueOrThrow({ where: { id: clientId } });
     await this.smsProvider.send(client.phone, this.confirmationMessage(Number(loanRequest.amount)));
-    await this.sendEmailCopy(client.email, this.confirmationMessage(Number(loanRequest.amount)));
+    await this.sendEmailCopy(client.email, Number(loanRequest.amount), LoanRequestType.ORIGINATION);
 
     return this.prisma.loanRequest.update({
       where: { id },
