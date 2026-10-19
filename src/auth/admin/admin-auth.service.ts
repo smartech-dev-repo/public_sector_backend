@@ -11,6 +11,8 @@ import { hashPassword } from '../../common/password-hash.util';
 import { ConfigService } from '@nestjs/config';
 import { generateNumericCode } from '../../common/generate-numeric-code.util';
 import { JwtPayload } from '../jwt-payload.interface';
+import { adminPasswordResetEmail } from '../../email/templates/token-emails';
+import { twoFactorSetupCodeEmail, loginVerificationCodeEmail } from '../../email/templates/verification-code-emails';
 import { SessionPrincipalType, TwoFactorMethod } from '../../generated/prisma/client';
 
 const PASSWORD_RESET_TTL_MS = 60 * 60 * 1000;
@@ -104,12 +106,7 @@ export class AdminAuthService {
       },
     });
 
-    await this.emailService.send({
-      to: admin.email,
-      subject: 'Reset your password',
-      html: `<p>Use this token to reset your password: ${token}</p>`,
-      text: `Use this token to reset your password: ${token}`,
-    });
+    await this.emailService.send({ to: admin.email, ...adminPasswordResetEmail({ token }) });
   }
 
   async resetPassword(token: string, newPassword: string): Promise<void> {
@@ -175,12 +172,7 @@ export class AdminAuthService {
         twoFactorEmailCodeExpiresAt: new Date(Date.now() + TWO_FACTOR_EMAIL_CODE_TTL_MS),
       },
     });
-    await this.emailService.send({
-      to: admin.email,
-      subject: 'Your two-factor setup code',
-      html: `<p>Your verification code is: ${code}</p>`,
-      text: `Your verification code is: ${code}`,
-    });
+    await this.emailService.send({ to: admin.email, ...twoFactorSetupCodeEmail({ code, ttlMinutes: 10 }) });
     return { method: TwoFactorMethod.EMAIL };
   }
 
@@ -268,12 +260,7 @@ export class AdminAuthService {
           twoFactorEmailCodeExpiresAt: new Date(Date.now() + TWO_FACTOR_EMAIL_CODE_TTL_MS),
         },
       });
-      await this.emailService.send({
-        to: admin.email,
-        subject: 'Your login verification code',
-        html: `<p>Your verification code is: ${code}</p>`,
-        text: `Your verification code is: ${code}`,
-      });
+      await this.emailService.send({ to: admin.email, ...loginVerificationCodeEmail({ code, ttlMinutes: 10 }) });
     }
 
     const pendingToken = this.tokenService.signTwoFactorPendingToken(admin.id);
