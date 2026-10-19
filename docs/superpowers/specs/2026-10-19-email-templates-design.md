@@ -215,12 +215,13 @@ export function adminInviteResentEmail(params: { token: string }): { subject: st
 }
 ```
 
-Note: the current code has no invite-expiry value threaded through to
-the email call site (`AdminInviteController` passes only `{ token }` to
-the email send today) — this spec does not add one, keeping scope to
-"better copy for existing data," not "plumb new data through." The
-original catalogued copy's "This invitation expires in {ttl}" idea is
-dropped since no TTL value is available at that call site today.
+Note: `invite.expiresAt` is actually already available at both call sites
+(`AdminInviteController.create`/`.resend` both destructure `{ invite,
+token }`) — this spec deliberately still doesn't thread it into the
+email, to keep this plan scoped to "better copy for existing data," not
+"add new data to emails." The original catalogued copy's "This
+invitation expires in {ttl}" idea is dropped for that reason, not
+because the value is unavailable.
 
 ### `action-emails.ts`
 
