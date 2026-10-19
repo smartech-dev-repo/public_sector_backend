@@ -4,6 +4,7 @@ import { Request } from 'express';
 import { AgentAuthService } from './agent-auth.service';
 import { AgentLoginDto } from './dto/agent-login.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
+import { ConfirmChangePasswordDto } from './dto/confirm-change-password.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { ResetPasswordByCodeDto } from './dto/reset-password-by-code.dto';
@@ -15,14 +16,10 @@ import { getRequestMetadata } from '../../common/request-metadata.util';
 import { JwtAuthGuard } from '../jwt-auth.guard';
 import { AgentOnlyGuard } from '../agent-only.guard';
 import { JwtPayload } from '../jwt-payload.interface';
-import { TokenService } from '../token.service';
 
 @Controller('auth/agent')
 export class AgentAuthController {
-  constructor(
-    private readonly agentAuthService: AgentAuthService,
-    private readonly tokenService: TokenService,
-  ) {}
+  constructor(private readonly agentAuthService: AgentAuthService) {}
 
   @Throttle({ default: { limit: 5, ttl: 900000 } })
   @Post('login')
@@ -35,8 +32,8 @@ export class AgentAuthController {
   @Post('forgot-password')
   @HttpCode(200)
   async forgotPassword(@Body() dto: ForgotPasswordDto) {
-    await this.agentAuthService.forgotPassword(dto.email);
-    return { sent: true };
+    const result = await this.agentAuthService.forgotPassword(dto.email);
+    return { sent: true, ...result };
   }
 
   @Throttle({ default: { limit: 5, ttl: 900000 } })
@@ -59,10 +56,24 @@ export class AgentAuthController {
   @Post('change-password')
   @HttpCode(200)
   @UseGuards(JwtAuthGuard, AgentOnlyGuard)
-  async changePassword(@Body() dto: ChangePasswordDto, @Req() req: { user: JwtPayload }) {
-    await this.agentAuthService.changePassword(req.user.sub, dto.currentPassword, dto.newPassword);
-    const payload: JwtPayload = { sub: req.user.sub, type: 'agent', mustChangePassword: false };
-    return { accessToken: this.tokenService.signAccessToken(payload) };
+  changePassword(@Body() dto: ChangePasswordDto, @Req() req: { user: JwtPayload }) {
+    return this.agentAuthService.changePassword(req.user.sub, dto.currentPassword, dto.newPassword);
+  }
+
+  @Throttle({ default: { limit: 5, ttl: 900000 } })
+  @Post('change-password/confirm')
+  @HttpCode(200)
+  @UseGuards(JwtAuthGuard, AgentOnlyGuard)
+  confirmChangePassword(@Body() dto: ConfirmChangePasswordDto, @Req() req: { user: JwtPayload }) {
+    return this.agentAuthService.confirmChangePassword(req.user.sub, dto.code);
+  }
+
+  @Throttle({ default: { limit: 5, ttl: 900000 } })
+  @Post('change-password/resend')
+  @HttpCode(200)
+  @UseGuards(JwtAuthGuard, AgentOnlyGuard)
+  resendChangePasswordCode(@Req() req: { user: JwtPayload }) {
+    return this.agentAuthService.resendChangePasswordCode(req.user.sub);
   }
 
   @Post('2fa/setup')

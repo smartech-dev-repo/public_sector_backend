@@ -11,10 +11,17 @@ import { generateOpaqueToken, hashToken } from '../../common/opaque-token.util';
 import { ConfigService } from '@nestjs/config';
 import { generateNumericCode } from '../../common/generate-numeric-code.util';
 import { agentPasswordResetEmail } from '../../email/templates/token-emails';
-import { twoFactorSetupCodeEmail, loginVerificationCodeEmail } from '../../email/templates/verification-code-emails';
+import {
+  twoFactorSetupCodeEmail,
+  loginVerificationCodeEmail,
+  changePasswordConfirmationCodeEmail,
+} from '../../email/templates/verification-code-emails';
+import { devCodeEcho } from '../../common/dev-code-echo.util';
+import { JwtPayload } from '../jwt-payload.interface';
 
 const PASSWORD_RESET_TTL_MS = 60 * 60 * 1000;
 const TWO_FACTOR_EMAIL_CODE_TTL_MS = 10 * 60 * 1000;
+const CHANGE_PASSWORD_CODE_TTL_MS = 10 * 60 * 1000;
 
 @Injectable()
 export class AgentAuthService {
@@ -57,7 +64,7 @@ export class AgentAuthService {
     return agent?.canOnboardClients ?? false;
   }
 
-  async changePassword(agentId: string, currentPassword: string, newPassword: string): Promise<void> {
+  async changePassword(agentId: string, currentPassword: string, newPassword: string): Promise<{ sent: true; devCode?: string }> {
     const agent = await this.prisma.agent.findUniqueOrThrow({ where: { id: agentId } });
 
     const passwordMatches = await bcrypt.compare(currentPassword, agent.passwordHash!);
@@ -65,17 +72,82 @@ export class AgentAuthService {
       throw new UnauthorizedException('Current password is incorrect');
     }
 
-    const passwordHash = await hashPassword(newPassword);
+    const length = Number(this.configService?.get('EMAIL_CODE_LENGTH') ?? 6);
+    const code = generateNumericCode(length);
+    const pendingHash = await hashPassword(newPassword);
+
     await this.prisma.agent.update({
       where: { id: agentId },
-      data: { passwordHash, mustChangePassword: false },
+      data: {
+        changePasswordPendingHash: pendingHash,
+        changePasswordCodeHash: hashToken(code),
+        changePasswordCodeExpiresAt: new Date(Date.now() + CHANGE_PASSWORD_CODE_TTL_MS),
+      },
     });
+
+    await this.emailService.send({ to: agent.email, ...changePasswordConfirmationCodeEmail({ code, ttlMinutes: 10 }) });
+
+    return { sent: true, devCode: devCodeEcho(this.configService, code) };
   }
 
-  async forgotPassword(email: string): Promise<void> {
+  async confirmChangePassword(agentId: string, code: string): Promise<{ accessToken: string }> {
+    const agent = await this.prisma.agent.findUniqueOrThrow({ where: { id: agentId } });
+
+    if (!agent.changePasswordPendingHash) {
+      throw new ConflictException('No password change is pending confirmation');
+    }
+
+    if (
+      !agent.changePasswordCodeHash ||
+      !agent.changePasswordCodeExpiresAt ||
+      agent.changePasswordCodeExpiresAt < new Date() ||
+      agent.changePasswordCodeHash !== hashToken(code)
+    ) {
+      throw new UnauthorizedException('Invalid or expired verification code');
+    }
+
+    await this.prisma.agent.update({
+      where: { id: agentId },
+      data: {
+        passwordHash: agent.changePasswordPendingHash,
+        mustChangePassword: false,
+        changePasswordPendingHash: null,
+        changePasswordCodeHash: null,
+        changePasswordCodeExpiresAt: null,
+      },
+    });
+
+    const payload: JwtPayload = { sub: agentId, type: 'agent', mustChangePassword: false };
+    return { accessToken: this.tokenService.signAccessToken(payload) };
+  }
+
+  async resendChangePasswordCode(agentId: string): Promise<{ sent: true; devCode?: string }> {
+    const agent = await this.prisma.agent.findUniqueOrThrow({ where: { id: agentId } });
+
+    if (!agent.changePasswordPendingHash) {
+      throw new ConflictException('No password change is pending confirmation');
+    }
+
+    const length = Number(this.configService?.get('EMAIL_CODE_LENGTH') ?? 6);
+    const code = generateNumericCode(length);
+
+    await this.prisma.agent.update({
+      where: { id: agentId },
+      data: {
+        changePasswordCodeHash: hashToken(code),
+        changePasswordCodeExpiresAt: new Date(Date.now() + CHANGE_PASSWORD_CODE_TTL_MS),
+      },
+    });
+
+    await this.emailService.send({ to: agent.email, ...changePasswordConfirmationCodeEmail({ code, ttlMinutes: 10 }) });
+
+    return { sent: true, devCode: devCodeEcho(this.configService, code) };
+  }
+
+  async forgotPassword(email: string): Promise<{ devCode?: string }> {
     const agent = await this.prisma.agent.findUnique({ where: { email } });
     if (!agent || agent.status !== AgentStatus.APPROVED) {
-      return;
+      return {};
     }
 
     const token = generateOpaqueToken();
@@ -94,6 +166,8 @@ export class AgentAuthService {
     });
 
     await this.emailService.send({ to: agent.email, ...agentPasswordResetEmail({ token, code }) });
+
+    return { devCode: devCodeEcho(this.configService, code) };
   }
 
   async resetPassword(token: string, newPassword: string): Promise<void> {
@@ -177,7 +251,7 @@ export class AgentAuthService {
       },
     });
     await this.emailService.send({ to: agent.email, ...twoFactorSetupCodeEmail({ code, ttlMinutes: 10 }) });
-    return { method: TwoFactorMethod.EMAIL };
+    return { method: TwoFactorMethod.EMAIL, devCode: devCodeEcho(this.configService, code) };
   }
 
   async confirmTwoFactor(agentId: string, code: string): Promise<void> {
@@ -254,6 +328,7 @@ export class AgentAuthService {
   }
 
   private async beginTwoFactorLogin(agent: { id: string; email: string; twoFactorMethod: TwoFactorMethod | null }) {
+    let devCode: string | undefined;
     if (agent.twoFactorMethod === TwoFactorMethod.EMAIL) {
       const length = Number(this.configService?.get('EMAIL_CODE_LENGTH') ?? 6);
       const code = generateNumericCode(length);
@@ -265,10 +340,11 @@ export class AgentAuthService {
         },
       });
       await this.emailService.send({ to: agent.email, ...loginVerificationCodeEmail({ code, ttlMinutes: 10 }) });
+      devCode = devCodeEcho(this.configService, code);
     }
 
     const pendingToken = this.tokenService.signTwoFactorPendingToken(agent.id);
-    return { twoFactorRequired: true, method: agent.twoFactorMethod, pendingToken };
+    return { twoFactorRequired: true, method: agent.twoFactorMethod, pendingToken, devCode };
   }
 
   async verifyTwoFactorLogin(pendingToken: string, code: string, meta?: { userAgent?: string; ip?: string }) {

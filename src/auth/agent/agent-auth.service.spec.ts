@@ -154,24 +154,96 @@ describe('AgentAuthService', () => {
   describe('changePassword', () => {
     it('rejects an incorrect current password', async () => {
       const passwordHash = await hashPassword('correct-password');
-      prisma.agent.findUniqueOrThrow.mockResolvedValue({ id: 'agent-1', passwordHash });
+      prisma.agent.findUniqueOrThrow.mockResolvedValue({ id: 'agent-1', passwordHash, email: 'agent@example.com' });
 
       await expect(
         service.changePassword('agent-1', 'wrong-password', 'new-password-123'),
       ).rejects.toThrow(UnauthorizedException);
       expect(prisma.agent.update).not.toHaveBeenCalled();
+      expect(emailService.send).not.toHaveBeenCalled();
     });
 
-    it('hashes the new password and clears mustChangePassword', async () => {
+    it('stores a pending password hash and a code, emails it, and does not touch passwordHash yet', async () => {
       const passwordHash = await hashPassword('correct-password');
-      prisma.agent.findUniqueOrThrow.mockResolvedValue({ id: 'agent-1', passwordHash });
+      prisma.agent.findUniqueOrThrow.mockResolvedValue({ id: 'agent-1', passwordHash, email: 'agent@example.com' });
 
-      await service.changePassword('agent-1', 'correct-password', 'new-password-123');
+      const result = await service.changePassword('agent-1', 'correct-password', 'new-password-123');
 
       const updateCall = prisma.agent.update.mock.calls[0][0];
       expect(updateCall.where).toEqual({ id: 'agent-1' });
-      expect(updateCall.data.mustChangePassword).toBe(false);
-      expect(updateCall.data.passwordHash).not.toBe(passwordHash);
+      expect(updateCall.data.changePasswordPendingHash).toEqual(expect.any(String));
+      expect(updateCall.data.changePasswordCodeHash).toEqual(expect.any(String));
+      expect(updateCall.data.changePasswordCodeExpiresAt).toEqual(expect.any(Date));
+      expect(updateCall.data.passwordHash).toBeUndefined();
+      expect(updateCall.data.mustChangePassword).toBeUndefined();
+      expect(emailService.send).toHaveBeenCalledWith(expect.objectContaining({ to: 'agent@example.com' }));
+      expect(result).toEqual({ sent: true, devCode: undefined });
+    });
+  });
+
+  describe('confirmChangePassword', () => {
+    it('throws ConflictException when no change is pending', async () => {
+      prisma.agent.findUniqueOrThrow.mockResolvedValue({ id: 'agent-1', changePasswordPendingHash: null });
+      await expect(service.confirmChangePassword('agent-1', '123456')).rejects.toThrow(ConflictException);
+    });
+
+    it('throws UnauthorizedException for an expired or mismatched code', async () => {
+      prisma.agent.findUniqueOrThrow.mockResolvedValue({
+        id: 'agent-1',
+        changePasswordPendingHash: 'pending-hash',
+        changePasswordCodeHash: hashToken('123456'),
+        changePasswordCodeExpiresAt: new Date(Date.now() - 1000),
+      });
+      await expect(service.confirmChangePassword('agent-1', '123456')).rejects.toThrow(UnauthorizedException);
+    });
+
+    it('applies the pending hash, clears mustChangePassword, clears the pending columns, and returns an accessToken', async () => {
+      prisma.agent.findUniqueOrThrow.mockResolvedValue({
+        id: 'agent-1',
+        changePasswordPendingHash: 'pending-hash',
+        changePasswordCodeHash: hashToken('123456'),
+        changePasswordCodeExpiresAt: new Date(Date.now() + 100000),
+      });
+
+      const result = await service.confirmChangePassword('agent-1', '123456');
+
+      expect(prisma.agent.update).toHaveBeenCalledWith({
+        where: { id: 'agent-1' },
+        data: {
+          passwordHash: 'pending-hash',
+          mustChangePassword: false,
+          changePasswordPendingHash: null,
+          changePasswordCodeHash: null,
+          changePasswordCodeExpiresAt: null,
+        },
+      });
+      expect(result.accessToken).toEqual(expect.any(String));
+    });
+  });
+
+  describe('resendChangePasswordCode', () => {
+    it('throws ConflictException when no change is pending', async () => {
+      prisma.agent.findUniqueOrThrow.mockResolvedValue({ id: 'agent-1', changePasswordPendingHash: null });
+      await expect(service.resendChangePasswordCode('agent-1')).rejects.toThrow(ConflictException);
+    });
+
+    it('generates and emails a fresh code without requiring the current password again', async () => {
+      prisma.agent.findUniqueOrThrow.mockResolvedValue({
+        id: 'agent-1',
+        email: 'agent@example.com',
+        changePasswordPendingHash: 'pending-hash',
+      });
+
+      const result = await service.resendChangePasswordCode('agent-1');
+
+      expect(prisma.agent.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'agent-1' },
+          data: expect.objectContaining({ changePasswordCodeHash: expect.any(String), changePasswordCodeExpiresAt: expect.any(Date) }),
+        }),
+      );
+      expect(emailService.send).toHaveBeenCalledWith(expect.objectContaining({ to: 'agent@example.com' }));
+      expect(result).toEqual({ sent: true, devCode: undefined });
     });
   });
 
