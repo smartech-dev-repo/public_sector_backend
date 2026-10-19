@@ -48,6 +48,24 @@ describe('Client profile (e2e)', () => {
     expect(res.body.status).toBe('VERIFIED');
   });
 
+  it('returns the extended profile shape: wallet, hasActiveLoan, activeSessionCount, and null onboarding', async () => {
+    const res = await request(app.getHttpServer())
+      .get('/client/me')
+      .set('Authorization', `Bearer ${accessToken}`)
+      .expect(200);
+
+    expect(res.body).toEqual(
+      expect.objectContaining({
+        id: clientId,
+        phone,
+        wallet: { balance: expect.any(Number) },
+        hasActiveLoan: expect.any(Boolean),
+        activeSessionCount: expect.any(Number),
+      }),
+    );
+    expect(res.body.onboarding).toBeNull();
+  });
+
   it('rejects an agent token', async () => {
     const agent = await prisma.agent.create({
       data: {
