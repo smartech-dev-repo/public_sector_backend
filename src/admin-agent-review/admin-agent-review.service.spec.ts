@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { AdminAgentReviewService } from './admin-agent-review.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
+import { FileStorageProvider } from '../file-storage/file-storage-provider.interface';
 import { AgentStatus } from '../generated/prisma/client';
 
 describe('AdminAgentReviewService', () => {
@@ -10,6 +11,7 @@ describe('AdminAgentReviewService', () => {
   let prisma: { agent: { findMany: jest.Mock; findUnique: jest.Mock; update: jest.Mock; count: jest.Mock } };
   let emailService: { send: jest.Mock };
   let configService: { get: jest.Mock };
+  let fileStorageProvider: { getSignedDownloadUrl: jest.Mock };
 
   beforeEach(() => {
     prisma = {
@@ -17,10 +19,12 @@ describe('AdminAgentReviewService', () => {
     };
     emailService = { send: jest.fn().mockResolvedValue(undefined) };
     configService = { get: jest.fn().mockReturnValue(undefined) };
+    fileStorageProvider = { getSignedDownloadUrl: jest.fn((key: string) => Promise.resolve(`https://storage.example.com/${key}`)) };
     service = new AdminAgentReviewService(
       prisma as unknown as PrismaService,
       emailService as unknown as EmailService,
       configService as unknown as ConfigService,
+      fileStorageProvider as unknown as FileStorageProvider,
     );
   });
 
@@ -118,6 +122,10 @@ describe('AdminAgentReviewService', () => {
       prisma.agent.findUnique.mockResolvedValue({
         id: 'a1',
         status: 'APPROVED',
+        cvKey: null,
+        passportPhotoKey: null,
+        identityDocumentKey: null,
+        supportingDocumentKeys: [],
         reviewedByAdmin: { id: 'admin-1', fullName: 'Jane Doe', email: 'jane@x.com' },
       });
 
@@ -128,6 +136,47 @@ describe('AdminAgentReviewService', () => {
         include: { reviewedByAdmin: { select: { id: true, fullName: true, email: true } } },
       });
       expect(result.reviewedByAdmin).toEqual({ id: 'admin-1', fullName: 'Jane Doe', email: 'jane@x.com' });
+    });
+
+    it('resolves signed URLs for every stored document key, leaving the raw keys in place', async () => {
+      prisma.agent.findUnique.mockResolvedValue({
+        id: 'a1',
+        status: 'APPROVED',
+        cvKey: 'agents/a1/cv.pdf',
+        passportPhotoKey: 'agents/a1/passport.jpg',
+        identityDocumentKey: 'agents/a1/id.pdf',
+        supportingDocumentKeys: ['agents/a1/extra1.pdf', 'agents/a1/extra2.pdf'],
+      });
+
+      const result = await service.findById('a1');
+
+      expect(result.cvKey).toBe('agents/a1/cv.pdf');
+      expect(result.cvUrl).toBe('https://storage.example.com/agents/a1/cv.pdf');
+      expect(result.passportPhotoUrl).toBe('https://storage.example.com/agents/a1/passport.jpg');
+      expect(result.identityDocumentUrl).toBe('https://storage.example.com/agents/a1/id.pdf');
+      expect(result.supportingDocumentUrls).toEqual([
+        'https://storage.example.com/agents/a1/extra1.pdf',
+        'https://storage.example.com/agents/a1/extra2.pdf',
+      ]);
+    });
+
+    it('returns null document URLs when the corresponding key is null, without calling the storage provider for them', async () => {
+      prisma.agent.findUnique.mockResolvedValue({
+        id: 'a1',
+        status: 'PENDING_REVIEW',
+        cvKey: null,
+        passportPhotoKey: null,
+        identityDocumentKey: null,
+        supportingDocumentKeys: [],
+      });
+
+      const result = await service.findById('a1');
+
+      expect(result.cvUrl).toBeNull();
+      expect(result.passportPhotoUrl).toBeNull();
+      expect(result.identityDocumentUrl).toBeNull();
+      expect(result.supportingDocumentUrls).toEqual([]);
+      expect(fileStorageProvider.getSignedDownloadUrl).not.toHaveBeenCalled();
     });
   });
 
@@ -257,6 +306,23 @@ describe('AdminAgentReviewService', () => {
           include: { reviewedByAdmin: { select: { id: true, fullName: true, email: true } } },
         }),
       );
+    });
+
+    it('resolves document URLs for every row', async () => {
+      prisma.agent.findMany.mockResolvedValue([
+        {
+          id: 'a1',
+          cvKey: 'agents/a1/cv.pdf',
+          passportPhotoKey: null,
+          identityDocumentKey: null,
+          supportingDocumentKeys: [],
+        },
+      ]);
+      prisma.agent.count.mockResolvedValue(1);
+
+      const result = await service.list();
+
+      expect(result.data[0].cvUrl).toBe('https://storage.example.com/agents/a1/cv.pdf');
     });
   });
 });

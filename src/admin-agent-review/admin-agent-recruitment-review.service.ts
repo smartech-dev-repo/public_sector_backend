@@ -1,7 +1,8 @@
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { AgentApplication, AgentApplicationStatus, AgentStatus, Prisma } from '../generated/prisma/client';
 import { buildPaginatedResult } from '../common/pagination/paginated-result';
+import { FILE_STORAGE_PROVIDER, FileStorageProvider } from '../file-storage/file-storage-provider.interface';
 
 export interface ListRecruitmentApplicationsFilters {
   status?: AgentApplicationStatus;
@@ -28,7 +29,10 @@ type ApplicationWithSubmittedAgent = AgentApplication & {
 
 @Injectable()
 export class AdminAgentRecruitmentReviewService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Inject(FILE_STORAGE_PROVIDER) private readonly fileStorageProvider: FileStorageProvider,
+  ) {}
 
   async list(
     filters: ListRecruitmentApplicationsFilters = {},
@@ -61,7 +65,7 @@ export class AdminAgentRecruitmentReviewService {
     ]);
 
     return buildPaginatedResult(
-      data.map((row) => this.narrow(row as ApplicationWithSubmittedAgent)),
+      await Promise.all(data.map((row) => this.narrow(row as ApplicationWithSubmittedAgent))),
       total,
       page,
       limit,
@@ -130,7 +134,13 @@ export class AdminAgentRecruitmentReviewService {
     await this.prisma.agentApplication.delete({ where: { id } });
   }
 
-  private narrow(row: ApplicationWithSubmittedAgent) {
+  private async narrow(row: ApplicationWithSubmittedAgent) {
+    const [cvUrl, passportPhotoUrl, identityDocumentUrl] = await Promise.all([
+      row.cvKey ? this.fileStorageProvider.getSignedDownloadUrl(row.cvKey) : null,
+      row.passportPhotoKey ? this.fileStorageProvider.getSignedDownloadUrl(row.passportPhotoKey) : null,
+      row.identityDocumentKey ? this.fileStorageProvider.getSignedDownloadUrl(row.identityDocumentKey) : null,
+    ]);
+
     return {
       id: row.id,
       email: row.email,
@@ -150,6 +160,9 @@ export class AdminAgentRecruitmentReviewService {
       cvKey: row.cvKey,
       passportPhotoKey: row.passportPhotoKey,
       identityDocumentKey: row.identityDocumentKey,
+      cvUrl,
+      passportPhotoUrl,
+      identityDocumentUrl,
       submittedAgent: row.submittedAgent,
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,

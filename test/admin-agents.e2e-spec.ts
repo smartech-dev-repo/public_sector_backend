@@ -84,4 +84,30 @@ describe('Admin agents list endpoint (e2e)', () => {
       .send({ canOnboardClients: true })
       .expect(404);
   });
+
+  it('GET /admin/agents/:id resolves a preview URL for the stored cv key, alongside the raw key', async () => {
+    const agent = await prisma.agent.findFirstOrThrow({ where: { email: 'wave3.agent1@test.com' } });
+
+    const res = await request(app.getHttpServer())
+      .get(`/admin/agents/${agent.id}`)
+      .set('Authorization', `Bearer ${adminAccessToken}`)
+      .expect(200);
+
+    expect(res.body.cvKey).toBe('agents/wave3-test/cv1.pdf');
+    expect(res.body.cvUrl).toContain(encodeURIComponent('agents/wave3-test/cv1.pdf'));
+    expect(res.body.passportPhotoUrl).toBeNull();
+    expect(res.body.identityDocumentUrl).toBeNull();
+    expect(res.body.supportingDocumentUrls).toEqual([]);
+  });
+
+  it('GET /admin/agents also resolves document URLs for every row in the list', async () => {
+    const res = await request(app.getHttpServer())
+      .get('/admin/agents')
+      .query({ q: 'Amaka' })
+      .set('Authorization', `Bearer ${adminAccessToken}`)
+      .expect(200);
+
+    const row = res.body.data.find((a: { email: string }) => a.email === 'wave3.agent1@test.com');
+    expect(row.cvUrl).toContain(encodeURIComponent('agents/wave3-test/cv1.pdf'));
+  });
 });

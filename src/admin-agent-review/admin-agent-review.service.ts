@@ -1,4 +1,4 @@
-import { ConflictException, Injectable, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
+import { ConflictException, Inject, Injectable, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
@@ -7,6 +7,7 @@ import { hashPassword } from '../common/password-hash.util';
 import { buildPaginatedResult } from '../common/pagination/paginated-result';
 import { Agent, AgentStatus, Prisma } from '../generated/prisma/client';
 import { agentApplicationRejectedEmail, agentCredentialsEmail } from '../email/templates/action-emails';
+import { FILE_STORAGE_PROVIDER, FileStorageProvider } from '../file-storage/file-storage-provider.interface';
 
 export interface ListAgentsFilters {
   status?: AgentStatus;
@@ -23,6 +24,7 @@ export class AdminAgentReviewService {
     private readonly prisma: PrismaService,
     private readonly emailService: EmailService,
     private readonly configService: ConfigService,
+    @Inject(FILE_STORAGE_PROVIDER) private readonly fileStorageProvider: FileStorageProvider,
   ) {}
 
   async list(
@@ -60,7 +62,12 @@ export class AdminAgentReviewService {
       this.prisma.agent.count({ where }),
     ]);
 
-    return buildPaginatedResult(data, total, page, limit);
+    return buildPaginatedResult(
+      await Promise.all(data.map((row) => this.attachDocumentUrls(row))),
+      total,
+      page,
+      limit,
+    );
   }
 
   async findById(id: string) {
@@ -71,7 +78,18 @@ export class AdminAgentReviewService {
     if (!agent) {
       throw new NotFoundException('Agent not found');
     }
-    return agent;
+    return this.attachDocumentUrls(agent);
+  }
+
+  private async attachDocumentUrls<T extends Agent>(agent: T) {
+    const [cvUrl, passportPhotoUrl, identityDocumentUrl, supportingDocumentUrls] = await Promise.all([
+      agent.cvKey ? this.fileStorageProvider.getSignedDownloadUrl(agent.cvKey) : null,
+      agent.passportPhotoKey ? this.fileStorageProvider.getSignedDownloadUrl(agent.passportPhotoKey) : null,
+      agent.identityDocumentKey ? this.fileStorageProvider.getSignedDownloadUrl(agent.identityDocumentKey) : null,
+      Promise.all(agent.supportingDocumentKeys.map((key) => this.fileStorageProvider.getSignedDownloadUrl(key))),
+    ]);
+
+    return { ...agent, cvUrl, passportPhotoUrl, identityDocumentUrl, supportingDocumentUrls };
   }
 
   async setOnboardingAccess(id: string, canOnboardClients: boolean): Promise<Agent> {

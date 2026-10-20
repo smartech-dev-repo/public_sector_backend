@@ -1,6 +1,7 @@
 import { ConflictException, NotFoundException } from '@nestjs/common';
 import { AdminAgentRecruitmentReviewService } from './admin-agent-recruitment-review.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { FileStorageProvider } from '../file-storage/file-storage-provider.interface';
 
 describe('AdminAgentRecruitmentReviewService', () => {
   let service: AdminAgentRecruitmentReviewService;
@@ -13,6 +14,7 @@ describe('AdminAgentRecruitmentReviewService', () => {
       delete: jest.Mock;
     };
   };
+  let fileStorageProvider: { getSignedDownloadUrl: jest.Mock };
 
   const baseRow = {
     id: 'app-1',
@@ -48,7 +50,11 @@ describe('AdminAgentRecruitmentReviewService', () => {
         delete: jest.fn(),
       },
     };
-    service = new AdminAgentRecruitmentReviewService(prisma as unknown as PrismaService);
+    fileStorageProvider = { getSignedDownloadUrl: jest.fn((key: string) => Promise.resolve(`https://storage.example.com/${key}`)) };
+    service = new AdminAgentRecruitmentReviewService(
+      prisma as unknown as PrismaService,
+      fileStorageProvider as unknown as FileStorageProvider,
+    );
   });
 
   describe('list', () => {
@@ -102,6 +108,17 @@ describe('AdminAgentRecruitmentReviewService', () => {
       expect(result.data[0]).not.toHaveProperty('emailCodeHash');
       expect(result.data[0]).not.toHaveProperty('emailCodeExpiresAt');
     });
+
+    it('resolves document URLs for every row', async () => {
+      prisma.agentApplication.findMany.mockResolvedValue([
+        { ...baseRow, cvKey: 'agent-applications/app-1/cv.pdf' },
+      ]);
+      prisma.agentApplication.count.mockResolvedValue(1);
+
+      const result = await service.list();
+
+      expect(result.data[0].cvUrl).toBe('https://storage.example.com/agent-applications/app-1/cv.pdf');
+    });
   });
 
   describe('findById', () => {
@@ -115,6 +132,31 @@ describe('AdminAgentRecruitmentReviewService', () => {
       const result = await service.findById('app-1');
       expect(result.id).toBe('app-1');
       expect(result.submittedAgent).toBeNull();
+    });
+
+    it('returns null document URLs when the keys are null, without calling the storage provider', async () => {
+      prisma.agentApplication.findUnique.mockResolvedValue(baseRow);
+      const result = await service.findById('app-1');
+      expect(result.cvUrl).toBeNull();
+      expect(result.passportPhotoUrl).toBeNull();
+      expect(result.identityDocumentUrl).toBeNull();
+      expect(fileStorageProvider.getSignedDownloadUrl).not.toHaveBeenCalled();
+    });
+
+    it('resolves signed URLs for every stored document key, leaving the raw keys in place', async () => {
+      prisma.agentApplication.findUnique.mockResolvedValue({
+        ...baseRow,
+        cvKey: 'agent-applications/app-1/cv.pdf',
+        passportPhotoKey: 'agent-applications/app-1/passport.jpg',
+        identityDocumentKey: 'agent-applications/app-1/id.pdf',
+      });
+
+      const result = await service.findById('app-1');
+
+      expect(result.cvKey).toBe('agent-applications/app-1/cv.pdf');
+      expect(result.cvUrl).toBe('https://storage.example.com/agent-applications/app-1/cv.pdf');
+      expect(result.passportPhotoUrl).toBe('https://storage.example.com/agent-applications/app-1/passport.jpg');
+      expect(result.identityDocumentUrl).toBe('https://storage.example.com/agent-applications/app-1/id.pdf');
     });
   });
 

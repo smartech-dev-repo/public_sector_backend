@@ -150,6 +150,17 @@ describe('Admin agent recruitment applications (e2e)', () => {
       const row = listRes.body.data.find((a: { email: string }) => a.email === email);
       expect(row.status).toBe('SUBMITTED');
       expect(row.submittedAgent).toEqual({ id: submitRes.body.id, status: 'PENDING_REVIEW' });
+      expect(row.cvUrl).toContain(encodeURIComponent(row.cvKey));
+      expect(row.passportPhotoUrl).toContain(encodeURIComponent(row.passportPhotoKey));
+
+      const detailRes = await request(app.getHttpServer())
+        .get(`/admin/agent-recruitment-applications/${row.id}`)
+        .set('Authorization', `Bearer ${adminAccessToken}`)
+        .expect(200);
+      expect(detailRes.body.cvKey).toBe(row.cvKey);
+      expect(detailRes.body.cvUrl).toContain(encodeURIComponent(row.cvKey));
+      expect(detailRes.body.passportPhotoUrl).toContain(encodeURIComponent(row.passportPhotoKey));
+      expect(detailRes.body.identityDocumentUrl).toBeNull();
 
       await request(app.getHttpServer())
         .delete(`/admin/agent-recruitment-applications/${row.id}`)
