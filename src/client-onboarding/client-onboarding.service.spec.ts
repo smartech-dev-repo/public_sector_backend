@@ -15,7 +15,7 @@ describe('ClientOnboardingService', () => {
   };
   let identityVerificationService: { lookupBvn: jest.Mock; lookupNin: jest.Mock };
   let faceVerificationProvider: { compare: jest.Mock };
-  let fileStorageProvider: { putObject: jest.Mock };
+  let fileStorageProvider: { putObject: jest.Mock; getSignedDownloadUrl: jest.Mock };
 
   beforeEach(() => {
     prisma = {
@@ -26,7 +26,10 @@ describe('ClientOnboardingService', () => {
     };
     identityVerificationService = { lookupBvn: jest.fn(), lookupNin: jest.fn() };
     faceVerificationProvider = { compare: jest.fn() };
-    fileStorageProvider = { putObject: jest.fn().mockResolvedValue(undefined) };
+    fileStorageProvider = {
+      putObject: jest.fn().mockResolvedValue(undefined),
+      getSignedDownloadUrl: jest.fn((key: string) => Promise.resolve(`https://storage.example.com/${key}`)),
+    };
 
     service = new ClientOnboardingService(
       prisma as unknown as PrismaService,
@@ -43,7 +46,7 @@ describe('ClientOnboardingService', () => {
 
       const result = await service.linkIppis('client-1', 'NPF/1');
 
-      expect(result).toBe(existingOnboarding);
+      expect(result).toEqual({ ...existingOnboarding, bvnSelfieUrl: null, ninSelfieUrl: null, liveSelfieUrl: null });
       expect(prisma.ippisRecord.findFirst).not.toHaveBeenCalled();
     });
 
@@ -128,7 +131,7 @@ describe('ClientOnboardingService', () => {
 
       const result = await service.adminStartOnboarding('NPF/1', 'admin-1');
 
-      expect(result).toBe(existingOnboarding);
+      expect(result).toEqual({ ...existingOnboarding, bvnSelfieUrl: null, ninSelfieUrl: null, liveSelfieUrl: null });
       expect(prisma.client.upsert).not.toHaveBeenCalled();
     });
 
@@ -207,7 +210,7 @@ describe('ClientOnboardingService', () => {
 
       const result = await service.agentStartOnboarding('NPF/1', 'agent-1');
 
-      expect(result).toBe(existingOnboarding);
+      expect(result).toEqual({ ...existingOnboarding, bvnSelfieUrl: null, ninSelfieUrl: null, liveSelfieUrl: null });
       expect(prisma.client.upsert).not.toHaveBeenCalled();
     });
 
@@ -414,7 +417,13 @@ describe('ClientOnboardingService', () => {
 
       const result = await service.submitIdentityVerified('client-1', '12345678901', '98765432109');
 
-      expect(result).toEqual({ id: 'onboarding-1', step: 'IDENTITY_SUBMITTED' });
+      expect(result).toEqual({
+        id: 'onboarding-1',
+        step: 'IDENTITY_SUBMITTED',
+        bvnSelfieUrl: null,
+        ninSelfieUrl: null,
+        liveSelfieUrl: null,
+      });
       expect(prisma.clientOnboarding.update).toHaveBeenCalledWith({
         where: { clientId: 'client-1' },
         data: expect.objectContaining({ identityVerified: true, step: 'IDENTITY_SUBMITTED' }),

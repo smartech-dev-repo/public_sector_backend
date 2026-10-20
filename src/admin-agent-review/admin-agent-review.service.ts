@@ -82,14 +82,15 @@ export class AdminAgentReviewService {
   }
 
   private async attachDocumentUrls<T extends Agent>(agent: T) {
+    const { cvKey, passportPhotoKey, identityDocumentKey, supportingDocumentKeys, ...rest } = agent;
     const [cvUrl, passportPhotoUrl, identityDocumentUrl, supportingDocumentUrls] = await Promise.all([
-      agent.cvKey ? this.fileStorageProvider.getSignedDownloadUrl(agent.cvKey) : null,
-      agent.passportPhotoKey ? this.fileStorageProvider.getSignedDownloadUrl(agent.passportPhotoKey) : null,
-      agent.identityDocumentKey ? this.fileStorageProvider.getSignedDownloadUrl(agent.identityDocumentKey) : null,
-      Promise.all(agent.supportingDocumentKeys.map((key) => this.fileStorageProvider.getSignedDownloadUrl(key))),
+      cvKey ? this.fileStorageProvider.getSignedDownloadUrl(cvKey) : null,
+      passportPhotoKey ? this.fileStorageProvider.getSignedDownloadUrl(passportPhotoKey) : null,
+      identityDocumentKey ? this.fileStorageProvider.getSignedDownloadUrl(identityDocumentKey) : null,
+      Promise.all(supportingDocumentKeys.map((key) => this.fileStorageProvider.getSignedDownloadUrl(key))),
     ]);
 
-    return { ...agent, cvUrl, passportPhotoUrl, identityDocumentUrl, supportingDocumentUrls };
+    return { ...rest, cvUrl, passportPhotoUrl, identityDocumentUrl, supportingDocumentUrls };
   }
 
   async setOnboardingAccess(id: string, canOnboardClients: boolean): Promise<Agent> {

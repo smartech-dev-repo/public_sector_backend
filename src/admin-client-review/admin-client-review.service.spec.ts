@@ -112,6 +112,9 @@ describe('AdminClientReviewService', () => {
             onboardedById: null,
             onboardedByAgentId: 'agent-1',
             onboardedByAgent: { id: 'agent-1', fullName: 'Agent One', email: 'agent1@example.com' },
+            bvnSelfie: 'client-onboarding/c1/bvn-selfie.jpg',
+            ninSelfie: null,
+            liveSelfieKey: null,
             ippisRecord: {
               agency: 'NPF',
               staffId: 'S1',
@@ -129,10 +132,20 @@ describe('AdminClientReviewService', () => {
         },
       ]);
       prisma.client.count.mockResolvedValue(1);
+      fileStorageProvider.getSignedDownloadUrl.mockImplementation((key: string) =>
+        Promise.resolve(`https://storage.example.com/${key}`),
+      );
 
       const result = await service.list();
 
       expect(result.data[0].createdByAdmin).toEqual({ id: 'admin-1', fullName: 'Admin One', email: 'admin1@example.com' });
+      expect(result.data[0].onboarding.bvnSelfieUrl).toBe(
+        'https://storage.example.com/client-onboarding/c1/bvn-selfie.jpg',
+      );
+      expect(result.data[0].onboarding.ninSelfieUrl).toBeNull();
+      expect(result.data[0].onboarding).not.toHaveProperty('bvnSelfie');
+      expect(result.data[0].onboarding).not.toHaveProperty('ninSelfie');
+      expect(result.data[0].onboarding).not.toHaveProperty('liveSelfieKey');
       expect(result.data[0].onboarding.onboardedByAgent).toEqual({
         id: 'agent-1',
         fullName: 'Agent One',
@@ -365,6 +378,9 @@ describe('AdminClientReviewService', () => {
       expect(result.onboarding.bvnSelfieUrl).toBe('https://signed-url.example/client-onboarding/c1/bvn-selfie.jpg');
       expect(result.onboarding.ninSelfieUrl).toBe('https://signed-url.example/client-onboarding/c1/nin-selfie.jpg');
       expect(result.onboarding.liveSelfieUrl).toBe('https://signed-url.example/client-onboarding/c1/live-selfie.jpg');
+      expect(result.onboarding).not.toHaveProperty('bvnSelfie');
+      expect(result.onboarding).not.toHaveProperty('ninSelfie');
+      expect(result.onboarding).not.toHaveProperty('liveSelfieKey');
     });
 
     it('does not attempt to resolve selfie URLs that are not set', async () => {

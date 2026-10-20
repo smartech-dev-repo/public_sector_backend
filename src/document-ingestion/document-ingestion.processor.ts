@@ -31,7 +31,7 @@ export class DocumentIngestionProcessor extends WorkerHost {
 
   async process(job: Job<DocumentIngestionJobData>): Promise<void> {
     const { batchId } = job.data;
-    const batch = await this.documentBatchService.findById(batchId);
+    const batch = await this.documentBatchService.findRawById(batchId);
 
     if (!batch) {
       this.logger.error(`Batch ${batchId} not found`);

@@ -143,7 +143,7 @@ describe('AdminAgentRecruitmentReviewService', () => {
       expect(fileStorageProvider.getSignedDownloadUrl).not.toHaveBeenCalled();
     });
 
-    it('resolves signed URLs for every stored document key, leaving the raw keys in place', async () => {
+    it('resolves signed URLs for every stored document key, stripping the raw keys from the response', async () => {
       prisma.agentApplication.findUnique.mockResolvedValue({
         ...baseRow,
         cvKey: 'agent-applications/app-1/cv.pdf',
@@ -153,7 +153,9 @@ describe('AdminAgentRecruitmentReviewService', () => {
 
       const result = await service.findById('app-1');
 
-      expect(result.cvKey).toBe('agent-applications/app-1/cv.pdf');
+      expect(result).not.toHaveProperty('cvKey');
+      expect(result).not.toHaveProperty('passportPhotoKey');
+      expect(result).not.toHaveProperty('identityDocumentKey');
       expect(result.cvUrl).toBe('https://storage.example.com/agent-applications/app-1/cv.pdf');
       expect(result.passportPhotoUrl).toBe('https://storage.example.com/agent-applications/app-1/passport.jpg');
       expect(result.identityDocumentUrl).toBe('https://storage.example.com/agent-applications/app-1/id.pdf');

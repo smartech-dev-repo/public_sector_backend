@@ -79,6 +79,12 @@ describe('Agent own-clients list (e2e)', () => {
       .expect(201);
     createdClientIds.push(resA.body.clientId);
 
+    await request(app.getHttpServer())
+      .post(`/agent/clients/${resA.body.clientId}/onboarding/identity`)
+      .set('Authorization', `Bearer ${agentAToken}`)
+      .send({ bvn: '12345678901', nin: '98765432109' })
+      .expect(201);
+
     const resB = await request(app.getHttpServer())
       .post('/agent/clients/onboarding/ippis-lookup')
       .set('Authorization', `Bearer ${agentBToken}`)
@@ -94,5 +100,13 @@ describe('Agent own-clients list (e2e)', () => {
     const ids = listRes.body.data.map((c: { id: string }) => c.id);
     expect(ids).toContain(resA.body.clientId);
     expect(ids).not.toContain(resB.body.clientId);
+
+    const rowA = listRes.body.data.find((c: { id: string }) => c.id === resA.body.clientId);
+    expect(typeof rowA.onboarding.bvnSelfieUrl).toBe('string');
+    expect(rowA.onboarding.bvnSelfieUrl.length).toBeGreaterThan(0);
+    expect(typeof rowA.onboarding.ninSelfieUrl).toBe('string');
+    expect(rowA.onboarding).not.toHaveProperty('bvnSelfie');
+    expect(rowA.onboarding).not.toHaveProperty('ninSelfie');
+    expect(rowA.onboarding).not.toHaveProperty('liveSelfieKey');
   }, 20000);
 });

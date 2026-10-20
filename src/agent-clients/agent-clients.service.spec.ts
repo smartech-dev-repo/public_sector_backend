@@ -1,13 +1,16 @@
 import { AgentClientsService } from './agent-clients.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { FileStorageProvider } from '../file-storage/file-storage-provider.interface';
 
 describe('AgentClientsService', () => {
   let service: AgentClientsService;
   let prisma: { client: { findMany: jest.Mock; count: jest.Mock } };
+  let fileStorageProvider: { getSignedDownloadUrl: jest.Mock };
 
   beforeEach(() => {
     prisma = { client: { findMany: jest.fn(), count: jest.fn() } };
-    service = new AgentClientsService(prisma as unknown as PrismaService);
+    fileStorageProvider = { getSignedDownloadUrl: jest.fn((key: string) => Promise.resolve(`https://storage.example.com/${key}`)) };
+    service = new AgentClientsService(prisma as unknown as PrismaService, fileStorageProvider as unknown as FileStorageProvider);
   });
 
   describe('listMyClients', () => {
@@ -49,6 +52,9 @@ describe('AgentClientsService', () => {
         {
           id: 'c1',
           onboarding: {
+            bvnSelfie: 'client-onboarding/c1/bvn-selfie.jpg',
+            ninSelfie: null,
+            liveSelfieKey: null,
             reviewedByAdmin: { id: 'admin-1', fullName: 'Admin One', email: 'admin1@example.com' },
             ippisRecord: {
               agency: 'NPF',
@@ -90,6 +96,14 @@ describe('AgentClientsService', () => {
       expect(result.data[0].onboarding.ippisRecord).not.toHaveProperty('bvn');
       expect(result.data[0].onboarding.ippisRecord).not.toHaveProperty('salary');
       expect(result.data[0].onboarding.ippisRecord.employeeName).toBe('Jane Doe');
+      expect(result.data[0].onboarding.bvnSelfieUrl).toBe(
+        'https://storage.example.com/client-onboarding/c1/bvn-selfie.jpg',
+      );
+      expect(result.data[0].onboarding.ninSelfieUrl).toBeNull();
+      expect(result.data[0].onboarding.liveSelfieUrl).toBeNull();
+      expect(result.data[0].onboarding).not.toHaveProperty('bvnSelfie');
+      expect(result.data[0].onboarding).not.toHaveProperty('ninSelfie');
+      expect(result.data[0].onboarding).not.toHaveProperty('liveSelfieKey');
     });
 
     it('computes skip/take from page and limit', async () => {

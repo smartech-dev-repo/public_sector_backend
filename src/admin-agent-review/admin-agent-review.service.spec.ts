@@ -138,7 +138,7 @@ describe('AdminAgentReviewService', () => {
       expect(result.reviewedByAdmin).toEqual({ id: 'admin-1', fullName: 'Jane Doe', email: 'jane@x.com' });
     });
 
-    it('resolves signed URLs for every stored document key, leaving the raw keys in place', async () => {
+    it('resolves signed URLs for every stored document key, stripping the raw keys from the response', async () => {
       prisma.agent.findUnique.mockResolvedValue({
         id: 'a1',
         status: 'APPROVED',
@@ -150,7 +150,10 @@ describe('AdminAgentReviewService', () => {
 
       const result = await service.findById('a1');
 
-      expect(result.cvKey).toBe('agents/a1/cv.pdf');
+      expect(result).not.toHaveProperty('cvKey');
+      expect(result).not.toHaveProperty('passportPhotoKey');
+      expect(result).not.toHaveProperty('identityDocumentKey');
+      expect(result).not.toHaveProperty('supportingDocumentKeys');
       expect(result.cvUrl).toBe('https://storage.example.com/agents/a1/cv.pdf');
       expect(result.passportPhotoUrl).toBe('https://storage.example.com/agents/a1/passport.jpg');
       expect(result.identityDocumentUrl).toBe('https://storage.example.com/agents/a1/id.pdf');

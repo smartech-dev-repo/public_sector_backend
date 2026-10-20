@@ -67,17 +67,37 @@ export class AdminClientReviewService {
     ]);
 
     return buildPaginatedResult(
-      data.map((client) => ({
-        ...client,
-        onboardingSource: deriveOnboardingSource(client.onboarding),
-        onboarding: client.onboarding
-          ? { ...client.onboarding, ippisRecord: narrowIppisRecord(client.onboarding.ippisRecord) }
-          : null,
-      })),
+      await Promise.all(
+        data.map(async (client) => {
+          if (!client.onboarding) {
+            return { ...client, onboardingSource: deriveOnboardingSource(client.onboarding), onboarding: null };
+          }
+          const { bvnSelfie, ninSelfie, liveSelfieKey, ippisRecord, ...restOnboarding } = client.onboarding;
+          const selfieUrls = await this.resolveSelfieUrls({ bvnSelfie, ninSelfie, liveSelfieKey });
+          return {
+            ...client,
+            onboardingSource: deriveOnboardingSource(client.onboarding),
+            onboarding: { ...restOnboarding, ippisRecord: narrowIppisRecord(ippisRecord), ...selfieUrls },
+          };
+        }),
+      ),
       total,
       page,
       limit,
     );
+  }
+
+  private async resolveSelfieUrls(onboarding: {
+    bvnSelfie: string | null;
+    ninSelfie: string | null;
+    liveSelfieKey: string | null;
+  }) {
+    const [bvnSelfieUrl, ninSelfieUrl, liveSelfieUrl] = await Promise.all([
+      onboarding.bvnSelfie ? this.fileStorageProvider.getSignedDownloadUrl(onboarding.bvnSelfie) : null,
+      onboarding.ninSelfie ? this.fileStorageProvider.getSignedDownloadUrl(onboarding.ninSelfie) : null,
+      onboarding.liveSelfieKey ? this.fileStorageProvider.getSignedDownloadUrl(onboarding.liveSelfieKey) : null,
+    ]);
+    return { bvnSelfieUrl, ninSelfieUrl, liveSelfieUrl };
   }
 
   private buildOnboardingSourceWhere(onboardingSource?: OnboardingSource) {
@@ -127,29 +147,19 @@ export class AdminClientReviewService {
         })),
       );
       const lengthOfService = computeLengthOfService(client.onboarding.ippisRecord?.hireDate ?? null);
-      const ippisRecord = narrowIppisRecord(client.onboarding.ippisRecord);
-
-      const bvnSelfieUrl = client.onboarding.bvnSelfie
-        ? await this.fileStorageProvider.getSignedDownloadUrl(client.onboarding.bvnSelfie)
-        : null;
-      const ninSelfieUrl = client.onboarding.ninSelfie
-        ? await this.fileStorageProvider.getSignedDownloadUrl(client.onboarding.ninSelfie)
-        : null;
-      const liveSelfieUrl = client.onboarding.liveSelfieKey
-        ? await this.fileStorageProvider.getSignedDownloadUrl(client.onboarding.liveSelfieKey)
-        : null;
+      const { bvnSelfie, ninSelfie, liveSelfieKey, ippisRecord: rawIppisRecord, ...restOnboarding } = client.onboarding;
+      const ippisRecord = narrowIppisRecord(rawIppisRecord);
+      const selfieUrls = await this.resolveSelfieUrls({ bvnSelfie, ninSelfie, liveSelfieKey });
 
       return {
         ...client,
         onboardingSource: deriveOnboardingSource(client.onboarding),
         onboarding: {
-          ...client.onboarding,
+          ...restOnboarding,
           documents,
           lengthOfService,
           ippisRecord,
-          bvnSelfieUrl,
-          ninSelfieUrl,
-          liveSelfieUrl,
+          ...selfieUrls,
         },
       };
     }

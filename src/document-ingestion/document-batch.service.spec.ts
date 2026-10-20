@@ -95,13 +95,15 @@ describe('DocumentBatchService', () => {
   });
 
   describe('findById', () => {
-    it('includes the snapshot export and uploadedBy', async () => {
-      prisma.documentUploadBatch.findUnique.mockResolvedValue({ id: 'batch-1', storageKey: 'uploads/x.xlsx' });
+    it('includes the narrowed snapshot export and uploadedBy', async () => {
+      prisma.documentUploadBatch.findUnique.mockResolvedValue({ id: 'batch-1', storageKey: 'uploads/x.xlsx', snapshotExport: null });
       await service.findById('batch-1');
       expect(prisma.documentUploadBatch.findUnique).toHaveBeenCalledWith({
         where: { id: 'batch-1' },
         include: {
-          snapshotExport: true,
+          snapshotExport: {
+            select: { id: true, documentType: true, recordCount: true, sqlStorageKey: true, csvStorageKey: true, generatedAt: true },
+          },
           uploadedBy: { select: { id: true, fullName: true, email: true } },
         },
       });
@@ -114,11 +116,43 @@ describe('DocumentBatchService', () => {
       expect(fileStorageProvider.getSignedDownloadUrl).not.toHaveBeenCalled();
     });
 
-    it('resolves the storageKey to a signed fileUrl', async () => {
-      prisma.documentUploadBatch.findUnique.mockResolvedValue({ id: 'batch-1', storageKey: 'uploads/x.xlsx' });
+    it('resolves the storageKey to a signed fileUrl, without leaking the raw storageKey', async () => {
+      prisma.documentUploadBatch.findUnique.mockResolvedValue({ id: 'batch-1', storageKey: 'uploads/x.xlsx', snapshotExport: null });
       const result = await service.findById('batch-1');
       expect(fileStorageProvider.getSignedDownloadUrl).toHaveBeenCalledWith('uploads/x.xlsx');
-      expect(result).toEqual({ id: 'batch-1', storageKey: 'uploads/x.xlsx', fileUrl: 'https://signed-url.example/file' });
+      expect(result).toEqual({ id: 'batch-1', snapshotExport: null, fileUrl: 'https://signed-url.example/file' });
+      expect(result).not.toHaveProperty('storageKey');
+    });
+
+    it('resolves the linked snapshot export\'s sqlUrl/csvUrl fresh, without leaking its raw storage keys', async () => {
+      prisma.documentUploadBatch.findUnique.mockResolvedValue({
+        id: 'batch-1',
+        storageKey: 'uploads/x.xlsx',
+        snapshotExport: {
+          id: 'export-1',
+          documentType: DocumentType.IPPIS_BROADSHEET,
+          recordCount: 10,
+          sqlStorageKey: 'snapshots/ippis_broadsheet/1.sql',
+          csvStorageKey: 'snapshots/ippis_broadsheet/1.csv',
+          generatedAt: new Date('2026-01-01'),
+        },
+      });
+      fileStorageProvider.getSignedDownloadUrl.mockImplementation((key: string) =>
+        Promise.resolve(`https://signed-url.example/${key}`),
+      );
+
+      const result = await service.findById('batch-1');
+
+      expect(result.snapshotExport).toEqual({
+        id: 'export-1',
+        documentType: DocumentType.IPPIS_BROADSHEET,
+        recordCount: 10,
+        generatedAt: new Date('2026-01-01'),
+        sqlUrl: 'https://signed-url.example/snapshots/ippis_broadsheet/1.sql',
+        csvUrl: 'https://signed-url.example/snapshots/ippis_broadsheet/1.csv',
+      });
+      expect(result.snapshotExport).not.toHaveProperty('sqlStorageKey');
+      expect(result.snapshotExport).not.toHaveProperty('csvStorageKey');
     });
   });
 
@@ -194,7 +228,7 @@ describe('DocumentBatchService', () => {
       expect(result.meta).toEqual({ total: 12, page: 2, limit: 5, totalPages: 3 });
     });
 
-    it('resolves each row\'s storageKey to a signed fileUrl', async () => {
+    it('resolves each row\'s storageKey to a signed fileUrl, without leaking the raw storageKey', async () => {
       prisma.documentUploadBatch.findMany.mockResolvedValue([
         { id: 'batch-1', storageKey: 'uploads/a.xlsx' },
         { id: 'batch-2', storageKey: 'uploads/b.xlsx' },
@@ -209,8 +243,8 @@ describe('DocumentBatchService', () => {
       expect(fileStorageProvider.getSignedDownloadUrl).toHaveBeenCalledWith('uploads/a.xlsx');
       expect(fileStorageProvider.getSignedDownloadUrl).toHaveBeenCalledWith('uploads/b.xlsx');
       expect(result.data).toEqual([
-        { id: 'batch-1', storageKey: 'uploads/a.xlsx', fileUrl: 'https://signed-url.example/uploads/a.xlsx' },
-        { id: 'batch-2', storageKey: 'uploads/b.xlsx', fileUrl: 'https://signed-url.example/uploads/b.xlsx' },
+        { id: 'batch-1', fileUrl: 'https://signed-url.example/uploads/a.xlsx' },
+        { id: 'batch-2', fileUrl: 'https://signed-url.example/uploads/b.xlsx' },
       ]);
     });
   });

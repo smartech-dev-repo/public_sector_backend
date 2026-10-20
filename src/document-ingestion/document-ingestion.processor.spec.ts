@@ -10,7 +10,7 @@ import { DocumentType } from '../generated/prisma/client';
 describe('DocumentIngestionProcessor', () => {
   let processor: DocumentIngestionProcessor;
   let documentBatchService: {
-    findById: jest.Mock;
+    findRawById: jest.Mock;
     markProcessing: jest.Mock;
     markCompleted: jest.Mock;
     markFailed: jest.Mock;
@@ -22,7 +22,7 @@ describe('DocumentIngestionProcessor', () => {
 
   beforeEach(() => {
     documentBatchService = {
-      findById: jest.fn(),
+      findRawById: jest.fn(),
       markProcessing: jest.fn(),
       markCompleted: jest.fn(),
       markFailed: jest.fn(),
@@ -45,13 +45,13 @@ describe('DocumentIngestionProcessor', () => {
   });
 
   it('logs and returns early when the batch is not found', async () => {
-    documentBatchService.findById.mockResolvedValue(null);
+    documentBatchService.findRawById.mockResolvedValue(null);
     await processor.process({ data: { batchId: 'missing' } } as Job<DocumentIngestionJobData>);
     expect(documentBatchService.markProcessing).not.toHaveBeenCalled();
   });
 
   it('marks processing, dispatches to the matching parser, and marks completed on success, without running reconciliation for IPPIS_BROADSHEET', async () => {
-    documentBatchService.findById.mockResolvedValue({
+    documentBatchService.findRawById.mockResolvedValue({
       id: 'batch-1',
       documentType: DocumentType.IPPIS_BROADSHEET,
       storageKey: 'uploads/file.xlsx',
@@ -84,7 +84,7 @@ describe('DocumentIngestionProcessor', () => {
   });
 
   it('runs reconciliation after a successful DISBURSED_LOANS parse', async () => {
-    documentBatchService.findById.mockResolvedValue({
+    documentBatchService.findRawById.mockResolvedValue({
       id: 'batch-2',
       documentType: DocumentType.DISBURSED_LOANS,
       storageKey: 'uploads/loans.xlsx',
@@ -106,7 +106,7 @@ describe('DocumentIngestionProcessor', () => {
   });
 
   it('runs reconciliation after a successful REPAYMENT_SCHEDULE parse', async () => {
-    documentBatchService.findById.mockResolvedValue({
+    documentBatchService.findRawById.mockResolvedValue({
       id: 'batch-3',
       documentType: DocumentType.REPAYMENT_SCHEDULE,
       storageKey: 'uploads/repayments.xlsx',
@@ -127,7 +127,7 @@ describe('DocumentIngestionProcessor', () => {
   });
 
   it('marks failed with the error message when the parser throws, without running reconciliation', async () => {
-    documentBatchService.findById.mockResolvedValue({
+    documentBatchService.findRawById.mockResolvedValue({
       id: 'batch-1',
       documentType: DocumentType.IPPIS_BROADSHEET,
       storageKey: 'uploads/file.xlsx',

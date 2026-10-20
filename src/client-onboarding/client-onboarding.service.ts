@@ -18,6 +18,18 @@ export class ClientOnboardingService {
     @Inject(FILE_STORAGE_PROVIDER) private readonly fileStorageProvider: FileStorageProvider,
   ) {}
 
+  private async narrowOnboarding<
+    T extends { bvnSelfie: string | null; ninSelfie: string | null; liveSelfieKey: string | null },
+  >(onboarding: T) {
+    const { bvnSelfie, ninSelfie, liveSelfieKey, ...rest } = onboarding;
+    const [bvnSelfieUrl, ninSelfieUrl, liveSelfieUrl] = await Promise.all([
+      bvnSelfie ? this.fileStorageProvider.getSignedDownloadUrl(bvnSelfie) : null,
+      ninSelfie ? this.fileStorageProvider.getSignedDownloadUrl(ninSelfie) : null,
+      liveSelfieKey ? this.fileStorageProvider.getSignedDownloadUrl(liveSelfieKey) : null,
+    ]);
+    return { ...rest, bvnSelfieUrl, ninSelfieUrl, liveSelfieUrl };
+  }
+
   private async requireOnboarding(clientId: string) {
     const onboarding = await this.prisma.clientOnboarding.findUnique({ where: { clientId } });
     if (!onboarding) {
@@ -69,7 +81,7 @@ export class ClientOnboardingService {
   async linkIppis(clientId: string, ippisNumber: string) {
     const existing = await this.prisma.clientOnboarding.findUnique({ where: { clientId } });
     if (existing) {
-      return existing;
+      return this.narrowOnboarding(existing);
     }
 
     const ippisRecord = await this.prisma.ippisRecord.findFirst({
@@ -86,7 +98,7 @@ export class ClientOnboardingService {
       throw new ConflictException('This IPPIS record is already linked to another client');
     }
 
-    return this.createOnboardingRecord(clientId, ippisRecord);
+    return this.narrowOnboarding(await this.createOnboardingRecord(clientId, ippisRecord));
   }
 
   async adminStartOnboarding(ippisNumber: string, adminId: string) {
@@ -101,7 +113,7 @@ export class ClientOnboardingService {
       where: { ippisRecordId: ippisRecord.id },
     });
     if (existing) {
-      return existing;
+      return this.narrowOnboarding(existing);
     }
 
     if (!ippisRecord.phone) {
@@ -117,7 +129,7 @@ export class ClientOnboardingService {
       create: { phone, createdById: adminId },
     });
 
-    return this.createOnboardingRecord(client.id, ippisRecord, adminId);
+    return this.narrowOnboarding(await this.createOnboardingRecord(client.id, ippisRecord, adminId));
   }
 
   async agentStartOnboarding(ippisNumber: string, agentId: string) {
@@ -133,7 +145,7 @@ export class ClientOnboardingService {
     });
     if (existing) {
       if (existing.onboardedByAgentId === agentId) {
-        return existing;
+        return this.narrowOnboarding(existing);
       }
       throw new ConflictException('This client has already been onboarded');
     }
@@ -151,7 +163,7 @@ export class ClientOnboardingService {
       create: { phone },
     });
 
-    return this.createOnboardingRecord(client.id, ippisRecord, undefined, agentId);
+    return this.narrowOnboarding(await this.createOnboardingRecord(client.id, ippisRecord, undefined, agentId));
   }
 
   private async lookupIdentity(bvn: string, nin: string) {
@@ -179,7 +191,7 @@ export class ClientOnboardingService {
 
     const step = await this.determineStepAfterIdentity(onboarding.id);
 
-    return this.prisma.clientOnboarding.update({
+    const updated = await this.prisma.clientOnboarding.update({
       where: { clientId },
       data: {
         bvn,
@@ -199,6 +211,7 @@ export class ClientOnboardingService {
         city: ninResult.city,
       },
     });
+    return this.narrowOnboarding(updated);
   }
 
   async submitIdentity(clientId: string, bvn: string, nin: string) {
@@ -253,7 +266,8 @@ export class ClientOnboardingService {
       await this.prisma.clientOnboarding.update({ where: { clientId }, data: { step: nextStep } });
     }
 
-    return document;
+    const url = await this.fileStorageProvider.getSignedDownloadUrl(document.storageKey);
+    return { documentType: document.documentType, uploadedAt: document.uploadedAt, url };
   }
 
   private async completeFaceMatch(
@@ -288,7 +302,7 @@ export class ClientOnboardingService {
       data: { status: completed ? ClientStatus.VERIFIED : ClientStatus.MANUAL_REVIEW },
     });
 
-    return updated;
+    return this.narrowOnboarding(updated);
   }
 
   async submitFaceMatch(clientId: string, selfieBuffer: Buffer) {
@@ -372,9 +386,10 @@ export class ClientOnboardingService {
   }
 
   async updateMaritalStatus(clientId: string, maritalStatus: string) {
-    return this.prisma.clientOnboarding.update({
+    const updated = await this.prisma.clientOnboarding.update({
       where: { clientId },
       data: { maritalStatus },
     });
+    return this.narrowOnboarding(updated);
   }
 }

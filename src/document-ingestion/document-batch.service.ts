@@ -80,18 +80,55 @@ export class DocumentBatchService {
     });
   }
 
+  // Raw row, untouched — for internal pipeline use only (DocumentIngestionProcessor
+  // needs the real storageKey/documentType to actually process the batch). Never
+  // expose this one through an API response; use findById for that.
+  async findRawById(batchId: string) {
+    return this.prisma.documentUploadBatch.findUnique({ where: { id: batchId } });
+  }
+
   async findById(batchId: string) {
     const batch = await this.prisma.documentUploadBatch.findUnique({
       where: { id: batchId },
       include: {
-        snapshotExport: true,
+        snapshotExport: {
+          select: { id: true, documentType: true, recordCount: true, sqlStorageKey: true, csvStorageKey: true, generatedAt: true },
+        },
         uploadedBy: { select: { id: true, fullName: true, email: true } },
       },
     });
     if (!batch) {
       return batch;
     }
-    return { ...batch, fileUrl: await this.fileStorageProvider.getSignedDownloadUrl(batch.storageKey) };
+
+    const { storageKey, snapshotExport, ...rest } = batch;
+    const [fileUrl, hydratedSnapshotExport] = await Promise.all([
+      this.fileStorageProvider.getSignedDownloadUrl(storageKey),
+      this.hydrateSnapshotExport(snapshotExport),
+    ]);
+
+    return { ...rest, fileUrl, snapshotExport: hydratedSnapshotExport };
+  }
+
+  private async hydrateSnapshotExport(
+    snapshotExport: {
+      id: string;
+      documentType: DocumentType;
+      recordCount: number;
+      sqlStorageKey: string;
+      csvStorageKey: string;
+      generatedAt: Date;
+    } | null,
+  ) {
+    if (!snapshotExport) {
+      return null;
+    }
+    const { sqlStorageKey, csvStorageKey, ...rest } = snapshotExport;
+    const [sqlUrl, csvUrl] = await Promise.all([
+      this.fileStorageProvider.getSignedDownloadUrl(sqlStorageKey),
+      this.fileStorageProvider.getSignedDownloadUrl(csvStorageKey),
+    ]);
+    return { ...rest, sqlUrl, csvUrl };
   }
 
   async list(
@@ -133,10 +170,10 @@ export class DocumentBatchService {
     ]);
 
     const hydrated = await Promise.all(
-      data.map(async (batch) => ({
-        ...batch,
-        fileUrl: await this.fileStorageProvider.getSignedDownloadUrl(batch.storageKey),
-      })),
+      data.map(async (batch) => {
+        const { storageKey, ...rest } = batch;
+        return { ...rest, fileUrl: await this.fileStorageProvider.getSignedDownloadUrl(storageKey) };
+      }),
     );
 
     return buildPaginatedResult(hydrated, total, page, limit);

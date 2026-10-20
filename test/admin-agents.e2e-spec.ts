@@ -85,7 +85,7 @@ describe('Admin agents list endpoint (e2e)', () => {
       .expect(404);
   });
 
-  it('GET /admin/agents/:id resolves a preview URL for the stored cv key, alongside the raw key', async () => {
+  it('GET /admin/agents/:id resolves a preview URL for the stored cv key, without leaking the raw key', async () => {
     const agent = await prisma.agent.findFirstOrThrow({ where: { email: 'wave3.agent1@test.com' } });
 
     const res = await request(app.getHttpServer())
@@ -93,7 +93,10 @@ describe('Admin agents list endpoint (e2e)', () => {
       .set('Authorization', `Bearer ${adminAccessToken}`)
       .expect(200);
 
-    expect(res.body.cvKey).toBe('agents/wave3-test/cv1.pdf');
+    expect(res.body).not.toHaveProperty('cvKey');
+    expect(res.body).not.toHaveProperty('passportPhotoKey');
+    expect(res.body).not.toHaveProperty('identityDocumentKey');
+    expect(res.body).not.toHaveProperty('supportingDocumentKeys');
     expect(res.body.cvUrl).toContain(encodeURIComponent('agents/wave3-test/cv1.pdf'));
     expect(res.body.passportPhotoUrl).toBeNull();
     expect(res.body.identityDocumentUrl).toBeNull();

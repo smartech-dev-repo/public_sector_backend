@@ -124,5 +124,8 @@ describe('Document uploads (e2e)', () => {
     expect(detailRes.body.uploadedBy).toEqual(
       expect.objectContaining({ id: expect.any(String), fullName: expect.any(String), email: expect.any(String) }),
     );
+    expect(typeof detailRes.body.fileUrl).toBe('string');
+    expect(detailRes.body).not.toHaveProperty('storageKey');
+    expect(listRes.body.data[0]).not.toHaveProperty('storageKey');
   });
 });

@@ -114,6 +114,14 @@ describe('Admin client review (e2e)', () => {
       .set('Authorization', `Bearer ${adminAccessToken}`)
       .expect(200);
     expect(res.body.data.some((c: { id: string }) => c.id === clientId)).toBe(true);
+
+    const row = res.body.data.find((c: { id: string }) => c.id === clientId);
+    expect(typeof row.onboarding.bvnSelfieUrl).toBe('string');
+    expect(row.onboarding.bvnSelfieUrl.length).toBeGreaterThan(0);
+    expect(typeof row.onboarding.liveSelfieUrl).toBe('string');
+    expect(row.onboarding).not.toHaveProperty('bvnSelfie');
+    expect(row.onboarding).not.toHaveProperty('ninSelfie');
+    expect(row.onboarding).not.toHaveProperty('liveSelfieKey');
   });
 
   it('gets the full client detail including onboarding', async () => {
@@ -128,6 +136,9 @@ describe('Admin client review (e2e)', () => {
     expect(res.body.onboarding.ninSelfieUrl.length).toBeGreaterThan(0);
     expect(typeof res.body.onboarding.liveSelfieUrl).toBe('string');
     expect(res.body.onboarding.liveSelfieUrl.length).toBeGreaterThan(0);
+    expect(res.body.onboarding).not.toHaveProperty('bvnSelfie');
+    expect(res.body.onboarding).not.toHaveProperty('ninSelfie');
+    expect(res.body.onboarding).not.toHaveProperty('liveSelfieKey');
   });
 
   it('returns onboardingSource on the list and detail views', async () => {
