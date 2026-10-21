@@ -15,14 +15,20 @@ const TEST_RUN_WINDOW_MS = 10 * 60 * 1000;
 // worker), skips every `afterAll` that hadn't fired yet and leaves its rows
 // behind forever — this is how orphaned E2E rows have accumulated in this
 // shared DB in the past. Every row this suite creates carries one of two
-// unambiguous, code-wide markers (never used by real production/staging
-// data): an `@example.com` email, or an `E2E`-prefixed `staffId`/
-// `productCode`. This second sweep catches anything matching either marker
-// regardless of which spec created it or whether that spec's own cleanup
-// ran, as a backstop — it is not a substitute for each spec cleaning up
-// after itself, since a hard-killed process skips this too, but it runs
-// every time the suite exits normally, independent of any individual
-// spec's own (possibly buggy or skipped) `afterAll`.
+// code-wide markers: an `@example.com` email, or an `E2E`-prefixed
+// `staffId`/`productCode`. This second sweep catches anything matching
+// either marker regardless of which spec created it or whether that spec's
+// own cleanup ran, as a backstop.
+//
+// These markers are NOT exclusive to test data on this shared UAT
+// environment — real demo/seed agents and admin users have used
+// `@example.com`-style addresses here before. An earlier version of this
+// sweep matched on these markers alone with no age limit, which silently
+// deleted every real `Agent` row in this environment outside any test run's
+// own window (discovered 2026-10-22, no `agent.deleted` audit trail, no
+// backup to restore from). Every marked-data query below is therefore also
+// bounded by the same `cutoff` window as the sessions/otpCodes/auditLogs
+// sweep above — this sweep only ever touches rows created within this run.
 const EXAMPLE_EMAIL_MARKER = '@example.com';
 const E2E_PREFIX_MARKER = 'E2E';
 
@@ -44,7 +50,7 @@ export default async function globalTeardown(): Promise<void> {
     `[global-teardown] cleared incidental test rows: ${sessionsByWindow.count} sessions, ${otpCodes.count} otp codes, ${auditLogs.count} audit logs`,
   );
 
-  const counts = await sweepMarkedTestData(prisma, bootstrapAdminEmail);
+  const counts = await sweepMarkedTestData(prisma, cutoff, bootstrapAdminEmail);
   console.log(`[global-teardown] swept marked E2E leftovers: ${JSON.stringify(counts)}`);
 
   await prisma.$disconnect();
@@ -52,6 +58,7 @@ export default async function globalTeardown(): Promise<void> {
 
 async function sweepMarkedTestData(
   prisma: PrismaClient,
+  cutoff: Date,
   bootstrapAdminEmail: string | undefined,
 ): Promise<Record<string, number>> {
   const counts: Record<string, number> = {};
@@ -67,7 +74,7 @@ async function sweepMarkedTestData(
   };
 
   const ippisRecords = await prisma.ippisRecord.findMany({
-    where: { staffId: { startsWith: E2E_PREFIX_MARKER } },
+    where: { staffId: { startsWith: E2E_PREFIX_MARKER }, createdAt: { gte: cutoff } },
     select: { id: true, staffId: true },
   });
   const ippisRecordIds = ippisRecords.map((r) => r.id);
@@ -75,6 +82,7 @@ async function sweepMarkedTestData(
 
   const markedClients = await prisma.client.findMany({
     where: {
+      createdAt: { gte: cutoff },
       OR: [
         { email: { contains: EXAMPLE_EMAIL_MARKER } },
         { onboarding: { ippisRecordId: { in: ippisRecordIds } } },
@@ -85,13 +93,13 @@ async function sweepMarkedTestData(
   const clientIds = markedClients.map((c) => c.id);
 
   const markedClientLoans = await prisma.clientLoan.findMany({
-    where: { staffId: { in: e2eStaffIds } },
+    where: { staffId: { in: e2eStaffIds }, createdAt: { gte: cutoff } },
     select: { id: true },
   });
   const clientLoanIds = markedClientLoans.map((l) => l.id);
 
   const markedAgents = await prisma.agent.findMany({
-    where: { email: { contains: EXAMPLE_EMAIL_MARKER } },
+    where: { email: { contains: EXAMPLE_EMAIL_MARKER }, createdAt: { gte: cutoff } },
     select: { id: true },
   });
   const agentIds = markedAgents.map((a) => a.id);
@@ -99,6 +107,7 @@ async function sweepMarkedTestData(
   const markedAdminUsers = await prisma.adminUser.findMany({
     where: {
       email: { contains: EXAMPLE_EMAIL_MARKER, not: bootstrapAdminEmail },
+      createdAt: { gte: cutoff },
     },
     select: { id: true },
   });
@@ -111,7 +120,9 @@ async function sweepMarkedTestData(
   await safeDeleteMany('loanRequests', () => prisma.loanRequest.deleteMany({ where: { clientId: { in: clientIds } } }));
   await safeDeleteMany('walletEntries', () => prisma.walletEntry.deleteMany({ where: { clientId: { in: clientIds } } }));
   await safeDeleteMany('agentApplications', () =>
-    prisma.agentApplication.deleteMany({ where: { email: { contains: EXAMPLE_EMAIL_MARKER } } }),
+    prisma.agentApplication.deleteMany({
+      where: { email: { contains: EXAMPLE_EMAIL_MARKER }, createdAt: { gte: cutoff } },
+    }),
   );
   await safeDeleteMany('clientOnboardings', () =>
     prisma.clientOnboarding.deleteMany({ where: { clientId: { in: clientIds } } }),
@@ -123,10 +134,14 @@ async function sweepMarkedTestData(
   await safeDeleteMany('clients', () => prisma.client.deleteMany({ where: { id: { in: clientIds } } }));
   await safeDeleteMany('ippisRecords', () => prisma.ippisRecord.deleteMany({ where: { id: { in: ippisRecordIds } } }));
   await safeDeleteMany('loanProducts', () =>
-    prisma.loanProduct.deleteMany({ where: { productCode: { startsWith: E2E_PREFIX_MARKER } } }),
+    prisma.loanProduct.deleteMany({
+      where: { productCode: { startsWith: E2E_PREFIX_MARKER }, createdAt: { gte: cutoff } },
+    }),
   );
   await safeDeleteMany('adminInvites', () =>
-    prisma.adminInvite.deleteMany({ where: { email: { contains: EXAMPLE_EMAIL_MARKER } } }),
+    prisma.adminInvite.deleteMany({
+      where: { email: { contains: EXAMPLE_EMAIL_MARKER }, createdAt: { gte: cutoff } },
+    }),
   );
   await safeDeleteMany('adminUsers', () => prisma.adminUser.deleteMany({ where: { id: { in: adminUserIds } } }));
 
