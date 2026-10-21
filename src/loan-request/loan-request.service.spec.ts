@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
+import { BadRequestException, ConflictException, NotFoundException, UnauthorizedException, UnprocessableEntityException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Queue } from 'bullmq';
 import { LoanRequestService } from './loan-request.service';
@@ -10,6 +10,7 @@ import { LoanProductResolverService } from './eligibility/loan-product-resolver.
 import { WalletService } from '../wallet/wallet.service';
 import { EmailService } from '../email/email.service';
 import { LoanRequestType } from '../generated/prisma/client';
+import { hashToken } from '../common/opaque-token.util';
 
 describe('LoanRequestService', () => {
   let service: LoanRequestService;
@@ -133,7 +134,10 @@ describe('LoanRequestService', () => {
           managementChargeValue: 2,
           managementChargeApplication: 'DEDUCT_FROM_DISBURSEMENT',
           managementChargeAmount: 100,
+          confirmationCodeHash: expect.any(String),
+          confirmationCodeExpiresAt: expect.any(Date),
         }),
+        omit: { confirmationCodeHash: true, confirmationCodeExpiresAt: true },
       });
       expect(expiryQueue.add).toHaveBeenCalledWith('expire', { loanRequestId: 'lr1' }, { delay: 24 * 60 * 60 * 1000 });
     });
@@ -222,6 +226,95 @@ describe('LoanRequestService', () => {
       await expect(service.create('c1', 5000, 99)).rejects.toThrow(UnprocessableEntityException);
       expect(smsProvider.send).not.toHaveBeenCalled();
     });
+
+    it('includes a confirmation code hash/expiry on the created request and emails it when the client has an email', async () => {
+      prisma.client.findUniqueOrThrow.mockResolvedValue({
+        id: 'c1',
+        phone: '+2348000000000',
+        email: 'client@example.com',
+        status: 'VERIFIED',
+      });
+      prisma.clientOnboarding.findUnique.mockResolvedValue({ ippisRecord: { salary: 1000000, agency: 'NPF' } });
+      eligibilityService.check.mockResolvedValue({ eligible: true });
+      loanProductResolverService.resolve.mockResolvedValue({
+        product: {
+          managementChargeType: 'PERCENTAGE',
+          managementChargeValue: 2,
+          managementChargeApplication: 'DEDUCT_FROM_DISBURSEMENT',
+        },
+        tier: { minTenorMonths: 1, maxTenorMonths: 12, interestRatePercent: 5 },
+      });
+      prisma.loanRequest.create.mockResolvedValue({ id: 'lr1' });
+
+      await service.create('c1', 5000, 6);
+
+      expect(prisma.loanRequest.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          confirmationCodeHash: expect.any(String),
+          confirmationCodeExpiresAt: expect.any(Date),
+        }),
+        omit: { confirmationCodeHash: true, confirmationCodeExpiresAt: true },
+      });
+      expect(emailService.send).toHaveBeenCalledWith(
+        expect.objectContaining({ to: 'client@example.com', subject: 'Confirm your loan request' }),
+      );
+    });
+
+    it('still creates the loan request, with devCode undefined, when the confirmation-code email fails', async () => {
+      emailService.send.mockRejectedValue(new Error('smtp down'));
+      prisma.client.findUniqueOrThrow.mockResolvedValue({
+        id: 'c1',
+        phone: '+2348000000000',
+        email: 'client@example.com',
+        status: 'VERIFIED',
+      });
+      prisma.clientOnboarding.findUnique.mockResolvedValue({ ippisRecord: { salary: 1000000, agency: 'NPF' } });
+      eligibilityService.check.mockResolvedValue({ eligible: true });
+      loanProductResolverService.resolve.mockResolvedValue({
+        product: {
+          managementChargeType: 'PERCENTAGE',
+          managementChargeValue: 2,
+          managementChargeApplication: 'DEDUCT_FROM_DISBURSEMENT',
+        },
+        tier: { minTenorMonths: 1, maxTenorMonths: 12, interestRatePercent: 5 },
+      });
+      prisma.loanRequest.create.mockResolvedValue({ id: 'lr1' });
+
+      await expect(service.create('c1', 5000, 6)).resolves.toEqual({ id: 'lr1' });
+    });
+
+    it('returns the real code as devCode when EMAIL_CODE_DEV_ECHO is enabled', async () => {
+      const configService = {
+        get: jest.fn((key: string) => (key === 'EMAIL_CODE_DEV_ECHO' ? 'true' : undefined)),
+      } as unknown as ConfigService;
+      service = new LoanRequestService(
+        prisma as unknown as PrismaService,
+        eligibilityService as unknown as EligibilityService,
+        smsProvider as unknown as TwoWaySmsProvider,
+        expiryQueue as unknown as Queue,
+        topupEligibilityService as unknown as TopupEligibilityService,
+        walletService as unknown as WalletService,
+        loanProductResolverService as unknown as LoanProductResolverService,
+        configService,
+        emailService as unknown as EmailService,
+      );
+      prisma.client.findUniqueOrThrow.mockResolvedValue({ id: 'c1', phone: '+2348000000000', status: 'VERIFIED' });
+      prisma.clientOnboarding.findUnique.mockResolvedValue({ ippisRecord: { salary: 1000000, agency: 'NPF' } });
+      eligibilityService.check.mockResolvedValue({ eligible: true });
+      loanProductResolverService.resolve.mockResolvedValue({
+        product: {
+          managementChargeType: 'PERCENTAGE',
+          managementChargeValue: 2,
+          managementChargeApplication: 'DEDUCT_FROM_DISBURSEMENT',
+        },
+        tier: { minTenorMonths: 1, maxTenorMonths: 12, interestRatePercent: 5 },
+      });
+      prisma.loanRequest.create.mockResolvedValue({ id: 'lr1' });
+
+      const result = await service.create('c1', 5000, 6);
+
+      expect(result.devCode).toEqual(expect.stringMatching(/^\d{6}$/));
+    });
   });
 
   describe('resend', () => {
@@ -245,7 +338,12 @@ describe('LoanRequestService', () => {
       expect(smsProvider.send).toHaveBeenCalledWith('+2348000000000', expect.stringContaining('5000'));
       expect(prisma.loanRequest.update).toHaveBeenCalledWith({
         where: { id: 'lr1' },
-        data: { confirmationSmsSentAt: expect.any(Date) },
+        data: {
+          confirmationSmsSentAt: expect.any(Date),
+          confirmationCodeHash: expect.any(String),
+          confirmationCodeExpiresAt: expect.any(Date),
+        },
+        omit: { confirmationCodeHash: true, confirmationCodeExpiresAt: true },
       });
     });
 
@@ -371,6 +469,87 @@ describe('LoanRequestService', () => {
     });
   });
 
+  describe('confirmByCode', () => {
+    it('throws NotFoundException when the loan request does not belong to the calling client', async () => {
+      prisma.loanRequest.findUnique.mockResolvedValue({ id: 'lr1', clientId: 'other-client', status: 'PENDING' });
+      await expect(service.confirmByCode('c1', 'lr1', '123456')).rejects.toThrow(NotFoundException);
+    });
+
+    it('throws ConflictException when the loan request is not PENDING', async () => {
+      prisma.loanRequest.findUnique.mockResolvedValue({ id: 'lr1', clientId: 'c1', status: 'CONFIRMED' });
+      await expect(service.confirmByCode('c1', 'lr1', '123456')).rejects.toThrow(ConflictException);
+    });
+
+    it('throws UnauthorizedException when the code does not match the stored hash', async () => {
+      prisma.loanRequest.findUnique.mockResolvedValue({
+        id: 'lr1',
+        clientId: 'c1',
+        status: 'PENDING',
+        confirmationCodeHash: hashToken('654321'),
+        confirmationCodeExpiresAt: new Date(Date.now() + 60000),
+      });
+      await expect(service.confirmByCode('c1', 'lr1', '123456')).rejects.toThrow(UnauthorizedException);
+    });
+
+    it('throws UnauthorizedException when the code has expired', async () => {
+      prisma.loanRequest.findUnique.mockResolvedValue({
+        id: 'lr1',
+        clientId: 'c1',
+        status: 'PENDING',
+        confirmationCodeHash: hashToken('123456'),
+        confirmationCodeExpiresAt: new Date(Date.now() - 1000),
+      });
+      await expect(service.confirmByCode('c1', 'lr1', '123456')).rejects.toThrow(UnauthorizedException);
+    });
+
+    it('confirms and auto-disburses under the configured threshold on a correct, unexpired code', async () => {
+      const configService = { get: jest.fn().mockReturnValue('10000') } as unknown as ConfigService;
+      service = new LoanRequestService(
+        prisma as unknown as PrismaService,
+        eligibilityService as unknown as EligibilityService,
+        smsProvider as unknown as TwoWaySmsProvider,
+        expiryQueue as unknown as Queue,
+        topupEligibilityService as unknown as TopupEligibilityService,
+        walletService as unknown as WalletService,
+        loanProductResolverService as unknown as LoanProductResolverService,
+        configService,
+      );
+      prisma.loanRequest.findUnique.mockResolvedValue({
+        id: 'lr1',
+        clientId: 'c1',
+        status: 'PENDING',
+        confirmationCodeHash: hashToken('123456'),
+        confirmationCodeExpiresAt: new Date(Date.now() + 60000),
+      });
+      prisma.loanRequest.update.mockResolvedValueOnce({ id: 'lr1', amount: 5000 });
+      prisma.loanRequest.findUniqueOrThrow.mockResolvedValue({
+        id: 'lr1',
+        clientId: 'c1',
+        amount: 5000,
+        tenorMonths: 6,
+        managementChargeAmount: 100,
+        managementChargeApplication: 'DEDUCT_FROM_DISBURSEMENT',
+        interestRatePercent: 5,
+        managementChargeType: 'PERCENTAGE',
+        managementChargeValue: 2,
+      });
+      prisma.clientOnboarding.findUniqueOrThrow.mockResolvedValue({
+        ippisRecord: { agency: 'NPF', staffId: 'NPF-001' },
+      });
+      prisma.clientLoan.create.mockResolvedValue({ id: 'cl1' });
+
+      await service.confirmByCode('c1', 'lr1', '123456');
+
+      expect(prisma.loanRequest.update).toHaveBeenCalledWith({
+        where: { id: 'lr1' },
+        data: { status: 'DISBURSED', approvedAt: expect.any(Date), disbursedAt: expect.any(Date) },
+      });
+      expect(prisma.clientLoan.create).toHaveBeenCalledWith(
+        expect.objectContaining({ data: expect.objectContaining({ clientId: 'c1', loanRequestId: 'lr1' }) }),
+      );
+    });
+  });
+
   describe('approve', () => {
     it('throws ConflictException when the request is not CONFIRMED', async () => {
       prisma.loanRequest.findUnique.mockResolvedValue({ id: 'lr1', status: 'PENDING' });
@@ -390,6 +569,7 @@ describe('LoanRequestService', () => {
           client: { select: { id: true, phone: true, status: true } },
           topupTarget: { select: { id: true, status: true, agency: true } },
         },
+        omit: { confirmationCodeHash: true, confirmationCodeExpiresAt: true },
       });
     });
   });
@@ -413,6 +593,7 @@ describe('LoanRequestService', () => {
           client: { select: { id: true, phone: true, status: true } },
           topupTarget: { select: { id: true, status: true, agency: true } },
         },
+        omit: { confirmationCodeHash: true, confirmationCodeExpiresAt: true },
       });
     });
   });
@@ -451,6 +632,7 @@ describe('LoanRequestService', () => {
           client: { select: { id: true, phone: true, status: true } },
           topupTarget: { select: { id: true, status: true, agency: true } },
         },
+        omit: { confirmationCodeHash: true, confirmationCodeExpiresAt: true },
       });
       expect(prisma.clientLoan.create).toHaveBeenCalledWith({
         data: expect.objectContaining({ disbursedAmount: 5000, principalAmount: 5000 }),
@@ -480,6 +662,7 @@ describe('LoanRequestService', () => {
             client: { select: { id: true, phone: true, status: true } },
             topupTarget: { select: { id: true, status: true, agency: true } },
           },
+          omit: { confirmationCodeHash: true, confirmationCodeExpiresAt: true },
         }),
       );
     });
@@ -575,6 +758,7 @@ describe('LoanRequestService', () => {
           topupTargetId: 'cl1',
           managementChargeAmount: 40,
         }),
+        omit: { confirmationCodeHash: true, confirmationCodeExpiresAt: true },
       });
       expect(expiryQueue.add).toHaveBeenCalledWith('expire', { loanRequestId: 'lr2' }, { delay: 24 * 60 * 60 * 1000 });
     });
@@ -598,6 +782,7 @@ describe('LoanRequestService', () => {
 
       expect(prisma.loanRequest.create).toHaveBeenCalledWith({
         data: expect.objectContaining({ topupTargetId: undefined }),
+        omit: { confirmationCodeHash: true, confirmationCodeExpiresAt: true },
       });
     });
 
@@ -738,7 +923,12 @@ describe('LoanRequestService', () => {
       const result = await service.list('client-1');
 
       expect(prisma.loanRequest.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({ where: { clientId: 'client-1', status: undefined }, skip: 0, take: 25 }),
+        expect.objectContaining({
+          where: { clientId: 'client-1', status: undefined },
+          skip: 0,
+          take: 25,
+          omit: { confirmationCodeHash: true, confirmationCodeExpiresAt: true },
+        }),
       );
       expect(result.meta).toEqual({ total: 0, page: 1, limit: 25, totalPages: 0 });
     });

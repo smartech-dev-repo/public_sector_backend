@@ -5,6 +5,7 @@ import {
   Injectable,
   Logger,
   NotFoundException,
+  UnauthorizedException,
   UnprocessableEntityException,
 } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
@@ -22,6 +23,10 @@ import { computeExpectedInstallment } from '../reconciliation/amortization.util'
 import { WalletService } from '../wallet/wallet.service';
 import { EmailService } from '../email/email.service';
 import { loanRequestConfirmationEmail } from '../email/templates/action-emails';
+import { loanConfirmationCodeEmail } from '../email/templates/verification-code-emails';
+import { hashToken } from '../common/opaque-token.util';
+import { generateNumericCode } from '../common/generate-numeric-code.util';
+import { devCodeEcho } from '../common/dev-code-echo.util';
 import { classifyVariance } from '../reconciliation/variance-classification.util';
 import { computeClientLoanStatus } from '../reconciliation/client-loan-status.util';
 import {
@@ -38,6 +43,7 @@ import {
 } from '../generated/prisma/client';
 
 const EXPIRY_MS = 24 * 60 * 60 * 1000;
+const LOAN_CONFIRMATION_CODE_TTL_MS = 10 * 60 * 1000;
 
 export interface LoanRequestExpiryJobData {
   loanRequestId: string;
@@ -73,6 +79,34 @@ export class LoanRequestService {
       const err = error instanceof Error ? error.message : String(error);
       this.logger.warn(`Loan-request confirmation email to ${email} failed: ${err}`);
     }
+  }
+
+  private async issueConfirmationCode(email: string | null): Promise<{
+    confirmationCodeHash: string;
+    confirmationCodeExpiresAt: Date;
+    devCode?: string;
+  }> {
+    const length = Number(this.configService?.get('EMAIL_CODE_LENGTH') ?? 6);
+    const code = generateNumericCode(length);
+    const confirmationCodeExpiresAt = new Date(Date.now() + LOAN_CONFIRMATION_CODE_TTL_MS);
+
+    if (email) {
+      try {
+        await this.emailService?.send({
+          to: email,
+          ...loanConfirmationCodeEmail({ code, ttlMinutes: LOAN_CONFIRMATION_CODE_TTL_MS / 60000 }),
+        });
+      } catch (error) {
+        const err = error instanceof Error ? error.message : String(error);
+        this.logger.warn(`Loan-request confirmation code email to ${email} failed: ${err}`);
+      }
+    }
+
+    return {
+      confirmationCodeHash: hashToken(code),
+      confirmationCodeExpiresAt,
+      devCode: devCodeEcho(this.configService, code),
+    };
   }
 
   private async createClientLoanFromRequest(loanRequestId: string): Promise<void> {
@@ -252,6 +286,7 @@ export class LoanRequestService {
 
     await this.smsProvider.send(client.phone, this.confirmationMessage(amount));
     await this.sendEmailCopy(client.email, amount, LoanRequestType.ORIGINATION);
+    const { confirmationCodeHash, confirmationCodeExpiresAt, devCode } = await this.issueConfirmationCode(client.email);
 
     const loanRequest = await this.prisma.loanRequest.create({
       data: {
@@ -265,12 +300,15 @@ export class LoanRequestService {
         managementChargeAmount,
         expiresAt: new Date(Date.now() + EXPIRY_MS),
         confirmationSmsSentAt: new Date(),
+        confirmationCodeHash,
+        confirmationCodeExpiresAt,
       },
+      omit: { confirmationCodeHash: true, confirmationCodeExpiresAt: true },
     });
 
     await this.expiryQueue.add('expire', { loanRequestId: loanRequest.id }, { delay: EXPIRY_MS });
 
-    return loanRequest;
+    return { ...loanRequest, devCode };
   }
 
   async createTopup(clientId: string, amount: number, tenorMonths: number) {
@@ -302,6 +340,7 @@ export class LoanRequestService {
 
     await this.smsProvider.send(client.phone, this.confirmationMessage(amount, LoanRequestType.TOPUP));
     await this.sendEmailCopy(client.email, amount, LoanRequestType.TOPUP);
+    const { confirmationCodeHash, confirmationCodeExpiresAt, devCode } = await this.issueConfirmationCode(client.email);
 
     const loanRequest = await this.prisma.loanRequest.create({
       data: {
@@ -317,12 +356,15 @@ export class LoanRequestService {
         managementChargeAmount,
         expiresAt: new Date(Date.now() + EXPIRY_MS),
         confirmationSmsSentAt: new Date(),
+        confirmationCodeHash,
+        confirmationCodeExpiresAt,
       },
+      omit: { confirmationCodeHash: true, confirmationCodeExpiresAt: true },
     });
 
     await this.expiryQueue.add('expire', { loanRequestId: loanRequest.id }, { delay: EXPIRY_MS });
 
-    return loanRequest;
+    return { ...loanRequest, devCode };
   }
 
   async resend(clientId: string, id: string) {
@@ -337,11 +379,15 @@ export class LoanRequestService {
     const client = await this.prisma.client.findUniqueOrThrow({ where: { id: clientId } });
     await this.smsProvider.send(client.phone, this.confirmationMessage(Number(loanRequest.amount)));
     await this.sendEmailCopy(client.email, Number(loanRequest.amount), LoanRequestType.ORIGINATION);
+    const { confirmationCodeHash, confirmationCodeExpiresAt, devCode } = await this.issueConfirmationCode(client.email);
 
-    return this.prisma.loanRequest.update({
+    const updated = await this.prisma.loanRequest.update({
       where: { id },
-      data: { confirmationSmsSentAt: new Date() },
+      data: { confirmationSmsSentAt: new Date(), confirmationCodeHash, confirmationCodeExpiresAt },
+      omit: { confirmationCodeHash: true, confirmationCodeExpiresAt: true },
     });
+
+    return { ...updated, devCode };
   }
 
   async confirmByPhone(phone: string, message: string): Promise<void> {
@@ -363,6 +409,30 @@ export class LoanRequestService {
       return;
     }
 
+    await this.confirmPending(pending);
+  }
+
+  async confirmByCode(clientId: string, id: string, code: string): Promise<void> {
+    const loanRequest = await this.prisma.loanRequest.findUnique({ where: { id } });
+    if (!loanRequest || loanRequest.clientId !== clientId) {
+      throw new NotFoundException('Loan request not found');
+    }
+    if (loanRequest.status !== LoanRequestStatus.PENDING) {
+      throw new ConflictException(`Loan request is not PENDING (currently ${loanRequest.status})`);
+    }
+    if (
+      !loanRequest.confirmationCodeHash ||
+      !loanRequest.confirmationCodeExpiresAt ||
+      loanRequest.confirmationCodeExpiresAt < new Date() ||
+      loanRequest.confirmationCodeHash !== hashToken(code)
+    ) {
+      throw new UnauthorizedException('Invalid or expired verification code');
+    }
+
+    await this.confirmPending(loanRequest);
+  }
+
+  private async confirmPending(pending: LoanRequest): Promise<void> {
     const confirmed = await this.prisma.loanRequest.update({
       where: { id: pending.id },
       data: { status: LoanRequestStatus.CONFIRMED, confirmedAt: new Date() },
@@ -392,6 +462,7 @@ export class LoanRequestService {
       where: { id },
       data: { status: LoanRequestStatus.APPROVED, approvedAt: new Date() },
       include: LoanRequestService.LOAN_REQUEST_RELATIONS_INCLUDE,
+      omit: { confirmationCodeHash: true, confirmationCodeExpiresAt: true },
     });
   }
 
@@ -404,6 +475,7 @@ export class LoanRequestService {
       where: { id },
       data: { status: LoanRequestStatus.REJECTED, rejectionReason: reason },
       include: LoanRequestService.LOAN_REQUEST_RELATIONS_INCLUDE,
+      omit: { confirmationCodeHash: true, confirmationCodeExpiresAt: true },
     });
   }
 
@@ -416,6 +488,7 @@ export class LoanRequestService {
       where: { id },
       data: { status: LoanRequestStatus.DISBURSED, disbursedAt: new Date() },
       include: LoanRequestService.LOAN_REQUEST_RELATIONS_INCLUDE,
+      omit: { confirmationCodeHash: true, confirmationCodeExpiresAt: true },
     });
     await this.createClientLoanFromRequest(id);
     return updated;
@@ -452,6 +525,7 @@ export class LoanRequestService {
       this.prisma.loanRequest.findMany({
         where,
         include: LoanRequestService.LOAN_REQUEST_RELATIONS_INCLUDE,
+        omit: { confirmationCodeHash: true, confirmationCodeExpiresAt: true },
         orderBy: { createdAt: 'desc' },
         skip: (page - 1) * limit,
         take: limit,
@@ -559,7 +633,13 @@ export class LoanRequestService {
     const where: Prisma.LoanRequestWhereInput = { clientId, status: filters.status };
 
     const [data, total] = await Promise.all([
-      this.prisma.loanRequest.findMany({ where, orderBy: { createdAt: 'desc' }, skip: (page - 1) * limit, take: limit }),
+      this.prisma.loanRequest.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * limit,
+        take: limit,
+        omit: { confirmationCodeHash: true, confirmationCodeExpiresAt: true },
+      }),
       this.prisma.loanRequest.count({ where }),
     ]);
 
