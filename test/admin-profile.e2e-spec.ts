@@ -3,6 +3,7 @@ import { INestApplication, ValidationPipe } from '@nestjs/common';
 import * as request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { PrismaService } from '../src/prisma/prisma.service';
+import { SAMPLE_JPEG_BUFFER, SAMPLE_PDF_BUFFER } from './fixtures/sample-files';
 
 describe('Admin profile (e2e)', () => {
   let app: INestApplication;
@@ -80,7 +81,7 @@ describe('Admin profile (e2e)', () => {
     const uploadRes = await request(app.getHttpServer())
       .post('/admin/me/profile-image')
       .set('Authorization', `Bearer ${adminAccessToken}`)
-      .attach('file', Buffer.from('fake-image-data'), { filename: 'avatar.jpg', contentType: 'image/jpeg' })
+      .attach('file', SAMPLE_JPEG_BUFFER, { filename: 'avatar.jpg', contentType: 'image/jpeg' })
       .expect(201);
     expect(typeof uploadRes.body.profileImageUrl).toBe('string');
     expect(uploadRes.body.profileImageUrl.length).toBeGreaterThan(0);
@@ -102,7 +103,7 @@ describe('Admin profile (e2e)', () => {
     await request(app.getHttpServer())
       .post('/admin/me/profile-image')
       .set('Authorization', `Bearer ${adminAccessToken}`)
-      .attach('file', Buffer.from('fake-pdf-data'), { filename: 'doc.pdf', contentType: 'application/pdf' })
+      .attach('file', SAMPLE_PDF_BUFFER, { filename: 'doc.pdf', contentType: 'application/pdf' })
       .expect(400);
   });
 });

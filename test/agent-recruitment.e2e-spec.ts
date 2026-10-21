@@ -4,6 +4,7 @@ import * as request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { PrismaService } from '../src/prisma/prisma.service';
 import { EMAIL_PROVIDERS, EmailMessage } from '../src/email/email-provider.interface';
+import { SAMPLE_JPEG_BUFFER, SAMPLE_PDF_BUFFER } from './fixtures/sample-files';
 
 describe('Agent recruitment (e2e)', () => {
   let app: INestApplication;
@@ -104,8 +105,8 @@ describe('Agent recruitment (e2e)', () => {
         .field('localGovernment', 'Ikeja')
         .field('nin', '12345678901')
         .field('coverLetter', 'I would like to join as an agent.')
-        .attach('cv', Buffer.from('fake cv content'), 'cv.pdf')
-        .attach('passportPhoto', Buffer.from('fake photo content'), 'photo.jpg')
+        .attach('cv', SAMPLE_PDF_BUFFER, 'cv.pdf')
+        .attach('passportPhoto', SAMPLE_JPEG_BUFFER, 'photo.jpg')
         .expect(201);
       expect(submitRes.body.status).toBe('PENDING_REVIEW');
       const agentId = submitRes.body.id;
@@ -179,8 +180,8 @@ describe('Agent recruitment (e2e)', () => {
         .field('localGovernment', 'Ikeja')
         .field('nin', '12345678901')
         .field('coverLetter', 'Cover letter.')
-        .attach('cv', Buffer.from('fake cv content'), 'cv.pdf')
-        .attach('passportPhoto', Buffer.from('fake photo content'), 'photo.jpg')
+        .attach('cv', SAMPLE_PDF_BUFFER, 'cv.pdf')
+        .attach('passportPhoto', SAMPLE_JPEG_BUFFER, 'photo.jpg')
         .expect(201);
       createdAgentIds.push(submitRes.body.id);
 
@@ -217,8 +218,8 @@ describe('Agent recruitment (e2e)', () => {
         .field('localGovernment', 'Ikeja')
         .field('nin', '12345678901')
         .field('coverLetter', 'Cover letter.')
-        .attach('cv', Buffer.from('fake cv content'), 'cv.pdf')
-        .attach('passportPhoto', Buffer.from('fake photo content'), 'photo.jpg')
+        .attach('cv', SAMPLE_PDF_BUFFER, 'cv.pdf')
+        .attach('passportPhoto', SAMPLE_JPEG_BUFFER, 'photo.jpg')
         .expect(201);
       const agentId = submitRes.body.id;
       createdAgentIds.push(agentId);
