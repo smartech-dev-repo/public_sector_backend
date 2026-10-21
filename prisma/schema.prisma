@@ -542,6 +542,8 @@ model LoanRequest {
   status                LoanRequestStatus @default(PENDING)
   confirmationSmsSentAt DateTime?
   confirmedAt           DateTime?
+  confirmationCodeHash      String?
+  confirmationCodeExpiresAt DateTime?
   expiresAt             DateTime
   createdAt             DateTime          @default(now())
   updatedAt             DateTime          @updatedAt
