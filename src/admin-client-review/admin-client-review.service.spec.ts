@@ -3,6 +3,7 @@ import { AdminClientReviewService } from './admin-client-review.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { ClientOnboardingService } from '../client-onboarding/client-onboarding.service';
 import { FileStorageProvider } from '../file-storage/file-storage-provider.interface';
+import { ClientLoanSummaryService } from '../client-loan-summary/client-loan-summary.service';
 
 describe('AdminClientReviewService', () => {
   let service: AdminClientReviewService;
@@ -12,6 +13,7 @@ describe('AdminClientReviewService', () => {
   };
   let clientOnboardingService: { determineStepAfterIdentity: jest.Mock };
   let fileStorageProvider: { getSignedDownloadUrl: jest.Mock };
+  let clientLoanSummaryService: { getSummary: jest.Mock; getSchedule: jest.Mock; getTopupEligibility: jest.Mock };
 
   beforeEach(() => {
     prisma = {
@@ -20,10 +22,24 @@ describe('AdminClientReviewService', () => {
     };
     clientOnboardingService = { determineStepAfterIdentity: jest.fn() };
     fileStorageProvider = { getSignedDownloadUrl: jest.fn() };
+    clientLoanSummaryService = {
+      getSummary: jest.fn().mockResolvedValue({
+        hasLoan: false,
+        source: null,
+        status: null,
+        principal: null,
+        balance: null,
+        monthlyRepayment: null,
+        nextPaymentDate: null,
+      }),
+      getSchedule: jest.fn().mockResolvedValue(null),
+      getTopupEligibility: jest.fn().mockResolvedValue({ eligible: false, reason: 'Client has not completed onboarding' }),
+    };
     service = new AdminClientReviewService(
       prisma as unknown as PrismaService,
       clientOnboardingService as unknown as ClientOnboardingService,
       fileStorageProvider as unknown as FileStorageProvider,
+      clientLoanSummaryService as unknown as ClientLoanSummaryService,
     );
   });
 
@@ -223,6 +239,27 @@ describe('AdminClientReviewService', () => {
       expect(prisma.client.findMany).toHaveBeenCalledWith(expect.objectContaining({ skip: 50, take: 25 }));
       expect(result.meta).toEqual({ total: 60, page: 3, limit: 25, totalPages: 3 });
     });
+
+    it('attaches loanSummary and topupEligibility to each row', async () => {
+      prisma.client.findMany.mockResolvedValue([{ id: 'c1', onboarding: null }]);
+      prisma.client.count.mockResolvedValue(1);
+      clientLoanSummaryService.getSummary.mockResolvedValue({
+        hasLoan: true,
+        source: 'INGESTED',
+        status: 'DEFAULT',
+        principal: 50000,
+        balance: 20000,
+        monthlyRepayment: 10000,
+        nextPaymentDate: null,
+      });
+      clientLoanSummaryService.getTopupEligibility.mockResolvedValue({ eligible: true });
+
+      const result = await service.list();
+
+      expect(clientLoanSummaryService.getSummary).toHaveBeenCalledWith('c1');
+      expect(result.data[0].loanSummary.status).toBe('DEFAULT');
+      expect(result.data[0].topupEligibility).toEqual({ eligible: true });
+    });
   });
 
   describe('findById', () => {
@@ -396,6 +433,21 @@ describe('AdminClientReviewService', () => {
       expect(result.onboarding.ninSelfieUrl).toBeNull();
       expect(result.onboarding.liveSelfieUrl).toBeNull();
       expect(fileStorageProvider.getSignedDownloadUrl).not.toHaveBeenCalled();
+    });
+
+    it('attaches loanSummary, topupEligibility, and loanSchedule', async () => {
+      prisma.client.findUnique.mockResolvedValue({ id: 'c1', status: 'VERIFIED', onboarding: null });
+      clientLoanSummaryService.getSchedule.mockResolvedValue([{ period: '2026-01' }]);
+      clientLoanSummaryService.getTopupEligibility.mockResolvedValue({
+        eligible: false,
+        reason: 'Client has no existing loan to renew',
+      });
+
+      const result = await service.findById('c1');
+
+      expect(clientLoanSummaryService.getSummary).toHaveBeenCalledWith('c1');
+      expect(result.topupEligibility).toEqual({ eligible: false, reason: 'Client has no existing loan to renew' });
+      expect(result.loanSchedule).toEqual([{ period: '2026-01' }]);
     });
   });
 

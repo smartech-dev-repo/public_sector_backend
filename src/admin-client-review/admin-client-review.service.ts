@@ -7,6 +7,7 @@ import { FILE_STORAGE_PROVIDER, FileStorageProvider } from '../file-storage/file
 import { buildPaginatedResult } from '../common/pagination/paginated-result';
 import { deriveOnboardingSource, OnboardingSource } from '../client-onboarding/onboarding-source.util';
 import { narrowIppisRecord } from '../client-onboarding/narrow-ippis-record.util';
+import { ClientLoanSummaryService } from '../client-loan-summary/client-loan-summary.service';
 
 interface FailureReasons {
   identityVerified?: boolean;
@@ -28,6 +29,7 @@ export class AdminClientReviewService {
     private readonly prisma: PrismaService,
     private readonly clientOnboardingService: ClientOnboardingService,
     @Inject(FILE_STORAGE_PROVIDER) private readonly fileStorageProvider: FileStorageProvider,
+    private readonly clientLoanSummaryService: ClientLoanSummaryService,
   ) {}
 
   async list(
@@ -69,8 +71,19 @@ export class AdminClientReviewService {
     return buildPaginatedResult(
       await Promise.all(
         data.map(async (client) => {
+          const [loanSummary, topupEligibility] = await Promise.all([
+            this.clientLoanSummaryService.getSummary(client.id),
+            this.clientLoanSummaryService.getTopupEligibility(client, client.onboarding),
+          ]);
+
           if (!client.onboarding) {
-            return { ...client, onboardingSource: deriveOnboardingSource(client.onboarding), onboarding: null };
+            return {
+              ...client,
+              onboardingSource: deriveOnboardingSource(client.onboarding),
+              onboarding: null,
+              loanSummary,
+              topupEligibility,
+            };
           }
           const { bvnSelfie, ninSelfie, liveSelfieKey, ippisRecord, ...restOnboarding } = client.onboarding;
           const selfieUrls = await this.resolveSelfieUrls({ bvnSelfie, ninSelfie, liveSelfieKey });
@@ -78,6 +91,8 @@ export class AdminClientReviewService {
             ...client,
             onboardingSource: deriveOnboardingSource(client.onboarding),
             onboarding: { ...restOnboarding, ippisRecord: narrowIppisRecord(ippisRecord), ...selfieUrls },
+            loanSummary,
+            topupEligibility,
           };
         }),
       ),
@@ -138,6 +153,12 @@ export class AdminClientReviewService {
       throw new NotFoundException('Client not found');
     }
 
+    const [loanSummary, topupEligibility, loanSchedule] = await Promise.all([
+      this.clientLoanSummaryService.getSummary(id),
+      this.clientLoanSummaryService.getTopupEligibility(client, client.onboarding),
+      this.clientLoanSummaryService.getSchedule(id),
+    ]);
+
     if (client.onboarding) {
       const documents = await Promise.all(
         (client.onboarding.documents ?? []).map(async (document) => ({
@@ -161,10 +182,20 @@ export class AdminClientReviewService {
           ippisRecord,
           ...selfieUrls,
         },
+        loanSummary,
+        topupEligibility,
+        loanSchedule,
       };
     }
 
-    return { ...client, onboardingSource: deriveOnboardingSource(client.onboarding), onboarding: null };
+    return {
+      ...client,
+      onboardingSource: deriveOnboardingSource(client.onboarding),
+      onboarding: null,
+      loanSummary,
+      topupEligibility,
+      loanSchedule,
+    };
   }
 
   async approve(id: string, adminId: string) {
