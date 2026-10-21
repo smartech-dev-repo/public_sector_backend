@@ -14,3 +14,18 @@ export function generatePeriodRange(start: Date, end: Date): string[] {
 
   return periods;
 }
+
+export function nextPeriodDate(latestPeriod: string | null, disbursementDate: Date, maturationDate: Date): string | null {
+  const next = latestPeriod
+    ? addMonthsToPeriod(latestPeriod, 1)
+    : new Date(disbursementDate.getFullYear(), disbursementDate.getMonth(), 1);
+  if (next > maturationDate) {
+    return null;
+  }
+  return `${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, '0')}-${String(next.getDate()).padStart(2, '0')}`;
+}
+
+function addMonthsToPeriod(period: string, months: number): Date {
+  const [year, month] = period.split('-').map(Number);
+  return new Date(year, month - 1 + months, 1);
+}

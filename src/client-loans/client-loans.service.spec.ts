@@ -296,6 +296,36 @@ describe('ClientLoansService', () => {
     });
   });
 
+  describe('getLatestMatchedLoan', () => {
+    it('returns null when the client has no ClientOnboarding row', async () => {
+      prisma.clientOnboarding.findUnique.mockResolvedValue(null);
+      expect(await service.getLatestMatchedLoan('c1')).toBeNull();
+    });
+
+    it('returns null when the client has no ingested loans', async () => {
+      prisma.clientOnboarding.findUnique.mockResolvedValue({
+        bvn: null,
+        ippisRecord: { agency: 'NPF', staffId: 'NPF-001' },
+      });
+      prisma.loan.findMany.mockResolvedValue([]);
+      expect(await service.getLatestMatchedLoan('c1')).toBeNull();
+    });
+
+    it('returns the most recent matched loan with its computed status', async () => {
+      prisma.clientOnboarding.findUnique.mockResolvedValue({
+        bvn: null,
+        ippisRecord: { agency: 'NPF', staffId: 'NPF-001' },
+      });
+      prisma.loan.findMany.mockResolvedValue([
+        { id: 'loan-1', bvn: null, principalBalance: 5000, maturationDate: future },
+      ]);
+
+      const result = await service.getLatestMatchedLoan('c1');
+
+      expect(result).toEqual(expect.objectContaining({ id: 'loan-1', status: 'ACTIVE' }));
+    });
+  });
+
   describe('getRepaymentPlan', () => {
     it('throws NotFoundException when the client has no ClientOnboarding row', async () => {
       prisma.clientOnboarding.findUnique.mockResolvedValue(null);

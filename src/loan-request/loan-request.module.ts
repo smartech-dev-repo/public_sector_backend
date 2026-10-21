@@ -52,6 +52,6 @@ import { LoanSettingsModule } from '../loan-settings/loan-settings.module';
     TopupEligibilityService,
     LoanProductResolverService,
   ],
-  exports: [EligibilityService, TopupEligibilityService],
+  exports: [EligibilityService, TopupEligibilityService, LoanRequestService],
 })
 export class LoanRequestModule {}
