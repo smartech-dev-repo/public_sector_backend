@@ -4,6 +4,7 @@ import { ClientOnlyGuard } from '../auth/client-only.guard';
 import { JwtPayload } from '../auth/jwt-payload.interface';
 import { LoanRequestService } from './loan-request.service';
 import { CreateLoanRequestDto } from './dto/create-loan-request.dto';
+import { ConfirmLoanRequestCodeDto } from './dto/confirm-loan-request-code.dto';
 import { ListClientLoanRequestsQueryDto } from './dto/list-client-loan-requests-query.dto';
 
 @Controller('client/loan-requests')
@@ -25,6 +26,13 @@ export class LoanRequestController {
   @HttpCode(200)
   resend(@Param('id') id: string, @Req() req: { user: JwtPayload }) {
     return this.loanRequestService.resend(req.user.sub, id);
+  }
+
+  @Post(':id/confirm-code')
+  @HttpCode(200)
+  async confirmCode(@Param('id') id: string, @Body() dto: ConfirmLoanRequestCodeDto, @Req() req: { user: JwtPayload }) {
+    await this.loanRequestService.confirmByCode(req.user.sub, id, dto.code);
+    return { confirmed: true };
   }
 
   @Get()

@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { BullModule } from '@nestjs/bullmq';
 import { LoanRequestController } from './loan-request.controller';
+import { AgentLoanRequestController } from './agent-loan-request.controller';
 import { SmsWebhookController } from './sms-webhook.controller';
 import { AdminLoanRequestController } from './admin-loan-request.controller';
 import { AdminClientLoansController } from './admin-client-loans.controller';
@@ -34,6 +35,7 @@ import { LoanSettingsModule } from '../loan-settings/loan-settings.module';
   ],
   controllers: [
     LoanRequestController,
+    AgentLoanRequestController,
     SmsWebhookController,
     AdminLoanRequestController,
     AdminClientLoansController,
