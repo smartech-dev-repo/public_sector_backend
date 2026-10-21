@@ -1,9 +1,10 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { ClientStatus, Prisma } from '../generated/prisma/client';
+import { Client, ClientStatus, IppisRecord, Prisma } from '../generated/prisma/client';
 import { buildPaginatedResult } from '../common/pagination/paginated-result';
 import { narrowIppisRecord } from '../client-onboarding/narrow-ippis-record.util';
 import { FILE_STORAGE_PROVIDER, FileStorageProvider } from '../file-storage/file-storage-provider.interface';
+import { ClientLoanSummaryService } from '../client-loan-summary/client-loan-summary.service';
 
 export interface ListMyClientsFilters {
   status?: ClientStatus;
@@ -17,6 +18,7 @@ export class AgentClientsService {
   constructor(
     private readonly prisma: PrismaService,
     @Inject(FILE_STORAGE_PROVIDER) private readonly fileStorageProvider: FileStorageProvider,
+    private readonly clientLoanSummaryService: ClientLoanSummaryService,
   ) {}
 
   async listMyClients(
@@ -63,6 +65,7 @@ export class AgentClientsService {
 
   private async narrowClient<
     T extends {
+      id: string;
       onboarding:
         | ({
             bvnSelfie: string | null;
@@ -73,8 +76,16 @@ export class AgentClientsService {
         | null;
     },
   >(client: T) {
+    const [loanSummary, topupEligibility] = await Promise.all([
+      this.clientLoanSummaryService.getSummary(client.id),
+      this.clientLoanSummaryService.getTopupEligibility(
+        client as unknown as Client,
+        client.onboarding as unknown as { ippisRecord: IppisRecord } | null,
+      ),
+    ]);
+
     if (!client.onboarding) {
-      return { ...client, onboarding: null };
+      return { ...client, onboarding: null, loanSummary, topupEligibility };
     }
 
     const { bvnSelfie, ninSelfie, liveSelfieKey, ippisRecord, ...restOnboarding } = client.onboarding;
@@ -93,6 +104,31 @@ export class AgentClientsService {
         ninSelfieUrl,
         liveSelfieUrl,
       },
+      loanSummary,
+      topupEligibility,
     };
+  }
+
+  async getOneForAgent(agentId: string, clientId: string) {
+    const client = await this.prisma.client.findFirst({
+      where: { id: clientId, onboarding: { onboardedByAgentId: agentId } },
+      include: {
+        onboarding: {
+          include: {
+            ippisRecord: true,
+            reviewedByAdmin: { select: { id: true, fullName: true, email: true } },
+            documents: true,
+          },
+        },
+      },
+    });
+    if (!client) {
+      throw new NotFoundException('Client not found');
+    }
+
+    const narrowed = await this.narrowClient(client);
+    const loanSchedule = await this.clientLoanSummaryService.getSchedule(clientId);
+
+    return { ...narrowed, loanSchedule };
   }
 }

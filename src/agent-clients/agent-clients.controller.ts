@@ -1,4 +1,4 @@
-import { Controller, Get, Query, Req, UseGuards } from '@nestjs/common';
+import { Controller, Get, Param, Query, Req, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { AgentOnlyGuard } from '../auth/agent-only.guard';
 import { JwtPayload } from '../auth/jwt-payload.interface';
@@ -22,5 +22,10 @@ export class AgentClientsController {
       },
       { page: query.page, limit: query.limit },
     );
+  }
+
+  @Get(':clientId')
+  getOne(@Param('clientId') clientId: string, @Req() req: { user: JwtPayload }) {
+    return this.agentClientsService.getOneForAgent(req.user.sub, clientId);
   }
 }
