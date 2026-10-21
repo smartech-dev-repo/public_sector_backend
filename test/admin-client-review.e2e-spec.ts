@@ -122,6 +122,17 @@ describe('Admin client review (e2e)', () => {
     expect(row.onboarding).not.toHaveProperty('bvnSelfie');
     expect(row.onboarding).not.toHaveProperty('ninSelfie');
     expect(row.onboarding).not.toHaveProperty('liveSelfieKey');
+
+    expect(row.loanSummary).toEqual({
+      hasLoan: false,
+      source: null,
+      status: null,
+      principal: null,
+      balance: null,
+      monthlyRepayment: null,
+      nextPaymentDate: null,
+    });
+    expect(row.topupEligibility.eligible).toBe(false);
   });
 
   it('gets the full client detail including onboarding', async () => {
@@ -139,6 +150,10 @@ describe('Admin client review (e2e)', () => {
     expect(res.body.onboarding).not.toHaveProperty('bvnSelfie');
     expect(res.body.onboarding).not.toHaveProperty('ninSelfie');
     expect(res.body.onboarding).not.toHaveProperty('liveSelfieKey');
+
+    expect(res.body.loanSummary.hasLoan).toBe(false);
+    expect(res.body).toHaveProperty('topupEligibility');
+    expect(res.body).toHaveProperty('loanSchedule', null);
   });
 
   it('returns onboardingSource on the list and detail views', async () => {

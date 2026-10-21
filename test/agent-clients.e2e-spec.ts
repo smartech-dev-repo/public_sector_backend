@@ -108,5 +108,82 @@ describe('Agent own-clients list (e2e)', () => {
     expect(rowA.onboarding).not.toHaveProperty('bvnSelfie');
     expect(rowA.onboarding).not.toHaveProperty('ninSelfie');
     expect(rowA.onboarding).not.toHaveProperty('liveSelfieKey');
+
+    expect(rowA.loanSummary).toEqual({
+      hasLoan: false,
+      source: null,
+      status: null,
+      principal: null,
+      balance: null,
+      monthlyRepayment: null,
+      nextPaymentDate: null,
+    });
+    expect(rowA.topupEligibility.eligible).toBe(false);
   }, 20000);
+
+  it(
+    'GET /agent/clients/:clientId returns the client detail with loanSummary/topupEligibility/loanSchedule, and 404s for a client this agent does not own',
+    async () => {
+      const agentA = await prisma.agent.create({
+        data: {
+          email: `agent-view-a-${Date.now()}@example.com`,
+          phone: '+2348012340004',
+          fullName: 'Agent View A',
+          address: '1 St',
+          status: 'APPROVED',
+          cvKey: 'agents/e2e/view-a.pdf',
+          canOnboardClients: true,
+        },
+      });
+      createdAgentIds.push(agentA.id);
+      const agentB = await prisma.agent.create({
+        data: {
+          email: `agent-view-b-${Date.now()}@example.com`,
+          phone: '+2348012340005',
+          fullName: 'Agent View B',
+          address: '1 St',
+          status: 'APPROVED',
+          cvKey: 'agents/e2e/view-b.pdf',
+          canOnboardClients: true,
+        },
+      });
+      createdAgentIds.push(agentB.id);
+      const agentAToken = tokenService.signAccessToken({ sub: agentA.id, type: 'agent', canOnboardClients: true });
+      const agentBToken = tokenService.signAccessToken({ sub: agentB.id, type: 'agent', canOnboardClients: true });
+
+      const staffIdView = `E2E-MYCLIENTS-VIEW-${Date.now()}`;
+      createdStaffIds.push(staffIdView);
+      await prisma.ippisRecord.create({
+        data: {
+          agency: 'NPF',
+          staffId: staffIdView,
+          employeeName: 'Client View Test',
+          phone: `+234814${Date.now().toString().slice(-7)}`,
+        },
+      });
+
+      const createRes = await request(app.getHttpServer())
+        .post('/agent/clients/onboarding/ippis-lookup')
+        .set('Authorization', `Bearer ${agentAToken}`)
+        .send({ ippisNumber: staffIdView })
+        .expect(201);
+      const clientId = createRes.body.clientId;
+      createdClientIds.push(clientId);
+
+      const viewRes = await request(app.getHttpServer())
+        .get(`/agent/clients/${clientId}`)
+        .set('Authorization', `Bearer ${agentAToken}`)
+        .expect(200);
+      expect(viewRes.body.id).toBe(clientId);
+      expect(viewRes.body.loanSummary.hasLoan).toBe(false);
+      expect(viewRes.body).toHaveProperty('topupEligibility');
+      expect(viewRes.body).toHaveProperty('loanSchedule', null);
+
+      await request(app.getHttpServer())
+        .get(`/agent/clients/${clientId}`)
+        .set('Authorization', `Bearer ${agentBToken}`)
+        .expect(404);
+    },
+    20000,
+  );
 });
