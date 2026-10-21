@@ -61,3 +61,13 @@ export function changePasswordConfirmationCodeEmail(params: { code: string; ttlM
     text: wrapEmailLayoutText({ headline: 'Confirm your password change', bodyText }),
   };
 }
+
+export function loanConfirmationCodeEmail(params: { code: string; ttlMinutes: number }): { subject: string; html: string; text: string } {
+  const bodyText = `Hello,\n\nWe received a request to confirm your loan.\n\nYour verification code is: ${params.code}\n\nThis code expires in ${params.ttlMinutes} minutes. If you didn't request this, you can safely ignore this email — no loan will be confirmed.\n\n${CLOSING_TEXT}`;
+  const bodyHtml = `<p>Hello,</p><p>We received a request to confirm your loan.</p><p>Your verification code is:</p>${highlightBox(params.code)}<p>This code expires in ${params.ttlMinutes} minutes. If you didn't request this, you can safely ignore this email — no loan will be confirmed.</p>${CLOSING_HTML}`;
+  return {
+    subject: 'Confirm your loan request',
+    html: wrapEmailLayout({ headline: 'Confirm your loan request', bodyHtml }),
+    text: wrapEmailLayoutText({ headline: 'Confirm your loan request', bodyText }),
+  };
+}

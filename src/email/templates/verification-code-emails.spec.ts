@@ -5,6 +5,7 @@ import {
   agentRecruitmentVerificationCodeEmail,
   clientOtpCodeEmail,
   changePasswordConfirmationCodeEmail,
+  loanConfirmationCodeEmail,
 } from './verification-code-emails';
 
 describe('twoFactorSetupCodeEmail', () => {
@@ -53,6 +54,17 @@ describe('changePasswordConfirmationCodeEmail', () => {
     expect(result.text).toContain('Hello,');
     expect(result.text).toContain('Warm regards,\nThe Moneyfield Team');
     expect(result.html).toContain('778899');
+  });
+});
+
+describe('loanConfirmationCodeEmail', () => {
+  it('includes the exact phrase, code, greeting, and sign-off', () => {
+    const result = loanConfirmationCodeEmail({ code: '445566', ttlMinutes: 10 });
+    expect(result.subject).toBe('Confirm your loan request');
+    expect(result.text).toContain('Your verification code is: 445566');
+    expect(result.text).toContain('Hello,');
+    expect(result.text).toContain('Warm regards,\nThe Moneyfield Team');
+    expect(result.html).toContain('445566');
   });
 });
 
