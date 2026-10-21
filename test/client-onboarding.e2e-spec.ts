@@ -4,6 +4,7 @@ import * as request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { PrismaService } from '../src/prisma/prisma.service';
 import { TokenService } from '../src/auth/token.service';
+import { SAMPLE_JPEG_BUFFER } from './fixtures/sample-files';
 
 describe('Client onboarding (e2e)', () => {
   let app: INestApplication;
@@ -145,7 +146,7 @@ describe('Client onboarding (e2e)', () => {
       await request(app.getHttpServer())
         .post(`/client/onboarding/documents/${documentType}`)
         .set('Authorization', `Bearer ${accessToken}`)
-        .attach('file', Buffer.from('fake-image-data'), { filename: 'doc.jpg', contentType: 'image/jpeg' })
+        .attach('file', SAMPLE_JPEG_BUFFER, { filename: 'doc.jpg', contentType: 'image/jpeg' })
         .expect(201)
         .expect((res) => {
           expect(res.body.documentType).toBe(documentType);
@@ -166,7 +167,7 @@ describe('Client onboarding (e2e)', () => {
     await request(app.getHttpServer())
       .post('/client/onboarding/face-match')
       .set('Authorization', `Bearer ${accessToken}`)
-      .attach('selfie', Buffer.from('fake-selfie-bytes'), 'selfie.jpg')
+      .attach('selfie', SAMPLE_JPEG_BUFFER, 'selfie.jpg')
       .expect(201)
       .expect((res) => {
         expect(res.body.step).toBe('COMPLETED');
@@ -208,7 +209,7 @@ describe('Client onboarding (e2e)', () => {
     await request(app.getHttpServer())
       .post('/client/onboarding/documents/NIN_CARD')
       .set('Authorization', `Bearer ${secondaryAccessToken}`)
-      .attach('file', Buffer.from('fake-image-data'), { filename: 'doc.jpg', contentType: 'image/jpeg' })
+      .attach('file', SAMPLE_JPEG_BUFFER, { filename: 'doc.jpg', contentType: 'image/jpeg' })
       .expect(409);
   });
 
@@ -226,7 +227,7 @@ describe('Client onboarding (e2e)', () => {
       await request(app.getHttpServer())
         .post(`/client/onboarding/documents/${documentType}`)
         .set('Authorization', `Bearer ${secondaryAccessToken}`)
-        .attach('file', Buffer.from('fake-image-data'), { filename: 'doc.jpg', contentType: 'image/jpeg' })
+        .attach('file', SAMPLE_JPEG_BUFFER, { filename: 'doc.jpg', contentType: 'image/jpeg' })
         .expect(201);
     }
 

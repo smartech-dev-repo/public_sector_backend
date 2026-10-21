@@ -4,6 +4,7 @@ import * as request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { PrismaService } from '../src/prisma/prisma.service';
 import { TokenService } from '../src/auth/token.service';
+import { SAMPLE_JPEG_BUFFER } from './fixtures/sample-files';
 
 describe('Admin-initiated client onboarding (e2e)', () => {
   let app: INestApplication;
@@ -85,7 +86,7 @@ describe('Admin-initiated client onboarding (e2e)', () => {
       await request(app.getHttpServer())
         .post(`/admin/clients/${clientId}/onboarding/documents/${documentType}`)
         .set('Authorization', `Bearer ${adminAccessToken}`)
-        .attach('file', Buffer.from('fake-image-data'), { filename: 'doc.jpg', contentType: 'image/jpeg' })
+        .attach('file', SAMPLE_JPEG_BUFFER, { filename: 'doc.jpg', contentType: 'image/jpeg' })
         .expect(201);
     }
 
@@ -182,14 +183,14 @@ describe('Admin-initiated client onboarding (e2e)', () => {
       await request(app.getHttpServer())
         .post(`/client/onboarding/documents/${documentType}`)
         .set('Authorization', `Bearer ${clientAccessToken}`)
-        .attach('file', Buffer.from('fake-image-data'), { filename: 'doc.jpg', contentType: 'image/jpeg' })
+        .attach('file', SAMPLE_JPEG_BUFFER, { filename: 'doc.jpg', contentType: 'image/jpeg' })
         .expect(201);
     }
 
     await request(app.getHttpServer())
       .post('/client/onboarding/face-match')
       .set('Authorization', `Bearer ${clientAccessToken}`)
-      .attach('selfie', Buffer.from('fake-selfie-bytes'), 'selfie.jpg')
+      .attach('selfie', SAMPLE_JPEG_BUFFER, 'selfie.jpg')
       .expect(201)
       .expect((res) => {
         expect(res.body.step).toBe('COMPLETED');
@@ -232,7 +233,7 @@ describe('Admin-initiated client onboarding (e2e)', () => {
       await request(app.getHttpServer())
         .post(`/admin/clients/${clientId}/onboarding/documents/${documentType}`)
         .set('Authorization', `Bearer ${adminAccessToken}`)
-        .attach('file', Buffer.from('fake-image-data'), { filename: 'doc.jpg', contentType: 'image/jpeg' })
+        .attach('file', SAMPLE_JPEG_BUFFER, { filename: 'doc.jpg', contentType: 'image/jpeg' })
         .expect(201);
     }
 

@@ -6,6 +6,7 @@ import { AppModule } from '../src/app.module';
 import { PrismaService } from '../src/prisma/prisma.service';
 import { TokenService } from '../src/auth/token.service';
 import { hashPassword } from '../src/common/password-hash.util';
+import { SAMPLE_JPEG_BUFFER } from './fixtures/sample-files';
 
 describe('Agent-initiated client onboarding (e2e)', () => {
   let app: INestApplication;
@@ -103,7 +104,7 @@ describe('Agent-initiated client onboarding (e2e)', () => {
         await request(app.getHttpServer())
           .post(`/agent/clients/${clientId}/onboarding/documents/${documentType}`)
           .set('Authorization', `Bearer ${accessToken}`)
-          .attach('file', Buffer.from('fake-image-data'), { filename: 'doc.jpg', contentType: 'image/jpeg' })
+          .attach('file', SAMPLE_JPEG_BUFFER, { filename: 'doc.jpg', contentType: 'image/jpeg' })
           .expect(201);
       }
 
