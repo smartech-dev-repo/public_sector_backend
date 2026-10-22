@@ -131,6 +131,8 @@ describe('Admin client review (e2e)', () => {
       balance: null,
       monthlyRepayment: null,
       nextPaymentDate: null,
+      tenorMonths: null,
+      interestRatePercent: null,
     });
     expect(row.topupEligibility.eligible).toBe(false);
   });

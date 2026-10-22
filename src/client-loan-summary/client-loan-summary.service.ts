@@ -3,7 +3,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { LoanRequestService } from '../loan-request/loan-request.service';
 import { ClientLoansService } from '../client-loans/client-loans.service';
 import { TopupEligibilityService } from '../loan-request/eligibility/topup-eligibility.service';
-import { computeExpectedInstallment } from '../reconciliation/amortization.util';
+import { computeExpectedInstallment, monthsBetween } from '../reconciliation/amortization.util';
 import { nextPeriodDate } from '../reconciliation/period.util';
 import { Client, ClientLoan, IppisRecord } from '../generated/prisma/client';
 
@@ -17,6 +17,8 @@ export interface LoanSummary {
   balance: number | null;
   monthlyRepayment: number | null;
   nextPaymentDate: string | null;
+  tenorMonths: number | null;
+  interestRatePercent: number | null;
 }
 
 const NO_LOAN_SUMMARY: LoanSummary = {
@@ -27,6 +29,8 @@ const NO_LOAN_SUMMARY: LoanSummary = {
   balance: null,
   monthlyRepayment: null,
   nextPaymentDate: null,
+  tenorMonths: null,
+  interestRatePercent: null,
 };
 
 @Injectable()
@@ -114,6 +118,8 @@ export class ClientLoanSummaryService {
       balance,
       monthlyRepayment,
       nextPaymentDate,
+      tenorMonths: clientLoan.tenorMonths,
+      interestRatePercent: Number(clientLoan.interestRatePercent),
     };
   }
 
@@ -144,6 +150,8 @@ export class ClientLoanSummaryService {
       balance,
       monthlyRepayment,
       nextPaymentDate,
+      tenorMonths: monthsBetween(loan.disbursementDate, loan.maturationDate),
+      interestRatePercent: Number(loan.interestRatePercent),
     };
   }
 }

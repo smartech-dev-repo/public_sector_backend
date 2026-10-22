@@ -49,6 +49,8 @@ describe('ClientLoanSummaryService', () => {
         balance: null,
         monthlyRepayment: null,
         nextPaymentDate: null,
+        tenorMonths: null,
+        interestRatePercent: null,
       });
     });
 
@@ -58,6 +60,7 @@ describe('ClientLoanSummaryService', () => {
         principalAmount: 90000,
         principalBalance: 60000,
         interestRatePercent: 0,
+        tenorMonths: 6,
         disbursementDate: new Date(2026, 0, 1),
         maturationDate: new Date(2026, 5, 1),
         status: 'ACTIVE',
@@ -75,6 +78,8 @@ describe('ClientLoanSummaryService', () => {
         balance: 60000,
         monthlyRepayment: 18000,
         nextPaymentDate: '2026-01-01',
+        tenorMonths: 6,
+        interestRatePercent: 0,
       });
     });
 
@@ -101,7 +106,28 @@ describe('ClientLoanSummaryService', () => {
         balance: 50000,
         monthlyRepayment: 25000,
         nextPaymentDate: '2026-01-01',
+        tenorMonths: 4,
+        interestRatePercent: 0,
       });
+    });
+
+    it('derives tenorMonths for an ingested loan from disbursementDate/maturationDate (no stored tenor column)', async () => {
+      prisma.clientLoan.findFirst.mockResolvedValue(null);
+      clientLoansService.getLatestMatchedLoan.mockResolvedValue({
+        id: 'loan-2',
+        loanAmount: 60000,
+        principalBalance: 60000,
+        interestRatePercent: 5,
+        disbursementDate: new Date(2025, 10, 1),
+        maturationDate: new Date(2026, 1, 1),
+        status: 'ACTIVE',
+      });
+      prisma.repaymentVariance.findFirst.mockResolvedValue(null);
+
+      const result = await service.getSummary('c1');
+
+      expect(result.tenorMonths).toBe(3);
+      expect(result.interestRatePercent).toBe(5);
     });
 
     it('treats "outstanding" and "balance" as the same field (principalBalance)', async () => {

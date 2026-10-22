@@ -1,4 +1,4 @@
-import { computeExpectedInstallment } from './amortization.util';
+import { computeExpectedInstallment, monthsBetween } from './amortization.util';
 
 describe('computeExpectedInstallment', () => {
   it('divides the principal evenly across the term when the rate is 0%', () => {
@@ -20,5 +20,19 @@ describe('computeExpectedInstallment', () => {
   it('returns the full loan amount for a zero-length term', () => {
     const result = computeExpectedInstallment(50000, 10, new Date('2025-01-01'), new Date('2025-01-01'));
     expect(result).toBe(50000);
+  });
+});
+
+describe('monthsBetween', () => {
+  it('counts the calendar months between two dates', () => {
+    expect(monthsBetween(new Date(2026, 0, 1), new Date(2026, 5, 1))).toBe(5);
+  });
+
+  it('spans a year boundary', () => {
+    expect(monthsBetween(new Date(2025, 10, 1), new Date(2026, 1, 1))).toBe(3);
+  });
+
+  it('returns 0 for the same month', () => {
+    expect(monthsBetween(new Date(2026, 2, 1), new Date(2026, 2, 28))).toBe(0);
   });
 });

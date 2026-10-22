@@ -1,4 +1,4 @@
-function monthsBetween(start: Date, end: Date): number {
+export function monthsBetween(start: Date, end: Date): number {
   return (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth());
 }
 

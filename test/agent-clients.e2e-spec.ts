@@ -117,6 +117,8 @@ describe('Agent own-clients list (e2e)', () => {
       balance: null,
       monthlyRepayment: null,
       nextPaymentDate: null,
+      tenorMonths: null,
+      interestRatePercent: null,
     });
     expect(rowA.topupEligibility.eligible).toBe(false);
   }, 20000);
