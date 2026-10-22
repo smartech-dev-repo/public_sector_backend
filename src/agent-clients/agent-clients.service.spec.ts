@@ -8,7 +8,7 @@ describe('AgentClientsService', () => {
   let service: AgentClientsService;
   let prisma: { client: { findMany: jest.Mock; count: jest.Mock; findFirst: jest.Mock } };
   let fileStorageProvider: { getSignedDownloadUrl: jest.Mock };
-  let clientLoanSummaryService: { getSummary: jest.Mock; getSchedule: jest.Mock; getTopupEligibility: jest.Mock };
+  let clientLoanSummaryService: { getSummary: jest.Mock; getSchedule: jest.Mock; getLoanEligibility: jest.Mock };
 
   beforeEach(() => {
     prisma = { client: { findMany: jest.fn(), count: jest.fn(), findFirst: jest.fn() } };
@@ -24,7 +24,7 @@ describe('AgentClientsService', () => {
         nextPaymentDate: null,
       }),
       getSchedule: jest.fn().mockResolvedValue(null),
-      getTopupEligibility: jest.fn().mockResolvedValue({ eligible: false, reason: 'Client has not completed onboarding' }),
+      getLoanEligibility: jest.fn().mockResolvedValue({ eligible: false, reason: 'Client has not completed onboarding' }),
     };
     service = new AgentClientsService(
       prisma as unknown as PrismaService,
@@ -135,7 +135,7 @@ describe('AgentClientsService', () => {
       expect(prisma.client.findMany).toHaveBeenCalledWith(expect.objectContaining({ skip: 10, take: 10 }));
     });
 
-    it('attaches loanSummary and topupEligibility to each row', async () => {
+    it('attaches loanSummary and loanEligibility to each row', async () => {
       prisma.client.findMany.mockResolvedValue([{ id: 'c1', onboarding: null }]);
       prisma.client.count.mockResolvedValue(1);
       clientLoanSummaryService.getSummary.mockResolvedValue({
@@ -147,7 +147,7 @@ describe('AgentClientsService', () => {
         monthlyRepayment: 18000,
         nextPaymentDate: '2026-01-01',
       });
-      clientLoanSummaryService.getTopupEligibility.mockResolvedValue({
+      clientLoanSummaryService.getLoanEligibility.mockResolvedValue({
         eligible: false,
         reason: 'Existing loan still has an outstanding balance',
       });
@@ -156,7 +156,7 @@ describe('AgentClientsService', () => {
 
       expect(clientLoanSummaryService.getSummary).toHaveBeenCalledWith('c1');
       expect(result.data[0].loanSummary.hasLoan).toBe(true);
-      expect(result.data[0].topupEligibility).toEqual({
+      expect(result.data[0].loanEligibility).toEqual({
         eligible: false,
         reason: 'Existing loan still has an outstanding balance',
       });
@@ -169,7 +169,7 @@ describe('AgentClientsService', () => {
       await expect(service.getOneForAgent('agent-1', 'client-1')).rejects.toThrow(NotFoundException);
     });
 
-    it('returns the client detail with loanSummary, topupEligibility, and loanSchedule', async () => {
+    it('returns the client detail with loanSummary, loanEligibility, and loanSchedule', async () => {
       prisma.client.findFirst.mockResolvedValue({ id: 'client-1', onboarding: null });
       clientLoanSummaryService.getSchedule.mockResolvedValue([{ period: '2026-01' }]);
 

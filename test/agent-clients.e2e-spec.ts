@@ -120,11 +120,11 @@ describe('Agent own-clients list (e2e)', () => {
       tenorMonths: null,
       interestRatePercent: null,
     });
-    expect(rowA.topupEligibility.eligible).toBe(false);
+    expect(rowA.loanEligibility.eligible).toBe(false);
   }, 20000);
 
   it(
-    'GET /agent/clients/:clientId returns the client detail with loanSummary/topupEligibility/loanSchedule, and 404s for a client this agent does not own',
+    'GET /agent/clients/:clientId returns the client detail with loanSummary/loanEligibility/loanSchedule, and 404s for a client this agent does not own',
     async () => {
       const agentA = await prisma.agent.create({
         data: {
@@ -178,7 +178,7 @@ describe('Agent own-clients list (e2e)', () => {
         .expect(200);
       expect(viewRes.body.id).toBe(clientId);
       expect(viewRes.body.loanSummary.hasLoan).toBe(false);
-      expect(viewRes.body).toHaveProperty('topupEligibility');
+      expect(viewRes.body).toHaveProperty('loanEligibility');
       expect(viewRes.body).toHaveProperty('loanSchedule', null);
 
       await request(app.getHttpServer())

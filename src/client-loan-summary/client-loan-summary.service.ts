@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { LoanRequestService } from '../loan-request/loan-request.service';
 import { ClientLoansService } from '../client-loans/client-loans.service';
+import { EligibilityService } from '../loan-request/eligibility/eligibility.service';
 import { TopupEligibilityService } from '../loan-request/eligibility/topup-eligibility.service';
 import { computeExpectedInstallment, monthsBetween } from '../reconciliation/amortization.util';
 import { nextPeriodDate } from '../reconciliation/period.util';
@@ -39,6 +40,7 @@ export class ClientLoanSummaryService {
     private readonly prisma: PrismaService,
     private readonly loanRequestService: LoanRequestService,
     private readonly clientLoansService: ClientLoansService,
+    private readonly eligibilityService: EligibilityService,
     private readonly topupEligibilityService: TopupEligibilityService,
   ) {}
 
@@ -77,14 +79,16 @@ export class ClientLoanSummaryService {
     return schedule;
   }
 
-  async getTopupEligibility(
+  async getLoanEligibility(
     client: Client,
     onboarding: { ippisRecord: IppisRecord } | null,
+    hasLoan: boolean,
   ): Promise<{ eligible: boolean; reason?: string }> {
     if (!onboarding) {
       return { eligible: false, reason: 'Client has not completed onboarding' };
     }
-    return this.topupEligibilityService.check(client, onboarding.ippisRecord, 0);
+    const service = hasLoan ? this.topupEligibilityService : this.eligibilityService;
+    return service.check(client, onboarding.ippisRecord, 0);
   }
 
   private async buildAppSummary(clientLoan: ClientLoan): Promise<LoanSummary> {

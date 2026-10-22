@@ -3,6 +3,7 @@ import { ClientLoanSummaryService } from './client-loan-summary.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { LoanRequestService } from '../loan-request/loan-request.service';
 import { ClientLoansService } from '../client-loans/client-loans.service';
+import { EligibilityService } from '../loan-request/eligibility/eligibility.service';
 import { TopupEligibilityService } from '../loan-request/eligibility/topup-eligibility.service';
 
 describe('ClientLoanSummaryService', () => {
@@ -14,6 +15,7 @@ describe('ClientLoanSummaryService', () => {
   };
   let loanRequestService: { getMyLoan: jest.Mock };
   let clientLoansService: { getLatestMatchedLoan: jest.Mock; getRepaymentPlan: jest.Mock };
+  let eligibilityService: { check: jest.Mock };
   let topupEligibilityService: { check: jest.Mock };
 
   beforeEach(() => {
@@ -24,12 +26,14 @@ describe('ClientLoanSummaryService', () => {
     };
     loanRequestService = { getMyLoan: jest.fn() };
     clientLoansService = { getLatestMatchedLoan: jest.fn(), getRepaymentPlan: jest.fn() };
+    eligibilityService = { check: jest.fn() };
     topupEligibilityService = { check: jest.fn() };
 
     service = new ClientLoanSummaryService(
       prisma as unknown as PrismaService,
       loanRequestService as unknown as LoanRequestService,
       clientLoansService as unknown as ClientLoansService,
+      eligibilityService as unknown as EligibilityService,
       topupEligibilityService as unknown as TopupEligibilityService,
     );
   });
@@ -216,22 +220,36 @@ describe('ClientLoanSummaryService', () => {
     });
   });
 
-  describe('getTopupEligibility', () => {
+  describe('getLoanEligibility', () => {
     it('short-circuits to ineligible when the client has no onboarding record', async () => {
-      const result = await service.getTopupEligibility({ id: 'c1' } as unknown as Client, null);
+      const result = await service.getLoanEligibility({ id: 'c1' } as unknown as Client, null, false);
 
+      expect(eligibilityService.check).not.toHaveBeenCalled();
       expect(topupEligibilityService.check).not.toHaveBeenCalled();
       expect(result).toEqual({ eligible: false, reason: 'Client has not completed onboarding' });
     });
 
-    it('delegates to TopupEligibilityService when onboarding exists', async () => {
+    it('delegates to EligibilityService (new-loan check) when the client has no loan yet', async () => {
+      eligibilityService.check.mockResolvedValue({ eligible: true });
+      const client = { id: 'c1' } as unknown as Client;
+      const onboarding = { ippisRecord: { agency: 'NPF', staffId: 'S1' } as IppisRecord };
+
+      const result = await service.getLoanEligibility(client, onboarding, false);
+
+      expect(eligibilityService.check).toHaveBeenCalledWith(client, onboarding.ippisRecord, 0);
+      expect(topupEligibilityService.check).not.toHaveBeenCalled();
+      expect(result).toEqual({ eligible: true });
+    });
+
+    it('delegates to TopupEligibilityService (renewal check) when the client already has a loan', async () => {
       topupEligibilityService.check.mockResolvedValue({ eligible: true });
       const client = { id: 'c1' } as unknown as Client;
       const onboarding = { ippisRecord: { agency: 'NPF', staffId: 'S1' } as IppisRecord };
 
-      const result = await service.getTopupEligibility(client, onboarding);
+      const result = await service.getLoanEligibility(client, onboarding, true);
 
       expect(topupEligibilityService.check).toHaveBeenCalledWith(client, onboarding.ippisRecord, 0);
+      expect(eligibilityService.check).not.toHaveBeenCalled();
       expect(result).toEqual({ eligible: true });
     });
   });

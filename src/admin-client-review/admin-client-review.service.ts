@@ -71,10 +71,12 @@ export class AdminClientReviewService {
     return buildPaginatedResult(
       await Promise.all(
         data.map(async (client) => {
-          const [loanSummary, topupEligibility] = await Promise.all([
-            this.clientLoanSummaryService.getSummary(client.id),
-            this.clientLoanSummaryService.getTopupEligibility(client, client.onboarding),
-          ]);
+          const loanSummary = await this.clientLoanSummaryService.getSummary(client.id);
+          const loanEligibility = await this.clientLoanSummaryService.getLoanEligibility(
+            client,
+            client.onboarding,
+            loanSummary.hasLoan,
+          );
 
           if (!client.onboarding) {
             return {
@@ -82,7 +84,7 @@ export class AdminClientReviewService {
               onboardingSource: deriveOnboardingSource(client.onboarding),
               onboarding: null,
               loanSummary,
-              topupEligibility,
+              loanEligibility,
             };
           }
           const { bvnSelfie, ninSelfie, liveSelfieKey, ippisRecord, ...restOnboarding } = client.onboarding;
@@ -92,7 +94,7 @@ export class AdminClientReviewService {
             onboardingSource: deriveOnboardingSource(client.onboarding),
             onboarding: { ...restOnboarding, ippisRecord: narrowIppisRecord(ippisRecord), ...selfieUrls },
             loanSummary,
-            topupEligibility,
+            loanEligibility,
           };
         }),
       ),
@@ -153,9 +155,9 @@ export class AdminClientReviewService {
       throw new NotFoundException('Client not found');
     }
 
-    const [loanSummary, topupEligibility, loanSchedule] = await Promise.all([
-      this.clientLoanSummaryService.getSummary(id),
-      this.clientLoanSummaryService.getTopupEligibility(client, client.onboarding),
+    const loanSummary = await this.clientLoanSummaryService.getSummary(id);
+    const [loanEligibility, loanSchedule] = await Promise.all([
+      this.clientLoanSummaryService.getLoanEligibility(client, client.onboarding, loanSummary.hasLoan),
       this.clientLoanSummaryService.getSchedule(id),
     ]);
 
@@ -183,7 +185,7 @@ export class AdminClientReviewService {
           ...selfieUrls,
         },
         loanSummary,
-        topupEligibility,
+        loanEligibility,
         loanSchedule,
       };
     }
@@ -193,7 +195,7 @@ export class AdminClientReviewService {
       onboardingSource: deriveOnboardingSource(client.onboarding),
       onboarding: null,
       loanSummary,
-      topupEligibility,
+      loanEligibility,
       loanSchedule,
     };
   }

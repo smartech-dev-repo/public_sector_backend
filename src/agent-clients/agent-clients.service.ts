@@ -76,16 +76,15 @@ export class AgentClientsService {
         | null;
     },
   >(client: T) {
-    const [loanSummary, topupEligibility] = await Promise.all([
-      this.clientLoanSummaryService.getSummary(client.id),
-      this.clientLoanSummaryService.getTopupEligibility(
-        client as unknown as Client,
-        client.onboarding as unknown as { ippisRecord: IppisRecord } | null,
-      ),
-    ]);
+    const loanSummary = await this.clientLoanSummaryService.getSummary(client.id);
+    const loanEligibility = await this.clientLoanSummaryService.getLoanEligibility(
+      client as unknown as Client,
+      client.onboarding as unknown as { ippisRecord: IppisRecord } | null,
+      loanSummary.hasLoan,
+    );
 
     if (!client.onboarding) {
-      return { ...client, onboarding: null, loanSummary, topupEligibility };
+      return { ...client, onboarding: null, loanSummary, loanEligibility };
     }
 
     const { bvnSelfie, ninSelfie, liveSelfieKey, ippisRecord, ...restOnboarding } = client.onboarding;
@@ -105,7 +104,7 @@ export class AgentClientsService {
         liveSelfieUrl,
       },
       loanSummary,
-      topupEligibility,
+      loanEligibility,
     };
   }
 
