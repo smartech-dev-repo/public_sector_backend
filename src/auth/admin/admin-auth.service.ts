@@ -107,7 +107,15 @@ export class AdminAuthService {
       },
     });
 
-    await this.emailService.send({ to: admin.email, ...adminPasswordResetEmail({ token }) });
+    await this.emailService.send({
+      to: admin.email,
+      ...adminPasswordResetEmail({ token, resetUrl: this.buildResetUrl(token) }),
+    });
+  }
+
+  private buildResetUrl(token: string): string | undefined {
+    const dashboardUrl = this.configService?.get<string>('ADMIN_DASHBOARD_URL');
+    return dashboardUrl ? `${dashboardUrl}/reset-password?token=${token}` : undefined;
   }
 
   async resetPassword(token: string, newPassword: string): Promise<void> {

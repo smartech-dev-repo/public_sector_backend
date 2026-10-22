@@ -189,6 +189,30 @@ describe('AdminAuthService', () => {
       );
       expect(emailService.send).toHaveBeenCalledWith(expect.objectContaining({ to: 'a@example.com' }));
     });
+
+    it('includes a reset link built from ADMIN_DASHBOARD_URL when it is configured', async () => {
+      const configService = {
+        get: jest.fn((key: string) => (key === 'ADMIN_DASHBOARD_URL' ? 'https://admin.moneyfieldmfb.com' : undefined)),
+      } as unknown as ConfigService;
+      service = new AdminAuthService(
+        prisma as unknown as PrismaService,
+        tokenService,
+        sessionService as unknown as SessionService,
+        adminInviteService as unknown as AdminInviteService,
+        emailService as unknown as EmailService,
+        configService,
+      );
+      prisma.adminUser.findUnique.mockResolvedValue({ id: 'admin-1', email: 'a@example.com', isActive: true });
+
+      await service.forgotPassword('a@example.com');
+
+      expect(emailService.send).toHaveBeenCalledWith(
+        expect.objectContaining({
+          to: 'a@example.com',
+          text: expect.stringContaining('https://admin.moneyfieldmfb.com/reset-password?token='),
+        }),
+      );
+    });
   });
 
   describe('resetPassword', () => {

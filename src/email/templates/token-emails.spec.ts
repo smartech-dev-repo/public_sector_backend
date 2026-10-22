@@ -8,6 +8,34 @@ describe('adminPasswordResetEmail', () => {
     expect(result.text).toContain('reset your password: abc123tok');
     expect(result.html).toContain('abc123tok');
   });
+
+  it('omits the reset button and link when no resetUrl is given (token only)', () => {
+    const result = adminPasswordResetEmail({ token: 'abc123tok' });
+    expect(result.text).not.toContain('Reset it here:');
+    expect(result.html).not.toContain('Reset Password');
+  });
+
+  it('includes a clickable reset button and the link as plain text when resetUrl is given, alongside the token', () => {
+    const result = adminPasswordResetEmail({
+      token: 'abc123tok',
+      resetUrl: 'https://admin.moneyfieldmfb.com/reset-password?token=abc123tok',
+    });
+    expect(result.text).toContain('Reset it here: https://admin.moneyfieldmfb.com/reset-password?token=abc123tok');
+    expect(result.text).toContain('reset your password: abc123tok');
+    expect(result.html).toContain('href="https://admin.moneyfieldmfb.com/reset-password?token=abc123tok"');
+    expect(result.html).toContain('Reset Password');
+    expect(result.html).toContain('copy and paste this link into your browser');
+    expect(result.html).toContain('abc123tok');
+  });
+
+  it('shows the link as visible text in the HTML, not just inside the button href', () => {
+    const result = adminPasswordResetEmail({
+      token: 'abc123tok',
+      resetUrl: 'https://admin.moneyfieldmfb.com/reset-password?token=abc123tok',
+    });
+    const htmlWithoutHrefs = result.html.replace(/href="[^"]*"/g, '');
+    expect(htmlWithoutHrefs).toContain('https://admin.moneyfieldmfb.com/reset-password?token=abc123tok');
+  });
 });
 
 describe('agentPasswordResetEmail', () => {

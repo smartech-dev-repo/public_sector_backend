@@ -4,12 +4,22 @@ import { wrapEmailLayout, wrapEmailLayoutText, highlightBox, ctaButton } from '.
 const CLOSING_TEXT = 'Warm regards,\nThe Moneyfield Team';
 const CLOSING_HTML = '<p>Warm regards,<br>The Moneyfield Team</p>';
 
-export function adminPasswordResetEmail(params: { token: string }): { subject: string; html: string; text: string } {
+export function adminPasswordResetEmail(params: { token: string; resetUrl?: string }): { subject: string; html: string; text: string } {
   // "reset your password: " must stay immediately before the token, on
   // one line, in `text` — test/admin-password-self-service.e2e-spec.ts
   // regex-matches this exact phrase.
+  if (params.resetUrl) {
+    const bodyText = `Hello,\n\nWe received a request to reset your admin account password. Reset it here: ${params.resetUrl}\n\nOr use this token to reset your password: ${params.token}\n\nThis token expires in 1 hour. If you didn't request this, you can safely ignore this email — your password won't change.\n\n${CLOSING_TEXT}`;
+    const bodyHtml = `<p>Hello,</p><p>We received a request to reset your admin account password. Click the button below to reset it.</p>${ctaButton(params.resetUrl, 'Reset Password')}<p>If the button above doesn't work, copy and paste this link into your browser: <a href="${params.resetUrl}">${params.resetUrl}</a></p><p>Or use this token to reset your password: <strong>${params.token}</strong></p><p>This token expires in 1 hour. If you didn't request this, you can safely ignore this email — your password won't change.</p>${CLOSING_HTML}`;
+    return {
+      subject: 'Reset your password',
+      html: wrapEmailLayout({ headline: 'Reset your password', bodyHtml }),
+      text: wrapEmailLayoutText({ headline: 'Reset your password', bodyText }),
+    };
+  }
+
   const bodyText = `Hello,\n\nWe received a request to reset your admin account password.\n\nUse this token to reset your password: ${params.token}\n\nThis token expires in 1 hour. If you didn't request this, you can safely ignore this email — your password won't change.\n\n${CLOSING_TEXT}`;
-  const bodyHtml = `<p>Hello,</p><p>We received a request to reset your admin account password. Enter this token in the reset form:</p>${highlightBox(params.token)}<p>This token expires in 1 hour. If you didn't request this, you can safely ignore this email — your password won't change.</p>${CLOSING_HTML}`;
+  const bodyHtml = `<p>Hello,</p><p>We received a request to reset your admin account password. Use this token to reset your password: <strong>${params.token}</strong></p><p>This token expires in 1 hour. If you didn't request this, you can safely ignore this email — your password won't change.</p>${CLOSING_HTML}`;
   return {
     subject: 'Reset your password',
     html: wrapEmailLayout({ headline: 'Reset your password', bodyHtml }),
@@ -23,7 +33,7 @@ export function agentPasswordResetEmail(params: { token: string; code: string })
   // test/agent-password-self-service.e2e-spec.ts and
   // src/auth/agent/agent-auth.service.spec.ts:233-235 regex-match both.
   const bodyText = `Hello,\n\nWe received a request to reset your password. Use either of the following to continue:\n\nUse this token to reset your password: ${params.token}\nOr enter this code: ${params.code}\n\nBoth expire in 1 hour. If you didn't request this, you can safely ignore this email.\n\n${CLOSING_TEXT}`;
-  const bodyHtml = `<p>Hello,</p><p>We received a request to reset your password. Use either of the following to continue:</p><p><strong>Token:</strong></p>${highlightBox(params.token)}<p><strong>Code:</strong></p>${highlightBox(params.code)}<p>Both expire in 1 hour. If you didn't request this, you can safely ignore this email.</p>${CLOSING_HTML}`;
+  const bodyHtml = `<p>Hello,</p><p>We received a request to reset your password. Use either of the following to continue:</p><p>Use this token to reset your password: <strong>${params.token}</strong></p><p>Or enter this code: <strong>${params.code}</strong></p><p>Both expire in 1 hour. If you didn't request this, you can safely ignore this email.</p>${CLOSING_HTML}`;
   return {
     subject: 'Reset your password',
     html: wrapEmailLayout({ headline: 'Reset your password', bodyHtml }),
