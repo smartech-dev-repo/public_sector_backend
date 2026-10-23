@@ -6,14 +6,20 @@ import { EligibilityService } from '../loan-request/eligibility/eligibility.serv
 import { TopupEligibilityService } from '../loan-request/eligibility/topup-eligibility.service';
 import { computeExpectedInstallment, monthsBetween } from '../reconciliation/amortization.util';
 import { nextPeriodDate } from '../reconciliation/period.util';
-import { Client, ClientLoan, IppisRecord } from '../generated/prisma/client';
+import { Client, ClientLoan, IppisRecord, LoanRequest, LoanRequestStatus } from '../generated/prisma/client';
 
 type MatchedLoan = NonNullable<Awaited<ReturnType<ClientLoansService['getLatestMatchedLoan']>>>;
 
+const NON_TERMINAL_LOAN_REQUEST_STATUSES = [
+  LoanRequestStatus.PENDING,
+  LoanRequestStatus.CONFIRMED,
+  LoanRequestStatus.APPROVED,
+];
+
 export interface LoanSummary {
   hasLoan: boolean;
-  source: 'APP' | 'INGESTED' | null;
-  status: 'ACTIVE' | 'DEFAULT' | 'CLOSED' | null;
+  source: 'APP' | 'INGESTED' | 'REQUEST' | null;
+  status: 'ACTIVE' | 'DEFAULT' | 'CLOSED' | 'PENDING' | 'CONFIRMED' | 'APPROVED' | null;
   principal: number | null;
   balance: number | null;
   monthlyRepayment: number | null;
@@ -56,6 +62,14 @@ export class ClientLoanSummaryService {
     const matched = await this.clientLoansService.getLatestMatchedLoan(clientId);
     if (matched) {
       return this.buildIngestedSummary(matched);
+    }
+
+    const pendingRequest = await this.prisma.loanRequest.findFirst({
+      where: { clientId, status: { in: NON_TERMINAL_LOAN_REQUEST_STATUSES } },
+      orderBy: { createdAt: 'desc' },
+    });
+    if (pendingRequest) {
+      return this.buildRequestSummary(pendingRequest);
     }
 
     return NO_LOAN_SUMMARY;
@@ -124,6 +138,20 @@ export class ClientLoanSummaryService {
       nextPaymentDate,
       tenorMonths: clientLoan.tenorMonths,
       interestRatePercent: Number(clientLoan.interestRatePercent),
+    };
+  }
+
+  private buildRequestSummary(request: LoanRequest): LoanSummary {
+    return {
+      hasLoan: false,
+      source: 'REQUEST',
+      status: request.status as 'PENDING' | 'CONFIRMED' | 'APPROVED',
+      principal: Number(request.amount),
+      balance: null,
+      monthlyRepayment: null,
+      nextPaymentDate: null,
+      tenorMonths: request.tenorMonths,
+      interestRatePercent: Number(request.interestRatePercent),
     };
   }
 

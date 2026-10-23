@@ -12,6 +12,7 @@ describe('ClientLoanSummaryService', () => {
     clientLoan: { findFirst: jest.Mock };
     clientLoanRepaymentVariance: { findFirst: jest.Mock };
     repaymentVariance: { findFirst: jest.Mock };
+    loanRequest: { findFirst: jest.Mock };
   };
   let loanRequestService: { getMyLoan: jest.Mock };
   let clientLoansService: { getLatestMatchedLoan: jest.Mock; getRepaymentPlan: jest.Mock };
@@ -23,6 +24,7 @@ describe('ClientLoanSummaryService', () => {
       clientLoan: { findFirst: jest.fn() },
       clientLoanRepaymentVariance: { findFirst: jest.fn() },
       repaymentVariance: { findFirst: jest.fn() },
+      loanRequest: { findFirst: jest.fn().mockResolvedValue(null) },
     };
     loanRequestService = { getMyLoan: jest.fn() };
     clientLoansService = { getLatestMatchedLoan: jest.fn(), getRepaymentPlan: jest.fn() };
@@ -56,6 +58,65 @@ describe('ClientLoanSummaryService', () => {
         tenorMonths: null,
         interestRatePercent: null,
       });
+    });
+
+    it('reflects a PENDING loan request when there is no ClientLoan or ingested loan yet', async () => {
+      prisma.clientLoan.findFirst.mockResolvedValue(null);
+      clientLoansService.getLatestMatchedLoan.mockResolvedValue(null);
+      prisma.loanRequest.findFirst.mockResolvedValue({
+        id: 'lr1',
+        status: 'PENDING',
+        amount: 50000,
+        tenorMonths: 6,
+        interestRatePercent: 5,
+      });
+
+      const result = await service.getSummary('c1');
+
+      expect(prisma.loanRequest.findFirst).toHaveBeenCalledWith({
+        where: { clientId: 'c1', status: { in: ['PENDING', 'CONFIRMED', 'APPROVED'] } },
+        orderBy: { createdAt: 'desc' },
+      });
+      expect(result).toEqual({
+        hasLoan: false,
+        source: 'REQUEST',
+        status: 'PENDING',
+        principal: 50000,
+        balance: null,
+        monthlyRepayment: null,
+        nextPaymentDate: null,
+        tenorMonths: 6,
+        interestRatePercent: 5,
+      });
+    });
+
+    it('reflects an APPROVED (not yet disbursed) loan request the same way', async () => {
+      prisma.clientLoan.findFirst.mockResolvedValue(null);
+      clientLoansService.getLatestMatchedLoan.mockResolvedValue(null);
+      prisma.loanRequest.findFirst.mockResolvedValue({
+        id: 'lr2',
+        status: 'APPROVED',
+        amount: 75000,
+        tenorMonths: 12,
+        interestRatePercent: 6,
+      });
+
+      const result = await service.getSummary('c1');
+
+      expect(result.status).toBe('APPROVED');
+      expect(result.hasLoan).toBe(false);
+    });
+
+    it('falls back to the no-loan shape when the only loan request is REJECTED/FAILED (terminal)', async () => {
+      prisma.clientLoan.findFirst.mockResolvedValue(null);
+      clientLoansService.getLatestMatchedLoan.mockResolvedValue(null);
+      prisma.loanRequest.findFirst.mockResolvedValue(null); // the where clause already excludes terminal statuses
+
+      const result = await service.getSummary('c1');
+
+      expect(result.hasLoan).toBe(false);
+      expect(result.source).toBeNull();
+      expect(result.status).toBeNull();
     });
 
     it('prefers the app-native ClientLoan when both sources exist', async () => {
