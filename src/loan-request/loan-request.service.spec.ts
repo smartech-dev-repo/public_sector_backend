@@ -556,20 +556,117 @@ describe('LoanRequestService', () => {
       await expect(service.approve('lr1')).rejects.toThrow(ConflictException);
     });
 
-    it('moves a CONFIRMED request to APPROVED', async () => {
+    it('throws BadRequestException when disbursedAt is in the future, without writing anything', async () => {
       prisma.loanRequest.findUnique.mockResolvedValue({ id: 'lr1', status: 'CONFIRMED' });
-      prisma.loanRequest.update.mockResolvedValue({ id: 'lr1', status: 'APPROVED' });
+      const future = new Date(Date.now() + 24 * 60 * 60 * 1000);
+      await expect(service.approve('lr1', future)).rejects.toThrow(BadRequestException);
+      expect(prisma.loanRequest.update).not.toHaveBeenCalled();
+    });
+
+    it('moves a CONFIRMED request straight through to DISBURSED and creates a ClientLoan', async () => {
+      prisma.loanRequest.findUnique.mockResolvedValue({ id: 'lr1', status: 'CONFIRMED' });
+      prisma.loanRequest.update.mockResolvedValue({ id: 'lr1', status: 'DISBURSED' });
+      prisma.loanRequest.findUniqueOrThrow.mockResolvedValue({
+        id: 'lr1',
+        clientId: 'c1',
+        amount: 5000,
+        tenorMonths: 6,
+        managementChargeAmount: 100,
+        managementChargeApplication: 'DEDUCT_FROM_DISBURSEMENT',
+        interestRatePercent: 5,
+        managementChargeType: 'PERCENTAGE',
+        managementChargeValue: 2,
+      });
+      prisma.clientOnboarding.findUniqueOrThrow.mockResolvedValue({
+        ippisRecord: { agency: 'NPF', staffId: 'NPF-001' },
+      });
+      prisma.clientLoan.create.mockResolvedValue({ id: 'cl1' });
 
       await service.approve('lr1');
 
       expect(prisma.loanRequest.update).toHaveBeenCalledWith({
         where: { id: 'lr1' },
         data: { status: 'APPROVED', approvedAt: expect.any(Date) },
+      });
+      expect(prisma.loanRequest.update).toHaveBeenCalledWith({
+        where: { id: 'lr1' },
+        data: { status: 'DISBURSED', disbursedAt: expect.any(Date) },
         include: {
-          client: { select: { id: true, phone: true, status: true } },
+          client: {
+            select: {
+              id: true,
+              phone: true,
+              email: true,
+              status: true,
+              onboarding: {
+                select: {
+                  employeeName: true,
+                  agency: true,
+                  onboardedByAgentId: true,
+                  ippisRecord: {
+                    select: {
+                      agency: true,
+                      staffId: true,
+                      employeeName: true,
+                      employeeStatus: true,
+                      hireDate: true,
+                      department: true,
+                      grade: true,
+                      bankName: true,
+                      accountNumber: true,
+                    },
+                  },
+                },
+              },
+            },
+          },
           topupTarget: { select: { id: true, status: true, agency: true } },
         },
         omit: { confirmationCodeHash: true, confirmationCodeExpiresAt: true },
+      });
+      expect(prisma.clientLoan.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          clientId: 'c1',
+          loanRequestId: 'lr1',
+          agency: 'NPF',
+          staffId: 'NPF-001',
+          principalAmount: 5000,
+          disbursedAmount: 4900,
+          principalBalance: 5000,
+        }),
+      });
+    });
+
+    it('uses a supplied disbursedAt for both LoanRequest.disbursedAt and the ClientLoan disbursementDate/maturationDate', async () => {
+      prisma.loanRequest.findUnique.mockResolvedValue({ id: 'lr1', status: 'CONFIRMED' });
+      prisma.loanRequest.update.mockResolvedValue({ id: 'lr1', status: 'DISBURSED' });
+      prisma.loanRequest.findUniqueOrThrow.mockResolvedValue({
+        id: 'lr1',
+        clientId: 'c1',
+        amount: 5000,
+        tenorMonths: 6,
+        managementChargeAmount: 100,
+        managementChargeApplication: 'DEDUCT_FROM_DISBURSEMENT',
+        interestRatePercent: 5,
+        managementChargeType: 'PERCENTAGE',
+        managementChargeValue: 2,
+      });
+      prisma.clientOnboarding.findUniqueOrThrow.mockResolvedValue({
+        ippisRecord: { agency: 'NPF', staffId: 'NPF-001' },
+      });
+      prisma.clientLoan.create.mockResolvedValue({ id: 'cl1' });
+      const backdated = new Date(2026, 0, 1);
+
+      await service.approve('lr1', backdated);
+
+      expect(prisma.loanRequest.update).toHaveBeenCalledWith(
+        expect.objectContaining({ data: expect.objectContaining({ disbursedAt: backdated }) }),
+      );
+      expect(prisma.clientLoan.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          disbursementDate: backdated,
+          maturationDate: new Date(2026, 6, 1),
+        }),
       });
     });
   });
@@ -590,7 +687,34 @@ describe('LoanRequestService', () => {
         where: { id: 'lr1' },
         data: { status: 'REJECTED', rejectionReason: 'not eligible' },
         include: {
-          client: { select: { id: true, phone: true, status: true } },
+          client: {
+            select: {
+              id: true,
+              phone: true,
+              email: true,
+              status: true,
+              onboarding: {
+                select: {
+                  employeeName: true,
+                  agency: true,
+                  onboardedByAgentId: true,
+                  ippisRecord: {
+                    select: {
+                      agency: true,
+                      staffId: true,
+                      employeeName: true,
+                      employeeStatus: true,
+                      hireDate: true,
+                      department: true,
+                      grade: true,
+                      bankName: true,
+                      accountNumber: true,
+                    },
+                  },
+                },
+              },
+            },
+          },
           topupTarget: { select: { id: true, status: true, agency: true } },
         },
         omit: { confirmationCodeHash: true, confirmationCodeExpiresAt: true },
@@ -602,6 +726,13 @@ describe('LoanRequestService', () => {
     it('throws ConflictException when the request is not APPROVED', async () => {
       prisma.loanRequest.findUnique.mockResolvedValue({ id: 'lr1', status: 'CONFIRMED' });
       await expect(service.disburse('lr1')).rejects.toThrow(ConflictException);
+    });
+
+    it('throws BadRequestException when disbursedAt is in the future, without writing anything', async () => {
+      prisma.loanRequest.findUnique.mockResolvedValue({ id: 'lr1', status: 'APPROVED' });
+      const future = new Date(Date.now() + 24 * 60 * 60 * 1000);
+      await expect(service.disburse('lr1', future)).rejects.toThrow(BadRequestException);
+      expect(prisma.loanRequest.update).not.toHaveBeenCalled();
     });
 
     it('moves an APPROVED request to DISBURSED and creates a ClientLoan', async () => {
@@ -629,7 +760,34 @@ describe('LoanRequestService', () => {
         where: { id: 'lr1' },
         data: { status: 'DISBURSED', disbursedAt: expect.any(Date) },
         include: {
-          client: { select: { id: true, phone: true, status: true } },
+          client: {
+            select: {
+              id: true,
+              phone: true,
+              email: true,
+              status: true,
+              onboarding: {
+                select: {
+                  employeeName: true,
+                  agency: true,
+                  onboardedByAgentId: true,
+                  ippisRecord: {
+                    select: {
+                      agency: true,
+                      staffId: true,
+                      employeeName: true,
+                      employeeStatus: true,
+                      hireDate: true,
+                      department: true,
+                      grade: true,
+                      bankName: true,
+                      accountNumber: true,
+                    },
+                  },
+                },
+              },
+            },
+          },
           topupTarget: { select: { id: true, status: true, agency: true } },
         },
         omit: { confirmationCodeHash: true, confirmationCodeExpiresAt: true },
@@ -650,21 +808,69 @@ describe('LoanRequestService', () => {
       );
     });
 
-    it('includes client and topupTarget on every row', async () => {
-      prisma.loanRequest.findMany.mockResolvedValue([]);
-      prisma.loanRequest.count.mockResolvedValue(0);
+    it('includes client and topupTarget on every row, with availableActions computed per row', async () => {
+      prisma.loanRequest.findMany.mockResolvedValue([{ id: 'lr1', status: 'CONFIRMED' }]);
+      prisma.loanRequest.count.mockResolvedValue(1);
 
-      await service.listAll();
+      const result = await service.listAll();
 
       expect(prisma.loanRequest.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           include: {
-            client: { select: { id: true, phone: true, status: true } },
+            client: {
+              select: {
+                id: true,
+                phone: true,
+                email: true,
+                status: true,
+                onboarding: {
+                  select: {
+                    employeeName: true,
+                    agency: true,
+                    onboardedByAgentId: true,
+                    ippisRecord: {
+                      select: {
+                        agency: true,
+                        staffId: true,
+                        employeeName: true,
+                        employeeStatus: true,
+                        hireDate: true,
+                        department: true,
+                        grade: true,
+                        bankName: true,
+                        accountNumber: true,
+                      },
+                    },
+                  },
+                },
+              },
+            },
             topupTarget: { select: { id: true, status: true, agency: true } },
           },
           omit: { confirmationCodeHash: true, confirmationCodeExpiresAt: true },
         }),
       );
+      expect(result.data[0]).toEqual(expect.objectContaining({ id: 'lr1', availableActions: ['approve', 'reject'] }));
+    });
+  });
+
+  describe('findById', () => {
+    it('throws NotFoundException for an unknown id', async () => {
+      prisma.loanRequest.findUnique.mockResolvedValue(null);
+      await expect(service.findById('missing')).rejects.toThrow(NotFoundException);
+    });
+
+    it('returns the enriched row with availableActions for its status', async () => {
+      prisma.loanRequest.findUnique.mockResolvedValue({ id: 'lr1', status: 'PENDING' });
+
+      const result = await service.findById('lr1');
+
+      expect(prisma.loanRequest.findUnique).toHaveBeenCalledWith({
+        where: { id: 'lr1' },
+        include: expect.objectContaining({ topupTarget: { select: { id: true, status: true, agency: true } } }),
+        omit: { confirmationCodeHash: true, confirmationCodeExpiresAt: true },
+      });
+      expect(result).toEqual({ id: 'lr1', status: 'PENDING', availableActions: ['confirmCode'] });
     });
   });
 

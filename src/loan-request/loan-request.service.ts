@@ -29,6 +29,7 @@ import { generateNumericCode } from '../common/generate-numeric-code.util';
 import { devCodeEcho } from '../common/dev-code-echo.util';
 import { classifyVariance } from '../reconciliation/variance-classification.util';
 import { computeClientLoanStatus } from '../reconciliation/client-loan-status.util';
+import { computeAvailableAdminActions } from './available-admin-actions.util';
 import {
   AuditActorType,
   ClientLoan,
@@ -109,11 +110,11 @@ export class LoanRequestService {
     };
   }
 
-  private async createClientLoanFromRequest(loanRequestId: string): Promise<void> {
+  private async createClientLoanFromRequest(loanRequestId: string, disbursementDate: Date = new Date()): Promise<void> {
     const loanRequest = await this.prisma.loanRequest.findUniqueOrThrow({ where: { id: loanRequestId } });
 
     if (loanRequest.type === LoanRequestType.TOPUP) {
-      await this.applyTopupToClientLoan(loanRequest);
+      await this.applyTopupToClientLoan(loanRequest, disbursementDate);
       return;
     }
 
@@ -129,7 +130,6 @@ export class LoanRequestService {
         ? principalAmount - managementChargeAmount
         : principalAmount;
 
-    const disbursementDate = new Date();
     const maturationDate = new Date(disbursementDate);
     maturationDate.setMonth(maturationDate.getMonth() + loanRequest.tenorMonths);
 
@@ -154,7 +154,7 @@ export class LoanRequestService {
     });
   }
 
-  private async applyTopupToClientLoan(loanRequest: LoanRequest): Promise<void> {
+  private async applyTopupToClientLoan(loanRequest: LoanRequest, disbursementDate: Date = new Date()): Promise<void> {
     const topupAmount = Number(loanRequest.amount);
     const managementChargeAmount = Number(loanRequest.managementChargeAmount);
     const disbursedAmount =
@@ -162,7 +162,6 @@ export class LoanRequestService {
         ? topupAmount - managementChargeAmount
         : topupAmount;
 
-    const disbursementDate = new Date();
     const maturationDate = new Date(disbursementDate);
     maturationDate.setMonth(maturationDate.getMonth() + loanRequest.tenorMonths);
 
@@ -449,21 +448,60 @@ export class LoanRequestService {
   }
 
   private static readonly LOAN_REQUEST_RELATIONS_INCLUDE = {
-    client: { select: { id: true, phone: true, status: true } },
+    client: {
+      select: {
+        id: true,
+        phone: true,
+        email: true,
+        status: true,
+        onboarding: {
+          select: {
+            employeeName: true,
+            agency: true,
+            onboardedByAgentId: true,
+            ippisRecord: {
+              select: {
+                agency: true,
+                staffId: true,
+                employeeName: true,
+                employeeStatus: true,
+                hireDate: true,
+                department: true,
+                grade: true,
+                bankName: true,
+                accountNumber: true,
+              },
+            },
+          },
+        },
+      },
+    },
     topupTarget: { select: { id: true, status: true, agency: true } },
   } as const;
 
-  async approve(id: string) {
+  async approve(id: string, disbursedAt?: Date) {
     const loanRequest = await this.prisma.loanRequest.findUnique({ where: { id } });
     if (!loanRequest || loanRequest.status !== LoanRequestStatus.CONFIRMED) {
       throw new ConflictException('Loan request must be CONFIRMED to approve');
     }
-    return this.prisma.loanRequest.update({
+    const disbursementTimestamp = disbursedAt ?? new Date();
+    if (disbursementTimestamp.getTime() > Date.now()) {
+      throw new BadRequestException('disbursedAt cannot be in the future');
+    }
+
+    await this.prisma.loanRequest.update({
       where: { id },
       data: { status: LoanRequestStatus.APPROVED, approvedAt: new Date() },
+    });
+
+    const disbursed = await this.prisma.loanRequest.update({
+      where: { id },
+      data: { status: LoanRequestStatus.DISBURSED, disbursedAt: disbursementTimestamp },
       include: LoanRequestService.LOAN_REQUEST_RELATIONS_INCLUDE,
       omit: { confirmationCodeHash: true, confirmationCodeExpiresAt: true },
     });
+    await this.createClientLoanFromRequest(id, disbursementTimestamp);
+    return disbursed;
   }
 
   async reject(id: string, reason: string) {
@@ -479,19 +517,35 @@ export class LoanRequestService {
     });
   }
 
-  async disburse(id: string) {
+  async disburse(id: string, disbursedAt?: Date) {
     const loanRequest = await this.prisma.loanRequest.findUnique({ where: { id } });
     if (!loanRequest || loanRequest.status !== LoanRequestStatus.APPROVED) {
       throw new ConflictException('Loan request must be APPROVED to disburse');
     }
+    const disbursementTimestamp = disbursedAt ?? new Date();
+    if (disbursementTimestamp.getTime() > Date.now()) {
+      throw new BadRequestException('disbursedAt cannot be in the future');
+    }
     const updated = await this.prisma.loanRequest.update({
       where: { id },
-      data: { status: LoanRequestStatus.DISBURSED, disbursedAt: new Date() },
+      data: { status: LoanRequestStatus.DISBURSED, disbursedAt: disbursementTimestamp },
       include: LoanRequestService.LOAN_REQUEST_RELATIONS_INCLUDE,
       omit: { confirmationCodeHash: true, confirmationCodeExpiresAt: true },
     });
-    await this.createClientLoanFromRequest(id);
+    await this.createClientLoanFromRequest(id, disbursementTimestamp);
     return updated;
+  }
+
+  async findById(id: string) {
+    const loanRequest = await this.prisma.loanRequest.findUnique({
+      where: { id },
+      include: LoanRequestService.LOAN_REQUEST_RELATIONS_INCLUDE,
+      omit: { confirmationCodeHash: true, confirmationCodeExpiresAt: true },
+    });
+    if (!loanRequest) {
+      throw new NotFoundException('Loan request not found');
+    }
+    return { ...loanRequest, availableActions: computeAvailableAdminActions(loanRequest.status) };
   }
 
   async listAll(
@@ -533,7 +587,8 @@ export class LoanRequestService {
       this.prisma.loanRequest.count({ where }),
     ]);
 
-    return buildPaginatedResult(data, total, page, limit);
+    const dataWithActions = data.map((row) => ({ ...row, availableActions: computeAvailableAdminActions(row.status) }));
+    return buildPaginatedResult(dataWithActions, total, page, limit);
   }
 
   async listByClient(

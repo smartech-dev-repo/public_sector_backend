@@ -9,6 +9,7 @@ import { AuditActorType } from '../generated/prisma/client';
 import { LoanRequestService } from './loan-request.service';
 import { RejectLoanRequestDto } from './dto/reject-loan-request.dto';
 import { ListAdminLoanRequestsQueryDto } from './dto/list-admin-loan-requests-query.dto';
+import { DisbursementDateDto } from './dto/disbursement-date.dto';
 
 @Controller('admin/loan-requests')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
@@ -36,10 +37,15 @@ export class AdminLoanRequestController {
     );
   }
 
+  @Get(':id')
+  findOne(@Param('id') id: string) {
+    return this.loanRequestService.findById(id);
+  }
+
   @Post(':id/approve')
   @HttpCode(200)
-  async approve(@Param('id') id: string, @Req() req: { user: JwtPayload }) {
-    const result = await this.loanRequestService.approve(id);
+  async approve(@Param('id') id: string, @Body() dto: DisbursementDateDto, @Req() req: { user: JwtPayload }) {
+    const result = await this.loanRequestService.approve(id, dto.disbursedAt ? new Date(dto.disbursedAt) : undefined);
     await this.auditLogService.record({
       actorType: AuditActorType.ADMIN,
       actorId: req.user.sub,
@@ -67,8 +73,8 @@ export class AdminLoanRequestController {
 
   @Post(':id/disburse')
   @HttpCode(200)
-  async disburse(@Param('id') id: string, @Req() req: { user: JwtPayload }) {
-    const result = await this.loanRequestService.disburse(id);
+  async disburse(@Param('id') id: string, @Body() dto: DisbursementDateDto, @Req() req: { user: JwtPayload }) {
+    const result = await this.loanRequestService.disburse(id, dto.disbursedAt ? new Date(dto.disbursedAt) : undefined);
     await this.auditLogService.record({
       actorType: AuditActorType.ADMIN,
       actorId: req.user.sub,
