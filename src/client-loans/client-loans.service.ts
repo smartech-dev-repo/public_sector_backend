@@ -1,10 +1,19 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { VarianceStatus } from '../generated/prisma/client';
+import { ClientLoan, LoanRequest, LoanRequestStatus, VarianceStatus } from '../generated/prisma/client';
 import { computeLoanStatus, LoanStatus } from './loan-status.util';
 import { generatePeriodRange } from '../reconciliation/period.util';
 import { computeExpectedInstallment } from '../reconciliation/amortization.util';
 import { buildPaginatedResult } from '../common/pagination/paginated-result';
+
+// A client can only ever have one non-terminal LoanRequest at a time (the
+// one-lifetime-loan/topup-in-progress policy enforced elsewhere), so this
+// never needs its own pagination.
+const NON_TERMINAL_LOAN_REQUEST_STATUSES = [
+  LoanRequestStatus.PENDING,
+  LoanRequestStatus.CONFIRMED,
+  LoanRequestStatus.APPROVED,
+];
 
 const LOAN_SELECT = {
   id: true,
@@ -61,25 +70,135 @@ export class ClientLoansService {
     pagination: { page: number; limit: number } = { page: 1, limit: 25 },
   ) {
     const matched = await this.getMatchedLoansWithStatus(clientId, filters);
-    if (!matched) {
-      return { loans: buildPaginatedResult([], 0, pagination.page, pagination.limit), repayments: [] };
-    }
+    const ingestedLoans = matched ? matched.loans.map((loan) => ({ ...loan, source: 'INGESTED' as const })) : [];
+    const appLoans = await this.getFilteredAppLoans(clientId, filters);
 
-    const { agency, staffId, loans: filteredLoans } = matched;
+    const combinedLoans = [...ingestedLoans, ...appLoans].sort(
+      (a, b) => (b.disbursementDate?.getTime() ?? 0) - (a.disbursementDate?.getTime() ?? 0),
+    );
 
     const { page, limit } = pagination;
     const pageStart = (page - 1) * limit;
-    const pagedLoans = filteredLoans.slice(pageStart, pageStart + limit);
+    const pagedLoans = combinedLoans.slice(pageStart, pageStart + limit);
 
-    const repayments = await this.prisma.loanRepaymentRecord.findMany({
-      where: { agency, staffId },
-      select: REPAYMENT_SELECT,
+    const repayments = matched
+      ? await this.prisma.loanRepaymentRecord.findMany({
+          where: { agency: matched.agency, staffId: matched.staffId },
+          select: REPAYMENT_SELECT,
+          orderBy: { createdAt: 'desc' },
+        })
+      : [];
+
+    const pendingRequests = await this.getPendingLoanRequests(clientId);
+
+    return {
+      loans: buildPaginatedResult(pagedLoans, combinedLoans.length, page, limit),
+      repayments,
+      pendingRequests,
+    };
+  }
+
+  private async getFilteredAppLoans(clientId: string, filters: ListLoansFilters) {
+    // App-originated loans have no associated product name to filter by --
+    // an explicit product filter can only ever match ingested loans.
+    if (filters.product) {
+      return [];
+    }
+
+    const clientLoans = await this.prisma.clientLoan.findMany({
+      where: {
+        clientId,
+        disbursementDate:
+          filters.disbursedFrom || filters.disbursedTo
+            ? { gte: filters.disbursedFrom, lte: filters.disbursedTo }
+            : undefined,
+      },
+      orderBy: { disbursementDate: 'desc' },
+    });
+
+    const filtered = filters.status ? clientLoans.filter((loan) => loan.status === filters.status) : clientLoans;
+    return filtered.map((loan) => this.toAppLoanListItem(loan));
+  }
+
+  private toAppLoanListItem(loan: ClientLoan) {
+    return {
+      id: loan.id,
+      source: 'APP' as const,
+      status: loan.status as LoanStatus,
+      customerId: null,
+      customerName: null,
+      accountNumber: null,
+      address: null,
+      branch: null,
+      gender: null,
+      phone: null,
+      ippisNumber: loan.staffId,
+      agency: loan.agency,
+      loanAmount: Number(loan.principalAmount),
+      principalBalance: Number(loan.principalBalance),
+      disbursementDate: loan.disbursementDate,
+      maturationDate: loan.maturationDate,
+      effectiveDate: null,
+      moratoriumDays: null,
+      product: null,
+      linkedAccountNumber: null,
+      bvn: null,
+      interestRatePercent: Number(loan.interestRatePercent),
+      accountOfficer: null,
+      hasPreviouslyTakenLoan: null,
+      createdAt: loan.createdAt,
+      updatedAt: loan.updatedAt,
+    };
+  }
+
+  private async getPendingLoanRequests(clientId: string) {
+    const pendingRequests = await this.prisma.loanRequest.findMany({
+      where: { clientId, status: { in: NON_TERMINAL_LOAN_REQUEST_STATUSES } },
       orderBy: { createdAt: 'desc' },
     });
 
+    return pendingRequests.map((request) => this.toPendingLoanRequestItem(request));
+  }
+
+  // Not yet disbursed, so there's no real disbursement/maturation date on
+  // file -- project both as if disbursement happened today, purely so the
+  // client can see an estimated schedule ahead of approval.
+  private toPendingLoanRequestItem(request: LoanRequest) {
+    const projectedDisbursementDate = new Date();
+    const projectedMaturationDate = new Date(projectedDisbursementDate);
+    projectedMaturationDate.setMonth(projectedMaturationDate.getMonth() + request.tenorMonths);
+
+    const principal = Number(request.amount);
+    const interestRatePercent = Number(request.interestRatePercent);
+    const expectedAmount = computeExpectedInstallment(
+      principal,
+      interestRatePercent,
+      projectedDisbursementDate,
+      projectedMaturationDate,
+    );
+
+    const projectedSchedule = generatePeriodRange(projectedDisbursementDate, projectedMaturationDate).map(
+      (period) => ({
+        period,
+        expectedAmount,
+        actualAmount: null,
+        variance: null,
+        status: 'UPCOMING' as const,
+      }),
+    );
+
     return {
-      loans: buildPaginatedResult(pagedLoans, filteredLoans.length, page, limit),
-      repayments,
+      id: request.id,
+      type: request.type,
+      status: request.status,
+      principal,
+      tenorMonths: request.tenorMonths,
+      interestRatePercent,
+      projectedDisbursementDate,
+      projectedMaturationDate,
+      projectedSchedule,
+      createdAt: request.createdAt,
+      expiresAt: request.expiresAt,
     };
   }
 

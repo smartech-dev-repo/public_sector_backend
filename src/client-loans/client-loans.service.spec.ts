@@ -10,6 +10,8 @@ describe('ClientLoansService', () => {
     loan: { findMany: jest.Mock; findFirst: jest.Mock };
     loanRepaymentRecord: { findMany: jest.Mock };
     repaymentVariance: { findMany: jest.Mock };
+    clientLoan: { findMany: jest.Mock };
+    loanRequest: { findMany: jest.Mock };
   };
 
   const future = new Date(Date.now() + 1000 * 60 * 60 * 24 * 30);
@@ -20,6 +22,8 @@ describe('ClientLoansService', () => {
       loan: { findMany: jest.fn(), findFirst: jest.fn() },
       loanRepaymentRecord: { findMany: jest.fn() },
       repaymentVariance: { findMany: jest.fn().mockResolvedValue([]) },
+      clientLoan: { findMany: jest.fn().mockResolvedValue([]) },
+      loanRequest: { findMany: jest.fn().mockResolvedValue([]) },
     };
     service = new ClientLoansService(prisma as unknown as PrismaService);
   });
@@ -33,6 +37,7 @@ describe('ClientLoansService', () => {
       expect(result).toEqual({
         loans: { data: [], meta: { total: 0, page: 1, limit: 25, totalPages: 0 } },
         repayments: [],
+        pendingRequests: [],
       });
       expect(prisma.loan.findMany).not.toHaveBeenCalled();
       expect(prisma.loanRepaymentRecord.findMany).not.toHaveBeenCalled();
@@ -57,7 +62,7 @@ describe('ClientLoansService', () => {
         expect.objectContaining({ where: { agency: 'NPF', staffId: 'NPF-001' } }),
       );
       expect(result.loans.data).toEqual([
-        { id: 'loan-1', bvn: null, principalBalance: 5000, maturationDate: future, status: 'ACTIVE' },
+        { id: 'loan-1', bvn: null, principalBalance: 5000, maturationDate: future, status: 'ACTIVE', source: 'INGESTED' },
       ]);
       expect(result.loans.meta).toEqual({ total: 1, page: 1, limit: 25, totalPages: 1 });
       expect(result.repayments).toEqual([{ id: 'rep-1' }]);
@@ -168,6 +173,100 @@ describe('ClientLoansService', () => {
       const result = await service.getDashboard('c1');
 
       expect(result.loans.meta).toEqual({ total: 1, page: 1, limit: 25, totalPages: 1 });
+    });
+
+    it('merges the client\'s own app-originated ClientLoan into the loans list, tagged as APP', async () => {
+      prisma.clientOnboarding.findUnique.mockResolvedValue(null);
+      prisma.clientLoan.findMany.mockResolvedValue([
+        {
+          id: 'app-loan-1',
+          staffId: 'NPF-001',
+          agency: 'NPF',
+          principalAmount: 100000,
+          principalBalance: 80000,
+          disbursementDate: new Date('2026-01-01'),
+          maturationDate: new Date('2026-07-01'),
+          interestRatePercent: 5,
+          status: 'ACTIVE',
+          createdAt: new Date('2026-01-01'),
+          updatedAt: new Date('2026-01-01'),
+        },
+      ]);
+
+      const result = await service.getDashboard('c1');
+
+      expect(result.loans.data).toEqual([
+        expect.objectContaining({
+          id: 'app-loan-1',
+          source: 'APP',
+          status: 'ACTIVE',
+          ippisNumber: 'NPF-001',
+          agency: 'NPF',
+          loanAmount: 100000,
+          principalBalance: 80000,
+          product: null,
+        }),
+      ]);
+    });
+
+    it('excludes app-originated loans when a product filter is given, since they have no product name', async () => {
+      prisma.clientOnboarding.findUnique.mockResolvedValue(null);
+
+      await service.getDashboard('c1', { product: 'Salary Advance' });
+
+      expect(prisma.clientLoan.findMany).not.toHaveBeenCalled();
+    });
+
+    it('filters app-originated loans by status in memory', async () => {
+      prisma.clientOnboarding.findUnique.mockResolvedValue(null);
+      prisma.clientLoan.findMany.mockResolvedValue([
+        { id: 'app-active', staffId: 'S1', agency: 'NPF', principalAmount: 1, principalBalance: 1, disbursementDate: future, maturationDate: future, interestRatePercent: 1, status: 'ACTIVE', createdAt: future, updatedAt: future },
+        { id: 'app-closed', staffId: 'S1', agency: 'NPF', principalAmount: 1, principalBalance: 0, disbursementDate: future, maturationDate: future, interestRatePercent: 1, status: 'CLOSED', createdAt: future, updatedAt: future },
+      ]);
+
+      const result = await service.getDashboard('c1', { status: 'CLOSED' });
+
+      expect(result.loans.data.map((loan: { id: string }) => loan.id)).toEqual(['app-closed']);
+    });
+
+    it('returns an empty pendingRequests array when there is no non-terminal LoanRequest', async () => {
+      prisma.clientOnboarding.findUnique.mockResolvedValue(null);
+      prisma.loanRequest.findMany.mockResolvedValue([]);
+
+      const result = await service.getDashboard('c1');
+
+      expect(result.pendingRequests).toEqual([]);
+    });
+
+    it('includes a PENDING LoanRequest in pendingRequests with a projected schedule', async () => {
+      prisma.clientOnboarding.findUnique.mockResolvedValue(null);
+      prisma.loanRequest.findMany.mockResolvedValue([
+        {
+          id: 'req-1',
+          type: 'ORIGINATION',
+          status: 'PENDING',
+          amount: 120000,
+          tenorMonths: 6,
+          interestRatePercent: 5,
+          createdAt: new Date('2026-01-01'),
+          expiresAt: new Date('2026-01-02'),
+        },
+      ]);
+
+      const result = await service.getDashboard('c1');
+
+      expect(prisma.loanRequest.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { clientId: 'c1', status: { in: ['PENDING', 'CONFIRMED', 'APPROVED'] } } }),
+      );
+      expect(result.pendingRequests).toHaveLength(1);
+      const [request] = result.pendingRequests;
+      expect(request).toEqual(
+        expect.objectContaining({ id: 'req-1', status: 'PENDING', principal: 120000, tenorMonths: 6 }),
+      );
+      expect(request.projectedSchedule.length).toBe(7);
+      expect(request.projectedSchedule[0]).toEqual(
+        expect.objectContaining({ actualAmount: null, variance: null, status: 'UPCOMING' }),
+      );
     });
   });
 

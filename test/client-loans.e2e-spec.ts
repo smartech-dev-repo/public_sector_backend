@@ -113,6 +113,7 @@ describe('Client loan dashboard (e2e)', () => {
   });
 
   afterAll(async () => {
+    await prisma.loanRequest.deleteMany({ where: { clientId } });
     await prisma.repaymentVariance.deleteMany({ where: { loanId: { in: [activeLoanId, defaultLoanId] } } });
     await prisma.loanRepaymentRecord.deleteMany({ where: { agency, staffId } });
     await prisma.loan.deleteMany({ where: { ippisNumber: staffId } });
@@ -204,5 +205,38 @@ describe('Client loan dashboard (e2e)', () => {
       .get('/client/loans/00000000-0000-0000-0000-000000000000/repayment-plan')
       .set('Authorization', `Bearer ${accessToken}`)
       .expect(404);
+  });
+
+  it('includes a pending loan request with a projected schedule, separate from the disbursed loans list', async () => {
+    const pendingRequest = await prisma.loanRequest.create({
+      data: {
+        clientId,
+        amount: 150000,
+        status: 'PENDING',
+        tenorMonths: 3,
+        interestRatePercent: 5,
+        managementChargeType: 'PERCENTAGE',
+        managementChargeValue: 1,
+        managementChargeApplication: 'DEDUCT_FROM_DISBURSEMENT',
+        managementChargeAmount: 1500,
+        expiresAt: new Date(Date.now() + 1000 * 60 * 60),
+      },
+    });
+
+    const res = await request(app.getHttpServer())
+      .get('/client/loans')
+      .set('Authorization', `Bearer ${accessToken}`)
+      .expect(200);
+
+    expect(res.body.loans.data).toHaveLength(2);
+    expect(res.body.pendingRequests).toHaveLength(1);
+    const [pending] = res.body.pendingRequests;
+    expect(pending.id).toBe(pendingRequest.id);
+    expect(pending.status).toBe('PENDING');
+    expect(pending.principal).toBe(150000);
+    expect(pending.projectedSchedule.length).toBe(4);
+    expect(pending.projectedSchedule[0]).toEqual(
+      expect.objectContaining({ actualAmount: null, variance: null, status: 'UPCOMING' }),
+    );
   });
 });
