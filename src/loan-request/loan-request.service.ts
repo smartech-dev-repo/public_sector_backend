@@ -72,6 +72,10 @@ export class LoanRequestService {
       : `Reply YES to confirm your loan request of ₦${amount}`;
   }
 
+  private resolveSmsPhone(client: { phone: string }, ippisRecord?: { phone: string | null } | null): string {
+    return client.phone || ippisRecord?.phone || client.phone;
+  }
+
   private async sendEmailCopy(email: string | null, amount: number, type: LoanRequestType): Promise<void> {
     if (!email) return;
     try {
@@ -283,7 +287,7 @@ export class LoanRequestService {
         ? (amount * Number(product.managementChargeValue)) / 100
         : Number(product.managementChargeValue);
 
-    await this.smsProvider.send(client.phone, this.confirmationMessage(amount));
+    await this.smsProvider.send(this.resolveSmsPhone(client, onboarding.ippisRecord), this.confirmationMessage(amount));
     await this.sendEmailCopy(client.email, amount, LoanRequestType.ORIGINATION);
     const { confirmationCodeHash, confirmationCodeExpiresAt, devCode } = await this.issueConfirmationCode(client.email);
 
@@ -337,7 +341,10 @@ export class LoanRequestService {
         ? (amount * Number(product.managementChargeValue)) / 100
         : Number(product.managementChargeValue);
 
-    await this.smsProvider.send(client.phone, this.confirmationMessage(amount, LoanRequestType.TOPUP));
+    await this.smsProvider.send(
+      this.resolveSmsPhone(client, onboarding.ippisRecord),
+      this.confirmationMessage(amount, LoanRequestType.TOPUP),
+    );
     await this.sendEmailCopy(client.email, amount, LoanRequestType.TOPUP);
     const { confirmationCodeHash, confirmationCodeExpiresAt, devCode } = await this.issueConfirmationCode(client.email);
 
@@ -375,8 +382,14 @@ export class LoanRequestService {
       throw new ConflictException(`Loan request is not PENDING (currently ${loanRequest.status})`);
     }
 
-    const client = await this.prisma.client.findUniqueOrThrow({ where: { id: clientId } });
-    await this.smsProvider.send(client.phone, this.confirmationMessage(Number(loanRequest.amount)));
+    const client = await this.prisma.client.findUniqueOrThrow({
+      where: { id: clientId },
+      include: { onboarding: { include: { ippisRecord: true } } },
+    });
+    await this.smsProvider.send(
+      this.resolveSmsPhone(client, client.onboarding?.ippisRecord),
+      this.confirmationMessage(Number(loanRequest.amount)),
+    );
     await this.sendEmailCopy(client.email, Number(loanRequest.amount), LoanRequestType.ORIGINATION);
     const { confirmationCodeHash, confirmationCodeExpiresAt, devCode } = await this.issueConfirmationCode(client.email);
 

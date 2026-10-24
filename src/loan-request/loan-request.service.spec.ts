@@ -315,6 +315,27 @@ describe('LoanRequestService', () => {
 
       expect(result.devCode).toEqual(expect.stringMatching(/^\d{6}$/));
     });
+
+    it('falls back to the IppisRecord phone when the client has no phone on file', async () => {
+      prisma.client.findUniqueOrThrow.mockResolvedValue({ id: 'c1', phone: '', status: 'VERIFIED' });
+      prisma.clientOnboarding.findUnique.mockResolvedValue({
+        ippisRecord: { salary: 1000000, agency: 'NPF', phone: '+2348099999999' },
+      });
+      eligibilityService.check.mockResolvedValue({ eligible: true });
+      loanProductResolverService.resolve.mockResolvedValue({
+        product: {
+          managementChargeType: 'PERCENTAGE',
+          managementChargeValue: 2,
+          managementChargeApplication: 'DEDUCT_FROM_DISBURSEMENT',
+        },
+        tier: { minTenorMonths: 1, maxTenorMonths: 12, interestRatePercent: 5 },
+      });
+      prisma.loanRequest.create.mockResolvedValue({ id: 'lr1' });
+
+      await service.create('c1', 5000, 6);
+
+      expect(smsProvider.send).toHaveBeenCalledWith('+2348099999999', expect.stringContaining('5000'));
+    });
   });
 
   describe('resend', () => {
@@ -357,6 +378,20 @@ describe('LoanRequestService', () => {
       expect(emailService.send).toHaveBeenCalledWith(
         expect.objectContaining({ to: 'client@example.com', text: expect.stringContaining('5000') }),
       );
+    });
+
+    it('falls back to the IppisRecord phone when the client has no phone on file', async () => {
+      prisma.loanRequest.findUnique.mockResolvedValue({ id: 'lr1', clientId: 'c1', status: 'PENDING', amount: 5000 });
+      prisma.client.findUniqueOrThrow.mockResolvedValue({
+        id: 'c1',
+        phone: '',
+        onboarding: { ippisRecord: { phone: '+2348099999999' } },
+      });
+      prisma.loanRequest.update.mockResolvedValue({ id: 'lr1' });
+
+      await service.resend('c1', 'lr1');
+
+      expect(smsProvider.send).toHaveBeenCalledWith('+2348099999999', expect.stringContaining('5000'));
     });
   });
 
@@ -1012,6 +1047,28 @@ describe('LoanRequestService', () => {
       expect(emailService.send).toHaveBeenCalledWith(
         expect.objectContaining({ to: 'client@example.com', text: expect.stringContaining('top-up') }),
       );
+    });
+
+    it('falls back to the IppisRecord phone when the client has no phone on file', async () => {
+      prisma.client.findUniqueOrThrow.mockResolvedValue({ id: 'c1', phone: '' });
+      prisma.clientOnboarding.findUnique.mockResolvedValue({
+        ippisRecord: { agency: 'NPF', phone: '+2348099999999' },
+      });
+      topupEligibilityService.check.mockResolvedValue({ eligible: true });
+      loanProductResolverService.resolve.mockResolvedValue({
+        product: {
+          managementChargeType: 'PERCENTAGE',
+          managementChargeValue: 2,
+          managementChargeApplication: 'DEDUCT_FROM_DISBURSEMENT',
+        },
+        tier: { minTenorMonths: 1, maxTenorMonths: 12, interestRatePercent: 6 },
+      });
+      prisma.clientLoan.findFirst.mockResolvedValue(null);
+      prisma.loanRequest.create.mockResolvedValue({ id: 'lr2' });
+
+      await service.createTopup('c1', 2000, 12);
+
+      expect(smsProvider.send).toHaveBeenCalledWith('+2348099999999', expect.stringContaining('top-up'));
     });
   });
 
