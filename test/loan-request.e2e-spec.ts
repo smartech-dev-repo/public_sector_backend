@@ -60,6 +60,10 @@ describe('Loan request workflow (e2e)', () => {
   });
 
   afterAll(async () => {
+    // approve() now disburses in one step (creating a real ClientLoan row),
+    // so it must be deleted before its referencing LoanRequest or the FK
+    // constraint on ClientLoan.loanRequestId rejects the delete.
+    await prisma.clientLoan.deleteMany({ where: { clientId } });
     await prisma.loanRequest.deleteMany({ where: { clientId } });
     await prisma.clientOnboarding.deleteMany({ where: { clientId } });
     await prisma.ippisRecord.deleteMany({ where: { staffId } });
@@ -115,7 +119,7 @@ describe('Loan request workflow (e2e)', () => {
       .expect(409);
   });
 
-  it('admin approves the confirmed loan request, hydrating the client object', async () => {
+  it('admin approves the confirmed loan request (which disburses it in one step), hydrating the client object', async () => {
     const adminLoginRes = await request(app.getHttpServer())
       .post('/auth/admin/login')
       .send({
@@ -129,7 +133,7 @@ describe('Loan request workflow (e2e)', () => {
       .set('Authorization', `Bearer ${adminAccessToken}`)
       .expect(200);
 
-    expect(res.body.status).toBe('APPROVED');
-    expect(res.body.client).toEqual({ id: clientId, phone, status: 'VERIFIED' });
+    expect(res.body.status).toBe('DISBURSED');
+    expect(res.body.client).toEqual(expect.objectContaining({ id: clientId, phone, status: 'VERIFIED' }));
   });
 });

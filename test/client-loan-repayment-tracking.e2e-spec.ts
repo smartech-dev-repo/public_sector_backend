@@ -108,10 +108,6 @@ describe('Client loan repayment tracking (e2e)', () => {
       .post(`/admin/loan-requests/${createRes.body.id}/approve`)
       .set('Authorization', `Bearer ${adminAccessToken}`)
       .expect(200);
-    await request(app.getHttpServer())
-      .post(`/admin/loan-requests/${createRes.body.id}/disburse`)
-      .set('Authorization', `Bearer ${adminAccessToken}`)
-      .expect(200);
 
     const clientLoan = await prisma.clientLoan.findFirst({ where: { agency, staffId: `${staffId}-${staffIdSuffix}` } });
     return { client, accessToken, clientLoan: clientLoan! };

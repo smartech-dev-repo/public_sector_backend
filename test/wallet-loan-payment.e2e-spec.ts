@@ -106,10 +106,6 @@ describe('Spend wallet balance toward a loan payment (e2e)', () => {
       .post(`/admin/loan-requests/${createRes.body.id}/approve`)
       .set('Authorization', `Bearer ${adminAccessToken}`)
       .expect(200);
-    await request(app.getHttpServer())
-      .post(`/admin/loan-requests/${createRes.body.id}/disburse`)
-      .set('Authorization', `Bearer ${adminAccessToken}`)
-      .expect(200);
 
     return { client, accessToken };
   }

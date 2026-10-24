@@ -123,10 +123,6 @@ describe('Admin client visibility (e2e)', () => {
         .post(`/admin/loan-requests/${createResA.body.id}/approve`)
         .set('Authorization', `Bearer ${adminAccessToken}`)
         .expect(200);
-      await request(app.getHttpServer())
-        .post(`/admin/loan-requests/${createResA.body.id}/disburse`)
-        .set('Authorization', `Bearer ${adminAccessToken}`)
-        .expect(200);
 
       await request(app.getHttpServer())
         .post('/client/loan-requests')
@@ -160,8 +156,10 @@ describe('Admin client visibility (e2e)', () => {
       const types = activitiesRes.body.data.map((entry: { type: string }) => entry.type);
       expect(types).toContain('loan-request.created');
       expect(types).toContain('loan-request.confirmed');
+      // approve() now disburses in one step, so no separate admin disburse
+      // action is ever recorded for this flow anymore -- 'loan-request.approve'
+      // is the only audit entry for the state transition to DISBURSED.
       expect(types).toContain('loan-request.approve');
-      expect(types).toContain('loan-request.disburse');
       expect(types).toContain('onboarding.step');
       const timestamps = activitiesRes.body.data.map((entry: { timestamp: string }) => new Date(entry.timestamp).getTime());
       const sorted = [...timestamps].sort((a, b) => b - a);
