@@ -250,6 +250,28 @@ describe('AdminAgentReviewService', () => {
       expect(result.meta).toEqual({ total: 0, page: 1, limit: 25, totalPages: 0 });
     });
 
+    it('defaults to APPROVED-only when no status filter is given, hiding agents still in recruitment', async () => {
+      prisma.agent.findMany.mockResolvedValue([]);
+      prisma.agent.count.mockResolvedValue(0);
+
+      await service.list();
+
+      expect(prisma.agent.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({ where: expect.objectContaining({ status: AgentStatus.APPROVED }) }),
+      );
+    });
+
+    it('still honors an explicit status filter, e.g. to find agents awaiting review', async () => {
+      prisma.agent.findMany.mockResolvedValue([]);
+      prisma.agent.count.mockResolvedValue(0);
+
+      await service.list({ status: AgentStatus.PENDING_REVIEW });
+
+      expect(prisma.agent.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({ where: expect.objectContaining({ status: AgentStatus.PENDING_REVIEW }) }),
+      );
+    });
+
     it('filters by status and searches fullName/email/phone', async () => {
       prisma.agent.findMany.mockResolvedValue([]);
       prisma.agent.count.mockResolvedValue(0);

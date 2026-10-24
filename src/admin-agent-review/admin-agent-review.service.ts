@@ -33,7 +33,10 @@ export class AdminAgentReviewService {
   ) {
     const { page, limit } = pagination;
     const where: Prisma.AgentWhereInput = {
-      status: filters.status,
+      // Default to APPROVED-only so this list doesn't show agents still in
+      // the recruitment pipeline (PENDING_REVIEW) or REJECTED ones -- an
+      // explicit ?status=... filter still overrides this.
+      status: filters.status ?? AgentStatus.APPROVED,
       createdAt:
         filters.createdFrom || filters.createdTo
           ? { gte: filters.createdFrom, lte: filters.createdTo }

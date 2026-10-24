@@ -112,12 +112,22 @@ describe('Agent recruitment (e2e)', () => {
       const agentId = submitRes.body.id;
       createdAgentIds.push(agentId);
 
-      const listRes = await request(app.getHttpServer())
+      // The default (no status filter) agent list now only shows APPROVED
+      // agents -- a freshly submitted one is still PENDING_REVIEW, so it's
+      // absent there, but still reachable via an explicit status filter.
+      const defaultListRes = await request(app.getHttpServer())
         .get('/admin/agents')
         .query({ q: 'E2E Recruit' })
         .set('Authorization', `Bearer ${adminAccessToken}`)
         .expect(200);
-      expect(listRes.body.data.some((a: { id: string }) => a.id === agentId)).toBe(true);
+      expect(defaultListRes.body.data.some((a: { id: string }) => a.id === agentId)).toBe(false);
+
+      const pendingListRes = await request(app.getHttpServer())
+        .get('/admin/agents')
+        .query({ q: 'E2E Recruit', status: 'PENDING_REVIEW' })
+        .set('Authorization', `Bearer ${adminAccessToken}`)
+        .expect(200);
+      expect(pendingListRes.body.data.some((a: { id: string }) => a.id === agentId)).toBe(true);
     },
     20000,
   );
