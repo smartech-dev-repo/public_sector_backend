@@ -112,7 +112,7 @@ describe('Loan origination (e2e)', () => {
   });
 
   it(
-    'runs the full manual-review flow: request -> confirm -> admin approve -> admin disburse -> ClientLoan exists',
+    'runs the full manual-review flow: request -> confirm -> admin approve (which disburses in one step) -> ClientLoan exists',
     async () => {
       const { client, accessToken } = await createVerifiedClient('0000002', 'B');
 
@@ -136,12 +136,6 @@ describe('Loan origination (e2e)', () => {
 
       await request(app.getHttpServer())
         .post(`/admin/loan-requests/${loanRequestId}/approve`)
-        .set('Authorization', `Bearer ${adminAccessToken}`)
-        .expect(200)
-        .expect((res) => expect(res.body.status).toBe('APPROVED'));
-
-      await request(app.getHttpServer())
-        .post(`/admin/loan-requests/${loanRequestId}/disburse`)
         .set('Authorization', `Bearer ${adminAccessToken}`)
         .expect(200)
         .expect((res) => expect(res.body.status).toBe('DISBURSED'));
@@ -183,6 +177,111 @@ describe('Loan origination (e2e)', () => {
         expect(res.body.status).toBe('REJECTED');
         expect(res.body.rejectionReason).toBe('Insufficient documentation');
       });
+  });
+
+  it(
+    'GET /admin/loan-requests/:id returns the enriched detail with availableActions, and admin can confirm a PENDING request via OTP',
+    async () => {
+      const { accessToken } = await createVerifiedClient('0000005', 'E');
+
+      const createRes = await request(app.getHttpServer())
+        .post('/client/loan-requests')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({ amount: 120000, tenorMonths: 3 })
+        .expect(201);
+      const loanRequestId = createRes.body.id;
+
+      const detailRes = await request(app.getHttpServer())
+        .get(`/admin/loan-requests/${loanRequestId}`)
+        .set('Authorization', `Bearer ${adminAccessToken}`)
+        .expect(200);
+      expect(detailRes.body.availableActions).toEqual(['confirmCode']);
+      expect(detailRes.body.client.onboarding.ippisRecord.agency).toBe(agency);
+
+      if (!createRes.body.devCode) {
+        // EMAIL_CODE_DEV_ECHO isn't set in this environment -- there's no way
+        // to read the real code back out (it's hashed), so this test can only
+        // verify the enriched detail shape, not the admin confirm-code path.
+        return;
+      }
+
+      await request(app.getHttpServer())
+        .post(`/admin/loan-requests/${loanRequestId}/confirm-code`)
+        .set('Authorization', `Bearer ${adminAccessToken}`)
+        .send({ code: createRes.body.devCode })
+        .expect(200)
+        .expect({ confirmed: true });
+
+      const confirmed = await prisma.loanRequest.findUniqueOrThrow({ where: { id: loanRequestId } });
+      expect(['CONFIRMED', 'DISBURSED']).toContain(confirmed.status);
+
+      // Whether this lands on CONFIRMED (availableActions: ['approve', 'reject'])
+      // or auto-disburses straight to DISBURSED (availableActions: []) depends on
+      // this environment's LOAN_AUTO_APPROVE_THRESHOLD config, which this test
+      // doesn't control -- just confirm the detail endpoint still resolves cleanly
+      // with a well-formed availableActions array either way.
+      const afterConfirmRes = await request(app.getHttpServer())
+        .get(`/admin/loan-requests/${loanRequestId}`)
+        .set('Authorization', `Bearer ${adminAccessToken}`)
+        .expect(200);
+      expect(Array.isArray(afterConfirmRes.body.availableActions)).toBe(true);
+    },
+    20000,
+  );
+
+  it(
+    'admin can approve with a backdated disbursedAt, which shifts the ClientLoan schedule to match',
+    async () => {
+      const { client, accessToken } = await createVerifiedClient('0000006', 'F');
+
+      const createRes = await request(app.getHttpServer())
+        .post('/client/loan-requests')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({ amount: 90000, tenorMonths: 3 })
+        .expect(201);
+      const loanRequestId = createRes.body.id;
+
+      await request(app.getHttpServer())
+        .post('/webhooks/sms/inbound')
+        .send({ phone: client.phone, message: 'YES' })
+        .expect(200);
+
+      const backdated = '2026-01-01T00:00:00.000Z';
+      await request(app.getHttpServer())
+        .post(`/admin/loan-requests/${loanRequestId}/approve`)
+        .set('Authorization', `Bearer ${adminAccessToken}`)
+        .send({ disbursedAt: backdated })
+        .expect(200)
+        .expect((res) => expect(res.body.disbursedAt).toBe(backdated));
+
+      const clientLoan = await prisma.clientLoan.findUniqueOrThrow({ where: { loanRequestId } });
+      expect(clientLoan.disbursementDate.toISOString()).toBe(backdated);
+      expect(clientLoan.maturationDate.toISOString()).toBe('2026-04-01T00:00:00.000Z');
+    },
+    20000,
+  );
+
+  it('rejects a future disbursedAt on approve with 400', async () => {
+    const { client, accessToken } = await createVerifiedClient('0000007', 'G');
+
+    const createRes = await request(app.getHttpServer())
+      .post('/client/loan-requests')
+      .set('Authorization', `Bearer ${accessToken}`)
+      .send({ amount: 50000, tenorMonths: 3 })
+      .expect(201);
+    const loanRequestId = createRes.body.id;
+
+    await request(app.getHttpServer())
+      .post('/webhooks/sms/inbound')
+      .send({ phone: client.phone, message: 'YES' })
+      .expect(200);
+
+    const future = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+    await request(app.getHttpServer())
+      .post(`/admin/loan-requests/${loanRequestId}/approve`)
+      .set('Authorization', `Bearer ${adminAccessToken}`)
+      .send({ disbursedAt: future })
+      .expect(400);
   });
 
   it('returns a CSV for the disbursement summary export', async () => {

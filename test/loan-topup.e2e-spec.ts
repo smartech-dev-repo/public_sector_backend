@@ -105,10 +105,6 @@ describe('Loan topup/renewal (e2e)', () => {
       .post(`/admin/loan-requests/${loanRequestId}/approve`)
       .set('Authorization', `Bearer ${adminAccessToken}`)
       .expect(200);
-    await request(app.getHttpServer())
-      .post(`/admin/loan-requests/${loanRequestId}/disburse`)
-      .set('Authorization', `Bearer ${adminAccessToken}`)
-      .expect(200);
 
     return { client, accessToken };
   }
@@ -168,10 +164,6 @@ describe('Loan topup/renewal (e2e)', () => {
 
       await request(app.getHttpServer())
         .post(`/admin/loan-requests/${topupId}/approve`)
-        .set('Authorization', `Bearer ${adminAccessToken}`)
-        .expect(200);
-      await request(app.getHttpServer())
-        .post(`/admin/loan-requests/${topupId}/disburse`)
         .set('Authorization', `Bearer ${adminAccessToken}`)
         .expect(200);
 
