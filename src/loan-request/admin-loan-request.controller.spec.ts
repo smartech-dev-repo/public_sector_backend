@@ -69,4 +69,18 @@ describe('AdminLoanRequestController', () => {
       expect(loanRequestService.disburse).toHaveBeenCalledWith('lr1', new Date('2026-01-01T00:00:00.000Z'));
     });
   });
+
+  describe('confirmCode', () => {
+    it('delegates to LoanRequestService.adminConfirmByCode and records an audit log entry', async () => {
+      loanRequestService.adminConfirmByCode.mockResolvedValue(undefined);
+
+      const result = await controller.confirmCode('lr1', { code: '123456' }, adminReq);
+
+      expect(loanRequestService.adminConfirmByCode).toHaveBeenCalledWith('lr1', '123456');
+      expect(auditLogService.record).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'loan-request.confirm-code', targetId: 'lr1', actorId: 'admin-1' }),
+      );
+      expect(result).toEqual({ confirmed: true });
+    });
+  });
 });

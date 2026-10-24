@@ -429,6 +429,18 @@ export class LoanRequestService {
     if (!loanRequest || loanRequest.clientId !== clientId) {
       throw new NotFoundException('Loan request not found');
     }
+    await this.verifyCodeAndConfirm(loanRequest, code);
+  }
+
+  async adminConfirmByCode(id: string, code: string): Promise<void> {
+    const loanRequest = await this.prisma.loanRequest.findUnique({ where: { id } });
+    if (!loanRequest) {
+      throw new NotFoundException('Loan request not found');
+    }
+    await this.verifyCodeAndConfirm(loanRequest, code);
+  }
+
+  private async verifyCodeAndConfirm(loanRequest: LoanRequest, code: string): Promise<void> {
     if (loanRequest.status !== LoanRequestStatus.PENDING) {
       throw new ConflictException(`Loan request is not PENDING (currently ${loanRequest.status})`);
     }

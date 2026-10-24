@@ -585,6 +585,76 @@ describe('LoanRequestService', () => {
     });
   });
 
+  describe('adminConfirmByCode', () => {
+    it('throws NotFoundException when the loan request does not exist', async () => {
+      prisma.loanRequest.findUnique.mockResolvedValue(null);
+      await expect(service.adminConfirmByCode('lr1', '123456')).rejects.toThrow(NotFoundException);
+    });
+
+    it('throws ConflictException when the loan request is not PENDING', async () => {
+      prisma.loanRequest.findUnique.mockResolvedValue({ id: 'lr1', clientId: 'c1', status: 'CONFIRMED' });
+      await expect(service.adminConfirmByCode('lr1', '123456')).rejects.toThrow(ConflictException);
+    });
+
+    it('throws UnauthorizedException when the code does not match the stored hash', async () => {
+      prisma.loanRequest.findUnique.mockResolvedValue({
+        id: 'lr1',
+        clientId: 'c1',
+        status: 'PENDING',
+        confirmationCodeHash: hashToken('654321'),
+        confirmationCodeExpiresAt: new Date(Date.now() + 60000),
+      });
+      await expect(service.adminConfirmByCode('lr1', '123456')).rejects.toThrow(UnauthorizedException);
+    });
+
+    it('confirms and auto-disburses under the configured threshold on a correct, unexpired code, with no client-ownership check', async () => {
+      const configService = { get: jest.fn().mockReturnValue('10000') } as unknown as ConfigService;
+      service = new LoanRequestService(
+        prisma as unknown as PrismaService,
+        eligibilityService as unknown as EligibilityService,
+        smsProvider as unknown as TwoWaySmsProvider,
+        expiryQueue as unknown as Queue,
+        topupEligibilityService as unknown as TopupEligibilityService,
+        walletService as unknown as WalletService,
+        loanProductResolverService as unknown as LoanProductResolverService,
+        configService,
+      );
+      prisma.loanRequest.findUnique.mockResolvedValue({
+        id: 'lr1',
+        clientId: 'some-other-client',
+        status: 'PENDING',
+        confirmationCodeHash: hashToken('123456'),
+        confirmationCodeExpiresAt: new Date(Date.now() + 60000),
+      });
+      prisma.loanRequest.update.mockResolvedValueOnce({ id: 'lr1', amount: 5000 });
+      prisma.loanRequest.findUniqueOrThrow.mockResolvedValue({
+        id: 'lr1',
+        clientId: 'some-other-client',
+        amount: 5000,
+        tenorMonths: 6,
+        managementChargeAmount: 100,
+        managementChargeApplication: 'DEDUCT_FROM_DISBURSEMENT',
+        interestRatePercent: 5,
+        managementChargeType: 'PERCENTAGE',
+        managementChargeValue: 2,
+      });
+      prisma.clientOnboarding.findUniqueOrThrow.mockResolvedValue({
+        ippisRecord: { agency: 'NPF', staffId: 'NPF-001' },
+      });
+      prisma.clientLoan.create.mockResolvedValue({ id: 'cl1' });
+
+      await service.adminConfirmByCode('lr1', '123456');
+
+      expect(prisma.loanRequest.update).toHaveBeenCalledWith({
+        where: { id: 'lr1' },
+        data: { status: 'DISBURSED', approvedAt: expect.any(Date), disbursedAt: expect.any(Date) },
+      });
+      expect(prisma.clientLoan.create).toHaveBeenCalledWith(
+        expect.objectContaining({ data: expect.objectContaining({ clientId: 'some-other-client', loanRequestId: 'lr1' }) }),
+      );
+    });
+  });
+
   describe('approve', () => {
     it('throws ConflictException when the request is not CONFIRMED', async () => {
       prisma.loanRequest.findUnique.mockResolvedValue({ id: 'lr1', status: 'PENDING' });

@@ -10,6 +10,7 @@ import { LoanRequestService } from './loan-request.service';
 import { RejectLoanRequestDto } from './dto/reject-loan-request.dto';
 import { ListAdminLoanRequestsQueryDto } from './dto/list-admin-loan-requests-query.dto';
 import { DisbursementDateDto } from './dto/disbursement-date.dto';
+import { ConfirmLoanRequestCodeDto } from './dto/confirm-loan-request-code.dto';
 
 @Controller('admin/loan-requests')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
@@ -54,6 +55,20 @@ export class AdminLoanRequestController {
       targetId: id,
     });
     return result;
+  }
+
+  @Post(':id/confirm-code')
+  @HttpCode(200)
+  async confirmCode(@Param('id') id: string, @Body() dto: ConfirmLoanRequestCodeDto, @Req() req: { user: JwtPayload }) {
+    await this.loanRequestService.adminConfirmByCode(id, dto.code);
+    await this.auditLogService.record({
+      actorType: AuditActorType.ADMIN,
+      actorId: req.user.sub,
+      action: 'loan-request.confirm-code',
+      targetType: 'LoanRequest',
+      targetId: id,
+    });
+    return { confirmed: true };
   }
 
   @Post(':id/reject')
