@@ -51,11 +51,6 @@ export class AdminAgentRecruitmentReviewService {
             { fullName: { contains: filters.q, mode: 'insensitive' } },
           ]
         : undefined,
-      // Once the resulting agent is APPROVED, the application has graduated
-      // out of the recruitment pipeline -- it only shows up in the agent
-      // list (admin/agents) from then on. `isNot` also matches applications
-      // with no submittedAgent at all.
-      submittedAgent: { isNot: { status: AgentStatus.APPROVED } },
     };
 
     const [data, total] = await Promise.all([

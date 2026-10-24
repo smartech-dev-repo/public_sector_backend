@@ -58,20 +58,11 @@ describe('AdminAgentRecruitmentReviewService', () => {
   });
 
   describe('list', () => {
-    it('defaults to page 1/limit 25 with no filters, excluding applications whose agent is already APPROVED', async () => {
+    it('defaults to page 1/limit 25 with no filters', async () => {
       const result = await service.list();
 
       expect(prisma.agentApplication.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: {
-            status: undefined,
-            createdAt: undefined,
-            OR: undefined,
-            submittedAgent: { isNot: { status: 'APPROVED' } },
-          },
-          skip: 0,
-          take: 25,
-        }),
+        expect.objectContaining({ where: { status: undefined, createdAt: undefined, OR: undefined }, skip: 0, take: 25 }),
       );
       expect(result.meta).toEqual({ total: 0, page: 1, limit: 25, totalPages: 0 });
     });
@@ -88,16 +79,6 @@ describe('AdminAgentRecruitmentReviewService', () => {
               { fullName: { contains: 'jane', mode: 'insensitive' } },
             ],
           }),
-        }),
-      );
-    });
-
-    it('still excludes already-APPROVED applications when another status filter is given', async () => {
-      await service.list({ status: 'SUBMITTED' as never });
-
-      expect(prisma.agentApplication.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: expect.objectContaining({ submittedAgent: { isNot: { status: 'APPROVED' } } }),
         }),
       );
     });
