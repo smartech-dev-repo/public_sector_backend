@@ -276,8 +276,30 @@ describe('ClientLoanSummaryService', () => {
     it('returns null when the client has no loan at all', async () => {
       prisma.clientLoan.findFirst.mockResolvedValue(null);
       clientLoansService.getLatestMatchedLoan.mockResolvedValue(null);
+      prisma.loanRequest.findFirst.mockResolvedValue(null);
 
       expect(await service.getSchedule('c1')).toBeNull();
+    });
+
+    it('returns a projected schedule for a non-terminal loan request when there is no real loan yet', async () => {
+      prisma.clientLoan.findFirst.mockResolvedValue(null);
+      clientLoansService.getLatestMatchedLoan.mockResolvedValue(null);
+      prisma.loanRequest.findFirst.mockResolvedValue({
+        id: 'lr1',
+        status: 'PENDING',
+        amount: 90000,
+        tenorMonths: 3,
+        interestRatePercent: 5,
+      });
+
+      const result = await service.getSchedule('c1');
+
+      expect(prisma.loanRequest.findFirst).toHaveBeenCalledWith({
+        where: { clientId: 'c1', status: { in: ['PENDING', 'CONFIRMED', 'APPROVED'] } },
+        orderBy: { createdAt: 'desc' },
+      });
+      expect(result).toHaveLength(4);
+      expect(result![0]).toEqual(expect.objectContaining({ actualAmount: null, variance: null, status: 'UPCOMING' }));
     });
   });
 

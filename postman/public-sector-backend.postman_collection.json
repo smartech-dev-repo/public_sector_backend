@@ -21378,7 +21378,7 @@
                     "{{agent_onboarding_client_id}}"
                   ]
                 },
-                "description": "Returns the client detail for a client this agent itself onboarded (onboarding.onboardedByAgentId === the caller), plus loanSummary/loanEligibility (same shape as a GET /agent/clients row) and the full loanSchedule (null when the client has no loan). 404s if clientId doesn't belong to this agent."
+                "description": "Returns the client detail for a client this agent itself onboarded (onboarding.onboardedByAgentId === the caller), plus loanSummary/loanEligibility (same shape as a GET /agent/clients row) and the full loanSchedule. loanSchedule is null only when the client has no loan and no pending request; once the client has a non-terminal (PENDING/CONFIRMED/APPROVED) LoanRequest, loanSummary.source is 'REQUEST' and loanSchedule is a projected schedule (estimated as if disbursed today, since there's no real disbursement date yet). 404s if clientId doesn't belong to this agent."
               },
               "event": [
                 {
@@ -21429,7 +21429,83 @@
                     }
                   ],
                   "cookie": [],
-                  "body": "{\n  \"id\": \"b5c6d7e8-f9a0-4b1c-2d3e-4f5a6b7c8d9e\",\n  \"phone\": \"+2348022223333\",\n  \"email\": null,\n  \"status\": \"VERIFIED\",\n  \"createdById\": null,\n  \"createdAt\": \"2026-10-14T09:00:00.000Z\",\n  \"updatedAt\": \"2026-10-14T09:10:00.000Z\",\n  \"onboarding\": {\n    \"id\": \"a4b5c6d7-2222-4e8f-9a0b-1c2d3e4f5a6b\",\n    \"clientId\": \"b5c6d7e8-f9a0-4b1c-2d3e-4f5a6b7c8d9e\",\n    \"ippisRecordId\": \"c6d7e8f9-a0b1-4c2d-3e4f-5a6b7c8d9e0f\",\n    \"employeeName\": \"Grace Adeyemi\",\n    \"agency\": \"Nigeria Police Force\",\n    \"bankName\": \"Access Bank\",\n    \"accountNumber\": \"0987654321\",\n    \"employeeStatus\": \"ACTIVE\",\n    \"legacyId\": \"LEGACY-0150\",\n    \"maritalStatus\": null,\n    \"identityVerified\": true,\n    \"faceMatchBvnScore\": 0.95,\n    \"faceMatchNinScore\": 0.95,\n    \"faceMatchPassed\": true,\n    \"step\": \"COMPLETED\",\n    \"failureReasons\": null,\n    \"reviewedBy\": null,\n    \"reviewedAt\": null,\n    \"reviewNote\": null,\n    \"onboardedById\": null,\n    \"onboardedByAgentId\": \"d1e2f3a4-b5c6-4d7e-8f9a-0b1c2d3e4f5a\",\n    \"createdAt\": \"2026-10-14T09:00:00.000Z\",\n    \"updatedAt\": \"2026-10-14T09:10:00.000Z\",\n    \"ippisRecord\": {\n      \"agency\": \"Nigeria Police Force\",\n      \"staffId\": \"NPF0098765\",\n      \"employeeName\": \"Grace Adeyemi\",\n      \"employeeStatus\": \"Active Employee\",\n      \"hireDate\": \"2005-06-15T00:00:00.000Z\",\n      \"department\": null,\n      \"grade\": \"GL08\",\n      \"bankName\": \"Access Bank\",\n      \"accountNumber\": \"0987654321\"\n    },\n    \"reviewedByAdmin\": null,\n    \"bvnSelfieUrl\": \"/admin/documents/files/onboarding%2Fselfies%2Fbvn-b5c6d7e8.jpg\",\n    \"ninSelfieUrl\": \"/admin/documents/files/onboarding%2Fselfies%2Fnin-b5c6d7e8.jpg\",\n    \"liveSelfieUrl\": \"/admin/documents/files/onboarding%2Fselfies%2Flive-b5c6d7e8.jpg\"\n  },\n  \"loanSummary\": {\n    \"hasLoan\": false,\n    \"source\": null,\n    \"status\": null,\n    \"principal\": null,\n    \"balance\": null,\n    \"monthlyRepayment\": null,\n    \"nextPaymentDate\": null\n  },\n  \"loanEligibility\": {\n    \"eligible\": false,\n    \"reason\": \"Client has not completed onboarding\"\n  },\n  \"loanSchedule\": null\n}"
+                  "body": "{\n  \"id\": \"b5c6d7e8-f9a0-4b1c-2d3e-4f5a6b7c8d9e\",\n  \"phone\": \"+2348022223333\",\n  \"email\": null,\n  \"status\": \"VERIFIED\",\n  \"createdById\": null,\n  \"createdAt\": \"2026-10-14T09:00:00.000Z\",\n  \"updatedAt\": \"2026-10-14T09:10:00.000Z\",\n  \"onboarding\": {\n    \"id\": \"a4b5c6d7-2222-4e8f-9a0b-1c2d3e4f5a6b\",\n    \"clientId\": \"b5c6d7e8-f9a0-4b1c-2d3e-4f5a6b7c8d9e\",\n    \"ippisRecordId\": \"c6d7e8f9-a0b1-4c2d-3e4f-5a6b7c8d9e0f\",\n    \"employeeName\": \"Grace Adeyemi\",\n    \"agency\": \"Nigeria Police Force\",\n    \"bankName\": \"Access Bank\",\n    \"accountNumber\": \"0987654321\",\n    \"employeeStatus\": \"ACTIVE\",\n    \"legacyId\": \"LEGACY-0150\",\n    \"maritalStatus\": null,\n    \"identityVerified\": true,\n    \"faceMatchBvnScore\": 0.95,\n    \"faceMatchNinScore\": 0.95,\n    \"faceMatchPassed\": true,\n    \"step\": \"COMPLETED\",\n    \"failureReasons\": null,\n    \"reviewedBy\": null,\n    \"reviewedAt\": null,\n    \"reviewNote\": null,\n    \"onboardedById\": null,\n    \"onboardedByAgentId\": \"d1e2f3a4-b5c6-4d7e-8f9a-0b1c2d3e4f5a\",\n    \"createdAt\": \"2026-10-14T09:00:00.000Z\",\n    \"updatedAt\": \"2026-10-14T09:10:00.000Z\",\n    \"ippisRecord\": {\n      \"agency\": \"Nigeria Police Force\",\n      \"staffId\": \"NPF0098765\",\n      \"employeeName\": \"Grace Adeyemi\",\n      \"employeeStatus\": \"Active Employee\",\n      \"hireDate\": \"2005-06-15T00:00:00.000Z\",\n      \"department\": null,\n      \"grade\": \"GL08\",\n      \"bankName\": \"Access Bank\",\n      \"accountNumber\": \"0987654321\"\n    },\n    \"reviewedByAdmin\": null,\n    \"bvnSelfieUrl\": \"/admin/documents/files/onboarding%2Fselfies%2Fbvn-b5c6d7e8.jpg\",\n    \"ninSelfieUrl\": \"/admin/documents/files/onboarding%2Fselfies%2Fnin-b5c6d7e8.jpg\",\n    \"liveSelfieUrl\": \"/admin/documents/files/onboarding%2Fselfies%2Flive-b5c6d7e8.jpg\"\n  },\n  \"loanSummary\": {\n    \"hasLoan\": false,\n    \"source\": null,\n    \"status\": null,\n    \"principal\": null,\n    \"balance\": null,\n    \"monthlyRepayment\": null,\n    \"nextPaymentDate\": null,\n    \"tenorMonths\": null,\n    \"interestRatePercent\": null\n  },\n  \"loanEligibility\": {\n    \"eligible\": false,\n    \"reason\": \"Client has not completed onboarding\"\n  },\n  \"loanSchedule\": null\n}"
+                }
+              ]
+            },
+            {
+              "name": "GET /agent/clients/:clientId - Pending loan request (projected schedule)",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{agent_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/agent/clients/{{agent_onboarding_client_id}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "agent",
+                    "clients",
+                    "{{agent_onboarding_client_id}}"
+                  ]
+                },
+                "description": "Run this while the client has an unresolved (PENDING/CONFIRMED/APPROVED) LoanRequest -- e.g. right after POST /agent/clients/:clientId/loan-requests, before it's confirmed and approved. loanSummary.source is 'REQUEST' and loanSummary.status mirrors the request's status; loanSchedule is a projected schedule (computed as if disbursement happened today). Once the request is confirmed and approved (approve now disburses in the same step), this flips to source: 'APP' with the real disbursement-based schedule."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));",
+                      "pm.test('loanSummary reflects the pending request, loanSchedule is projected', () => {",
+                      "  const json = pm.response.json();",
+                      "  pm.expect(json.loanSummary.source).to.eql('REQUEST');",
+                      "  pm.expect(json.loanSummary.status).to.be.oneOf(['PENDING', 'CONFIRMED', 'APPROVED']);",
+                      "  pm.expect(json.loanSchedule).to.be.an('array').that.is.not.empty;",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Success, pending request (200)",
+                  "originalRequest": {
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{agent_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/agent/clients/{{agent_onboarding_client_id}}",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "agent",
+                        "clients",
+                        "{{agent_onboarding_client_id}}"
+                      ]
+                    }
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"id\": \"b5c6d7e8-f9a0-4b1c-2d3e-4f5a6b7c8d9e\",\n  \"loanSummary\": {\n    \"hasLoan\": false,\n    \"source\": \"REQUEST\",\n    \"status\": \"PENDING\",\n    \"principal\": 90000,\n    \"balance\": null,\n    \"monthlyRepayment\": null,\n    \"nextPaymentDate\": null,\n    \"tenorMonths\": 3,\n    \"interestRatePercent\": 5\n  },\n  \"loanEligibility\": {\n    \"eligible\": true\n  },\n  \"loanSchedule\": [\n    {\n      \"period\": \"2026-10\",\n      \"expectedAmount\": 30375.19,\n      \"actualAmount\": null,\n      \"variance\": null,\n      \"status\": \"UPCOMING\"\n    },\n    {\n      \"period\": \"2026-11\",\n      \"expectedAmount\": 30375.19,\n      \"actualAmount\": null,\n      \"variance\": null,\n      \"status\": \"UPCOMING\"\n    },\n    {\n      \"period\": \"2026-12\",\n      \"expectedAmount\": 30375.19,\n      \"actualAmount\": null,\n      \"variance\": null,\n      \"status\": \"UPCOMING\"\n    },\n    {\n      \"period\": \"2027-01\",\n      \"expectedAmount\": 30375.19,\n      \"actualAmount\": null,\n      \"variance\": null,\n      \"status\": \"UPCOMING\"\n    }\n  ]\n}"
                 }
               ]
             },

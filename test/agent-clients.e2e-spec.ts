@@ -27,6 +27,7 @@ describe('Agent own-clients list (e2e)', () => {
   });
 
   afterAll(async () => {
+    await prisma.loanRequest.deleteMany({ where: { clientId: { in: createdClientIds } } });
     await prisma.clientOnboarding.deleteMany({ where: { clientId: { in: createdClientIds } } });
     await prisma.ippisRecord.deleteMany({ where: { staffId: { in: createdStaffIds } } });
     await prisma.client.deleteMany({ where: { id: { in: createdClientIds } } });
@@ -185,6 +186,73 @@ describe('Agent own-clients list (e2e)', () => {
         .get(`/agent/clients/${clientId}`)
         .set('Authorization', `Bearer ${agentBToken}`)
         .expect(404);
+    },
+    20000,
+  );
+
+  it(
+    'GET /agent/clients/:clientId reflects a PENDING loan request with a projected loanSchedule, before it is confirmed/disbursed',
+    async () => {
+      const agentA = await prisma.agent.create({
+        data: {
+          email: `agent-pending-${Date.now()}@example.com`,
+          phone: '+2348012340006',
+          fullName: 'Agent Pending',
+          address: '1 St',
+          status: 'APPROVED',
+          cvKey: 'agents/e2e/pending.pdf',
+          canOnboardClients: true,
+        },
+      });
+      createdAgentIds.push(agentA.id);
+      const agentAToken = tokenService.signAccessToken({ sub: agentA.id, type: 'agent', canOnboardClients: true });
+
+      const staffIdPending = `E2E-MYCLIENTS-PENDING-${Date.now()}`;
+      createdStaffIds.push(staffIdPending);
+      await prisma.ippisRecord.create({
+        data: {
+          agency: 'NPF',
+          staffId: staffIdPending,
+          employeeName: 'Client Pending Request',
+          phone: `+234815${Date.now().toString().slice(-7)}`,
+        },
+      });
+
+      const createRes = await request(app.getHttpServer())
+        .post('/agent/clients/onboarding/ippis-lookup')
+        .set('Authorization', `Bearer ${agentAToken}`)
+        .send({ ippisNumber: staffIdPending })
+        .expect(201);
+      const clientId = createRes.body.clientId;
+      createdClientIds.push(clientId);
+
+      await prisma.loanRequest.create({
+        data: {
+          clientId,
+          amount: 90000,
+          status: 'PENDING',
+          tenorMonths: 3,
+          interestRatePercent: 5,
+          managementChargeType: 'PERCENTAGE',
+          managementChargeValue: 1,
+          managementChargeApplication: 'DEDUCT_FROM_DISBURSEMENT',
+          managementChargeAmount: 900,
+          expiresAt: new Date(Date.now() + 1000 * 60 * 60),
+        },
+      });
+
+      const viewRes = await request(app.getHttpServer())
+        .get(`/agent/clients/${clientId}`)
+        .set('Authorization', `Bearer ${agentAToken}`)
+        .expect(200);
+
+      expect(viewRes.body.loanSummary).toEqual(
+        expect.objectContaining({ hasLoan: false, source: 'REQUEST', status: 'PENDING', principal: 90000 }),
+      );
+      expect(viewRes.body.loanSchedule).toHaveLength(4);
+      expect(viewRes.body.loanSchedule[0]).toEqual(
+        expect.objectContaining({ actualAmount: null, variance: null, status: 'UPCOMING' }),
+      );
     },
     20000,
   );

@@ -5,6 +5,7 @@ import { computeLoanStatus, LoanStatus } from './loan-status.util';
 import { generatePeriodRange } from '../reconciliation/period.util';
 import { computeExpectedInstallment } from '../reconciliation/amortization.util';
 import { buildPaginatedResult } from '../common/pagination/paginated-result';
+import { projectLoanRequestSchedule } from '../loan-request/projected-schedule.util';
 
 // A client can only ever have one non-terminal LoanRequest at a time (the
 // one-lifetime-loan/topup-in-progress policy enforced elsewhere), so this
@@ -160,32 +161,14 @@ export class ClientLoansService {
     return pendingRequests.map((request) => this.toPendingLoanRequestItem(request));
   }
 
-  // Not yet disbursed, so there's no real disbursement/maturation date on
-  // file -- project both as if disbursement happened today, purely so the
-  // client can see an estimated schedule ahead of approval.
   private toPendingLoanRequestItem(request: LoanRequest) {
-    const projectedDisbursementDate = new Date();
-    const projectedMaturationDate = new Date(projectedDisbursementDate);
-    projectedMaturationDate.setMonth(projectedMaturationDate.getMonth() + request.tenorMonths);
-
     const principal = Number(request.amount);
     const interestRatePercent = Number(request.interestRatePercent);
-    const expectedAmount = computeExpectedInstallment(
-      principal,
+    const { projectedDisbursementDate, projectedMaturationDate, projectedSchedule } = projectLoanRequestSchedule({
+      amount: principal,
+      tenorMonths: request.tenorMonths,
       interestRatePercent,
-      projectedDisbursementDate,
-      projectedMaturationDate,
-    );
-
-    const projectedSchedule = generatePeriodRange(projectedDisbursementDate, projectedMaturationDate).map(
-      (period) => ({
-        period,
-        expectedAmount,
-        actualAmount: null,
-        variance: null,
-        status: 'UPCOMING' as const,
-      }),
-    );
+    });
 
     return {
       id: request.id,

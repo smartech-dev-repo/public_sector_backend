@@ -6,6 +6,7 @@ import { EligibilityService } from '../loan-request/eligibility/eligibility.serv
 import { TopupEligibilityService } from '../loan-request/eligibility/topup-eligibility.service';
 import { computeExpectedInstallment, monthsBetween } from '../reconciliation/amortization.util';
 import { nextPeriodDate } from '../reconciliation/period.util';
+import { projectLoanRequestSchedule } from '../loan-request/projected-schedule.util';
 import { Client, ClientLoan, IppisRecord, LoanRequest, LoanRequestStatus } from '../generated/prisma/client';
 
 type MatchedLoan = NonNullable<Awaited<ReturnType<ClientLoansService['getLatestMatchedLoan']>>>;
@@ -86,11 +87,24 @@ export class ClientLoanSummaryService {
     }
 
     const matched = await this.clientLoansService.getLatestMatchedLoan(clientId);
-    if (!matched) {
+    if (matched) {
+      const { schedule } = await this.clientLoansService.getRepaymentPlan(clientId, matched.id);
+      return schedule;
+    }
+
+    const pendingRequest = await this.prisma.loanRequest.findFirst({
+      where: { clientId, status: { in: NON_TERMINAL_LOAN_REQUEST_STATUSES } },
+      orderBy: { createdAt: 'desc' },
+    });
+    if (!pendingRequest) {
       return null;
     }
-    const { schedule } = await this.clientLoansService.getRepaymentPlan(clientId, matched.id);
-    return schedule;
+
+    return projectLoanRequestSchedule({
+      amount: Number(pendingRequest.amount),
+      tenorMonths: pendingRequest.tenorMonths,
+      interestRatePercent: Number(pendingRequest.interestRatePercent),
+    }).projectedSchedule;
   }
 
   async getLoanEligibility(
