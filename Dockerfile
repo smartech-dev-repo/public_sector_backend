@@ -4,7 +4,7 @@
 # No nginx (Dokploy's own Traefik handles routing/TLS) and no
 # docker-compose (this is the only service in the deployment).
 
-FROM node:22-alpine AS base
+FROM node:22.23.4-alpine AS base
 WORKDIR /app
 
 # ---- deps: full install (incl. devDependencies), needed to build ----
