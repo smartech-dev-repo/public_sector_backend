@@ -1,20 +1,11 @@
 import { Module } from '@nestjs/common';
 import { OtpService } from './otp.service';
-import { ConsoleOtpProvider } from './console-otp.provider';
-import { OTP_PROVIDERS } from './otp-provider.interface';
 import { EmailModule } from '../email/email.module';
+import { SmsModule } from '../sms/sms.module';
 
 @Module({
-  imports: [EmailModule],
-  providers: [
-    OtpService,
-    ConsoleOtpProvider,
-    {
-      provide: OTP_PROVIDERS,
-      useFactory: (consoleProvider: ConsoleOtpProvider) => [consoleProvider],
-      inject: [ConsoleOtpProvider],
-    },
-  ],
+  imports: [EmailModule, SmsModule],
+  providers: [OtpService],
   exports: [OtpService],
 })
 export class OtpModule {}

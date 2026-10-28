@@ -1,13 +1,9 @@
-import {
-  Inject,
-  Injectable,
-  InternalServerErrorException,
-  Logger,
-} from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
-import { OTP_PROVIDERS, OtpProvider } from './otp-provider.interface';
+import { SmsService } from '../sms/sms.service';
+import { SmsType } from '../sms/sms-type';
 import { EmailService } from '../email/email.service';
 import { hashPassword } from '../common/password-hash.util';
 import { generateNumericCode } from '../common/generate-numeric-code.util';
@@ -24,32 +20,13 @@ export class OtpService {
 
   constructor(
     private readonly prisma: PrismaService,
-    @Inject(OTP_PROVIDERS) private readonly providers: OtpProvider[],
+    private readonly smsService: SmsService,
     private readonly configService?: ConfigService,
     private readonly emailService?: EmailService,
   ) {}
 
   private ttlSeconds(): number {
     return Number(this.configService?.get('OTP_TTL_SECONDS') ?? 300);
-  }
-
-  private async sendWithFailover(phone: string, code: string): Promise<void> {
-    const failures: string[] = [];
-
-    for (const provider of this.providers) {
-      try {
-        await provider.send(phone, code);
-        return;
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        this.logger.warn(`OTP provider "${provider.name}" failed: ${message}`);
-        failures.push(`${provider.name}: ${message}`);
-      }
-    }
-
-    throw new InternalServerErrorException(
-      `All OTP providers failed: ${failures.join('; ')}`,
-    );
   }
 
   async request(phone: string, email?: string): Promise<{ mockCode?: string }> {
@@ -62,7 +39,7 @@ export class OtpService {
       data: { phone, email, codeHash, purpose: 'CLIENT_LOGIN', expiresAt },
     });
 
-    await this.sendWithFailover(phone, code);
+    await this.smsService.send({ type: SmsType.OTP, phone, message: code });
 
     if (email) {
       await this.sendEmailCopy(email, code);
