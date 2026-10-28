@@ -16,7 +16,7 @@ import { HasActiveLoanRule } from './eligibility/has-active-loan.rule';
 import { NoTopupInProgressRule } from './eligibility/no-topup-in-progress.rule';
 import { TopupEligibilityService } from './eligibility/topup-eligibility.service';
 import { LoanProductResolverService } from './eligibility/loan-product-resolver.service';
-import { TwoWaySmsModule } from '../two-way-sms/two-way-sms.module';
+import { SmsModule } from '../sms/sms.module';
 import { ClientLoansModule } from '../client-loans/client-loans.module';
 import { AuditModule } from '../audit/audit.module';
 import { WalletModule } from '../wallet/wallet.module';
@@ -26,7 +26,7 @@ import { LoanSettingsModule } from '../loan-settings/loan-settings.module';
 @Module({
   imports: [
     BullModule.registerQueue({ name: LOAN_REQUEST_EXPIRY_QUEUE }),
-    TwoWaySmsModule,
+    SmsModule,
     ClientLoansModule,
     AuditModule,
     WalletModule,

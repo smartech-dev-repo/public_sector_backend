@@ -5,7 +5,8 @@ import { LoanRequestService } from './loan-request.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { EligibilityService } from './eligibility/eligibility.service';
 import { TopupEligibilityService } from './eligibility/topup-eligibility.service';
-import { TwoWaySmsProvider } from '../two-way-sms/two-way-sms-provider.interface';
+import { SmsService } from '../sms/sms.service';
+import { SmsType } from '../sms/sms-type';
 import { LoanProductResolverService } from './eligibility/loan-product-resolver.service';
 import { WalletService } from '../wallet/wallet.service';
 import { EmailService } from '../email/email.service';
@@ -42,7 +43,7 @@ describe('LoanRequestService', () => {
   let topupEligibilityService: { check: jest.Mock };
   let loanProductResolverService: { resolve: jest.Mock };
   let walletService: { debit: jest.Mock };
-  let smsProvider: { send: jest.Mock };
+  let smsService: { send: jest.Mock };
   let emailService: { send: jest.Mock };
   let expiryQueue: { add: jest.Mock };
 
@@ -75,14 +76,14 @@ describe('LoanRequestService', () => {
     topupEligibilityService = { check: jest.fn() };
     loanProductResolverService = { resolve: jest.fn() };
     walletService = { debit: jest.fn() };
-    smsProvider = { send: jest.fn().mockResolvedValue(undefined) };
+    smsService = { send: jest.fn().mockResolvedValue(undefined) };
     emailService = { send: jest.fn().mockResolvedValue(undefined) };
     expiryQueue = { add: jest.fn().mockResolvedValue(undefined) };
 
     service = new LoanRequestService(
       prisma as unknown as PrismaService,
       eligibilityService as unknown as EligibilityService,
-      smsProvider as unknown as TwoWaySmsProvider,
+      smsService as unknown as SmsService,
       expiryQueue as unknown as Queue,
       topupEligibilityService as unknown as TopupEligibilityService,
       walletService as unknown as WalletService,
@@ -104,7 +105,7 @@ describe('LoanRequestService', () => {
       prisma.clientOnboarding.findUnique.mockResolvedValue({ ippisRecord: { salary: 1000 } });
       eligibilityService.check.mockResolvedValue({ eligible: false, reason: 'too much' });
       await expect(service.create('c1', 1000000, 6)).rejects.toThrow(UnprocessableEntityException);
-      expect(smsProvider.send).not.toHaveBeenCalled();
+      expect(smsService.send).not.toHaveBeenCalled();
     });
 
     it('sends the SMS, creates the request, and enqueues the expiry job on success', async () => {
@@ -123,7 +124,11 @@ describe('LoanRequestService', () => {
 
       await service.create('c1', 5000, 6);
 
-      expect(smsProvider.send).toHaveBeenCalledWith('+2348000000000', expect.stringContaining('5000'));
+      expect(smsService.send).toHaveBeenCalledWith({
+        type: SmsType.LOAN_CONFIRMATION,
+        phone: '+2348000000000',
+        message: expect.stringContaining('5000'),
+      });
       expect(prisma.loanRequest.create).toHaveBeenCalledWith({
         data: expect.objectContaining({
           clientId: 'c1',
@@ -224,7 +229,7 @@ describe('LoanRequestService', () => {
       );
 
       await expect(service.create('c1', 5000, 99)).rejects.toThrow(UnprocessableEntityException);
-      expect(smsProvider.send).not.toHaveBeenCalled();
+      expect(smsService.send).not.toHaveBeenCalled();
     });
 
     it('includes a confirmation code hash/expiry on the created request and emails it when the client has an email', async () => {
@@ -290,7 +295,7 @@ describe('LoanRequestService', () => {
       service = new LoanRequestService(
         prisma as unknown as PrismaService,
         eligibilityService as unknown as EligibilityService,
-        smsProvider as unknown as TwoWaySmsProvider,
+        smsService as unknown as SmsService,
         expiryQueue as unknown as Queue,
         topupEligibilityService as unknown as TopupEligibilityService,
         walletService as unknown as WalletService,
@@ -334,7 +339,11 @@ describe('LoanRequestService', () => {
 
       await service.create('c1', 5000, 6);
 
-      expect(smsProvider.send).toHaveBeenCalledWith('+2348099999999', expect.stringContaining('5000'));
+      expect(smsService.send).toHaveBeenCalledWith({
+        type: SmsType.LOAN_CONFIRMATION,
+        phone: '+2348099999999',
+        message: expect.stringContaining('5000'),
+      });
     });
   });
 
@@ -356,7 +365,11 @@ describe('LoanRequestService', () => {
 
       await service.resend('c1', 'lr1');
 
-      expect(smsProvider.send).toHaveBeenCalledWith('+2348000000000', expect.stringContaining('5000'));
+      expect(smsService.send).toHaveBeenCalledWith({
+        type: SmsType.LOAN_CONFIRMATION,
+        phone: '+2348000000000',
+        message: expect.stringContaining('5000'),
+      });
       expect(prisma.loanRequest.update).toHaveBeenCalledWith({
         where: { id: 'lr1' },
         data: {
@@ -391,7 +404,11 @@ describe('LoanRequestService', () => {
 
       await service.resend('c1', 'lr1');
 
-      expect(smsProvider.send).toHaveBeenCalledWith('+2348099999999', expect.stringContaining('5000'));
+      expect(smsService.send).toHaveBeenCalledWith({
+        type: SmsType.LOAN_CONFIRMATION,
+        phone: '+2348099999999',
+        message: expect.stringContaining('5000'),
+      });
     });
   });
 
@@ -432,7 +449,7 @@ describe('LoanRequestService', () => {
       service = new LoanRequestService(
         prisma as unknown as PrismaService,
         eligibilityService as unknown as EligibilityService,
-        smsProvider as unknown as TwoWaySmsProvider,
+        smsService as unknown as SmsService,
         expiryQueue as unknown as Queue,
         topupEligibilityService as unknown as TopupEligibilityService,
         walletService as unknown as WalletService,
@@ -482,7 +499,7 @@ describe('LoanRequestService', () => {
       service = new LoanRequestService(
         prisma as unknown as PrismaService,
         eligibilityService as unknown as EligibilityService,
-        smsProvider as unknown as TwoWaySmsProvider,
+        smsService as unknown as SmsService,
         expiryQueue as unknown as Queue,
         topupEligibilityService as unknown as TopupEligibilityService,
         walletService as unknown as WalletService,
@@ -542,7 +559,7 @@ describe('LoanRequestService', () => {
       service = new LoanRequestService(
         prisma as unknown as PrismaService,
         eligibilityService as unknown as EligibilityService,
-        smsProvider as unknown as TwoWaySmsProvider,
+        smsService as unknown as SmsService,
         expiryQueue as unknown as Queue,
         topupEligibilityService as unknown as TopupEligibilityService,
         walletService as unknown as WalletService,
@@ -612,7 +629,7 @@ describe('LoanRequestService', () => {
       service = new LoanRequestService(
         prisma as unknown as PrismaService,
         eligibilityService as unknown as EligibilityService,
-        smsProvider as unknown as TwoWaySmsProvider,
+        smsService as unknown as SmsService,
         expiryQueue as unknown as Queue,
         topupEligibilityService as unknown as TopupEligibilityService,
         walletService as unknown as WalletService,
@@ -1023,7 +1040,7 @@ describe('LoanRequestService', () => {
       topupEligibilityService.check.mockResolvedValue({ eligible: false, reason: 'Client has no active loan to top up' });
 
       await expect(service.createTopup('c1', 2000, 12)).rejects.toThrow(UnprocessableEntityException);
-      expect(smsProvider.send).not.toHaveBeenCalled();
+      expect(smsService.send).not.toHaveBeenCalled();
     });
 
     it('rejects when the loan product resolver throws (no matching product for the requested tenor)', async () => {
@@ -1035,7 +1052,7 @@ describe('LoanRequestService', () => {
       );
 
       await expect(service.createTopup('c1', 2000, 99)).rejects.toThrow(UnprocessableEntityException);
-      expect(smsProvider.send).not.toHaveBeenCalled();
+      expect(smsService.send).not.toHaveBeenCalled();
     });
 
     it('sends a top-up-worded SMS and creates a TOPUP LoanRequest pointing at the existing ClientLoan', async () => {
@@ -1059,7 +1076,11 @@ describe('LoanRequestService', () => {
         where: { clientId: 'c1' },
         orderBy: { disbursementDate: 'desc' },
       });
-      expect(smsProvider.send).toHaveBeenCalledWith('+2348000000000', expect.stringContaining('top-up'));
+      expect(smsService.send).toHaveBeenCalledWith({
+        type: SmsType.LOAN_CONFIRMATION,
+        phone: '+2348000000000',
+        message: expect.stringContaining('top-up'),
+      });
       expect(prisma.loanRequest.create).toHaveBeenCalledWith({
         data: expect.objectContaining({
           clientId: 'c1',
@@ -1138,7 +1159,11 @@ describe('LoanRequestService', () => {
 
       await service.createTopup('c1', 2000, 12);
 
-      expect(smsProvider.send).toHaveBeenCalledWith('+2348099999999', expect.stringContaining('top-up'));
+      expect(smsService.send).toHaveBeenCalledWith({
+        type: SmsType.LOAN_CONFIRMATION,
+        phone: '+2348099999999',
+        message: expect.stringContaining('top-up'),
+      });
     });
   });
 

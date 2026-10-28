@@ -1,7 +1,6 @@
 import {
   BadRequestException,
   ConflictException,
-  Inject,
   Injectable,
   Logger,
   NotFoundException,
@@ -15,7 +14,8 @@ import { PrismaService } from '../prisma/prisma.service';
 import { buildPaginatedResult } from '../common/pagination/paginated-result';
 import { EligibilityService } from './eligibility/eligibility.service';
 import { TopupEligibilityService } from './eligibility/topup-eligibility.service';
-import { TWO_WAY_SMS_PROVIDER, TwoWaySmsProvider } from '../two-way-sms/two-way-sms-provider.interface';
+import { SmsService } from '../sms/sms.service';
+import { SmsType } from '../sms/sms-type';
 import { LoanProductResolverService } from './eligibility/loan-product-resolver.service';
 import { LOAN_REQUEST_EXPIRY_QUEUE } from './loan-request-queue.constants';
 import { generatePeriodRange, toPeriodKey } from '../reconciliation/period.util';
@@ -57,7 +57,7 @@ export class LoanRequestService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly eligibilityService: EligibilityService,
-    @Inject(TWO_WAY_SMS_PROVIDER) private readonly smsProvider: TwoWaySmsProvider,
+    private readonly smsService: SmsService,
     @InjectQueue(LOAN_REQUEST_EXPIRY_QUEUE) private readonly expiryQueue: Queue<LoanRequestExpiryJobData>,
     private readonly topupEligibilityService: TopupEligibilityService,
     private readonly walletService: WalletService,
@@ -287,7 +287,11 @@ export class LoanRequestService {
         ? (amount * Number(product.managementChargeValue)) / 100
         : Number(product.managementChargeValue);
 
-    await this.smsProvider.send(this.resolveSmsPhone(client, onboarding.ippisRecord), this.confirmationMessage(amount));
+    await this.smsService.send({
+      type: SmsType.LOAN_CONFIRMATION,
+      phone: this.resolveSmsPhone(client, onboarding.ippisRecord),
+      message: this.confirmationMessage(amount),
+    });
     await this.sendEmailCopy(client.email, amount, LoanRequestType.ORIGINATION);
     const { confirmationCodeHash, confirmationCodeExpiresAt, devCode } = await this.issueConfirmationCode(client.email);
 
@@ -341,10 +345,11 @@ export class LoanRequestService {
         ? (amount * Number(product.managementChargeValue)) / 100
         : Number(product.managementChargeValue);
 
-    await this.smsProvider.send(
-      this.resolveSmsPhone(client, onboarding.ippisRecord),
-      this.confirmationMessage(amount, LoanRequestType.TOPUP),
-    );
+    await this.smsService.send({
+      type: SmsType.LOAN_CONFIRMATION,
+      phone: this.resolveSmsPhone(client, onboarding.ippisRecord),
+      message: this.confirmationMessage(amount, LoanRequestType.TOPUP),
+    });
     await this.sendEmailCopy(client.email, amount, LoanRequestType.TOPUP);
     const { confirmationCodeHash, confirmationCodeExpiresAt, devCode } = await this.issueConfirmationCode(client.email);
 
@@ -386,10 +391,11 @@ export class LoanRequestService {
       where: { id: clientId },
       include: { onboarding: { include: { ippisRecord: true } } },
     });
-    await this.smsProvider.send(
-      this.resolveSmsPhone(client, client.onboarding?.ippisRecord),
-      this.confirmationMessage(Number(loanRequest.amount)),
-    );
+    await this.smsService.send({
+      type: SmsType.LOAN_CONFIRMATION,
+      phone: this.resolveSmsPhone(client, client.onboarding?.ippisRecord),
+      message: this.confirmationMessage(Number(loanRequest.amount)),
+    });
     await this.sendEmailCopy(client.email, Number(loanRequest.amount), LoanRequestType.ORIGINATION);
     const { confirmationCodeHash, confirmationCodeExpiresAt, devCode } = await this.issueConfirmationCode(client.email);
 
