@@ -1,10 +1,11 @@
-import { ConflictException, Injectable, UnauthorizedException } from '@nestjs/common';
+import { ConflictException, Injectable, UnauthorizedException, UnprocessableEntityException } from '@nestjs/common';
 import { OtpService } from '../../otp/otp.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { TokenService } from '../token.service';
 import { SessionService } from '../../session/session.service';
 import { SessionPrincipalType } from '../../generated/prisma/client';
 import { isUniqueConstraintError } from '../../common/is-unique-constraint-error.util';
+import { ippisPhoneFilter } from '../../common/normalize-nigerian-phone.util';
 
 @Injectable()
 export class ClientAuthService {
@@ -17,6 +18,18 @@ export class ClientAuthService {
 
   async requestOtp(phone: string, email?: string): Promise<{ mockCode?: string; emailSent: boolean }> {
     const existingClient = await this.prisma.client.findUnique({ where: { phone } });
+    if (!existingClient) {
+      const ippisRecord = await this.prisma.ippisRecord.findFirst({
+        where: { phone: ippisPhoneFilter(phone) },
+        select: { id: true },
+      });
+      if (!ippisRecord) {
+        throw new UnprocessableEntityException(
+          'This phone number is not on any IPPIS record. Use the phone number on your payroll record',
+        );
+      }
+    }
+
     let effectiveEmail: string | undefined = existingClient?.email ?? undefined;
 
     if (!effectiveEmail && email) {

@@ -1,4 +1,4 @@
-import { ArrayMinSize, IsArray, IsEnum, IsInt, IsNumber, IsOptional, IsPositive, IsString, MinLength } from 'class-validator';
+import { ArrayMinSize, IsArray, IsEnum, IsInt, IsNumber, IsOptional, IsPositive, IsString, IsUUID, MinLength, ValidateIf } from 'class-validator';
 import { ManagementChargeApplication, ManagementChargeType } from '../../generated/prisma/client';
 import { InterestTier } from '../interest-tier.interface';
 
@@ -36,12 +36,19 @@ export class CreateLoanProductDto {
   @ArrayMinSize(1)
   interestTiers: InterestTier[];
 
+  // Required unless a management fee is picked from the catalog below.
+  @ValidateIf((dto: CreateLoanProductDto) => !dto.managementFeeId)
   @IsEnum(ManagementChargeType)
-  managementChargeType: ManagementChargeType;
+  managementChargeType?: ManagementChargeType;
 
+  @ValidateIf((dto: CreateLoanProductDto) => !dto.managementFeeId)
   @IsNumber()
   @IsPositive()
-  managementChargeValue: number;
+  managementChargeValue?: number;
+
+  @IsOptional()
+  @IsUUID()
+  managementFeeId?: string;
 
   @IsEnum(ManagementChargeApplication)
   managementChargeApplication: ManagementChargeApplication;

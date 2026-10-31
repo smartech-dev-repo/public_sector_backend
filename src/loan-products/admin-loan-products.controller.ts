@@ -7,16 +7,25 @@ import { CreateLoanProductDto } from './dto/create-loan-product.dto';
 import { UpdateLoanProductDto } from './dto/update-loan-product.dto';
 import { ListAdminLoanProductsQueryDto } from './dto/list-admin-loan-products-query.dto';
 import { KNOWN_AGENCIES } from '../common/known-agencies.constant';
+import { ManagementFeesService } from '../management-fees/management-fees.service';
 
 @Controller('admin/loan-products')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 @RequirePermissions('loan-products:manage')
 export class AdminLoanProductsController {
-  constructor(private readonly loanProductsService: LoanProductsService) {}
+  constructor(
+    private readonly loanProductsService: LoanProductsService,
+    private readonly managementFeesService: ManagementFeesService,
+  ) {}
 
   @Get('sectors')
   sectors() {
     return { sectors: KNOWN_AGENCIES };
+  }
+
+  @Get('management-fees')
+  managementFees() {
+    return this.managementFeesService.listActive();
   }
 
   @Post()

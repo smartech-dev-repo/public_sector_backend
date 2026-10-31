@@ -1,4 +1,4 @@
-import { ArrayMinSize, IsArray, IsBoolean, IsEnum, IsInt, IsNumber, IsOptional, IsPositive, IsString, MinLength } from 'class-validator';
+import { ArrayMinSize, IsArray, IsBoolean, IsEnum, IsInt, IsNumber, IsOptional, IsPositive, IsString, IsUUID, MinLength } from 'class-validator';
 import { ManagementChargeApplication, ManagementChargeType } from '../../generated/prisma/client';
 import { InterestTier } from '../interest-tier.interface';
 
@@ -51,6 +51,10 @@ export class UpdateLoanProductDto {
   @IsOptional()
   @IsEnum(ManagementChargeApplication)
   managementChargeApplication?: ManagementChargeApplication;
+
+  @IsOptional()
+  @IsUUID()
+  managementFeeId?: string;
 
   @IsOptional()
   @IsInt()

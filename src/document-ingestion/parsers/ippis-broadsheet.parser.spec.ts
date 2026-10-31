@@ -99,7 +99,7 @@ describe('IppisBroadsheetParser', () => {
   it('emits no missing-column warnings when every known header is present', async () => {
     const fullHeaders = [
       'Staff ID', 'Employee Name', 'Employee Status', 'Hire Date', 'Date Of Birth', 'Marital Status',
-      'Gender', 'Job Title', 'Department', 'Sub Organization', 'Grade', 'Step', 'Salary',
+      'Gender', 'Job Title', 'Department', 'Sub Organization', 'Grade', 'Step', 'Salary', 'Payment 3 Months Ago', 'Payment 2 Months Ago', 'Payment Last Month',
       'Telephone Number', 'Bank Name', 'Account Number', 'Pfa Name', 'Pin Number', 'Date Terminated',
       'Bvn', 'Legacy Id',
     ];

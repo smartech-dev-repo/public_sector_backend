@@ -1,4 +1,4 @@
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { LoanProduct, ManagementChargeApplication, ManagementChargeType, Prisma } from '../generated/prisma/client';
 import { buildPaginatedResult, PaginatedResult } from '../common/pagination/paginated-result';
@@ -12,6 +12,7 @@ import { TopupEligibilityService } from '../loan-request/eligibility/topup-eligi
 import { ClientLoansService } from '../client-loans/client-loans.service';
 import { validateInterestTiers } from './validate-interest-tiers.util';
 import { InterestTier } from './interest-tier.interface';
+import { assertFeeCoversProductAmounts } from '../management-fees/assert-fee-covers-product-amounts.util';
 
 export interface ListLoanProductsFilters {
   sectors?: string;
@@ -27,9 +28,10 @@ export interface CreateLoanProductInput {
   minimumTenorMonths: number;
   maximumTenorMonths: number;
   interestTiers: InterestTier[];
-  managementChargeType: ManagementChargeType;
-  managementChargeValue: number;
+  managementChargeType?: ManagementChargeType;
+  managementChargeValue?: number;
   managementChargeApplication: ManagementChargeApplication;
+  managementFeeId?: string;
   minimumServiceMonthsLeft?: number;
   maximumMonthsInService?: number;
 }
@@ -45,6 +47,7 @@ export interface UpdateLoanProductInput {
   managementChargeType?: ManagementChargeType;
   managementChargeValue?: number;
   managementChargeApplication?: ManagementChargeApplication;
+  managementFeeId?: string;
   minimumServiceMonthsLeft?: number;
   maximumMonthsInService?: number;
   isActive?: boolean;
@@ -60,11 +63,43 @@ export class LoanProductsService {
     private readonly clientLoansService: ClientLoansService,
   ) {}
 
+  // The product keeps its own copy of the fee's type and value, which is what a
+  // new loan request reads; ManagementFeesService keeps that copy in step. Loans
+  // already applied for hold their own snapshot, so neither a change of fee here
+  // nor an edit to the fee reaches them.
+  private async selectManagementFee(
+    id: string,
+    amounts: Parameters<typeof assertFeeCoversProductAmounts>[1],
+    currentFeeId?: string | null,
+  ) {
+    const fee = await this.prisma.managementFee.findUnique({ where: { id } });
+    if (!fee || (!fee.isActive && fee.id !== currentFeeId)) {
+      throw new BadRequestException('The selected management fee does not exist or is inactive');
+    }
+    assertFeeCoversProductAmounts(fee, amounts);
+    return { managementChargeType: fee.type, managementChargeValue: fee.value };
+  }
+
   async create(input: CreateLoanProductInput): Promise<LoanProduct> {
     validateInterestTiers(input.interestTiers, input.minimumTenorMonths, input.maximumTenorMonths);
+    const { managementFeeId, managementChargeType, managementChargeValue, ...rest } = input;
+
+    let charge: Pick<Prisma.LoanProductCreateInput, 'managementChargeType' | 'managementChargeValue' | 'managementFee'>;
+    if (managementFeeId) {
+      charge = {
+        ...(await this.selectManagementFee(managementFeeId, input)),
+        managementFee: { connect: { id: managementFeeId } },
+      };
+    } else if (managementChargeType && managementChargeValue !== undefined) {
+      charge = { managementChargeType, managementChargeValue };
+    } else {
+      throw new BadRequestException('Select a management fee, or provide managementChargeType and managementChargeValue');
+    }
+
     try {
       return await this.prisma.loanProduct.create({
-        data: { ...input, interestTiers: input.interestTiers as unknown as Prisma.InputJsonValue },
+        data: { ...rest, ...charge, interestTiers: input.interestTiers as unknown as Prisma.InputJsonValue },
+        include: { managementFee: true },
       });
     } catch (error) {
       if (isUniqueConstraintError(error)) {
@@ -87,6 +122,7 @@ export class LoanProductsService {
     const [data, total] = await Promise.all([
       this.prisma.loanProduct.findMany({
         where,
+        include: { managementFee: true },
         skip: (page - 1) * limit,
         take: limit,
         orderBy: { createdAt: 'desc' },
@@ -110,12 +146,30 @@ export class LoanProductsService {
       validateInterestTiers(tiers, minimumTenorMonths, maximumTenorMonths);
     }
 
+    const { managementFeeId, ...rest } = input;
+    const amounts = {
+      minimumAmount: input.minimumAmount ?? existing.minimumAmount,
+      maximumAmount: input.maximumAmount ?? existing.maximumAmount,
+    };
+
+    let feeUpdate: Prisma.LoanProductUpdateInput = {};
+    if (managementFeeId) {
+      feeUpdate = {
+        ...(await this.selectManagementFee(managementFeeId, amounts, existing.managementFeeId)),
+        managementFee: { connect: { id: managementFeeId } },
+      };
+    } else if (existing.managementFeeId && (input.minimumAmount !== undefined || input.maximumAmount !== undefined)) {
+      await this.selectManagementFee(existing.managementFeeId, amounts, existing.managementFeeId);
+    }
+
     return this.prisma.loanProduct.update({
       where: { id },
       data: {
-        ...input,
+        ...rest,
+        ...feeUpdate,
         interestTiers: input.interestTiers ? (input.interestTiers as unknown as Prisma.InputJsonValue) : undefined,
       },
+      include: { managementFee: true },
     });
   }
 

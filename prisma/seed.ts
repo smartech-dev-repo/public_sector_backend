@@ -25,6 +25,7 @@ const BOOTSTRAP_PERMISSIONS: Array<{ key: string; description: string }> = [
   { key: 'wallets:read', description: "View a client's wallet balance and entries" },
   { key: 'wallets:manage', description: "Credit or debit a client's wallet" },
   { key: 'loan-products:manage', description: 'Create/edit the loan product catalog (sectors, amount/tenor range, interest tiers, service-length eligibility)' },
+  { key: 'management-fees:manage', description: 'Create, edit, and delete the management fees loan products pick from' },
   { key: 'loan-settings:manage', description: 'Configure the global retirement-age and max-service-years settings used for loan eligibility' },
   { key: 'loan-requests:review', description: 'Approve, reject, or disburse client loan requests' },
   { key: 'client-loans:read', description: "View client loans and disbursement reports" },

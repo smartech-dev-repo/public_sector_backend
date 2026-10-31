@@ -23,6 +23,7 @@ import { LoanRequestModule } from './loan-request/loan-request.module';
 import { ClientLoansModule } from './client-loans/client-loans.module';
 import { WalletModule } from './wallet/wallet.module';
 import { LoanProductsModule } from './loan-products/loan-products.module';
+import { ManagementFeesModule } from './management-fees/management-fees.module';
 import { LoanSettingsModule } from './loan-settings/loan-settings.module';
 import { AgentRecruitmentModule } from './agent-recruitment/agent-recruitment.module';
 import { AgentClientsModule } from './agent-clients/agent-clients.module';
@@ -104,6 +105,7 @@ import { HealthModule } from './health/health.module';
     ClientLoansModule,
     WalletModule,
     LoanProductsModule,
+    ManagementFeesModule,
     LoanSettingsModule,
     AgentRecruitmentModule,
     AgentClientsModule,

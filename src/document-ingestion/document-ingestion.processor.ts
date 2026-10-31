@@ -7,7 +7,10 @@ import { DOCUMENT_PARSERS, DocumentParser } from './document-parser.interface';
 import { FILE_STORAGE_PROVIDER, FileStorageProvider } from '../file-storage/file-storage-provider.interface';
 import { ReconciliationService } from '../reconciliation/reconciliation.service';
 import { ClientLoanReconciliationService } from '../reconciliation/client-loan-reconciliation.service';
-import { DocumentType } from '../generated/prisma/client';
+import { DocumentAnalysisService } from './analysis/document-analysis.service';
+import { DocumentType, DocumentUploadBatch } from '../generated/prisma/client';
+
+export const ANALYZE_BATCH_JOB = 'analyze-batch';
 
 export interface DocumentIngestionJobData {
   batchId: string;
@@ -25,6 +28,7 @@ export class DocumentIngestionProcessor extends WorkerHost {
     @Inject(DOCUMENT_PARSERS) private readonly parsers: Record<DocumentType, DocumentParser>,
     private readonly reconciliationService: ReconciliationService,
     private readonly clientLoanReconciliationService: ClientLoanReconciliationService,
+    private readonly documentAnalysisService: DocumentAnalysisService,
   ) {
     super();
   }
@@ -35,6 +39,11 @@ export class DocumentIngestionProcessor extends WorkerHost {
 
     if (!batch) {
       this.logger.error(`Batch ${batchId} not found`);
+      return;
+    }
+
+    if (job.name === ANALYZE_BATCH_JOB) {
+      await this.analyze(batch);
       return;
     }
 
@@ -55,6 +64,18 @@ export class DocumentIngestionProcessor extends WorkerHost {
       const message = error instanceof Error ? error.message : String(error);
       this.logger.error(`Batch ${batchId} failed: ${message}`, error instanceof Error ? error.stack : undefined);
       await this.documentBatchService.markFailed(batchId, message);
+    }
+  }
+
+  private async analyze(batch: DocumentUploadBatch): Promise<void> {
+    try {
+      const fileBuffer = await this.fileStorageProvider.getObject(batch.storageKey);
+      const analysis = await this.documentAnalysisService.analyze(batch, fileBuffer);
+      await this.documentBatchService.markAnalyzed(batch.id, analysis);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.error(`Batch ${batch.id} analysis failed: ${message}`, error instanceof Error ? error.stack : undefined);
+      await this.documentBatchService.markFailed(batch.id, message);
     }
   }
 }

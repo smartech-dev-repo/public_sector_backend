@@ -8,6 +8,7 @@ import { NoOpDocumentParser } from './no-op-document.parser';
 import { IppisBroadsheetParser } from './parsers/ippis-broadsheet.parser';
 import { DisbursedLoansParser } from './parsers/disbursed-loans.parser';
 import { RepaymentScheduleParser } from './parsers/repayment-schedule.parser';
+import { DocumentAnalysisService } from './analysis/document-analysis.service';
 import { DOCUMENT_PARSERS } from './document-parser.interface';
 import { FileStorageModule } from '../file-storage/file-storage.module';
 import { AuditModule } from '../audit/audit.module';
@@ -27,6 +28,7 @@ import { ReconciliationModule } from '../reconciliation/reconciliation.module';
     DocumentBatchService,
     SnapshotExportService,
     DocumentIngestionProcessor,
+    DocumentAnalysisService,
     NoOpDocumentParser,
     IppisBroadsheetParser,
     DisbursedLoansParser,

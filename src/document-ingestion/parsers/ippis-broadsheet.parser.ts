@@ -1,18 +1,18 @@
 import { Injectable } from '@nestjs/common';
-import * as ExcelJS from 'exceljs';
 import { PrismaService } from '../../prisma/prisma.service';
 import { SnapshotExportService } from '../snapshot-export.service';
 import { DocumentParser, ParseResult } from '../document-parser.interface';
 import { DocumentUploadBatch, DocumentType, Prisma } from '../../generated/prisma/client';
 import { IPPIS_KNOWN_HEADERS, isRowMappingFailure, mapIppisRow } from './ippis-row-mapper';
 import { buildRowByHeader } from './build-row-by-header';
+import { loadUploadedWorkbook } from './load-uploaded-workbook';
 
-const KNOWN_AGENCIES = ['NPF', 'NSCDC', 'IMMIGRATION', 'CORRECTIONAL'];
+export const IPPIS_AGENCIES = ['NPF', 'NSCDC', 'IMMIGRATION', 'CORRECTIONAL'];
 
 const SNAPSHOT_COLUMNS = [
   'id', 'agency', 'staffId', 'employeeName', 'employeeStatus', 'hireDate', 'dateOfBirth',
   'maritalStatus', 'gender', 'jobTitle', 'department', 'subOrganization', 'grade', 'step',
-  'salary', 'phone', 'bankName', 'accountNumber', 'pfaName', 'pinNumber', 'dateTerminated',
+  'salary', 'paymentThreeMonthsAgo', 'paymentTwoMonthsAgo', 'paymentLastMonth', 'phone', 'bankName', 'accountNumber', 'pfaName', 'pinNumber', 'dateTerminated',
   'bvn', 'legacyId', 'rawFields', 'createdAt', 'updatedAt',
 ];
 
@@ -23,11 +23,8 @@ export class IppisBroadsheetParser implements DocumentParser {
     private readonly snapshotExportService: SnapshotExportService,
   ) {}
 
-  async parse(_batch: DocumentUploadBatch, fileBuffer: Buffer): Promise<ParseResult> {
-    const workbook = new ExcelJS.Workbook();
-    // exceljs's bundled typings expect an older, non-generic Node `Buffer`
-    // shape than this project's @types/node ships, hence `any` here.
-    await workbook.xlsx.load(fileBuffer as any);
+  async parse(batch: DocumentUploadBatch, fileBuffer: Buffer): Promise<ParseResult> {
+    const workbook = await loadUploadedWorkbook(batch, fileBuffer);
 
     const currentRecords = await this.prisma.ippisRecord.findMany();
     const existingKeys = new Set(currentRecords.map((r) => `${r.agency}::${r.staffId}`));
@@ -49,7 +46,7 @@ export class IppisBroadsheetParser implements DocumentParser {
     const warnings: string[] = [];
 
     for (const worksheet of workbook.worksheets) {
-      const agency = KNOWN_AGENCIES.find((a) => a.toLowerCase() === worksheet.name.trim().toLowerCase());
+      const agency = IPPIS_AGENCIES.find((a) => a.toLowerCase() === worksheet.name.trim().toLowerCase());
       if (!agency) {
         warnings.push(`Unrecognized sheet "${worksheet.name}" skipped`);
         continue;

@@ -6,9 +6,10 @@ import { AgentLoanProductsController } from './agent-loan-products.controller';
 import { LoanSettingsModule } from '../loan-settings/loan-settings.module';
 import { LoanRequestModule } from '../loan-request/loan-request.module';
 import { ClientLoansModule } from '../client-loans/client-loans.module';
+import { ManagementFeesModule } from '../management-fees/management-fees.module';
 
 @Module({
-  imports: [LoanSettingsModule, LoanRequestModule, ClientLoansModule],
+  imports: [LoanSettingsModule, LoanRequestModule, ClientLoansModule, ManagementFeesModule],
   controllers: [AdminLoanProductsController, ClientLoanProductsController, AgentLoanProductsController],
   providers: [LoanProductsService],
   exports: [LoanProductsService],

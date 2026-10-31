@@ -12,6 +12,9 @@ export const IPPIS_KNOWN_HEADERS: Record<string, keyof Omit<MappedIppisFields, '
   grade: 'grade',
   step: 'step',
   salary: 'salary',
+  'payment 3 months ago': 'paymentThreeMonthsAgo',
+  'payment 2 months ago': 'paymentTwoMonthsAgo',
+  'payment last month': 'paymentLastMonth',
   'telephone number': 'phone',
   'bank name': 'bankName',
   'account number': 'accountNumber',
@@ -36,6 +39,9 @@ export interface MappedIppisFields {
   grade: string | null;
   step: string | null;
   salary: number | null;
+  paymentThreeMonthsAgo: number | null;
+  paymentTwoMonthsAgo: number | null;
+  paymentLastMonth: number | null;
   phone: string | null;
   bankName: string | null;
   accountNumber: string | null;
@@ -81,6 +87,15 @@ function parseSalaryCell(value: unknown): number | null {
   return Number.isFinite(num) ? num : null;
 }
 
+function parsePaymentCell(value: unknown): { amount: number | null; warning?: string } {
+  if (value === null || value === undefined || value === '') return { amount: null };
+  const num = typeof value === 'number' ? value : Number(value);
+  if (!Number.isFinite(num) || num < 0) {
+    return { amount: null, warning: `unparseable amount "${value}"` };
+  }
+  return { amount: num };
+}
+
 function parseDateCell(value: unknown): { date: Date | null; warning?: string } {
   if (value === null || value === undefined || value === '') return { date: null };
   if (value instanceof Date) return { date: value };
@@ -121,6 +136,12 @@ export function mapIppisRow(rowByHeader: Record<string, unknown>): RowMappingRes
   if (dateOfBirth.warning) warnings.push(`date of birth: ${dateOfBirth.warning}`);
   const dateTerminated = parseDateCell(rowByHeader['date terminated']);
   if (dateTerminated.warning) warnings.push(`date terminated: ${dateTerminated.warning}`);
+  const threeMonthsAgo = parsePaymentCell(rowByHeader['payment 3 months ago']);
+  if (threeMonthsAgo.warning) warnings.push(`payment 3 months ago: ${threeMonthsAgo.warning}`);
+  const twoMonthsAgo = parsePaymentCell(rowByHeader['payment 2 months ago']);
+  if (twoMonthsAgo.warning) warnings.push(`payment 2 months ago: ${twoMonthsAgo.warning}`);
+  const lastMonth = parsePaymentCell(rowByHeader['payment last month']);
+  if (lastMonth.warning) warnings.push(`payment last month: ${lastMonth.warning}`);
 
   return {
     ok: true,
@@ -139,6 +160,9 @@ export function mapIppisRow(rowByHeader: Record<string, unknown>): RowMappingRes
       grade: stringOrNull(rowByHeader['grade']),
       step: stringOrNull(rowByHeader['step']),
       salary: parseSalaryCell(rowByHeader['salary']),
+      paymentThreeMonthsAgo: threeMonthsAgo.amount,
+      paymentTwoMonthsAgo: twoMonthsAgo.amount,
+      paymentLastMonth: lastMonth.amount,
       phone: stringifyIdLikeValue(rowByHeader['telephone number']),
       bankName: stringOrNull(rowByHeader['bank name']),
       accountNumber: stringOrNull(rowByHeader['account number']),

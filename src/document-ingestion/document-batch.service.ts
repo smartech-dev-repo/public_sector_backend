@@ -1,15 +1,20 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { ConflictException, Inject, Injectable, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { DocumentBatchStatus, DocumentType, Prisma } from '../generated/prisma/client';
 import { buildPaginatedResult } from '../common/pagination/paginated-result';
 import { FILE_STORAGE_PROVIDER, FileStorageProvider } from '../file-storage/file-storage-provider.interface';
+import { DocumentAnalysis } from './analysis/analysis-builder';
 
 export interface CreateBatchParams {
   documentType: DocumentType;
   uploadedById: string;
   originalFileName: string;
+  sheetName?: string;
+  storedFileName?: string;
+  fileSizeBytes?: number;
   storageKey: string;
   period?: string;
+  status?: DocumentBatchStatus;
 }
 
 export interface BatchResult {
@@ -44,10 +49,66 @@ export class DocumentBatchService {
         documentType: params.documentType,
         uploadedById: params.uploadedById,
         originalFileName: params.originalFileName,
+        sheetName: params.sheetName,
+        storedFileName: params.storedFileName,
+        fileSizeBytes: params.fileSizeBytes,
         storageKey: params.storageKey,
         period: params.period,
+        status: params.status,
       },
     });
+  }
+
+  async markAnalyzed(batchId: string, analysis: DocumentAnalysis): Promise<void> {
+    await this.prisma.documentUploadBatch.update({
+      where: { id: batchId },
+      data: {
+        status: DocumentBatchStatus.AWAITING_CONFIRMATION,
+        analysis: analysis as unknown as Prisma.InputJsonValue,
+      },
+    });
+  }
+
+  // The status check is part of the write so a double-click on "Merge" can
+  // only ever enqueue one merge.
+  async confirm(batchId: string, documentType: DocumentType) {
+    const batch = await this.findAwaitingConfirmation(batchId, documentType);
+    const analysis = batch.analysis as unknown as DocumentAnalysis | null;
+    if (analysis?.verdict === 'REUPLOAD_REQUIRED') {
+      throw new UnprocessableEntityException('This file failed review and cannot be merged. Correct it and upload it again.');
+    }
+
+    const { count } = await this.prisma.documentUploadBatch.updateMany({
+      where: { id: batchId, status: DocumentBatchStatus.AWAITING_CONFIRMATION },
+      data: { status: DocumentBatchStatus.PENDING, confirmedAt: new Date() },
+    });
+    if (count === 0) {
+      throw new ConflictException('This upload is no longer awaiting confirmation');
+    }
+  }
+
+  async cancel(batchId: string, documentType: DocumentType) {
+    const batch = await this.findAwaitingConfirmation(batchId, documentType);
+
+    const { count } = await this.prisma.documentUploadBatch.updateMany({
+      where: { id: batchId, status: DocumentBatchStatus.AWAITING_CONFIRMATION },
+      data: { status: DocumentBatchStatus.CANCELLED, completedAt: new Date() },
+    });
+    if (count === 0) {
+      throw new ConflictException('This upload is no longer awaiting confirmation');
+    }
+    await this.fileStorageProvider.deleteObject(batch.storageKey);
+  }
+
+  private async findAwaitingConfirmation(batchId: string, documentType: DocumentType) {
+    const batch = await this.prisma.documentUploadBatch.findUnique({ where: { id: batchId } });
+    if (!batch || batch.documentType !== documentType) {
+      throw new NotFoundException('Upload not found');
+    }
+    if (batch.status !== DocumentBatchStatus.AWAITING_CONFIRMATION) {
+      throw new ConflictException('This upload is no longer awaiting confirmation');
+    }
+    return batch;
   }
 
   async markProcessing(batchId: string): Promise<void> {

@@ -7,7 +7,7 @@ import { FACE_VERIFICATION_PROVIDER, FaceVerificationProvider } from '../face-ve
 import { FILE_STORAGE_PROVIDER, FileStorageProvider } from '../file-storage/file-storage-provider.interface';
 import { ClientDocumentType, ClientStatus, OnboardingStep } from '../generated/prisma/client';
 import { computeLengthOfService } from './length-of-service.util';
-import { normalizeNigerianPhone } from '../common/normalize-nigerian-phone.util';
+import { normalizeNigerianPhone, phonesTally } from '../common/normalize-nigerian-phone.util';
 
 @Injectable()
 export class ClientOnboardingService {
@@ -78,6 +78,26 @@ export class ClientOnboardingService {
     return onboarding;
   }
 
+  private assertPhoneTallies(ippisPhone: string | null, phone: string) {
+    if (!ippisPhone) {
+      throw new UnprocessableEntityException(
+        'No phone number on file for this IPPIS record — update the IPPIS record before onboarding',
+      );
+    }
+    if (!phonesTally(ippisPhone, phone)) {
+      throw new UnprocessableEntityException('This phone number does not match the IPPIS record for this IPPIS number');
+    }
+  }
+
+  // An already-onboarded client is matched on their own phone: a later
+  // broadsheet may have changed the IPPIS phone since they enrolled.
+  private async assertOnboardedClientPhone(clientId: string, phone: string) {
+    const client = await this.prisma.client.findUniqueOrThrow({ where: { id: clientId } });
+    if (!phonesTally(client.phone, phone)) {
+      throw new UnprocessableEntityException('This phone number does not match the client onboarded with this IPPIS number');
+    }
+  }
+
   async linkIppis(clientId: string, ippisNumber: string) {
     const existing = await this.prisma.clientOnboarding.findUnique({ where: { clientId } });
     if (existing) {
@@ -98,10 +118,13 @@ export class ClientOnboardingService {
       throw new ConflictException('This IPPIS record is already linked to another client');
     }
 
+    const client = await this.prisma.client.findUniqueOrThrow({ where: { id: clientId } });
+    this.assertPhoneTallies(ippisRecord.phone, client.phone);
+
     return this.narrowOnboarding(await this.createOnboardingRecord(clientId, ippisRecord));
   }
 
-  async adminStartOnboarding(ippisNumber: string, adminId: string) {
+  async adminStartOnboarding(ippisNumber: string, phone: string, adminId: string) {
     const ippisRecord = await this.prisma.ippisRecord.findFirst({
       where: { staffId: { equals: ippisNumber, mode: 'insensitive' } },
     });
@@ -113,26 +136,23 @@ export class ClientOnboardingService {
       where: { ippisRecordId: ippisRecord.id },
     });
     if (existing) {
+      await this.assertOnboardedClientPhone(existing.clientId, phone);
       return this.narrowOnboarding(existing);
     }
 
-    if (!ippisRecord.phone) {
-      throw new UnprocessableEntityException(
-        'No phone number on file for this IPPIS record — cannot resolve a client',
-      );
-    }
+    this.assertPhoneTallies(ippisRecord.phone, phone);
 
-    const phone = normalizeNigerianPhone(ippisRecord.phone);
+    const normalizedPhone = normalizeNigerianPhone(phone);
     const client = await this.prisma.client.upsert({
-      where: { phone },
+      where: { phone: normalizedPhone },
       update: {},
-      create: { phone, createdById: adminId },
+      create: { phone: normalizedPhone, createdById: adminId },
     });
 
     return this.narrowOnboarding(await this.createOnboardingRecord(client.id, ippisRecord, adminId));
   }
 
-  async agentStartOnboarding(ippisNumber: string, agentId: string) {
+  async agentStartOnboarding(ippisNumber: string, phone: string, agentId: string) {
     const ippisRecord = await this.prisma.ippisRecord.findFirst({
       where: { staffId: { equals: ippisNumber, mode: 'insensitive' } },
     });
@@ -145,22 +165,19 @@ export class ClientOnboardingService {
     });
     if (existing) {
       if (existing.onboardedByAgentId === agentId) {
+        await this.assertOnboardedClientPhone(existing.clientId, phone);
         return this.narrowOnboarding(existing);
       }
       throw new ConflictException('This client has already been onboarded');
     }
 
-    if (!ippisRecord.phone) {
-      throw new UnprocessableEntityException(
-        'No phone number on file for this IPPIS record — cannot resolve a client',
-      );
-    }
+    this.assertPhoneTallies(ippisRecord.phone, phone);
 
-    const phone = normalizeNigerianPhone(ippisRecord.phone);
+    const normalizedPhone = normalizeNigerianPhone(phone);
     const client = await this.prisma.client.upsert({
-      where: { phone },
+      where: { phone: normalizedPhone },
       update: {},
-      create: { phone },
+      create: { phone: normalizedPhone },
     });
 
     return this.narrowOnboarding(await this.createOnboardingRecord(client.id, ippisRecord, undefined, agentId));

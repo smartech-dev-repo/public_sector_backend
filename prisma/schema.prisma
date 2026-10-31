@@ -291,10 +291,13 @@ enum DocumentType {
 }
 
 enum DocumentBatchStatus {
+  ANALYZING
+  AWAITING_CONFIRMATION
   PENDING
   PROCESSING
   COMPLETED
   FAILED
+  CANCELLED
 }
 
 model DocumentUploadBatch {
@@ -303,9 +306,14 @@ model DocumentUploadBatch {
   uploadedById     String
   uploadedBy       AdminUser           @relation(fields: [uploadedById], references: [id])
   originalFileName String
+  sheetName        String?
+  storedFileName   String?
+  fileSizeBytes    Int?
   storageKey       String
   period           String?
   status           DocumentBatchStatus @default(PENDING)
+  analysis         Json?
+  confirmedAt      DateTime?
   rowsProcessed    Int                 @default(0)
   rowsCreated      Int                 @default(0)
   rowsUpdated      Int                 @default(0)
@@ -347,6 +355,9 @@ model IppisRecord {
   grade           String?
   step            String?
   salary          Decimal?
+  paymentThreeMonthsAgo Decimal?
+  paymentTwoMonthsAgo   Decimal?
+  paymentLastMonth      Decimal?
   phone           String?
   bankName        String?
   accountNumber   String?
@@ -493,6 +504,19 @@ enum ManagementChargeApplication {
   ADD_TO_REPAYMENT
 }
 
+model ManagementFee {
+  id           String               @id @default(uuid())
+  name         String               @unique
+  type         ManagementChargeType
+  value        Decimal
+  minAmount    Decimal?
+  maxAmount    Decimal?
+  isActive     Boolean              @default(true)
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+  loanProducts LoanProduct[]
+}
+
 model LoanProduct {
   id                           String                       @id @default(uuid())
   productName                  String
@@ -506,6 +530,8 @@ model LoanProduct {
   managementChargeType         ManagementChargeType
   managementChargeValue        Decimal
   managementChargeApplication  ManagementChargeApplication
+  managementFeeId              String?
+  managementFee                ManagementFee?               @relation(fields: [managementFeeId], references: [id], onDelete: Restrict)
   minimumServiceMonthsLeft     Int?
   maximumMonthsInService       Int?
   isActive                     Boolean                      @default(true)

@@ -17,7 +17,7 @@ import { AgentOnlyGuard } from '../auth/agent-only.guard';
 import { AgentCanOnboardClientsGuard } from '../auth/agent-can-onboard-clients.guard';
 import { JwtPayload } from '../auth/jwt-payload.interface';
 import { ClientOnboardingService } from './client-onboarding.service';
-import { LinkIppisDto } from './dto/link-ippis.dto';
+import { StaffOnboardingLookupDto } from './dto/staff-onboarding-lookup.dto';
 import { SubmitIdentityDto } from './dto/submit-identity.dto';
 import { ClientDocumentType } from '../generated/prisma/client';
 
@@ -27,8 +27,8 @@ export class AgentClientOnboardingController {
   constructor(private readonly clientOnboardingService: ClientOnboardingService) {}
 
   @Post('onboarding/ippis-lookup')
-  startOnboarding(@Body() dto: LinkIppisDto, @Req() req: { user: JwtPayload }) {
-    return this.clientOnboardingService.agentStartOnboarding(dto.ippisNumber, req.user.sub);
+  startOnboarding(@Body() dto: StaffOnboardingLookupDto, @Req() req: { user: JwtPayload }) {
+    return this.clientOnboardingService.agentStartOnboarding(dto.ippisNumber, dto.phone, req.user.sub);
   }
 
   @Post(':clientId/onboarding/identity')

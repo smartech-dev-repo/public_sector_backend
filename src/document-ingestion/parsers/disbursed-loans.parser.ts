@@ -6,8 +6,9 @@ import { DocumentParser, ParseResult } from '../document-parser.interface';
 import { DocumentUploadBatch, DocumentType, Prisma } from '../../generated/prisma/client';
 import { isLoanRowMappingFailure, mapLoanRow } from './loan-row-mapper';
 import { buildRowByHeader } from './build-row-by-header';
+import { loadUploadedWorkbook } from './load-uploaded-workbook';
 
-const HEADER_SCAN_LIMIT = 20;
+export const HEADER_SCAN_LIMIT = 20;
 
 const SNAPSHOT_COLUMNS = [
   'id', 'customerId', 'customerName', 'accountNumber', 'address', 'branch', 'gender', 'phone',
@@ -16,7 +17,7 @@ const SNAPSHOT_COLUMNS = [
   'accountOfficer', 'hasPreviouslyTakenLoan', 'rawFields', 'createdAt', 'updatedAt',
 ];
 
-function findHeaderRowNumber(worksheet: ExcelJS.Worksheet): number | null {
+export function findHeaderRowNumber(worksheet: ExcelJS.Worksheet): number | null {
   const maxScan = Math.min(worksheet.rowCount, HEADER_SCAN_LIMIT);
   for (let rowNumber = 1; rowNumber <= maxScan; rowNumber++) {
     const values = (worksheet.getRow(rowNumber).values as unknown[]) ?? [];
@@ -35,11 +36,8 @@ export class DisbursedLoansParser implements DocumentParser {
     private readonly snapshotExportService: SnapshotExportService,
   ) {}
 
-  async parse(_batch: DocumentUploadBatch, fileBuffer: Buffer): Promise<ParseResult> {
-    const workbook = new ExcelJS.Workbook();
-    // exceljs's bundled typings expect an older, non-generic Node `Buffer`
-    // shape than this project's @types/node ships, hence `any` here.
-    await workbook.xlsx.load(fileBuffer as any);
+  async parse(batch: DocumentUploadBatch, fileBuffer: Buffer): Promise<ParseResult> {
+    const workbook = await loadUploadedWorkbook(batch, fileBuffer);
 
     const worksheet = workbook.worksheets[0];
     if (!worksheet) {

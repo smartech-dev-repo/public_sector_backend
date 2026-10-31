@@ -19,3 +19,13 @@ export function normalizeNigerianPhone(raw: string): string {
   }
   return `+234${digitsOnly}`;
 }
+
+export function phonesTally(a: string | null, b: string | null): boolean {
+  return Boolean(a && b) && normalizeNigerianPhone(a as string) === normalizeNigerianPhone(b as string);
+}
+
+// IPPIS phones are stored as uploaded, in whatever shape the broadsheet had, so
+// a stored-value lookup has to compare on the local number rather than E.164.
+export function ippisPhoneFilter(phone: string): { endsWith: string } {
+  return { endsWith: normalizeNigerianPhone(phone).slice(-10) };
+}

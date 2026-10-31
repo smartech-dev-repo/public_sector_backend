@@ -253,6 +253,10 @@
     {
       "key": "submitted_recruitment_application_id",
       "value": ""
+    },
+    {
+      "key": "management_fee_id",
+      "value": ""
     }
   ],
   "item": [
@@ -9394,6 +9398,1335 @@
                   "body": "{\n  \"statusCode\": 404,\n  \"message\": \"File not found: does/not/exist.xlsx\",\n  \"error\": \"Not Found\"\n}"
                 }
               ]
+            },
+            {
+              "name": "GET /admin/documents/templates/ippis-broadsheet - Success",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{agent_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/documents/templates/ippis-broadsheet",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "documents",
+                    "templates",
+                    "ippis-broadsheet"
+                  ]
+                },
+                "description": "Column-by-column breakdown shown in step 1 of the upload wizard. :documentType is ippis-broadsheet, repayment-schedule or disbursed-loans; the caller needs that type's upload permission."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "GET /admin/documents/templates/ippis-broadsheet - Success",
+                  "originalRequest": {
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{agent_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/documents/templates/ippis-broadsheet",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "documents",
+                        "templates",
+                        "ippis-broadsheet"
+                      ]
+                    },
+                    "description": "Column-by-column breakdown shown in step 1 of the upload wizard. :documentType is ippis-broadsheet, repayment-schedule or disbursed-loans; the caller needs that type's upload permission."
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": "{\n  \"documentType\": \"IPPIS_BROADSHEET\",\n  \"title\": \"IPPIS Broadsheet\",\n  \"fileName\": \"ippis-broadsheet-template.xlsx\",\n  \"summary\": \"The monthly payroll master. Each row adds or updates one staff record.\",\n  \"acceptedFormats\": [\n    \".xlsx\"\n  ],\n  \"maxFileSizeBytes\": 52428800,\n  \"requiresPeriod\": false,\n  \"notes\": [\n    \"Fill the three payment columns oldest to newest: 3 months ago, 2 months ago, last month.\"\n  ],\n  \"sheets\": [\n    {\n      \"names\": [\n        \"NPF\",\n        \"NSCDC\",\n        \"IMMIGRATION\",\n        \"CORRECTIONAL\"\n      ],\n      \"columns\": [\n        {\n          \"header\": \"Staff ID\",\n          \"required\": true,\n          \"format\": \"Text\",\n          \"description\": \"IPPIS number.\",\n          \"example\": \"PF0000001\"\n        }\n      ]\n    }\n  ]\n}"
+                }
+              ]
+            },
+            {
+              "name": "GET /admin/documents/templates/unknown - Not Found (404)",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{agent_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/documents/templates/unknown",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "documents",
+                    "templates",
+                    "unknown"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('status 404', () => pm.response.to.have.status(404));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "GET /admin/documents/templates/unknown - Not Found (404)",
+                  "originalRequest": {
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{agent_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/documents/templates/unknown",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "documents",
+                        "templates",
+                        "unknown"
+                      ]
+                    }
+                  },
+                  "status": "Not Found",
+                  "code": 404,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": "{\n  \"statusCode\": 404,\n  \"message\": \"Unknown document type\",\n  \"error\": \"Not Found\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "GET /admin/documents/templates/ippis-broadsheet - Forbidden (403)",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{agent_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/documents/templates/ippis-broadsheet",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "documents",
+                    "templates",
+                    "ippis-broadsheet"
+                  ]
+                },
+                "description": "Caller lacks ippis:upload."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('status 403', () => pm.response.to.have.status(403));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "GET /admin/documents/templates/ippis-broadsheet - Forbidden (403)",
+                  "originalRequest": {
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{agent_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/documents/templates/ippis-broadsheet",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "documents",
+                        "templates",
+                        "ippis-broadsheet"
+                      ]
+                    },
+                    "description": "Caller lacks ippis:upload."
+                  },
+                  "status": "Forbidden",
+                  "code": 403,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": "{\n  \"statusCode\": 403,\n  \"message\": \"Insufficient permissions\",\n  \"error\": \"Forbidden\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "GET /admin/documents/templates/ippis-broadsheet/download - Success",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{agent_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/documents/templates/ippis-broadsheet/download",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "documents",
+                    "templates",
+                    "ippis-broadsheet",
+                    "download"
+                  ]
+                },
+                "description": "Returns a blank .xlsx template with one obviously fake sample row."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "GET /admin/documents/templates/ippis-broadsheet/download - Success",
+                  "originalRequest": {
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{agent_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/documents/templates/ippis-broadsheet/download",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "documents",
+                        "templates",
+                        "ippis-broadsheet",
+                        "download"
+                      ]
+                    },
+                    "description": "Returns a blank .xlsx template with one obviously fake sample row."
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": "<xlsx binary>"
+                }
+              ]
+            },
+            {
+              "name": "POST /admin/documents/ippis-broadsheet/validate - Success",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{agent_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/documents/ippis-broadsheet/validate",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "documents",
+                    "ippis-broadsheet",
+                    "validate"
+                  ]
+                },
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "file",
+                      "type": "file",
+                      "src": []
+                    }
+                  ]
+                },
+                "description": "Stores the file and queues a dry-run analysis; nothing is merged. Poll GET /admin/documents/batches/:id until status is AWAITING_CONFIRMATION (see `analysis`) or FAILED. Accepts .xlsx or .csv up to 50 MB. A .csv of an IPPIS broadsheet or repayment schedule also needs an `agency` form field."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('status 201', () => pm.response.to.have.status(201));",
+                      "const json = pm.response.json();",
+                      "pm.collectionVariables.set('ippis_batch_id', json.id);"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "POST /admin/documents/ippis-broadsheet/validate - Success",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{agent_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/documents/ippis-broadsheet/validate",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "documents",
+                        "ippis-broadsheet",
+                        "validate"
+                      ]
+                    },
+                    "body": {
+                      "mode": "formdata",
+                      "formdata": [
+                        {
+                          "key": "file",
+                          "type": "file",
+                          "src": []
+                        }
+                      ]
+                    },
+                    "description": "Stores the file and queues a dry-run analysis; nothing is merged. Poll GET /admin/documents/batches/:id until status is AWAITING_CONFIRMATION (see `analysis`) or FAILED. Accepts .xlsx or .csv up to 50 MB. A .csv of an IPPIS broadsheet or repayment schedule also needs an `agency` form field."
+                  },
+                  "status": "Created",
+                  "code": 201,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": "{\n  \"id\": \"7b0f...\",\n  \"status\": \"ANALYZING\",\n  \"documentType\": \"IPPIS_BROADSHEET\",\n  \"originalFileName\": \"IPPIS Oct.xlsx\",\n  \"storedFileName\": \"ippis-oct_31-oct-2026_22-15-07_9f3a1c.xlsx\",\n  \"fileSizeBytes\": 48213\n}"
+                }
+              ]
+            },
+            {
+              "name": "POST /admin/documents/repayment-schedule/validate - Success",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{agent_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/documents/repayment-schedule/validate",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "documents",
+                    "repayment-schedule",
+                    "validate"
+                  ]
+                },
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "file",
+                      "type": "file",
+                      "src": []
+                    },
+                    {
+                      "key": "period",
+                      "value": "{{repayment_period}}",
+                      "type": "text"
+                    }
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('status 201', () => pm.response.to.have.status(201));",
+                      "const json = pm.response.json();",
+                      "pm.collectionVariables.set('repayment_batch_id', json.id);"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "POST /admin/documents/repayment-schedule/validate - Success",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{agent_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/documents/repayment-schedule/validate",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "documents",
+                        "repayment-schedule",
+                        "validate"
+                      ]
+                    },
+                    "body": {
+                      "mode": "formdata",
+                      "formdata": [
+                        {
+                          "key": "file",
+                          "type": "file",
+                          "src": []
+                        },
+                        {
+                          "key": "period",
+                          "value": "{{repayment_period}}",
+                          "type": "text"
+                        }
+                      ]
+                    }
+                  },
+                  "status": "Created",
+                  "code": 201,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": "{\n  \"id\": \"7b0f...\",\n  \"status\": \"ANALYZING\",\n  \"documentType\": \"REPAYMENT_SCHEDULE\",\n  \"originalFileName\": \"IPPIS Oct.xlsx\",\n  \"storedFileName\": \"ippis-oct_31-oct-2026_22-15-07_9f3a1c.xlsx\",\n  \"fileSizeBytes\": 48213\n}"
+                }
+              ]
+            },
+            {
+              "name": "POST /admin/documents/repayment-schedule/validate - Missing period (400)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{agent_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/documents/repayment-schedule/validate",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "documents",
+                    "repayment-schedule",
+                    "validate"
+                  ]
+                },
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "file",
+                      "type": "file",
+                      "src": []
+                    }
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('status 400', () => pm.response.to.have.status(400));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "POST /admin/documents/repayment-schedule/validate - Missing period (400)",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{agent_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/documents/repayment-schedule/validate",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "documents",
+                        "repayment-schedule",
+                        "validate"
+                      ]
+                    },
+                    "body": {
+                      "mode": "formdata",
+                      "formdata": [
+                        {
+                          "key": "file",
+                          "type": "file",
+                          "src": []
+                        }
+                      ]
+                    }
+                  },
+                  "status": "Bad Request",
+                  "code": 400,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": "{\n  \"statusCode\": 400,\n  \"message\": \"period is required for a repayment schedule\",\n  \"error\": \"Bad Request\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "POST /admin/documents/ippis-broadsheet/validate - Wrong file type (400)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{agent_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/documents/ippis-broadsheet/validate",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "documents",
+                    "ippis-broadsheet",
+                    "validate"
+                  ]
+                },
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "file",
+                      "type": "file",
+                      "src": []
+                    }
+                  ]
+                },
+                "description": "Attach a .pdf."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('status 400', () => pm.response.to.have.status(400));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "POST /admin/documents/ippis-broadsheet/validate - Wrong file type (400)",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{agent_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/documents/ippis-broadsheet/validate",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "documents",
+                        "ippis-broadsheet",
+                        "validate"
+                      ]
+                    },
+                    "body": {
+                      "mode": "formdata",
+                      "formdata": [
+                        {
+                          "key": "file",
+                          "type": "file",
+                          "src": []
+                        }
+                      ]
+                    },
+                    "description": "Attach a .pdf."
+                  },
+                  "status": "Bad Request",
+                  "code": 400,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": "{\n  \"statusCode\": 400,\n  \"message\": \"Only .xlsx or .csv files are allowed\",\n  \"error\": \"Bad Request\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "POST /admin/documents/ippis-broadsheet/validate - Unauthenticated (401)",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/admin/documents/ippis-broadsheet/validate",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "documents",
+                    "ippis-broadsheet",
+                    "validate"
+                  ]
+                },
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "file",
+                      "type": "file",
+                      "src": []
+                    }
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('status 401', () => pm.response.to.have.status(401));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "POST /admin/documents/ippis-broadsheet/validate - Unauthenticated (401)",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [],
+                    "url": {
+                      "raw": "{{base_url}}/admin/documents/ippis-broadsheet/validate",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "documents",
+                        "ippis-broadsheet",
+                        "validate"
+                      ]
+                    },
+                    "body": {
+                      "mode": "formdata",
+                      "formdata": [
+                        {
+                          "key": "file",
+                          "type": "file",
+                          "src": []
+                        }
+                      ]
+                    }
+                  },
+                  "status": "Unauthorized",
+                  "code": 401,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": "{\n  \"statusCode\": 401,\n  \"message\": \"Unauthorized\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "GET /admin/documents/batches/:id - Awaiting confirmation",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{agent_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/documents/batches/{{ippis_batch_id}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "documents",
+                    "batches",
+                    "{{ippis_batch_id}}"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "GET /admin/documents/batches/:id - Awaiting confirmation",
+                  "originalRequest": {
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{agent_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/documents/batches/{{ippis_batch_id}}",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "documents",
+                        "batches",
+                        "{{ippis_batch_id}}"
+                      ]
+                    }
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": "{\n  \"id\": \"7b0f...\",\n  \"status\": \"AWAITING_CONFIRMATION\",\n  \"documentType\": \"IPPIS_BROADSHEET\",\n  \"originalFileName\": \"IPPIS Oct.xlsx\",\n  \"storedFileName\": \"ippis-oct_31-oct-2026_22-15-07_9f3a1c.xlsx\",\n  \"fileSizeBytes\": 48213,\n  \"analysis\": {\n    \"verdict\": \"MERGE_WITH_CORRECTIONS\",\n    \"severity\": \"MINOR\",\n    \"canMerge\": true,\n    \"recommendation\": \"98 rows can be merged now and 2 will be skipped. You can merge and upload the corrected rows later, or fix the file first and upload it again.\",\n    \"totalRows\": 100,\n    \"validRows\": 98,\n    \"rowsToCreate\": 10,\n    \"rowsToUpdate\": 88,\n    \"rowsToSkip\": 2,\n    \"rowsWithWarnings\": 3,\n    \"sheets\": [\n      {\n        \"name\": \"NPF\",\n        \"recognized\": true,\n        \"rows\": 100,\n        \"validRows\": 98\n      }\n    ],\n    \"issueGroups\": [\n      {\n        \"severity\": \"ERROR\",\n        \"title\": \"Missing Employee Name\",\n        \"count\": 2,\n        \"locations\": [\n          \"NPF row 12\"\n        ]\n      },\n      {\n        \"severity\": \"WARNING\",\n        \"title\": \"No telephone number, so this staff member cannot onboard\",\n        \"count\": 3,\n        \"locations\": [\n          \"NPF row 40\"\n        ]\n      }\n    ],\n    \"issues\": [\n      {\n        \"severity\": \"ERROR\",\n        \"title\": \"Missing Employee Name\",\n        \"message\": \"missing Employee Name\",\n        \"sheet\": \"NPF\",\n        \"row\": 12\n      }\n    ],\n    \"issuesTruncated\": false\n  }\n}"
+                }
+              ]
+            },
+            {
+              "name": "POST /admin/documents/ippis-broadsheet/batches/:id/confirm - Success",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{agent_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/documents/ippis-broadsheet/batches/{{ippis_batch_id}}/confirm",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "documents",
+                    "ippis-broadsheet",
+                    "batches",
+                    "{{ippis_batch_id}}",
+                    "confirm"
+                  ]
+                },
+                "description": "Queues the merge. Poll the batch until COMPLETED or FAILED."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "POST /admin/documents/ippis-broadsheet/batches/:id/confirm - Success",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{agent_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/documents/ippis-broadsheet/batches/{{ippis_batch_id}}/confirm",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "documents",
+                        "ippis-broadsheet",
+                        "batches",
+                        "{{ippis_batch_id}}",
+                        "confirm"
+                      ]
+                    },
+                    "description": "Queues the merge. Poll the batch until COMPLETED or FAILED."
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": "{\n  \"id\": \"7b0f...\",\n  \"status\": \"PENDING\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "POST /admin/documents/ippis-broadsheet/batches/:id/confirm - Already actioned (409)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{agent_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/documents/ippis-broadsheet/batches/{{ippis_batch_id}}/confirm",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "documents",
+                    "ippis-broadsheet",
+                    "batches",
+                    "{{ippis_batch_id}}",
+                    "confirm"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('status 409', () => pm.response.to.have.status(409));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "POST /admin/documents/ippis-broadsheet/batches/:id/confirm - Already actioned (409)",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{agent_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/documents/ippis-broadsheet/batches/{{ippis_batch_id}}/confirm",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "documents",
+                        "ippis-broadsheet",
+                        "batches",
+                        "{{ippis_batch_id}}",
+                        "confirm"
+                      ]
+                    }
+                  },
+                  "status": "Conflict",
+                  "code": 409,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": "{\n  \"statusCode\": 409,\n  \"message\": \"This upload is no longer awaiting confirmation\",\n  \"error\": \"Conflict\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "POST /admin/documents/ippis-broadsheet/batches/:id/confirm - Failed review (422)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{agent_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/documents/ippis-broadsheet/batches/{{ippis_batch_id}}/confirm",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "documents",
+                    "ippis-broadsheet",
+                    "batches",
+                    "{{ippis_batch_id}}",
+                    "confirm"
+                  ]
+                },
+                "description": "The batch's analysis verdict is REUPLOAD_REQUIRED."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('status 422', () => pm.response.to.have.status(422));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "POST /admin/documents/ippis-broadsheet/batches/:id/confirm - Failed review (422)",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{agent_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/documents/ippis-broadsheet/batches/{{ippis_batch_id}}/confirm",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "documents",
+                        "ippis-broadsheet",
+                        "batches",
+                        "{{ippis_batch_id}}",
+                        "confirm"
+                      ]
+                    },
+                    "description": "The batch's analysis verdict is REUPLOAD_REQUIRED."
+                  },
+                  "status": "Unprocessable Entity",
+                  "code": 422,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": "{\n  \"statusCode\": 422,\n  \"message\": \"This file failed review and cannot be merged. Correct it and upload it again.\",\n  \"error\": \"Unprocessable Entity\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "POST /admin/documents/ippis-broadsheet/batches/:id/cancel - Success",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{agent_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/documents/ippis-broadsheet/batches/{{ippis_batch_id}}/cancel",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "documents",
+                    "ippis-broadsheet",
+                    "batches",
+                    "{{ippis_batch_id}}",
+                    "cancel"
+                  ]
+                },
+                "description": "Discards a reviewed upload and deletes its stored file."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "POST /admin/documents/ippis-broadsheet/batches/:id/cancel - Success",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{agent_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/documents/ippis-broadsheet/batches/{{ippis_batch_id}}/cancel",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "documents",
+                        "ippis-broadsheet",
+                        "batches",
+                        "{{ippis_batch_id}}",
+                        "cancel"
+                      ]
+                    },
+                    "description": "Discards a reviewed upload and deletes its stored file."
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": "{\n  \"id\": \"7b0f...\",\n  \"status\": \"CANCELLED\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "POST /admin/documents/ippis-broadsheet/validate - CSV without agency (400)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{agent_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/documents/ippis-broadsheet/validate",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "documents",
+                    "ippis-broadsheet",
+                    "validate"
+                  ]
+                },
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "file",
+                      "type": "file",
+                      "src": []
+                    }
+                  ]
+                },
+                "description": "Attach a .csv with no agency field."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('status 400', () => pm.response.to.have.status(400));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "POST /admin/documents/ippis-broadsheet/validate - CSV without agency (400)",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{agent_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/documents/ippis-broadsheet/validate",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "documents",
+                        "ippis-broadsheet",
+                        "validate"
+                      ]
+                    },
+                    "body": {
+                      "mode": "formdata",
+                      "formdata": [
+                        {
+                          "key": "file",
+                          "type": "file",
+                          "src": []
+                        }
+                      ]
+                    }
+                  },
+                  "status": "Bad Request",
+                  "code": 400,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": "{\n  \"statusCode\": 400,\n  \"message\": \"A CSV needs an agency: one of NPF, NSCDC, IMMIGRATION, CORRECTIONAL\",\n  \"error\": \"Bad Request\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "POST /admin/documents/ippis-broadsheet/validate - CSV Success",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{agent_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/documents/ippis-broadsheet/validate",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "documents",
+                    "ippis-broadsheet",
+                    "validate"
+                  ]
+                },
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "file",
+                      "type": "file",
+                      "src": []
+                    },
+                    {
+                      "key": "agency",
+                      "value": "NPF",
+                      "type": "text"
+                    }
+                  ]
+                },
+                "description": "Stores the file and queues a dry-run analysis; nothing is merged. Poll GET /admin/documents/batches/:id until status is AWAITING_CONFIRMATION (see `analysis`) or FAILED. Accepts .xlsx or .csv up to 50 MB. A .csv of an IPPIS broadsheet or repayment schedule also needs an `agency` form field."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('status 201', () => pm.response.to.have.status(201));",
+                      "const json = pm.response.json();",
+                      "pm.collectionVariables.set('ippis_batch_id', json.id);"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "POST /admin/documents/ippis-broadsheet/validate - CSV Success",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{agent_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/documents/ippis-broadsheet/validate",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "documents",
+                        "ippis-broadsheet",
+                        "validate"
+                      ]
+                    },
+                    "body": {
+                      "mode": "formdata",
+                      "formdata": [
+                        {
+                          "key": "file",
+                          "type": "file",
+                          "src": []
+                        },
+                        {
+                          "key": "agency",
+                          "value": "NPF",
+                          "type": "text"
+                        }
+                      ]
+                    },
+                    "description": "Stores the file and queues a dry-run analysis; nothing is merged. Poll GET /admin/documents/batches/:id until status is AWAITING_CONFIRMATION (see `analysis`) or FAILED. Accepts .xlsx or .csv up to 50 MB. A .csv of an IPPIS broadsheet or repayment schedule also needs an `agency` form field."
+                  },
+                  "status": "Created",
+                  "code": 201,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": "{\n  \"id\": \"7b0f...\",\n  \"status\": \"ANALYZING\",\n  \"documentType\": \"IPPIS_BROADSHEET\",\n  \"originalFileName\": \"IPPIS Oct.xlsx\",\n  \"storedFileName\": \"ippis-oct_31-oct-2026_22-15-07_9f3a1c.xlsx\",\n  \"fileSizeBytes\": 48213\n}"
+                }
+              ]
             }
           ]
         },
@@ -10530,6 +11863,1243 @@
                   ],
                   "cookie": [],
                   "body": "{\n  \"statusCode\": 403,\n  \"message\": \"Insufficient permissions\",\n  \"error\": \"Forbidden\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "GET /admin/loan-products/management-fees - Success",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{agent_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/loan-products/management-fees",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "loan-products",
+                    "management-fees"
+                  ]
+                },
+                "description": "Active fees, for the product form's picker."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "GET /admin/loan-products/management-fees - Success",
+                  "originalRequest": {
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{agent_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/loan-products/management-fees",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "loan-products",
+                        "management-fees"
+                      ]
+                    },
+                    "description": "Active fees, for the product form's picker."
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": "[\n  {\n    \"id\": \"3f1c...\",\n    \"name\": \"Standard 1%\",\n    \"type\": \"PERCENTAGE\",\n    \"value\": \"1\",\n    \"minAmount\": null,\n    \"maxAmount\": null,\n    \"isActive\": true,\n    \"createdAt\": \"2026-10-31T21:00:00.000Z\",\n    \"updatedAt\": \"2026-10-31T21:00:00.000Z\"\n  }\n]"
+                }
+              ]
+            },
+            {
+              "name": "POST /admin/loan-products - Success with a management fee (201)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{agent_access_token}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/loan-products",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "loan-products"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\"productName\": \"Salary Loan\", \"productCode\": \"SAL-FEE\", \"sectors\": [\"NPF\"], \"minimumAmount\": 50000, \"maximumAmount\": 500000, \"minimumTenorMonths\": 1, \"maximumTenorMonths\": 12, \"interestTiers\": [{\"minTenorMonths\": 1, \"maxTenorMonths\": 12, \"interestRatePercent\": 3.5}], \"managementChargeApplication\": \"DEDUCT_FROM_DISBURSEMENT\", \"managementFeeId\": \"{{management_fee_id}}\"}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Pick one fee from GET /admin/loan-products/management-fees; managementChargeType/Value are then optional and copied from the fee. A ranged fee must span the product's minimum and maximum amount. Later edits to the fee apply to new loan requests only; loans already applied for keep their snapshot."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('status 201', () => pm.response.to.have.status(201));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "POST /admin/loan-products - Success with a management fee (201)",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{agent_access_token}}"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/loan-products",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "loan-products"
+                      ]
+                    },
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\"productName\": \"Salary Loan\", \"productCode\": \"SAL-FEE\", \"sectors\": [\"NPF\"], \"minimumAmount\": 50000, \"maximumAmount\": 500000, \"minimumTenorMonths\": 1, \"maximumTenorMonths\": 12, \"interestTiers\": [{\"minTenorMonths\": 1, \"maxTenorMonths\": 12, \"interestRatePercent\": 3.5}], \"managementChargeApplication\": \"DEDUCT_FROM_DISBURSEMENT\", \"managementFeeId\": \"{{management_fee_id}}\"}",
+                      "options": {
+                        "raw": {
+                          "language": "json"
+                        }
+                      }
+                    },
+                    "description": "Pick one fee from GET /admin/loan-products/management-fees; managementChargeType/Value are then optional and copied from the fee. A ranged fee must span the product's minimum and maximum amount."
+                  },
+                  "status": "Created",
+                  "code": 201,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": "{\n  \"productName\": \"Salary Loan\",\n  \"productCode\": \"SAL-FEE\",\n  \"sectors\": [\n    \"NPF\"\n  ],\n  \"minimumAmount\": 50000,\n  \"maximumAmount\": 500000,\n  \"minimumTenorMonths\": 1,\n  \"maximumTenorMonths\": 12,\n  \"interestTiers\": [\n    {\n      \"minTenorMonths\": 1,\n      \"maxTenorMonths\": 12,\n      \"interestRatePercent\": 3.5\n    }\n  ],\n  \"managementChargeApplication\": \"DEDUCT_FROM_DISBURSEMENT\",\n  \"id\": \"9a2e...\",\n  \"managementChargeType\": \"PERCENTAGE\",\n  \"managementChargeValue\": \"1\",\n  \"managementFeeId\": \"3f1c...\",\n  \"managementFee\": {\n    \"id\": \"3f1c...\",\n    \"name\": \"Standard 1%\",\n    \"type\": \"PERCENTAGE\",\n    \"value\": \"1\",\n    \"minAmount\": null,\n    \"maxAmount\": null,\n    \"isActive\": true,\n    \"createdAt\": \"2026-10-31T21:00:00.000Z\",\n    \"updatedAt\": \"2026-10-31T21:00:00.000Z\"\n  }\n}"
+                }
+              ]
+            },
+            {
+              "name": "POST /admin/loan-products - Fee does not cover product amounts (400)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{agent_access_token}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/loan-products",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "loan-products"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\"productName\": \"Salary Loan\", \"productCode\": \"SAL-FEE\", \"sectors\": [\"NPF\"], \"minimumAmount\": 50000, \"maximumAmount\": 500000, \"minimumTenorMonths\": 1, \"maximumTenorMonths\": 12, \"interestTiers\": [{\"minTenorMonths\": 1, \"maxTenorMonths\": 12, \"interestRatePercent\": 3.5}], \"managementChargeApplication\": \"DEDUCT_FROM_DISBURSEMENT\", \"managementFeeId\": \"{{management_fee_id}}\"}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('status 400', () => pm.response.to.have.status(400));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "POST /admin/loan-products - Fee does not cover product amounts (400)",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{agent_access_token}}"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/loan-products",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "loan-products"
+                      ]
+                    },
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\"productName\": \"Salary Loan\", \"productCode\": \"SAL-FEE\", \"sectors\": [\"NPF\"], \"minimumAmount\": 50000, \"maximumAmount\": 500000, \"minimumTenorMonths\": 1, \"maximumTenorMonths\": 12, \"interestTiers\": [{\"minTenorMonths\": 1, \"maxTenorMonths\": 12, \"interestRatePercent\": 3.5}], \"managementChargeApplication\": \"DEDUCT_FROM_DISBURSEMENT\", \"managementFeeId\": \"{{management_fee_id}}\"}",
+                      "options": {
+                        "raw": {
+                          "language": "json"
+                        }
+                      }
+                    }
+                  },
+                  "status": "Bad Request",
+                  "code": 400,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": "{\n  \"statusCode\": 400,\n  \"message\": \"The amount range of management fee \\\"Low\\\" must cover the loan product's minimum and maximum amount\",\n  \"error\": \"Bad Request\"\n}"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Management Fees",
+          "item": [
+            {
+              "name": "POST /admin/management-fees - Success",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{agent_access_token}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/management-fees",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "management-fees"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\"name\": \"Standard 1%\", \"type\": \"PERCENTAGE\", \"value\": 1, \"minAmount\": 50000, \"maxAmount\": 500000}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "type is PERCENTAGE or FLAT. minAmount/maxAmount are optional; leave both out for a general fee that applies outside every band."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('status 201', () => pm.response.to.have.status(201));",
+                      "const json = pm.response.json();",
+                      "pm.collectionVariables.set('management_fee_id', json.id);"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "POST /admin/management-fees - Success",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{agent_access_token}}"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/management-fees",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "management-fees"
+                      ]
+                    },
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\"name\": \"Standard 1%\", \"type\": \"PERCENTAGE\", \"value\": 1, \"minAmount\": 50000, \"maxAmount\": 500000}",
+                      "options": {
+                        "raw": {
+                          "language": "json"
+                        }
+                      }
+                    },
+                    "description": "type is PERCENTAGE or FLAT. minAmount/maxAmount are optional; leave both out for a general fee that applies outside every band."
+                  },
+                  "status": "Created",
+                  "code": 201,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": "{\n  \"id\": \"3f1c...\",\n  \"name\": \"Standard 1%\",\n  \"type\": \"PERCENTAGE\",\n  \"value\": \"1\",\n  \"minAmount\": null,\n  \"maxAmount\": null,\n  \"isActive\": true,\n  \"createdAt\": \"2026-10-31T21:00:00.000Z\",\n  \"updatedAt\": \"2026-10-31T21:00:00.000Z\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "POST /admin/management-fees - Validation error (400)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{agent_access_token}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/management-fees",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "management-fees"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\"name\": \"Bad\", \"type\": \"FIXED\", \"value\": 1}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('status 400', () => pm.response.to.have.status(400));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "POST /admin/management-fees - Validation error (400)",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{agent_access_token}}"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/management-fees",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "management-fees"
+                      ]
+                    },
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\"name\": \"Bad\", \"type\": \"FIXED\", \"value\": 1}",
+                      "options": {
+                        "raw": {
+                          "language": "json"
+                        }
+                      }
+                    }
+                  },
+                  "status": "Bad Request",
+                  "code": 400,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": "{\n  \"statusCode\": 400,\n  \"message\": [\n    \"type must be one of the following values: PERCENTAGE, FLAT\"\n  ],\n  \"error\": \"Bad Request\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "POST /admin/management-fees - Percentage above 100 (400)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{agent_access_token}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/management-fees",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "management-fees"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\"name\": \"Bad\", \"type\": \"PERCENTAGE\", \"value\": 101}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('status 400', () => pm.response.to.have.status(400));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "POST /admin/management-fees - Percentage above 100 (400)",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{agent_access_token}}"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/management-fees",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "management-fees"
+                      ]
+                    },
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\"name\": \"Bad\", \"type\": \"PERCENTAGE\", \"value\": 101}",
+                      "options": {
+                        "raw": {
+                          "language": "json"
+                        }
+                      }
+                    }
+                  },
+                  "status": "Bad Request",
+                  "code": 400,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": "{\n  \"statusCode\": 400,\n  \"message\": \"A percentage fee cannot exceed 100\",\n  \"error\": \"Bad Request\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "POST /admin/management-fees - Duplicate name (409)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{agent_access_token}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/management-fees",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "management-fees"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\"name\": \"Standard 1%\", \"type\": \"PERCENTAGE\", \"value\": 1, \"minAmount\": 50000, \"maxAmount\": 500000}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('status 409', () => pm.response.to.have.status(409));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "POST /admin/management-fees - Duplicate name (409)",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{agent_access_token}}"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/management-fees",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "management-fees"
+                      ]
+                    },
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\"name\": \"Standard 1%\", \"type\": \"PERCENTAGE\", \"value\": 1, \"minAmount\": 50000, \"maxAmount\": 500000}",
+                      "options": {
+                        "raw": {
+                          "language": "json"
+                        }
+                      }
+                    }
+                  },
+                  "status": "Conflict",
+                  "code": 409,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": "{\n  \"statusCode\": 409,\n  \"message\": \"A management fee named \\\"Standard 1%\\\" already exists\",\n  \"error\": \"Conflict\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "POST /admin/management-fees - Unauthenticated (401)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/management-fees",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "management-fees"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\"name\": \"Standard 1%\", \"type\": \"PERCENTAGE\", \"value\": 1, \"minAmount\": 50000, \"maxAmount\": 500000}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('status 401', () => pm.response.to.have.status(401));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "POST /admin/management-fees - Unauthenticated (401)",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/management-fees",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "management-fees"
+                      ]
+                    },
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\"name\": \"Standard 1%\", \"type\": \"PERCENTAGE\", \"value\": 1, \"minAmount\": 50000, \"maxAmount\": 500000}",
+                      "options": {
+                        "raw": {
+                          "language": "json"
+                        }
+                      }
+                    }
+                  },
+                  "status": "Unauthorized",
+                  "code": 401,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": "{\n  \"statusCode\": 401,\n  \"message\": \"Unauthorized\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "POST /admin/management-fees - Forbidden (403)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{agent_access_token}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/management-fees",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "management-fees"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\"name\": \"Standard 1%\", \"type\": \"PERCENTAGE\", \"value\": 1, \"minAmount\": 50000, \"maxAmount\": 500000}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Caller lacks management-fees:manage."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('status 403', () => pm.response.to.have.status(403));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "POST /admin/management-fees - Forbidden (403)",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{agent_access_token}}"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/management-fees",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "management-fees"
+                      ]
+                    },
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\"name\": \"Standard 1%\", \"type\": \"PERCENTAGE\", \"value\": 1, \"minAmount\": 50000, \"maxAmount\": 500000}",
+                      "options": {
+                        "raw": {
+                          "language": "json"
+                        }
+                      }
+                    },
+                    "description": "Caller lacks management-fees:manage."
+                  },
+                  "status": "Forbidden",
+                  "code": 403,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": "{\n  \"statusCode\": 403,\n  \"message\": \"Insufficient permissions\",\n  \"error\": \"Forbidden\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "GET /admin/management-fees - Success",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{agent_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/management-fees?q=Standard&isActive=true",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "management-fees"
+                  ],
+                  "query": [
+                    {
+                      "key": "q",
+                      "value": "Standard"
+                    },
+                    {
+                      "key": "isActive",
+                      "value": "true"
+                    }
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "GET /admin/management-fees - Success",
+                  "originalRequest": {
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{agent_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/management-fees?q=Standard&isActive=true",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "management-fees"
+                      ],
+                      "query": [
+                        {
+                          "key": "q",
+                          "value": "Standard"
+                        },
+                        {
+                          "key": "isActive",
+                          "value": "true"
+                        }
+                      ]
+                    }
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": "{\n  \"data\": [\n    {\n      \"id\": \"3f1c...\",\n      \"name\": \"Standard 1%\",\n      \"type\": \"PERCENTAGE\",\n      \"value\": \"1\",\n      \"minAmount\": null,\n      \"maxAmount\": null,\n      \"isActive\": true,\n      \"createdAt\": \"2026-10-31T21:00:00.000Z\",\n      \"updatedAt\": \"2026-10-31T21:00:00.000Z\",\n      \"_count\": {\n        \"loanProducts\": 1\n      }\n    }\n  ],\n  \"meta\": {\n    \"total\": 1,\n    \"page\": 1,\n    \"limit\": 25,\n    \"totalPages\": 1\n  }\n}"
+                }
+              ]
+            },
+            {
+              "name": "PATCH /admin/management-fees/:id - Success",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{agent_access_token}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/management-fees/{{management_fee_id}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "management-fees",
+                    "{{management_fee_id}}"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\"minAmount\": null, \"maxAmount\": null}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "null clears a bound."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "PATCH /admin/management-fees/:id - Success",
+                  "originalRequest": {
+                    "method": "PATCH",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{agent_access_token}}"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/management-fees/{{management_fee_id}}",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "management-fees",
+                        "{{management_fee_id}}"
+                      ]
+                    },
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\"minAmount\": null, \"maxAmount\": null}",
+                      "options": {
+                        "raw": {
+                          "language": "json"
+                        }
+                      }
+                    },
+                    "description": "null clears a bound."
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": "{\n  \"id\": \"3f1c...\",\n  \"name\": \"Standard 1%\",\n  \"type\": \"PERCENTAGE\",\n  \"value\": \"1\",\n  \"minAmount\": null,\n  \"maxAmount\": null,\n  \"isActive\": true,\n  \"createdAt\": \"2026-10-31T21:00:00.000Z\",\n  \"updatedAt\": \"2026-10-31T21:00:00.000Z\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "PATCH /admin/management-fees/:id - Not Found (404)",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{agent_access_token}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/management-fees/00000000-0000-0000-0000-000000000000",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "management-fees",
+                    "00000000-0000-0000-0000-000000000000"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\"value\": 2}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('status 404', () => pm.response.to.have.status(404));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "PATCH /admin/management-fees/:id - Not Found (404)",
+                  "originalRequest": {
+                    "method": "PATCH",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{agent_access_token}}"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/management-fees/00000000-0000-0000-0000-000000000000",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "management-fees",
+                        "00000000-0000-0000-0000-000000000000"
+                      ]
+                    },
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\"value\": 2}",
+                      "options": {
+                        "raw": {
+                          "language": "json"
+                        }
+                      }
+                    }
+                  },
+                  "status": "Not Found",
+                  "code": 404,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": "{\n  \"statusCode\": 404,\n  \"message\": \"Management fee not found\",\n  \"error\": \"Not Found\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "DELETE /admin/management-fees/:id - In use (409)",
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{agent_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/management-fees/{{management_fee_id}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "management-fees",
+                    "{{management_fee_id}}"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('status 409', () => pm.response.to.have.status(409));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "DELETE /admin/management-fees/:id - In use (409)",
+                  "originalRequest": {
+                    "method": "DELETE",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{agent_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/management-fees/{{management_fee_id}}",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "management-fees",
+                        "{{management_fee_id}}"
+                      ]
+                    }
+                  },
+                  "status": "Conflict",
+                  "code": 409,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": "{\n  \"statusCode\": 409,\n  \"message\": \"This fee is used by a loan product. Deactivate it, or remove it from the product first\",\n  \"error\": \"Conflict\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "DELETE /admin/management-fees/:id - Success",
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{agent_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/management-fees/{{management_fee_id}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "management-fees",
+                    "{{management_fee_id}}"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "DELETE /admin/management-fees/:id - Success",
+                  "originalRequest": {
+                    "method": "DELETE",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{agent_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/management-fees/{{management_fee_id}}",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "management-fees",
+                        "{{management_fee_id}}"
+                      ]
+                    }
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": "{\n  \"deleted\": true\n}"
                 }
               ]
             }
@@ -11767,7 +14337,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\"ippisNumber\": \"NPF/10234\"}"
+                  "raw": "{\"ippisNumber\": \"NPF/10234\", \"phone\": \"{{client_phone}}\"}"
                 }
               },
               "event": [
@@ -11810,7 +14380,7 @@
                     },
                     "body": {
                       "mode": "raw",
-                      "raw": "{\"ippisNumber\": \"NPF/10234\"}"
+                      "raw": "{\"ippisNumber\": \"NPF/10234\", \"phone\": \"{{client_phone}}\"}"
                     }
                   },
                   "status": "Created",
@@ -11853,7 +14423,7 @@
                     },
                     "body": {
                       "mode": "raw",
-                      "raw": "{\"ippisNumber\": \"NPF/10234\"}"
+                      "raw": "{\"ippisNumber\": \"NPF/10234\", \"phone\": \"{{client_phone}}\"}"
                     }
                   },
                   "status": "Not Found",
@@ -11896,7 +14466,7 @@
                     },
                     "body": {
                       "mode": "raw",
-                      "raw": "{\"ippisNumber\": \"NPF/10234\"}"
+                      "raw": "{\"ippisNumber\": \"NPF/10234\", \"phone\": \"{{client_phone}}\"}"
                     }
                   },
                   "status": "Unprocessable Entity",
@@ -11939,7 +14509,7 @@
                     },
                     "body": {
                       "mode": "raw",
-                      "raw": "{\"ippisNumber\": \"NPF/10234\"}"
+                      "raw": "{\"ippisNumber\": \"NPF/10234\", \"phone\": \"{{client_phone}}\"}"
                     }
                   },
                   "status": "Forbidden",
@@ -12416,6 +14986,200 @@
                   ],
                   "cookie": [],
                   "body": "{\n  \"step\": \"COMPLETED\",\n  \"clientStatus\": \"VERIFIED\",\n  \"onboarding\": {\n    \"employeeName\": \"Ibrahim Suleiman\",\n    \"agency\": \"Nigeria Police Force\",\n    \"step\": \"COMPLETED\"\n  },\n  \"lengthOfService\": {\n    \"years\": 4,\n    \"months\": 2\n  }\n}"
+                }
+              ]
+            },
+            {
+              "name": "POST /admin/clients/onboarding/ippis-lookup - Phone does not tally (422)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{agent_access_token}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/clients/onboarding/ippis-lookup",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "clients",
+                    "onboarding",
+                    "ippis-lookup"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\"ippisNumber\": \"{{test_ippis_staff_id}}\", \"phone\": \"+2348000000099\"}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('status 422', () => pm.response.to.have.status(422));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "POST /admin/clients/onboarding/ippis-lookup - Phone does not tally (422)",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{agent_access_token}}"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/clients/onboarding/ippis-lookup",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "clients",
+                        "onboarding",
+                        "ippis-lookup"
+                      ]
+                    },
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\"ippisNumber\": \"{{test_ippis_staff_id}}\", \"phone\": \"+2348000000099\"}",
+                      "options": {
+                        "raw": {
+                          "language": "json"
+                        }
+                      }
+                    }
+                  },
+                  "status": "Unprocessable Entity",
+                  "code": 422,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": "{\n  \"statusCode\": 422,\n  \"message\": \"This phone number does not match the IPPIS record for this IPPIS number\",\n  \"error\": \"Unprocessable Entity\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "POST /admin/clients/onboarding/ippis-lookup - Validation error (400)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{agent_access_token}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/clients/onboarding/ippis-lookup",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "clients",
+                    "onboarding",
+                    "ippis-lookup"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\"ippisNumber\": \"{{test_ippis_staff_id}}\"}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('status 400', () => pm.response.to.have.status(400));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "POST /admin/clients/onboarding/ippis-lookup - Validation error (400)",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{agent_access_token}}"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/clients/onboarding/ippis-lookup",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "clients",
+                        "onboarding",
+                        "ippis-lookup"
+                      ]
+                    },
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\"ippisNumber\": \"{{test_ippis_staff_id}}\"}",
+                      "options": {
+                        "raw": {
+                          "language": "json"
+                        }
+                      }
+                    }
+                  },
+                  "status": "Bad Request",
+                  "code": 400,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": "{\n  \"statusCode\": 400,\n  \"message\": [\n    \"phone must be a valid Nigerian phone number\"\n  ],\n  \"error\": \"Bad Request\"\n}"
                 }
               ]
             }
@@ -20900,7 +23664,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\"ippisNumber\":\"NPF/20456\"}"
+                  "raw": "{\"ippisNumber\": \"NPF/20456\", \"phone\": \"{{client_phone}}\"}"
                 },
                 "description": "Requires the caller to be an Agent with canOnboardClients=true (AgentCanOnboardClientsGuard) — grant it first via Admin > Agents > PATCH /admin/agents/:id/onboarding-access."
               },
@@ -20944,7 +23708,7 @@
                     },
                     "body": {
                       "mode": "raw",
-                      "raw": "{\"ippisNumber\":\"NPF/20456\"}"
+                      "raw": "{\"ippisNumber\": \"NPF/20456\", \"phone\": \"{{client_phone}}\"}"
                     }
                   },
                   "status": "Created",
@@ -21257,6 +24021,200 @@
                   ],
                   "cookie": [],
                   "body": "{\n  \"step\": \"COMPLETED\",\n  \"clientStatus\": \"VERIFIED\",\n  \"onboarding\": {\n    \"employeeName\": \"Grace Adeyemi\",\n    \"agency\": \"Nigeria Police Force\",\n    \"step\": \"COMPLETED\"\n  },\n  \"lengthOfService\": {\n    \"years\": 3,\n    \"months\": 7\n  }\n}"
+                }
+              ]
+            },
+            {
+              "name": "POST /agent/clients/onboarding/ippis-lookup - Phone does not tally (422)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{agent_access_token}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/agent/clients/onboarding/ippis-lookup",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "agent",
+                    "clients",
+                    "onboarding",
+                    "ippis-lookup"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\"ippisNumber\": \"{{test_ippis_staff_id}}\", \"phone\": \"+2348000000099\"}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('status 422', () => pm.response.to.have.status(422));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "POST /agent/clients/onboarding/ippis-lookup - Phone does not tally (422)",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{agent_access_token}}"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/agent/clients/onboarding/ippis-lookup",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "agent",
+                        "clients",
+                        "onboarding",
+                        "ippis-lookup"
+                      ]
+                    },
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\"ippisNumber\": \"{{test_ippis_staff_id}}\", \"phone\": \"+2348000000099\"}",
+                      "options": {
+                        "raw": {
+                          "language": "json"
+                        }
+                      }
+                    }
+                  },
+                  "status": "Unprocessable Entity",
+                  "code": 422,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": "{\n  \"statusCode\": 422,\n  \"message\": \"This phone number does not match the IPPIS record for this IPPIS number\",\n  \"error\": \"Unprocessable Entity\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "POST /agent/clients/onboarding/ippis-lookup - Validation error (400)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{agent_access_token}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/agent/clients/onboarding/ippis-lookup",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "agent",
+                    "clients",
+                    "onboarding",
+                    "ippis-lookup"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\"ippisNumber\": \"{{test_ippis_staff_id}}\"}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('status 400', () => pm.response.to.have.status(400));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "POST /agent/clients/onboarding/ippis-lookup - Validation error (400)",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{agent_access_token}}"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/agent/clients/onboarding/ippis-lookup",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "agent",
+                        "clients",
+                        "onboarding",
+                        "ippis-lookup"
+                      ]
+                    },
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\"ippisNumber\": \"{{test_ippis_staff_id}}\"}",
+                      "options": {
+                        "raw": {
+                          "language": "json"
+                        }
+                      }
+                    }
+                  },
+                  "status": "Bad Request",
+                  "code": 400,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": "{\n  \"statusCode\": 400,\n  \"message\": [\n    \"phone must be a valid Nigerian phone number\"\n  ],\n  \"error\": \"Bad Request\"\n}"
                 }
               ]
             }
@@ -22884,6 +25842,97 @@
                   ],
                   "cookie": [],
                   "body": "{\n  \"statusCode\": 400,\n  \"message\": [\n    \"code must be longer than or equal to 4 characters\"\n  ],\n  \"error\": \"Bad Request\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "POST /auth/client/otp/request - Phone not on IPPIS (422)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/auth/client/otp/request",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "auth",
+                    "client",
+                    "otp",
+                    "request"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\"phone\": \"+2348000000099\"}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "A phone with no existing client must be on an IPPIS record."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('status 422', () => pm.response.to.have.status(422));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "POST /auth/client/otp/request - Phone not on IPPIS (422)",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/auth/client/otp/request",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "auth",
+                        "client",
+                        "otp",
+                        "request"
+                      ]
+                    },
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\"phone\": \"+2348000000099\"}",
+                      "options": {
+                        "raw": {
+                          "language": "json"
+                        }
+                      }
+                    },
+                    "description": "A phone with no existing client must be on an IPPIS record."
+                  },
+                  "status": "Unprocessable Entity",
+                  "code": 422,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": "{\n  \"statusCode\": 422,\n  \"message\": \"This phone number is not on any IPPIS record. Use the phone number on your payroll record\",\n  \"error\": \"Unprocessable Entity\"\n}"
                 }
               ]
             }
@@ -24848,6 +27897,101 @@
                   ],
                   "cookie": [],
                   "body": "{\n  \"statusCode\": 400,\n  \"message\": [\n    \"maritalStatus must be longer than or equal to 1 characters\"\n  ],\n  \"error\": \"Bad Request\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "POST /client/onboarding/ippis-link - Phone does not tally (422)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{client_access_token}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/client/onboarding/ippis-link",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "client",
+                    "onboarding",
+                    "ippis"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\"ippisNumber\": \"{{test_ippis_staff_id}}\"}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('status 422', () => pm.response.to.have.status(422));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "POST /client/onboarding/ippis-link - Phone does not tally (422)",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{client_access_token}}"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/client/onboarding/ippis-link",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "client",
+                        "onboarding",
+                        "ippis"
+                      ]
+                    },
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\"ippisNumber\": \"{{test_ippis_staff_id}}\"}",
+                      "options": {
+                        "raw": {
+                          "language": "json"
+                        }
+                      }
+                    }
+                  },
+                  "status": "Unprocessable Entity",
+                  "code": 422,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": "{\n  \"statusCode\": 422,\n  \"message\": \"This phone number does not match the IPPIS record for this IPPIS number\",\n  \"error\": \"Unprocessable Entity\"\n}"
                 }
               ]
             }

@@ -6,15 +6,16 @@ import { DocumentParser, ParseResult } from '../document-parser.interface';
 import { DocumentUploadBatch, DocumentType, Prisma } from '../../generated/prisma/client';
 import { AGENCY_ROW_MAPPERS, AgencyKey, isRepaymentRowMappingFailure } from './repayment-row-mapper';
 import { buildRowByHeader } from './build-row-by-header';
+import { loadUploadedWorkbook } from './load-uploaded-workbook';
 
-const KNOWN_AGENCIES: AgencyKey[] = ['NPF', 'NSCDC', 'IMMIGRATION', 'CORRECTIONAL', 'CUSTOM', 'LASG'];
+export const REPAYMENT_AGENCIES: AgencyKey[] = ['NPF', 'NSCDC', 'IMMIGRATION', 'CORRECTIONAL', 'CUSTOM', 'LASG'];
 const LASG_HEADER_SCAN_LIMIT = 5;
 
 const SNAPSHOT_COLUMNS = [
   'id', 'agency', 'staffId', 'period', 'elementName', 'elementDetail', 'amount', 'rawFields', 'createdAt',
 ];
 
-function findAgencyHeaderRowNumber(worksheet: ExcelJS.Worksheet, agency: AgencyKey): number | null {
+export function findAgencyHeaderRowNumber(worksheet: ExcelJS.Worksheet, agency: AgencyKey): number | null {
   if (agency !== 'LASG') {
     return 1;
   }
@@ -37,10 +38,7 @@ export class RepaymentScheduleParser implements DocumentParser {
   ) {}
 
   async parse(batch: DocumentUploadBatch, fileBuffer: Buffer): Promise<ParseResult> {
-    const workbook = new ExcelJS.Workbook();
-    // exceljs's bundled typings expect an older, non-generic Node `Buffer`
-    // shape than this project's @types/node ships, hence `any` here.
-    await workbook.xlsx.load(fileBuffer as any);
+    const workbook = await loadUploadedWorkbook(batch, fileBuffer);
 
     const currentRecords = await this.prisma.loanRepaymentRecord.findMany();
     const existingKeys = new Set(
@@ -64,7 +62,7 @@ export class RepaymentScheduleParser implements DocumentParser {
     const warnings: string[] = [];
 
     for (const worksheet of workbook.worksheets) {
-      const agency = KNOWN_AGENCIES.find((a) => a.toLowerCase() === worksheet.name.trim().toLowerCase());
+      const agency = REPAYMENT_AGENCIES.find((a) => a.toLowerCase() === worksheet.name.trim().toLowerCase());
       if (!agency) {
         warnings.push(`Unrecognized sheet "${worksheet.name}" skipped`);
         continue;

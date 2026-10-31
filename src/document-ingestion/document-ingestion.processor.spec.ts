@@ -1,4 +1,5 @@
 import { Job } from 'bullmq';
+import { DocumentAnalysisService } from './analysis/document-analysis.service';
 import { DocumentIngestionProcessor, DocumentIngestionJobData } from './document-ingestion.processor';
 import { DocumentBatchService } from './document-batch.service';
 import { FileStorageProvider } from '../file-storage/file-storage-provider.interface';
@@ -8,12 +9,14 @@ import { ClientLoanReconciliationService } from '../reconciliation/client-loan-r
 import { DocumentType } from '../generated/prisma/client';
 
 describe('DocumentIngestionProcessor', () => {
+  let documentAnalysisService: { analyze: jest.Mock };
   let processor: DocumentIngestionProcessor;
   let documentBatchService: {
     findRawById: jest.Mock;
     markProcessing: jest.Mock;
     markCompleted: jest.Mock;
     markFailed: jest.Mock;
+    markAnalyzed: jest.Mock;
   };
   let fileStorageProvider: { getObject: jest.Mock };
   let parsers: Record<string, { parse: jest.Mock }>;
@@ -26,7 +29,9 @@ describe('DocumentIngestionProcessor', () => {
       markProcessing: jest.fn(),
       markCompleted: jest.fn(),
       markFailed: jest.fn(),
+      markAnalyzed: jest.fn(),
     };
+    documentAnalysisService = { analyze: jest.fn() };
     fileStorageProvider = { getObject: jest.fn() };
     parsers = {
       [DocumentType.IPPIS_BROADSHEET]: { parse: jest.fn() },
@@ -41,7 +46,33 @@ describe('DocumentIngestionProcessor', () => {
       parsers as unknown as Record<DocumentType, DocumentParser>,
       reconciliationService as unknown as ReconciliationService,
       clientLoanReconciliationService as unknown as ClientLoanReconciliationService,
+      documentAnalysisService as unknown as DocumentAnalysisService,
     );
+  });
+
+  it('only analyzes on an analyze-batch job, and never touches the parser', async () => {
+    documentBatchService.findRawById.mockResolvedValue({
+      id: 'batch-1',
+      documentType: DocumentType.IPPIS_BROADSHEET,
+      storageKey: 'uploads/file.xlsx',
+    });
+    fileStorageProvider.getObject.mockResolvedValue(Buffer.from('fake-file'));
+    documentAnalysisService.analyze.mockResolvedValue({ verdict: 'READY' });
+
+    await processor.process({ name: 'analyze-batch', data: { batchId: 'batch-1' } } as Job<DocumentIngestionJobData>);
+
+    expect(documentBatchService.markAnalyzed).toHaveBeenCalledWith('batch-1', { verdict: 'READY' });
+    expect(parsers[DocumentType.IPPIS_BROADSHEET].parse).not.toHaveBeenCalled();
+    expect(documentBatchService.markProcessing).not.toHaveBeenCalled();
+  });
+
+  it('marks the batch failed when analysis throws', async () => {
+    documentBatchService.findRawById.mockResolvedValue({ id: 'batch-1', storageKey: 'uploads/file.xlsx' });
+    fileStorageProvider.getObject.mockRejectedValue(new Error('gone'));
+
+    await processor.process({ name: 'analyze-batch', data: { batchId: 'batch-1' } } as Job<DocumentIngestionJobData>);
+
+    expect(documentBatchService.markFailed).toHaveBeenCalledWith('batch-1', 'gone');
   });
 
   it('logs and returns early when the batch is not found', async () => {

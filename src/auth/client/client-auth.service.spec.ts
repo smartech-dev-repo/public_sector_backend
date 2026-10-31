@@ -1,4 +1,4 @@
-import { ConflictException, UnauthorizedException } from '@nestjs/common';
+import { ConflictException, UnauthorizedException, UnprocessableEntityException } from '@nestjs/common';
 import { ClientAuthService } from './client-auth.service';
 import { OtpService } from '../../otp/otp.service';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -8,7 +8,10 @@ import { SessionService } from '../../session/session.service';
 describe('ClientAuthService', () => {
   let service: ClientAuthService;
   let otpService: { request: jest.Mock; verify: jest.Mock };
-  let prisma: { client: { upsert: jest.Mock; findUnique: jest.Mock; update: jest.Mock } };
+  let prisma: {
+    client: { upsert: jest.Mock; findUnique: jest.Mock; update: jest.Mock };
+    ippisRecord: { findFirst: jest.Mock };
+  };
   let tokenService: TokenService;
   let sessionService: { createSession: jest.Mock };
 
@@ -20,6 +23,7 @@ describe('ClientAuthService', () => {
         findUnique: jest.fn().mockResolvedValue(null),
         update: jest.fn(),
       },
+      ippisRecord: { findFirst: jest.fn().mockResolvedValue({ id: 'ippis-1' }) },
     };
     tokenService = {
       signAccessToken: jest.fn().mockReturnValue('access-token'),
@@ -34,6 +38,27 @@ describe('ClientAuthService', () => {
   });
 
   describe('requestOtp', () => {
+    it('refuses a new phone that is on no IPPIS record, matching on the local number', async () => {
+      prisma.ippisRecord.findFirst.mockResolvedValue(null);
+
+      await expect(service.requestOtp('+2348000000000')).rejects.toThrow(UnprocessableEntityException);
+
+      expect(prisma.ippisRecord.findFirst).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { phone: { endsWith: '8000000000' } } }),
+      );
+      expect(otpService.request).not.toHaveBeenCalled();
+    });
+
+    it('does not consult IPPIS for an existing client', async () => {
+      prisma.client.findUnique.mockResolvedValue({ id: 'client-1', email: null });
+      otpService.request.mockResolvedValue({});
+
+      await service.requestOtp('+2348000000000');
+
+      expect(prisma.ippisRecord.findFirst).not.toHaveBeenCalled();
+      expect(otpService.request).toHaveBeenCalled();
+    });
+
     it('delegates to OtpService with no email when none is given and no client exists yet', async () => {
       otpService.request.mockResolvedValue({});
       const result = await service.requestOtp('+2348000000000');

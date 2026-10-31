@@ -18,7 +18,7 @@ import { RequirePermissions } from '../auth/permissions.decorator';
 import { JwtPayload } from '../auth/jwt-payload.interface';
 import { AuditInterceptor } from '../audit/audit.interceptor';
 import { ClientOnboardingService } from './client-onboarding.service';
-import { LinkIppisDto } from './dto/link-ippis.dto';
+import { StaffOnboardingLookupDto } from './dto/staff-onboarding-lookup.dto';
 import { SubmitIdentityDto } from './dto/submit-identity.dto';
 import { ClientDocumentType } from '../generated/prisma/client';
 
@@ -30,8 +30,8 @@ export class AdminClientOnboardingController {
 
   @Post('onboarding/ippis-lookup')
   @RequirePermissions('clients:onboard')
-  startOnboarding(@Body() dto: LinkIppisDto, @Req() req: { user: JwtPayload }) {
-    return this.clientOnboardingService.adminStartOnboarding(dto.ippisNumber, req.user.sub);
+  startOnboarding(@Body() dto: StaffOnboardingLookupDto, @Req() req: { user: JwtPayload }) {
+    return this.clientOnboardingService.adminStartOnboarding(dto.ippisNumber, dto.phone, req.user.sub);
   }
 
   @Post(':clientId/onboarding/identity')
