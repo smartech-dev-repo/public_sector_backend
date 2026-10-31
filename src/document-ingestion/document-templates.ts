@@ -77,9 +77,14 @@ const IPPIS_COLUMNS: TemplateColumn[] = [
   optional('Legacy ID', 'Text', 'Previous staff identifier, if any.', ''),
 ];
 
-const loanType = optional('Loan Type', 'Text', 'Loan type.', 'SALARY LOAN');
-const amount = (header: string): TemplateColumn => required(header, 'Number, no commas or ₦', 'Amount deducted.', 25000);
-const staff = (header: string): TemplateColumn => required(header, 'Text', 'IPPIS / staff number.', 'PF0000001');
+const REPAYMENT_COLUMNS: TemplateColumn[] = [
+  required('Staff ID', 'Text', 'IPPIS or staff number, as on the IPPIS record.', 'PF0000001'),
+  required('Amount', 'Number, no commas or ₦', 'Amount deducted for the month.', 25000),
+  optional('Employee Name', 'Text', 'Helps you check the row. Kept for reference only.', 'SAMPLE EMPLOYEE'),
+  optional('Element', 'Text', 'Deduction element. Use this when one staff member has several deductions in a month. Blank means LOAN_REPAYMENT.', 'LOAN REPAYMENT'),
+  optional('Period', 'YYYY-MM or "October 2026"', 'Deduction month. Blank uses the month chosen at upload.', '2026-10'),
+  optional('Loan Type', 'Text', 'Loan type, where the agency reports it.', 'SALARY LOAN'),
+];
 
 const LOAN_COLUMNS: TemplateColumn[] = [
   required('Customer ID', 'Text', 'Unique loan customer ID. An existing ID is updated.', 'CUST000001'),
@@ -133,19 +138,13 @@ export const DOCUMENT_TEMPLATES: Record<DocumentType, DocumentTemplate> = {
     maxFileSizeBytes: MAX_SPREADSHEET_BYTES,
     requiresPeriod: true,
     notes: [
-      'Each agency has its own columns. In .xlsx, keep the sheet names exactly as in the template.',
-      'A .csv holds one agency: use that agency\'s columns and choose the agency in the next step.',
+      'Every agency sheet uses the same columns. Leave optional columns blank where an agency does not report them.',
+      'In .xlsx, keep the sheet names exactly as in the template. Sheets you do not need can stay empty.',
+      'A .csv holds one agency: use the same columns and choose the agency in the next step.',
       'Choose the repayment month in the next step. Sheets with no Period column use that month.',
       'Merging a schedule re-runs repayment reconciliation.',
     ],
-    sheets: [
-      { names: ['NPF'], columns: [staff('Staff ID'), amount('Amount'), required('Element', 'Text', 'Deduction element name.', 'LOAN REPAYMENT'), optional('Period', 'YYYY-MM or "October 2026"', 'Deduction month. Must match the upload month.', '2026-10')] },
-      { names: ['NSCDC'], columns: [staff('IPPIS No'), amount('Amount')] },
-      { names: ['IMMIGRATION'], columns: [staff('IPPIS Number'), amount('CIT Microfinance')] },
-      { names: ['CORRECTIONAL'], columns: [staff('IPPIS Number'), amount('Amount')] },
-      { names: ['CUSTOM'], columns: [optional('Period', 'YYYY-MM or "October 2026"', 'Deduction month.', '2026-10'), staff('Staff Number'), loanType, amount('Deduction')] },
-      { names: ['LASG'], columns: [staff('Employee_Number'), required('Employee_Name', 'Text', 'Employee name.', 'SAMPLE EMPLOYEE'), amount('Result_Value SUM')] },
-    ],
+    sheets: [{ names: [...REPAYMENT_AGENCIES], columns: REPAYMENT_COLUMNS }],
   },
   [DocumentType.DISBURSED_LOANS]: {
     documentType: DocumentType.DISBURSED_LOANS,

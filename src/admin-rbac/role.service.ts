@@ -39,12 +39,16 @@ export class RoleService {
   }
 
   async list(
-    filters: { q?: string } = {},
+    filters: { q?: string; createdFrom?: Date; createdTo?: Date } = {},
     pagination: { page: number; limit: number } = { page: 1, limit: 25 },
   ) {
     const { page, limit } = pagination;
     const where: Prisma.RoleWhereInput = {
       name: filters.q ? { contains: filters.q, mode: 'insensitive' } : undefined,
+      createdAt:
+        filters.createdFrom || filters.createdTo
+          ? { gte: filters.createdFrom, lte: filters.createdTo }
+          : undefined,
     };
 
     const [data, total] = await Promise.all([

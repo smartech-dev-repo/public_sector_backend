@@ -76,39 +76,34 @@ function collectRawFields(rowByHeader: Record<string, unknown>, knownHeaders: Se
   return rawFields;
 }
 
-const NPF_KNOWN_HEADERS = new Set(['staff id', 'amount', 'element', 'period']);
+// Every sheet uses the same columns. The first name in each list is the template's
+// header; the rest are the names agencies' own files have used, so those still load.
+// Specific names come before generic ones, as an agency file can hold both.
+const STAFF_ID_HEADERS = ['staff id', 'ippis number', 'ippis no', 'staff number', 'employee_number'];
+const AMOUNT_HEADERS = ['amount', 'cit microfinance', 'result_value sum', 'deduction'];
+const AMOUNT_LOOKUP_ORDER = ['cit microfinance', 'result_value sum', 'deduction', 'amount'];
+const STAFF_ID_LOOKUP_ORDER = ['ippis number', 'ippis no', 'staff number', 'employee_number', 'staff id'];
+const DEFAULT_ELEMENT_NAME = 'LOAN_REPAYMENT';
 
-function mapNpfRow(rowByHeader: Record<string, unknown>): RepaymentRowMappingResult {
-  const staffId = stringifyIdLikeValue(rowByHeader['staff id']);
+const KNOWN_HEADERS = new Set([...STAFF_ID_HEADERS, ...AMOUNT_HEADERS, 'element', 'period', 'loan type']);
+
+function firstPresent(rowByHeader: Record<string, unknown>, headers: string[]): unknown {
+  const header = headers.find((name) => {
+    const value = rowByHeader[name];
+    return value !== null && value !== undefined && value !== '';
+  });
+  return header ? rowByHeader[header] : null;
+}
+
+export function isRepaymentHeaderRow(headers: Array<string | null>): boolean {
+  return STAFF_ID_HEADERS.some((name) => headers.includes(name)) && AMOUNT_HEADERS.some((name) => headers.includes(name));
+}
+
+export function mapRepaymentRow(rowByHeader: Record<string, unknown>): RepaymentRowMappingResult {
+  const staffId = stringifyIdLikeValue(firstPresent(rowByHeader, STAFF_ID_LOOKUP_ORDER));
   if (!staffId) return { ok: false, reason: 'missing Staff ID' };
 
-  const amount = parseAmountCell(rowByHeader['amount']);
-  if (amount === null) return { ok: false, reason: 'missing or unparseable Amount' };
-
-  const elementName = stringOrNull(rowByHeader['element']);
-  if (!elementName) return { ok: false, reason: 'missing Element' };
-
-  return {
-    ok: true,
-    warnings: [],
-    record: {
-      staffId,
-      elementName,
-      elementDetail: null,
-      amount,
-      period: normalizePeriod(rowByHeader['period']),
-      rawFields: collectRawFields(rowByHeader, NPF_KNOWN_HEADERS),
-    },
-  };
-}
-
-const NSCDC_KNOWN_HEADERS = new Set(['ippis no', 'amount']);
-
-function mapNscdcRow(rowByHeader: Record<string, unknown>): RepaymentRowMappingResult {
-  const staffId = stringifyIdLikeValue(rowByHeader['ippis no']);
-  if (!staffId) return { ok: false, reason: 'missing IPPIS NO' };
-
-  const amount = parseAmountCell(rowByHeader['amount']);
+  const amount = parseAmountCell(firstPresent(rowByHeader, AMOUNT_LOOKUP_ORDER));
   if (amount === null) return { ok: false, reason: 'missing or unparseable Amount' };
 
   return {
@@ -116,112 +111,11 @@ function mapNscdcRow(rowByHeader: Record<string, unknown>): RepaymentRowMappingR
     warnings: [],
     record: {
       staffId,
-      elementName: 'LOAN_REPAYMENT',
-      elementDetail: null,
-      amount,
-      period: null,
-      rawFields: collectRawFields(rowByHeader, NSCDC_KNOWN_HEADERS),
-    },
-  };
-}
-
-const IMMIGRATION_KNOWN_HEADERS = new Set(['ippis number', 'cit microfinance']);
-
-function mapImmigrationRow(rowByHeader: Record<string, unknown>): RepaymentRowMappingResult {
-  const staffId = stringifyIdLikeValue(rowByHeader['ippis number']);
-  if (!staffId) return { ok: false, reason: 'missing IPPIS NUMBER' };
-
-  const amount = parseAmountCell(rowByHeader['cit microfinance']);
-  if (amount === null) return { ok: false, reason: 'missing or unparseable CIT MICROFINANCE amount' };
-
-  return {
-    ok: true,
-    warnings: [],
-    record: {
-      staffId,
-      elementName: 'LOAN_REPAYMENT',
-      elementDetail: null,
-      amount,
-      period: null,
-      rawFields: collectRawFields(rowByHeader, IMMIGRATION_KNOWN_HEADERS),
-    },
-  };
-}
-
-const CORRECTIONAL_KNOWN_HEADERS = new Set(['ippis number', 'amount']);
-
-function mapCorrectionalRow(rowByHeader: Record<string, unknown>): RepaymentRowMappingResult {
-  const staffId = stringifyIdLikeValue(rowByHeader['ippis number']);
-  if (!staffId) return { ok: false, reason: 'missing IPPIS NUMBER' };
-
-  const amount = parseAmountCell(rowByHeader['amount']);
-  if (amount === null) return { ok: false, reason: 'missing or unparseable Amount' };
-
-  return {
-    ok: true,
-    warnings: [],
-    record: {
-      staffId,
-      elementName: 'LOAN_REPAYMENT',
-      elementDetail: null,
-      amount,
-      period: null,
-      rawFields: collectRawFields(rowByHeader, CORRECTIONAL_KNOWN_HEADERS),
-    },
-  };
-}
-
-const CUSTOM_KNOWN_HEADERS = new Set(['period', 'staff number', 'loan type', 'deduction']);
-
-function mapCustomRow(rowByHeader: Record<string, unknown>): RepaymentRowMappingResult {
-  const staffId = stringifyIdLikeValue(rowByHeader['staff number']);
-  if (!staffId) return { ok: false, reason: 'missing Staff Number' };
-
-  const amount = parseAmountCell(rowByHeader['deduction']);
-  if (amount === null) return { ok: false, reason: 'missing or unparseable Deduction' };
-
-  return {
-    ok: true,
-    warnings: [],
-    record: {
-      staffId,
-      elementName: 'LOAN_REPAYMENT',
+      elementName: stringOrNull(rowByHeader['element']) ?? DEFAULT_ELEMENT_NAME,
       elementDetail: stringOrNull(rowByHeader['loan type']),
       amount,
       period: normalizePeriod(rowByHeader['period']),
-      rawFields: collectRawFields(rowByHeader, CUSTOM_KNOWN_HEADERS),
+      rawFields: collectRawFields(rowByHeader, KNOWN_HEADERS),
     },
   };
 }
-
-const LASG_KNOWN_HEADERS = new Set(['employee_number', 'result_value sum']);
-
-function mapLasgRow(rowByHeader: Record<string, unknown>): RepaymentRowMappingResult {
-  const staffId = stringifyIdLikeValue(rowByHeader['employee_number']);
-  if (!staffId) return { ok: false, reason: 'missing Employee_Number' };
-
-  const amount = parseAmountCell(rowByHeader['result_value sum']);
-  if (amount === null) return { ok: false, reason: 'missing or unparseable Result_Value SUM' };
-
-  return {
-    ok: true,
-    warnings: [],
-    record: {
-      staffId,
-      elementName: 'LOAN_REPAYMENT',
-      elementDetail: null,
-      amount,
-      period: null,
-      rawFields: collectRawFields(rowByHeader, LASG_KNOWN_HEADERS),
-    },
-  };
-}
-
-export const AGENCY_ROW_MAPPERS: Record<AgencyKey, (rowByHeader: Record<string, unknown>) => RepaymentRowMappingResult> = {
-  NPF: mapNpfRow,
-  NSCDC: mapNscdcRow,
-  IMMIGRATION: mapImmigrationRow,
-  CORRECTIONAL: mapCorrectionalRow,
-  CUSTOM: mapCustomRow,
-  LASG: mapLasgRow,
-};

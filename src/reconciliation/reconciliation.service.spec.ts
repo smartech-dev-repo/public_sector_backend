@@ -7,7 +7,7 @@ describe('ReconciliationService', () => {
   let prisma: {
     loan: { findMany: jest.Mock };
     loanRepaymentRecord: { findMany: jest.Mock };
-    repaymentVariance: { upsert: jest.Mock; findMany: jest.Mock; count: jest.Mock };
+    repaymentVariance: { upsert: jest.Mock; findMany: jest.Mock; count: jest.Mock; groupBy: jest.Mock };
   };
 
   beforeEach(() => {
@@ -15,6 +15,7 @@ describe('ReconciliationService', () => {
       loan: { findMany: jest.fn() },
       loanRepaymentRecord: { findMany: jest.fn() },
       repaymentVariance: {
+        groupBy: jest.fn().mockResolvedValue([{ status: 'MATCHED', _count: { _all: 2 } }]),
         upsert: jest.fn().mockResolvedValue(undefined),
         findMany: jest.fn(),
         count: jest.fn(),

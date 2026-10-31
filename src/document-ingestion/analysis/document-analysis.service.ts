@@ -9,8 +9,8 @@ import { IPPIS_AGENCIES } from '../parsers/ippis-broadsheet.parser';
 import { IPPIS_KNOWN_HEADERS, isRowMappingFailure, mapIppisRow } from '../parsers/ippis-row-mapper';
 import { HEADER_SCAN_LIMIT, findHeaderRowNumber } from '../parsers/disbursed-loans.parser';
 import { isLoanRowMappingFailure, mapLoanRow } from '../parsers/loan-row-mapper';
-import { REPAYMENT_AGENCIES, findAgencyHeaderRowNumber } from '../parsers/repayment-schedule.parser';
-import { AGENCY_ROW_MAPPERS, isRepaymentRowMappingFailure } from '../parsers/repayment-row-mapper';
+import { REPAYMENT_AGENCIES, findRepaymentHeaderRowNumber } from '../parsers/repayment-schedule.parser';
+import { isRepaymentRowMappingFailure, mapRepaymentRow } from '../parsers/repayment-row-mapper';
 import { AnalysisBuilder, DocumentAnalysis } from './analysis-builder';
 
 const REQUIRED_IPPIS_HEADERS = ['staff id', 'employee name'];
@@ -153,14 +153,15 @@ export class DocumentAnalysisService {
       }
       recognizedSheets++;
 
-      const headerRowNumber = findAgencyHeaderRowNumber(worksheet, agency);
+      if (worksheet.rowCount === 0) continue;
+
+      const headerRowNumber = findRepaymentHeaderRowNumber(worksheet);
       if (headerRowNumber === null) {
-        builder.addIssue('CRITICAL', `Could not find the header row for sheet "${worksheet.name}"`, { sheet: agency });
+        builder.addIssue('CRITICAL', 'Could not find the header row. "Staff ID" and "Amount" columns are required', { sheet: agency });
         continue;
       }
 
       const headerValues = worksheet.getRow(headerRowNumber).values as unknown[];
-      const mapper = AGENCY_ROW_MAPPERS[agency];
 
       for (let rowNumber = headerRowNumber + 1; rowNumber <= worksheet.rowCount; rowNumber++) {
         const row = worksheet.getRow(rowNumber);
@@ -168,7 +169,7 @@ export class DocumentAnalysisService {
         builder.countRow(sheet);
         const location = { sheet: agency, row: rowNumber };
 
-        const mapped = mapper(buildRowByHeader(headerValues, row.values as unknown[]));
+        const mapped = mapRepaymentRow(buildRowByHeader(headerValues, row.values as unknown[]));
         if (isRepaymentRowMappingFailure(mapped)) {
           builder.addIssue('ERROR', mapped.reason, location);
           continue;

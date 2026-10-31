@@ -228,6 +228,7 @@ export class AdminDocumentsController {
         documentType: query.documentType,
         status: query.status,
         q: query.q,
+        period: query.period,
         createdFrom: query.createdFrom ? new Date(query.createdFrom) : undefined,
         createdTo: query.createdTo ? new Date(query.createdTo) : undefined,
         completedFrom: query.completedFrom ? new Date(query.completedFrom) : undefined,

@@ -30,6 +30,7 @@ export interface ListBatchesFilters {
   documentType?: DocumentType;
   status?: DocumentBatchStatus;
   q?: string;
+  period?: string;
   createdFrom?: Date;
   createdTo?: Date;
   completedFrom?: Date;
@@ -200,6 +201,7 @@ export class DocumentBatchService {
     const where: Prisma.DocumentUploadBatchWhereInput = {
       documentType: filters.documentType,
       status: filters.status,
+      period: filters.period,
       createdAt:
         filters.createdFrom || filters.createdTo
           ? { gte: filters.createdFrom, lte: filters.createdTo }
@@ -211,7 +213,9 @@ export class DocumentBatchService {
       OR: filters.q
         ? [
             { originalFileName: { contains: filters.q, mode: 'insensitive' } },
+            { storedFileName: { contains: filters.q, mode: 'insensitive' } },
             { period: { contains: filters.q, mode: 'insensitive' } },
+            { uploadedBy: { fullName: { contains: filters.q, mode: 'insensitive' } } },
           ]
         : undefined,
     };

@@ -147,6 +147,28 @@ describe('DocumentAnalysisService', () => {
     expect(result.rowsWithWarnings).toBe(2);
   });
 
+  it('reads the same columns on every sector sheet, and old layouts alongside', async () => {
+    const shared = ['Staff ID', 'Amount', 'Employee Name', 'Element', 'Period', 'Loan Type'];
+    const result = await service.analyze(
+      batch(DocumentType.REPAYMENT_SCHEDULE, '2026-10'),
+      await workbookBuffer({
+        NPF: [shared, ['PF1', 100, null, 'LOAN', '2026-10', null]],
+        NSCDC: [shared, ['CD1', 200, 'Ada', null, null, null]],
+        LASG: [['Report title'], [], ['Employee_Number', 'Employee_Name', 'Result_Value SUM'], ['L1', 'Ben', 300]],
+      }),
+    );
+    expect(result.verdict).toBe('READY');
+    expect(result.validRows).toBe(3);
+  });
+
+  it('requires a reupload when a repayment sheet has no staff or amount column', async () => {
+    const result = await service.analyze(
+      batch(DocumentType.REPAYMENT_SCHEDULE, '2026-10'),
+      await workbookBuffer({ NPF: [['Name', 'Value'], ['Ada', 1]] }),
+    );
+    expect(result.verdict).toBe('REUPLOAD_REQUIRED');
+  });
+
   it('requires a reupload for a loan book with no header row', async () => {
     const result = await service.analyze(batch(DocumentType.DISBURSED_LOANS), await workbookBuffer({ S: [['a', 'b']] }));
     expect(result.verdict).toBe('REUPLOAD_REQUIRED');

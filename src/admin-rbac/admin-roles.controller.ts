@@ -40,7 +40,14 @@ export class AdminRolesController {
   @Get()
   @RequirePermissions('roles:manage')
   list(@Query() query: ListRolesQueryDto) {
-    return this.roleService.list({ q: query.q }, { page: query.page, limit: query.limit });
+    return this.roleService.list(
+      {
+        q: query.q,
+        createdFrom: query.createdFrom ? new Date(query.createdFrom) : undefined,
+        createdTo: query.createdTo ? new Date(query.createdTo) : undefined,
+      },
+      { page: query.page, limit: query.limit },
+    );
   }
 
   @Get(':id')

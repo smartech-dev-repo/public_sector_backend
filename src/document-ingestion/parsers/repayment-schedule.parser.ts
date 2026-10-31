@@ -4,26 +4,24 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { SnapshotExportService } from '../snapshot-export.service';
 import { DocumentParser, ParseResult } from '../document-parser.interface';
 import { DocumentUploadBatch, DocumentType, Prisma } from '../../generated/prisma/client';
-import { AGENCY_ROW_MAPPERS, AgencyKey, isRepaymentRowMappingFailure } from './repayment-row-mapper';
+import { AgencyKey, isRepaymentHeaderRow, isRepaymentRowMappingFailure, mapRepaymentRow } from './repayment-row-mapper';
 import { buildRowByHeader } from './build-row-by-header';
 import { loadUploadedWorkbook } from './load-uploaded-workbook';
 
 export const REPAYMENT_AGENCIES: AgencyKey[] = ['NPF', 'NSCDC', 'IMMIGRATION', 'CORRECTIONAL', 'CUSTOM', 'LASG'];
-const LASG_HEADER_SCAN_LIMIT = 5;
+const HEADER_SCAN_LIMIT = 5;
 
 const SNAPSHOT_COLUMNS = [
   'id', 'agency', 'staffId', 'period', 'elementName', 'elementDetail', 'amount', 'rawFields', 'createdAt',
 ];
 
-export function findAgencyHeaderRowNumber(worksheet: ExcelJS.Worksheet, agency: AgencyKey): number | null {
-  if (agency !== 'LASG') {
-    return 1;
-  }
-  const maxScan = Math.min(worksheet.rowCount, LASG_HEADER_SCAN_LIMIT);
+// Row 1 in the template, but agency exports can carry a title block above it.
+export function findRepaymentHeaderRowNumber(worksheet: ExcelJS.Worksheet): number | null {
+  const maxScan = Math.min(worksheet.rowCount, HEADER_SCAN_LIMIT);
   for (let rowNumber = 1; rowNumber <= maxScan; rowNumber++) {
     const values = (worksheet.getRow(rowNumber).values as unknown[]) ?? [];
-    const normalized = values.map((v) => (typeof v === 'string' ? v.trim().toLowerCase() : null));
-    if (normalized.includes('employee_number') && normalized.includes('employee_name')) {
+    const normalized = Array.from(values, (v) => (typeof v === 'string' ? v.trim().toLowerCase() : null));
+    if (isRepaymentHeaderRow(normalized)) {
       return rowNumber;
     }
   }
@@ -68,14 +66,15 @@ export class RepaymentScheduleParser implements DocumentParser {
         continue;
       }
 
-      const headerRowNumber = findAgencyHeaderRowNumber(worksheet, agency);
+      if (worksheet.rowCount === 0) continue;
+
+      const headerRowNumber = findRepaymentHeaderRowNumber(worksheet);
       if (headerRowNumber === null) {
         warnings.push(`Could not locate a header row for sheet "${worksheet.name}"`);
         continue;
       }
 
       const headerValues = worksheet.getRow(headerRowNumber).values as unknown[];
-      const mapper = AGENCY_ROW_MAPPERS[agency];
 
       for (let rowNumber = headerRowNumber + 1; rowNumber <= worksheet.rowCount; rowNumber++) {
         const row = worksheet.getRow(rowNumber);
@@ -84,7 +83,7 @@ export class RepaymentScheduleParser implements DocumentParser {
 
         try {
           const rowByHeader = buildRowByHeader(headerValues, row.values as unknown[]);
-          const mapped = mapper(rowByHeader);
+          const mapped = mapRepaymentRow(rowByHeader);
 
           if (isRepaymentRowMappingFailure(mapped)) {
             rowsSkipped++;

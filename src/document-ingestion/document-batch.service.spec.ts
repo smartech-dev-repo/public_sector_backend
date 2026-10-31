@@ -182,7 +182,7 @@ describe('DocumentBatchService', () => {
       expect(result.meta).toEqual({ total: 0, page: 1, limit: 25, totalPages: 0 });
     });
 
-    it('searches originalFileName and period', async () => {
+    it('searches file names, period and uploader', async () => {
       prisma.documentUploadBatch.findMany.mockResolvedValue([]);
       prisma.documentUploadBatch.count.mockResolvedValue(0);
 
@@ -193,7 +193,9 @@ describe('DocumentBatchService', () => {
           where: expect.objectContaining({
             OR: [
               { originalFileName: { contains: '2026-01', mode: 'insensitive' } },
+              { storedFileName: { contains: '2026-01', mode: 'insensitive' } },
               { period: { contains: '2026-01', mode: 'insensitive' } },
+              { uploadedBy: { fullName: { contains: '2026-01', mode: 'insensitive' } } },
             ],
           }),
         }),

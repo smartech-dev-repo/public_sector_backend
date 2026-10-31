@@ -91,7 +91,7 @@ export class ReconciliationService {
           : undefined,
     };
 
-    const [data, total] = await Promise.all([
+    const [data, total, statusCounts] = await Promise.all([
       this.prisma.repaymentVariance.findMany({
         where,
         include: { loan: true },
@@ -100,8 +100,12 @@ export class ReconciliationService {
         take: limit,
       }),
       this.prisma.repaymentVariance.count({ where }),
+      this.prisma.repaymentVariance.groupBy({ by: ['status'], where, _count: { _all: true } }),
     ]);
 
-    return buildPaginatedResult(data, total, page, limit);
+    // Totals across every matching variance, not just the page being returned.
+    const summary = Object.fromEntries(statusCounts.map((row) => [row.status, row._count._all]));
+
+    return { ...buildPaginatedResult(data, total, page, limit), summary };
   }
 }
