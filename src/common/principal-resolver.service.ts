@@ -15,7 +15,10 @@ interface RegistryEntry {
 const REGISTRY: Record<string, RegistryEntry> = {
   ADMIN: {
     findMany: (p, ids) =>
-      p.adminUser.findMany({ where: { id: { in: ids } }, select: { id: true, fullName: true, email: true } }),
+      p.adminUser.findMany({
+        where: { id: { in: ids } },
+        select: { id: true, fullName: true, email: true, role: { select: { name: true } } },
+      }),
   },
   AGENT: {
     findMany: (p, ids) =>
@@ -23,11 +26,17 @@ const REGISTRY: Record<string, RegistryEntry> = {
   },
   CLIENT: {
     findMany: (p, ids) =>
-      p.client.findMany({ where: { id: { in: ids } }, select: { id: true, phone: true, status: true } }),
+      p.client.findMany({
+        where: { id: { in: ids } },
+        select: { id: true, phone: true, status: true, onboarding: { select: { employeeName: true } } },
+      }),
   },
   AdminUser: {
     findMany: (p, ids) =>
-      p.adminUser.findMany({ where: { id: { in: ids } }, select: { id: true, fullName: true, email: true } }),
+      p.adminUser.findMany({
+        where: { id: { in: ids } },
+        select: { id: true, fullName: true, email: true, role: { select: { name: true } } },
+      }),
   },
   Agent: {
     findMany: (p, ids) =>
@@ -35,7 +44,10 @@ const REGISTRY: Record<string, RegistryEntry> = {
   },
   Client: {
     findMany: (p, ids) =>
-      p.client.findMany({ where: { id: { in: ids } }, select: { id: true, phone: true, status: true } }),
+      p.client.findMany({
+        where: { id: { in: ids } },
+        select: { id: true, phone: true, status: true, onboarding: { select: { employeeName: true } } },
+      }),
   },
   AdminInvite: {
     findMany: (p, ids) =>
@@ -50,6 +62,20 @@ const REGISTRY: Record<string, RegistryEntry> = {
   },
   Permission: {
     findMany: (p, ids) => p.permission.findMany({ where: { id: { in: ids } }, select: { id: true, key: true } }),
+  },
+  ManagementFee: {
+    findMany: (p, ids) => p.managementFee.findMany({ where: { id: { in: ids } }, select: { id: true, name: true } }),
+  },
+  LoanProduct: {
+    findMany: (p, ids) =>
+      p.loanProduct.findMany({ where: { id: { in: ids } }, select: { id: true, productName: true, productCode: true } }),
+  },
+  DocumentUploadBatch: {
+    findMany: (p, ids) =>
+      p.documentUploadBatch.findMany({
+        where: { id: { in: ids } },
+        select: { id: true, originalFileName: true, documentType: true, status: true },
+      }),
   },
   Role: {
     findMany: (p, ids) => p.role.findMany({ where: { id: { in: ids } }, select: { id: true, name: true } }),

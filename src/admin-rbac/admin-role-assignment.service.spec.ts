@@ -1,6 +1,7 @@
 import { ConflictException, NotFoundException } from '@nestjs/common';
 import { AdminRoleAssignmentService } from './admin-role-assignment.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { FileStorageProvider } from '../file-storage/file-storage-provider.interface';
 import { SessionService } from '../session/session.service';
 
 describe('AdminRoleAssignmentService', () => {
@@ -11,13 +12,20 @@ describe('AdminRoleAssignmentService', () => {
   };
   let sessionService: { revokeAllForPrincipal: jest.Mock };
 
+  let fileStorageProvider: { getSignedDownloadUrl: jest.Mock };
+
   beforeEach(() => {
     prisma = {
       adminUser: { findMany: jest.fn(), findUnique: jest.fn(), update: jest.fn(), count: jest.fn() },
       role: { findUnique: jest.fn() },
     };
     sessionService = { revokeAllForPrincipal: jest.fn().mockResolvedValue(undefined) };
-    service = new AdminRoleAssignmentService(prisma as unknown as PrismaService, sessionService as unknown as SessionService);
+    fileStorageProvider = { getSignedDownloadUrl: jest.fn().mockResolvedValue('https://files.test/signed') };
+    service = new AdminRoleAssignmentService(
+      prisma as unknown as PrismaService,
+      sessionService as unknown as SessionService,
+      fileStorageProvider as unknown as FileStorageProvider,
+    );
   });
 
   it('listAdmins returns admins with role and department included', async () => {
@@ -26,6 +34,22 @@ describe('AdminRoleAssignmentService', () => {
     expect(prisma.adminUser.findMany).toHaveBeenCalledWith(
       expect.objectContaining({ select: expect.objectContaining({ role: true, department: true }) }),
     );
+  });
+
+  it('listAdmins returns a signed photo link, never the storage key, and null without a photo', async () => {
+    prisma.adminUser.findMany.mockResolvedValue([
+      { id: 'a1', profileImageKey: 'admin/a1.jpg' },
+      { id: 'a2', profileImageKey: null },
+    ]);
+    prisma.adminUser.count.mockResolvedValue(2);
+
+    const result = await service.listAdmins();
+
+    expect(result.data).toEqual([
+      { id: 'a1', profileImageUrl: 'https://files.test/signed' },
+      { id: 'a2', profileImageUrl: null },
+    ]);
+    expect(fileStorageProvider.getSignedDownloadUrl).toHaveBeenCalledTimes(1);
   });
 
   it('listAdmins filters by isActive and searches email/fullName', async () => {

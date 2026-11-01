@@ -2,6 +2,7 @@ import { of, throwError } from 'rxjs';
 import { CallHandler, ExecutionContext } from '@nestjs/common';
 import { AuditInterceptor } from './audit.interceptor';
 import { AuditLogService } from './audit-log.service';
+import { auditRequestContext } from './audit-request-context';
 import { AuditActorType } from '../generated/prisma/client';
 
 function buildContext(request: Record<string, unknown>): ExecutionContext {
@@ -31,6 +32,17 @@ describe('AuditInterceptor', () => {
       expect(auditLogService.record).not.toHaveBeenCalled();
       done();
     });
+  });
+
+  it('exposes the request origin to code running inside the handler', (done) => {
+    const request = { method: 'POST', url: '/admin/roles', ip: '10.0.0.1', headers: { 'user-agent': 'jest' } };
+    const handler: CallHandler = {
+      handle: () => {
+        expect(auditRequestContext.getStore()).toEqual({ ip: '10.0.0.1', userAgent: 'jest' });
+        return of(true);
+      },
+    };
+    interceptor.intercept(buildContext(request), handler).subscribe(() => done());
   });
 
   it('logs a baseline entry for a successful mutating request', (done) => {

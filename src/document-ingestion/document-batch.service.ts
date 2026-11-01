@@ -86,6 +86,7 @@ export class DocumentBatchService {
     if (count === 0) {
       throw new ConflictException('This upload is no longer awaiting confirmation');
     }
+    return batch;
   }
 
   async cancel(batchId: string, documentType: DocumentType) {
@@ -99,6 +100,7 @@ export class DocumentBatchService {
       throw new ConflictException('This upload is no longer awaiting confirmation');
     }
     await this.fileStorageProvider.deleteObject(batch.storageKey);
+    return batch;
   }
 
   private async findAwaitingConfirmation(batchId: string, documentType: DocumentType) {

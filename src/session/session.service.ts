@@ -29,6 +29,12 @@ export interface SessionSummary {
   expiresAt: Date;
 }
 
+const SESSION_AUDIT_NAMES: Record<SessionPrincipalType, { prefix: string; targetType: string }> = {
+  ADMIN: { prefix: 'admin', targetType: 'AdminUser' },
+  AGENT: { prefix: 'agent', targetType: 'Agent' },
+  CLIENT: { prefix: 'client', targetType: 'Client' },
+};
+
 @Injectable()
 export class SessionService {
   constructor(
@@ -122,6 +128,18 @@ export class SessionService {
       where: { id: session.id },
       data: { revokedAt: new Date(), revokedReason: 'logout' },
     });
+    await this.recordLogout(session.principalType, session.principalId, 'logout');
+  }
+
+  private recordLogout(principalType: SessionPrincipalType, principalId: string, action: string) {
+    const { prefix, targetType } = SESSION_AUDIT_NAMES[principalType];
+    return this.auditLogService.recordSafely({
+      actorType: AuditActorType[principalType],
+      actorId: principalId,
+      action: `${prefix}.${action}`,
+      targetType,
+      targetId: principalId,
+    });
   }
 
   async revokeAllForPrincipal(
@@ -133,6 +151,9 @@ export class SessionService {
       where: { principalType, principalId, revokedAt: null },
       data: { revokedAt: new Date(), revokedReason: reason },
     });
+    if (reason === 'logout_all') {
+      await this.recordLogout(principalType, principalId, 'logout_all');
+    }
   }
 
   async listActiveSessions(
@@ -185,5 +206,6 @@ export class SessionService {
       where: { id: sessionId },
       data: { revokedAt: new Date(), revokedReason: 'logout' },
     });
+    await this.recordLogout(session.principalType, session.principalId, 'logout');
   }
 }

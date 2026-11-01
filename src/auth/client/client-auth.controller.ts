@@ -1,4 +1,5 @@
-import { Body, Controller, HttpCode, Post, Req } from '@nestjs/common';
+import { Body, Controller, HttpCode, Post, Req, UseInterceptors } from '@nestjs/common';
+import { AuditContextInterceptor } from '../../audit/audit-context.interceptor';
 import { Throttle } from '@nestjs/throttler';
 import { Request } from 'express';
 import { ClientAuthService } from './client-auth.service';
@@ -7,6 +8,7 @@ import { VerifyOtpDto } from './dto/verify-otp.dto';
 import { getRequestMetadata } from '../../common/request-metadata.util';
 
 @Controller('auth/client')
+@UseInterceptors(AuditContextInterceptor)
 export class ClientAuthController {
   constructor(private readonly clientAuthService: ClientAuthService) {}
 

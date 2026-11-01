@@ -1,4 +1,5 @@
-import { Body, Controller, Delete, Get, HttpCode, Param, Post, Query, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, Param, Post, Query, Req, UseGuards, UseInterceptors } from '@nestjs/common';
+import { AuditContextInterceptor } from '../../audit/audit-context.interceptor';
 import { Request } from 'express';
 import { SessionService } from '../../session/session.service';
 import { TokenService } from '../token.service';
@@ -13,6 +14,7 @@ import { SessionPrincipalType } from '../../generated/prisma/client';
 import { getRequestMetadata } from '../../common/request-metadata.util';
 
 @Controller('auth')
+@UseInterceptors(AuditContextInterceptor)
 export class SessionAuthController {
   constructor(
     private readonly sessionService: SessionService,

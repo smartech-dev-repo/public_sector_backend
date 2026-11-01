@@ -25,13 +25,15 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { PermissionsGuard } from '../auth/permissions.guard';
 import { RequirePermissions } from '../auth/permissions.decorator';
 import { AuditInterceptor } from '../audit/audit.interceptor';
+import { AuditLogService } from '../audit/audit-log.service';
 import { JwtPayload } from '../auth/jwt-payload.interface';
 import { DocumentBatchService } from './document-batch.service';
 import { UploadRepaymentScheduleDto } from './dto/upload-repayment-schedule.dto';
 import { DOCUMENT_INGESTION_QUEUE } from './document-ingestion-queue.constants';
 import { ANALYZE_BATCH_JOB, DocumentIngestionJobData } from './document-ingestion.processor';
 import { FILE_STORAGE_PROVIDER, FileStorageProvider } from '../file-storage/file-storage-provider.interface';
-import { DocumentBatchStatus, DocumentType } from '../generated/prisma/client';
+import { AuditActorType, DocumentBatchStatus, DocumentType, Prisma } from '../generated/prisma/client';
+import { DocumentAnalysis } from './analysis/analysis-builder';
 import { ListDocumentBatchesQueryDto } from './dto/list-document-batches-query.dto';
 import { ValidateDocumentUploadDto } from './dto/validate-document-upload.dto';
 import { SPREADSHEET_UPLOAD_OPTIONS } from './spreadsheet-upload.options';
@@ -52,7 +54,29 @@ export class AdminDocumentsController {
     private readonly documentBatchService: DocumentBatchService,
     @Inject(FILE_STORAGE_PROVIDER) private readonly fileStorageProvider: FileStorageProvider,
     @InjectQueue(DOCUMENT_INGESTION_QUEUE) private readonly queue: Queue<DocumentIngestionJobData>,
+    private readonly auditLogService: AuditLogService,
   ) {}
+
+  private recordUploadEvent(
+    actorId: string,
+    action: string,
+    batch: { id: string; documentType: DocumentType; originalFileName: string; period?: string | null },
+    extra: Prisma.InputJsonObject = {},
+  ) {
+    return this.auditLogService.record({
+      actorType: AuditActorType.ADMIN,
+      actorId,
+      action,
+      targetType: 'DocumentUploadBatch',
+      targetId: batch.id,
+      metadata: {
+        documentType: batch.documentType,
+        fileName: batch.originalFileName,
+        period: batch.period ?? null,
+        ...extra,
+      },
+    });
+  }
 
   private async storeUpload(
     documentType: DocumentType,
@@ -93,6 +117,10 @@ export class AdminDocumentsController {
     }
     const batch = await this.storeUpload(documentType, file, uploaderId, period, DocumentBatchStatus.PENDING);
     await this.queue.add('process-batch', { batchId: batch.id });
+    await this.recordUploadEvent(uploaderId, 'document.upload.submitted', batch, {
+      fileSizeBytes: batch.fileSizeBytes,
+      skippedReview: true,
+    });
 
     return { id: batch.id, status: batch.status, documentType: batch.documentType };
   }
@@ -155,6 +183,7 @@ export class AdminDocumentsController {
       needsAgency ? dto.agency : undefined,
     );
     await this.queue.add(ANALYZE_BATCH_JOB, { batchId: batch.id });
+    await this.recordUploadEvent(req.user.sub, 'document.upload.submitted', batch, { fileSizeBytes: batch.fileSizeBytes });
 
     return {
       id: batch.id,
@@ -173,8 +202,11 @@ export class AdminDocumentsController {
     @Param('id', ParseUUIDPipe) id: string,
     @Req() req: { user: JwtPayload },
   ) {
-    await this.documentBatchService.confirm(id, this.resolveDocumentType(slug, req.user));
+    const batch = await this.documentBatchService.confirm(id, this.resolveDocumentType(slug, req.user));
     await this.queue.add('process-batch', { batchId: id });
+    await this.recordUploadEvent(req.user.sub, 'document.upload.confirmed', batch, {
+      verdict: (batch.analysis as unknown as DocumentAnalysis | null)?.verdict ?? null,
+    });
     return { id, status: DocumentBatchStatus.PENDING };
   }
 
@@ -185,7 +217,8 @@ export class AdminDocumentsController {
     @Param('id', ParseUUIDPipe) id: string,
     @Req() req: { user: JwtPayload },
   ) {
-    await this.documentBatchService.cancel(id, this.resolveDocumentType(slug, req.user));
+    const batch = await this.documentBatchService.cancel(id, this.resolveDocumentType(slug, req.user));
+    await this.recordUploadEvent(req.user.sub, 'document.upload.cancelled', batch);
     return { id, status: DocumentBatchStatus.CANCELLED };
   }
 

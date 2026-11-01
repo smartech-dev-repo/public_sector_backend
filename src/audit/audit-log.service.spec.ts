@@ -2,6 +2,7 @@ import { AuditLogService } from './audit-log.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { PrincipalResolverService } from '../common/principal-resolver.service';
 import { AuditActorType } from '../generated/prisma/client';
+import { auditRequestContext } from './audit-request-context';
 
 describe('AuditLogService', () => {
   let service: AuditLogService;
@@ -57,7 +58,34 @@ describe('AuditLogService', () => {
     });
   });
 
+  it('fills ip and userAgent from the current request', async () => {
+    await auditRequestContext.run({ ip: '10.0.0.1', userAgent: 'jest' }, () =>
+      service.record({ actorType: AuditActorType.ADMIN, action: 'role.updated' }),
+    );
+    expect(prisma.auditLog.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ ip: '10.0.0.1', userAgent: 'jest' }),
+    });
+  });
+
+  it('keeps an explicitly passed ip over the request context', async () => {
+    await auditRequestContext.run({ ip: '10.0.0.1' }, () =>
+      service.record({ actorType: AuditActorType.SYSTEM, action: 'session.reuse_detected', ip: '10.0.0.2' }),
+    );
+    expect(prisma.auditLog.create).toHaveBeenCalledWith({ data: expect.objectContaining({ ip: '10.0.0.2' }) });
+  });
+
   describe('list', () => {
+    it('kind=event excludes baseline request rows and kind=request keeps only them', async () => {
+      prisma.auditLog.findMany.mockResolvedValue([]);
+      prisma.auditLog.count.mockResolvedValue(0);
+
+      await service.list({ kind: 'event' });
+      expect(prisma.auditLog.findMany.mock.calls[0][0].where.NOT).toEqual({ action: { contains: ' /' } });
+
+      await service.list({ kind: 'request' });
+      expect(prisma.auditLog.findMany.mock.calls[1][0].where.action).toEqual({ contains: ' /' });
+    });
+
     it('filters and orders newest-first, defaulting to page 1/limit 25', async () => {
       prisma.auditLog.findMany.mockResolvedValue([]);
       prisma.auditLog.count.mockResolvedValue(0);

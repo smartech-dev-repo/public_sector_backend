@@ -1,4 +1,5 @@
-import { Body, Controller, HttpCode, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, HttpCode, Post, Req, UseGuards, UseInterceptors } from '@nestjs/common';
+import { AuditContextInterceptor } from '../../audit/audit-context.interceptor';
 import { Throttle } from '@nestjs/throttler';
 import { Request } from 'express';
 import { AgentAuthService } from './agent-auth.service';
@@ -18,6 +19,7 @@ import { AgentOnlyGuard } from '../agent-only.guard';
 import { JwtPayload } from '../jwt-payload.interface';
 
 @Controller('auth/agent')
+@UseInterceptors(AuditContextInterceptor)
 export class AgentAuthController {
   constructor(private readonly agentAuthService: AgentAuthService) {}
 

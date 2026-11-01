@@ -1,6 +1,7 @@
 import { ConflictException, Injectable, UnauthorizedException } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { generateSecret, generateURI, verify } from 'otplib';
+import { AuditLogService } from '../../audit/audit-log.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { TokenService } from '../token.service';
 import { SessionService } from '../../session/session.service';
@@ -14,7 +15,7 @@ import { JwtPayload } from '../jwt-payload.interface';
 import { adminPasswordResetEmail } from '../../email/templates/token-emails';
 import { twoFactorSetupCodeEmail, loginVerificationCodeEmail } from '../../email/templates/verification-code-emails';
 import { devCodeEcho } from '../../common/dev-code-echo.util';
-import { SessionPrincipalType, TwoFactorMethod } from '../../generated/prisma/client';
+import { SessionPrincipalType, TwoFactorMethod, AuditActorType } from '../../generated/prisma/client';
 
 const PASSWORD_RESET_TTL_MS = 60 * 60 * 1000;
 const TWO_FACTOR_EMAIL_CODE_TTL_MS = 10 * 60 * 1000;
@@ -27,8 +28,20 @@ export class AdminAuthService {
     private readonly sessionService: SessionService,
     private readonly adminInviteService: AdminInviteService,
     private readonly emailService: EmailService,
+    private readonly auditLogService: AuditLogService,
     private readonly configService?: ConfigService,
   ) {}
+
+  private recordLoginFailure(reason: string, email?: string, adminId?: string) {
+    return this.auditLogService.recordSafely({
+      actorType: AuditActorType.ADMIN,
+      actorId: adminId,
+      action: 'admin.login.failed',
+      targetType: adminId ? 'AdminUser' : undefined,
+      targetId: adminId,
+      metadata: { email, reason },
+    });
+  }
 
   async getPermissionsForAdmin(adminId: string): Promise<string[]> {
     const admin = await this.prisma.adminUser.findUnique({
@@ -49,11 +62,13 @@ export class AdminAuthService {
     const admin = await this.prisma.adminUser.findUnique({ where: { email } });
 
     if (!admin || !admin.isActive) {
+      await this.recordLoginFailure(admin ? 'inactive_account' : 'unknown_account', email, admin?.id);
       throw new UnauthorizedException('Invalid credentials');
     }
 
     const passwordMatches = await bcrypt.compare(password, admin.passwordHash);
     if (!passwordMatches) {
+      await this.recordLoginFailure('wrong_password', email, admin.id);
       throw new UnauthorizedException('Invalid credentials');
     }
 
@@ -61,6 +76,13 @@ export class AdminAuthService {
       return this.beginTwoFactorLogin(admin);
     }
 
+    await this.auditLogService.recordSafely({
+      actorType: AuditActorType.ADMIN,
+      actorId: admin.id,
+      action: 'admin.login.succeeded',
+      targetType: 'AdminUser',
+      targetId: admin.id,
+    });
     return this.issueTokens(admin.id, meta);
   }
 
@@ -111,6 +133,13 @@ export class AdminAuthService {
       to: admin.email,
       ...adminPasswordResetEmail({ token, resetUrl: this.buildResetUrl(token) }),
     });
+    await this.auditLogService.recordSafely({
+      actorType: AuditActorType.ADMIN,
+      actorId: admin.id,
+      action: 'admin.password.reset_requested',
+      targetType: 'AdminUser',
+      targetId: admin.id,
+    });
   }
 
   private buildResetUrl(token: string): string | undefined {
@@ -138,6 +167,13 @@ export class AdminAuthService {
     });
 
     await this.sessionService.revokeAllForPrincipal(SessionPrincipalType.ADMIN, admin.id, 'password_reset');
+    await this.auditLogService.recordSafely({
+      actorType: AuditActorType.ADMIN,
+      actorId: admin.id,
+      action: 'admin.password.reset',
+      targetType: 'AdminUser',
+      targetId: admin.id,
+    });
   }
 
   async changePassword(adminId: string, currentPassword: string, newPassword: string): Promise<void> {
@@ -145,6 +181,13 @@ export class AdminAuthService {
 
     const passwordMatches = await bcrypt.compare(currentPassword, admin.passwordHash);
     if (!passwordMatches) {
+      await this.auditLogService.recordSafely({
+        actorType: AuditActorType.ADMIN,
+        actorId: adminId,
+        action: 'admin.password.change_failed',
+        targetType: 'AdminUser',
+        targetId: adminId,
+      });
       throw new UnauthorizedException('Current password is incorrect');
     }
 
@@ -152,6 +195,13 @@ export class AdminAuthService {
     await this.prisma.adminUser.update({
       where: { id: adminId },
       data: { passwordHash },
+    });
+    await this.auditLogService.recordSafely({
+      actorType: AuditActorType.ADMIN,
+      actorId: adminId,
+      action: 'admin.password.changed',
+      targetType: 'AdminUser',
+      targetId: adminId,
     });
   }
 
@@ -195,6 +245,7 @@ export class AdminAuthService {
     if (admin.twoFactorPendingMethod === TwoFactorMethod.TOTP) {
       const result = await verify({ secret: admin.twoFactorPendingSecret!, token: code });
       if (!result.valid) {
+        await this.recordLoginFailure('wrong_2fa_code', admin.email, admin.id);
         throw new UnauthorizedException('Invalid verification code');
       }
 
@@ -207,6 +258,14 @@ export class AdminAuthService {
           twoFactorPendingSecret: null,
           twoFactorPendingMethod: null,
         },
+      });
+      await this.auditLogService.recordSafely({
+        actorType: AuditActorType.ADMIN,
+        actorId: adminId,
+        action: 'admin.2fa.enabled',
+        targetType: 'AdminUser',
+        targetId: adminId,
+        metadata: { method: TwoFactorMethod.TOTP },
       });
       return;
     }
@@ -229,6 +288,14 @@ export class AdminAuthService {
         twoFactorEmailCodeHash: null,
         twoFactorEmailCodeExpiresAt: null,
       },
+    });
+    await this.auditLogService.recordSafely({
+      actorType: AuditActorType.ADMIN,
+      actorId: adminId,
+      action: 'admin.2fa.enabled',
+      targetType: 'AdminUser',
+      targetId: adminId,
+      metadata: { method: TwoFactorMethod.EMAIL },
     });
   }
 
@@ -255,6 +322,13 @@ export class AdminAuthService {
         twoFactorEmailCodeHash: null,
         twoFactorEmailCodeExpiresAt: null,
       },
+    });
+    await this.auditLogService.recordSafely({
+      actorType: AuditActorType.ADMIN,
+      actorId: adminId,
+      action: 'admin.2fa.disabled',
+      targetType: 'AdminUser',
+      targetId: adminId,
     });
   }
 
@@ -300,6 +374,7 @@ export class AdminAuthService {
         admin.twoFactorEmailCodeExpiresAt < new Date() ||
         admin.twoFactorEmailCodeHash !== hashToken(code)
       ) {
+        await this.recordLoginFailure('wrong_2fa_code', admin.email, admin.id);
         throw new UnauthorizedException('Invalid verification code');
       }
       await this.prisma.adminUser.update({
@@ -308,6 +383,14 @@ export class AdminAuthService {
       });
     }
 
+    await this.auditLogService.recordSafely({
+      actorType: AuditActorType.ADMIN,
+      actorId: admin.id,
+      action: 'admin.login.succeeded',
+      targetType: 'AdminUser',
+      targetId: admin.id,
+      metadata: { twoFactor: true },
+    });
     return this.issueTokens(admin.id, meta);
   }
 

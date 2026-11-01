@@ -42,14 +42,14 @@ export class AdminRoleAssignmentController {
     @Body() dto: AssignRoleDto,
     @Req() req: { user: JwtPayload },
   ) {
-    await this.adminRoleAssignmentService.setRole(id, dto.roleId);
+    const role = await this.adminRoleAssignmentService.setRole(id, dto.roleId);
     await this.auditLogService.record({
       actorType: AuditActorType.ADMIN,
       actorId: req.user.sub,
       action: 'admin.role.set',
       targetType: 'AdminUser',
       targetId: id,
-      metadata: { roleId: dto.roleId },
+      metadata: { roleId: dto.roleId, changes: { role } },
     });
     return { updated: true };
   }

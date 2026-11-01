@@ -37,7 +37,7 @@ describe('PrincipalResolverService', () => {
 
     expect(prisma.adminUser.findMany).toHaveBeenCalledWith({
       where: { id: { in: ['admin-1'] } },
-      select: { id: true, fullName: true, email: true },
+      select: { id: true, fullName: true, email: true, role: { select: { name: true } } },
     });
     expect(result.get('ADMIN:admin-1')).toEqual({ id: 'admin-1', fullName: 'Jane Doe', email: 'jane@x.com' });
   });
@@ -58,7 +58,7 @@ describe('PrincipalResolverService', () => {
     expect(prisma.adminUser.findMany).toHaveBeenCalledTimes(1);
     expect(prisma.adminUser.findMany).toHaveBeenCalledWith({
       where: { id: { in: ['admin-1', 'admin-2'] } },
-      select: { id: true, fullName: true, email: true },
+      select: { id: true, fullName: true, email: true, role: { select: { name: true } } },
     });
     expect(prisma.client.findMany).toHaveBeenCalledTimes(1);
     expect(result.get('ADMIN:admin-1')).toEqual({ id: 'admin-1', fullName: 'A', email: 'a@x.com' });

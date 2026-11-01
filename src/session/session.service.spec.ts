@@ -16,7 +16,7 @@ describe('SessionService', () => {
       count: jest.Mock;
     };
   };
-  let auditLogService: { record: jest.Mock };
+  let auditLogService: { record: jest.Mock; recordSafely: jest.Mock };
 
   beforeEach(() => {
     prisma = {
@@ -29,7 +29,7 @@ describe('SessionService', () => {
         count: jest.fn(),
       },
     };
-    auditLogService = { record: jest.fn() };
+    auditLogService = { record: jest.fn(), recordSafely: jest.fn().mockResolvedValue(undefined) };
     service = new SessionService(
       prisma as unknown as PrismaService,
       auditLogService as unknown as AuditLogService,

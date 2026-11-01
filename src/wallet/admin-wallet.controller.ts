@@ -42,6 +42,7 @@ export class AdminWalletController {
     @Body() dto: WalletTransactionDto,
     @Req() req: { user: JwtPayload },
   ) {
+    const balanceBefore = await this.walletService.getBalance(clientId);
     const entry = await this.walletService.credit(clientId, dto.amount, dto.description, {
       actorType: AuditActorType.ADMIN,
       actorId: req.user.sub,
@@ -52,7 +53,11 @@ export class AdminWalletController {
       action: 'wallet.credit',
       targetType: 'Client',
       targetId: clientId,
-      metadata: { amount: dto.amount, description: dto.description },
+      metadata: {
+        amount: dto.amount,
+        description: dto.description,
+        changes: { balance: { from: balanceBefore, to: await this.walletService.getBalance(clientId) } },
+      },
     });
     return entry;
   }
@@ -65,6 +70,7 @@ export class AdminWalletController {
     @Body() dto: WalletTransactionDto,
     @Req() req: { user: JwtPayload },
   ) {
+    const balanceBefore = await this.walletService.getBalance(clientId);
     const entry = await this.walletService.debit(clientId, dto.amount, dto.description, {
       actorType: AuditActorType.ADMIN,
       actorId: req.user.sub,
@@ -75,7 +81,11 @@ export class AdminWalletController {
       action: 'wallet.debit',
       targetType: 'Client',
       targetId: clientId,
-      metadata: { amount: dto.amount, description: dto.description },
+      metadata: {
+        amount: dto.amount,
+        description: dto.description,
+        changes: { balance: { from: balanceBefore, to: await this.walletService.getBalance(clientId) } },
+      },
     });
     return entry;
   }

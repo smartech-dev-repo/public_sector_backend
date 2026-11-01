@@ -1,6 +1,7 @@
 import { CallHandler, ExecutionContext, Injectable, NestInterceptor } from '@nestjs/common';
 import { Observable, tap } from 'rxjs';
 import { AuditLogService } from './audit-log.service';
+import { runWithRequestOrigin } from './audit-context.interceptor';
 import { JwtPayload } from '../auth/jwt-payload.interface';
 import { AuditActorType } from '../generated/prisma/client';
 
@@ -25,11 +26,13 @@ export class AuditInterceptor implements NestInterceptor {
       return next.handle();
     }
 
-    return next.handle().pipe(
-      tap({
-        next: () => this.logBestEffort(request, 200),
-        error: (error: { status?: number }) => this.logBestEffort(request, error?.status ?? 500),
-      }),
+    return runWithRequestOrigin(request, () =>
+      next.handle().pipe(
+        tap({
+          next: () => this.logBestEffort(request, 200),
+          error: (error: { status?: number }) => this.logBestEffort(request, error?.status ?? 500),
+        }),
+      ),
     );
   }
 

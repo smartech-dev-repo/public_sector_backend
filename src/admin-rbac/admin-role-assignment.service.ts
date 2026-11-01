@@ -1,8 +1,9 @@
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { SessionService } from '../session/session.service';
 import { Prisma, SessionPrincipalType } from '../generated/prisma/client';
 import { buildPaginatedResult } from '../common/pagination/paginated-result';
+import { FILE_STORAGE_PROVIDER, FileStorageProvider } from '../file-storage/file-storage-provider.interface';
 
 const SUPER_ADMIN_ROLE_NAME = 'SUPER_ADMIN';
 
@@ -19,6 +20,7 @@ export class AdminRoleAssignmentService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly sessionService: SessionService,
+    @Inject(FILE_STORAGE_PROVIDER) private readonly fileStorageProvider: FileStorageProvider,
   ) {}
 
   async listAdmins(
@@ -52,6 +54,7 @@ export class AdminRoleAssignmentService {
           createdAt: true,
           role: true,
           department: true,
+          profileImageKey: true,
         },
         orderBy: { createdAt: 'desc' },
         skip: (page - 1) * limit,
@@ -60,10 +63,17 @@ export class AdminRoleAssignmentService {
       this.prisma.adminUser.count({ where }),
     ]);
 
-    return buildPaginatedResult(data, total, page, limit);
+    const rows = await Promise.all(
+      data.map(async ({ profileImageKey, ...admin }) => ({
+        ...admin,
+        profileImageUrl: profileImageKey ? await this.fileStorageProvider.getSignedDownloadUrl(profileImageKey) : null,
+      })),
+    );
+
+    return buildPaginatedResult(rows, total, page, limit);
   }
 
-  async setRole(adminId: string, roleId: string): Promise<void> {
+  async setRole(adminId: string, roleId: string): Promise<{ from: string; to: string }> {
     const admin = await this.prisma.adminUser.findUnique({
       where: { id: adminId },
       include: { role: true },
@@ -89,6 +99,7 @@ export class AdminRoleAssignmentService {
       where: { id: adminId },
       data: { roleId: newRole.id, departmentId: newRole.departmentId },
     });
+    return { from: admin.role.name, to: newRole.name };
   }
 
   async suspend(callerId: string, id: string): Promise<void> {

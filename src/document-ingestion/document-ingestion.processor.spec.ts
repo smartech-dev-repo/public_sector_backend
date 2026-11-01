@@ -1,3 +1,4 @@
+import { AuditLogService } from '../audit/audit-log.service';
 import { Job } from 'bullmq';
 import { DocumentAnalysisService } from './analysis/document-analysis.service';
 import { DocumentIngestionProcessor, DocumentIngestionJobData } from './document-ingestion.processor';
@@ -23,6 +24,8 @@ describe('DocumentIngestionProcessor', () => {
   let reconciliationService: { reconcileAll: jest.Mock };
   let clientLoanReconciliationService: { reconcileAll: jest.Mock };
 
+  let auditLogService: { recordSafely: jest.Mock };
+
   beforeEach(() => {
     documentBatchService = {
       findRawById: jest.fn(),
@@ -40,6 +43,7 @@ describe('DocumentIngestionProcessor', () => {
     };
     reconciliationService = { reconcileAll: jest.fn().mockResolvedValue(undefined) };
     clientLoanReconciliationService = { reconcileAll: jest.fn().mockResolvedValue(undefined) };
+    auditLogService = { recordSafely: jest.fn().mockResolvedValue(undefined) };
     processor = new DocumentIngestionProcessor(
       documentBatchService as unknown as DocumentBatchService,
       fileStorageProvider as unknown as FileStorageProvider,
@@ -47,6 +51,7 @@ describe('DocumentIngestionProcessor', () => {
       reconciliationService as unknown as ReconciliationService,
       clientLoanReconciliationService as unknown as ClientLoanReconciliationService,
       documentAnalysisService as unknown as DocumentAnalysisService,
+      auditLogService as unknown as AuditLogService,
     );
   });
 

@@ -133,6 +133,14 @@ export class LoanProductsService {
     return buildPaginatedResult(data, total, page, limit);
   }
 
+  async findById(id: string): Promise<LoanProduct> {
+    const product = await this.prisma.loanProduct.findUnique({ where: { id } });
+    if (!product) {
+      throw new NotFoundException('Loan product not found');
+    }
+    return product;
+  }
+
   async update(id: string, input: UpdateLoanProductInput): Promise<LoanProduct> {
     const existing = await this.prisma.loanProduct.findUnique({ where: { id } });
     if (!existing) {

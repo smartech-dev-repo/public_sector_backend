@@ -1,4 +1,4 @@
-import { resolveCorsOrigin } from './main';
+import { resolveCorsOrigin, resolveTrustProxyHops } from './main';
 
 describe('resolveCorsOrigin', () => {
   const originalEnv = process.env.CORS_ORIGINS;
@@ -30,5 +30,29 @@ describe('resolveCorsOrigin', () => {
   it('drops empty entries caused by trailing commas', () => {
     process.env.CORS_ORIGINS = 'https://admin.example.com,,';
     expect(resolveCorsOrigin()).toEqual(['https://admin.example.com']);
+  });
+});
+
+describe('resolveTrustProxyHops', () => {
+  const originalEnv = process.env.TRUST_PROXY_HOPS;
+
+  afterEach(() => {
+    if (originalEnv === undefined) delete process.env.TRUST_PROXY_HOPS;
+    else process.env.TRUST_PROXY_HOPS = originalEnv;
+  });
+
+  it('trusts no proxy unless told to', () => {
+    delete process.env.TRUST_PROXY_HOPS;
+    expect(resolveTrustProxyHops()).toBe(0);
+  });
+
+  it('reads the configured number of proxies', () => {
+    process.env.TRUST_PROXY_HOPS = '2';
+    expect(resolveTrustProxyHops()).toBe(2);
+  });
+
+  it.each(['true', '-1', '1.5'])('refuses %s at startup', (value) => {
+    process.env.TRUST_PROXY_HOPS = value;
+    expect(() => resolveTrustProxyHops()).toThrow('TRUST_PROXY_HOPS');
   });
 });

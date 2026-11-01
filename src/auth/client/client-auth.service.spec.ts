@@ -1,3 +1,4 @@
+import { AuditLogService } from '../../audit/audit-log.service';
 import { ConflictException, UnauthorizedException, UnprocessableEntityException } from '@nestjs/common';
 import { ClientAuthService } from './client-auth.service';
 import { OtpService } from '../../otp/otp.service';
@@ -15,6 +16,8 @@ describe('ClientAuthService', () => {
   let tokenService: TokenService;
   let sessionService: { createSession: jest.Mock };
 
+  let auditLogService: { recordSafely: jest.Mock };
+
   beforeEach(() => {
     otpService = { request: jest.fn(), verify: jest.fn() };
     prisma = {
@@ -29,11 +32,13 @@ describe('ClientAuthService', () => {
       signAccessToken: jest.fn().mockReturnValue('access-token'),
     } as unknown as TokenService;
     sessionService = { createSession: jest.fn().mockResolvedValue('refresh-token') };
+    auditLogService = { recordSafely: jest.fn().mockResolvedValue(undefined) };
     service = new ClientAuthService(
       otpService as unknown as OtpService,
       prisma as unknown as PrismaService,
       tokenService,
       sessionService as unknown as SessionService,
+      auditLogService as unknown as AuditLogService,
     );
   });
 

@@ -75,6 +75,10 @@ export class ManagementFeesService {
     return this.prisma.managementFee.findMany({ where: { isActive: true }, orderBy: { name: 'asc' } });
   }
 
+  findById(id: string): Promise<ManagementFee> {
+    return this.requireFee(id);
+  }
+
   private async requireFee(id: string) {
     const fee = await this.prisma.managementFee.findUnique({
       where: { id },

@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { OtpModule } from '../otp/otp.module';
+import { AuditModule } from '../audit/audit.module';
 import { SessionModule } from '../session/session.module';
 import { AdminInviteModule } from '../admin-invite/admin-invite.module';
 import { EmailModule } from '../email/email.module';
@@ -16,7 +17,7 @@ import { AgentAuthService } from './agent/agent-auth.service';
 import { SessionAuthController } from './session/session-auth.controller';
 
 @Module({
-  imports: [PassportModule, JwtModule.register({}), OtpModule, SessionModule, AdminInviteModule, EmailModule],
+  imports: [PassportModule, JwtModule.register({}), OtpModule, SessionModule, AdminInviteModule, EmailModule, AuditModule],
   controllers: [AdminAuthController, ClientAuthController, AgentAuthController, SessionAuthController],
   providers: [
     TokenService,

@@ -16,7 +16,9 @@ export class AdminAuditLogController {
     return this.auditLogService.list(
       {
         actorType: query.actorType,
+        actorId: query.actorId,
         action: query.action,
+        kind: query.kind,
         targetType: query.targetType,
         targetId: query.targetId,
         createdFrom: query.createdFrom ? new Date(query.createdFrom) : undefined,

@@ -1,4 +1,5 @@
-import { Body, Controller, HttpCode, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, HttpCode, Post, Req, UseGuards, UseInterceptors } from '@nestjs/common';
+import { AuditContextInterceptor } from '../../audit/audit-context.interceptor';
 import { Throttle } from '@nestjs/throttler';
 import { Request } from 'express';
 import { AdminAuthService } from './admin-auth.service';
@@ -17,6 +18,7 @@ import { AdminOnlyGuard } from '../admin-only.guard';
 import { JwtPayload } from '../jwt-payload.interface';
 
 @Controller('auth/admin')
+@UseInterceptors(AuditContextInterceptor)
 export class AdminAuthController {
   constructor(private readonly adminAuthService: AdminAuthService) {}
 

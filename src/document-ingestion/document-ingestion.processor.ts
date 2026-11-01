@@ -8,7 +8,8 @@ import { FILE_STORAGE_PROVIDER, FileStorageProvider } from '../file-storage/file
 import { ReconciliationService } from '../reconciliation/reconciliation.service';
 import { ClientLoanReconciliationService } from '../reconciliation/client-loan-reconciliation.service';
 import { DocumentAnalysisService } from './analysis/document-analysis.service';
-import { DocumentType, DocumentUploadBatch } from '../generated/prisma/client';
+import { AuditActorType, DocumentType, DocumentUploadBatch, Prisma } from '../generated/prisma/client';
+import { AuditLogService } from '../audit/audit-log.service';
 
 export const ANALYZE_BATCH_JOB = 'analyze-batch';
 
@@ -29,6 +30,7 @@ export class DocumentIngestionProcessor extends WorkerHost {
     private readonly reconciliationService: ReconciliationService,
     private readonly clientLoanReconciliationService: ClientLoanReconciliationService,
     private readonly documentAnalysisService: DocumentAnalysisService,
+    private readonly auditLogService: AuditLogService,
   ) {
     super();
   }
@@ -60,11 +62,29 @@ export class DocumentIngestionProcessor extends WorkerHost {
       }
 
       await this.documentBatchService.markCompleted(batchId, result);
+      await this.recordOutcome(batch, 'document.upload.completed', {
+        rowsProcessed: result.rowsProcessed,
+        rowsCreated: result.rowsCreated,
+        rowsUpdated: result.rowsUpdated,
+        rowsSkipped: result.rowsSkipped,
+        warningCount: result.warnings.length,
+      });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       this.logger.error(`Batch ${batchId} failed: ${message}`, error instanceof Error ? error.stack : undefined);
       await this.documentBatchService.markFailed(batchId, message);
+      await this.recordOutcome(batch, 'document.upload.failed', { stage: 'merge', error: message });
     }
+  }
+
+  private recordOutcome(batch: DocumentUploadBatch, action: string, details: Prisma.InputJsonObject) {
+    return this.auditLogService.recordSafely({
+      actorType: AuditActorType.SYSTEM,
+      action,
+      targetType: 'DocumentUploadBatch',
+      targetId: batch.id,
+      metadata: { documentType: batch.documentType, fileName: batch.originalFileName, period: batch.period, ...details },
+    });
   }
 
   private async analyze(batch: DocumentUploadBatch): Promise<void> {
@@ -72,10 +92,18 @@ export class DocumentIngestionProcessor extends WorkerHost {
       const fileBuffer = await this.fileStorageProvider.getObject(batch.storageKey);
       const analysis = await this.documentAnalysisService.analyze(batch, fileBuffer);
       await this.documentBatchService.markAnalyzed(batch.id, analysis);
+      await this.recordOutcome(batch, 'document.upload.reviewed', {
+        verdict: analysis.verdict,
+        totalRows: analysis.totalRows,
+        rowsToCreate: analysis.rowsToCreate,
+        rowsToUpdate: analysis.rowsToUpdate,
+        rowsToSkip: analysis.rowsToSkip,
+      });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       this.logger.error(`Batch ${batch.id} analysis failed: ${message}`, error instanceof Error ? error.stack : undefined);
       await this.documentBatchService.markFailed(batch.id, message);
+      await this.recordOutcome(batch, 'document.upload.failed', { stage: 'review', error: message });
     }
   }
 }

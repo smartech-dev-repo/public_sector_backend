@@ -5,6 +5,7 @@ import { RequirePermissions } from '../auth/permissions.decorator';
 import { JwtPayload } from '../auth/jwt-payload.interface';
 import { AuditInterceptor } from '../audit/audit.interceptor';
 import { AuditLogService } from '../audit/audit-log.service';
+import { auditChanges } from '../audit/audit-changes.util';
 import { RoleService } from './role.service';
 import { CreateRoleDto } from './dto/create-role.dto';
 import { UpdateRoleDto } from './dto/update-role.dto';
@@ -12,7 +13,7 @@ import { AssignPermissionDto } from './dto/assign-permission.dto';
 import { AssignPermissionsBulkDto } from './dto/assign-permissions-bulk.dto';
 import { SetRolePermissionsDto } from './dto/set-role-permissions.dto';
 import { ListRolesQueryDto } from './dto/list-roles-query.dto';
-import { AuditActorType } from '../generated/prisma/client';
+import { AuditActorType, Prisma } from '../generated/prisma/client';
 
 @Controller('admin/roles')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
@@ -68,6 +69,7 @@ export class AdminRolesController {
   @Patch(':id')
   @RequirePermissions('roles:manage')
   async update(@Param('id') id: string, @Body() dto: UpdateRoleDto, @Req() req: { user: JwtPayload }) {
+    const before = await this.roleService.findById(id);
     const role = await this.roleService.update(id, dto);
     await this.auditLogService.record({
       actorType: AuditActorType.ADMIN,
@@ -75,7 +77,7 @@ export class AdminRolesController {
       action: 'role.updated',
       targetType: 'Role',
       targetId: id,
-      metadata: { name: dto.name, description: dto.description, departmentId: dto.departmentId },
+      metadata: { changes: auditChanges(before, role, ['name', 'description', 'departmentId']) } as Prisma.InputJsonObject,
     });
     return role;
   }

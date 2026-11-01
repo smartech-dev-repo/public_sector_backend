@@ -3,7 +3,8 @@ import { OtpService } from '../../otp/otp.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { TokenService } from '../token.service';
 import { SessionService } from '../../session/session.service';
-import { SessionPrincipalType } from '../../generated/prisma/client';
+import { AuditLogService } from '../../audit/audit-log.service';
+import { AuditActorType, SessionPrincipalType } from '../../generated/prisma/client';
 import { isUniqueConstraintError } from '../../common/is-unique-constraint-error.util';
 import { ippisPhoneFilter } from '../../common/normalize-nigerian-phone.util';
 
@@ -14,6 +15,7 @@ export class ClientAuthService {
     private readonly prisma: PrismaService,
     private readonly tokenService: TokenService,
     private readonly sessionService: SessionService,
+    private readonly auditLogService: AuditLogService,
   ) {}
 
   async requestOtp(phone: string, email?: string): Promise<{ mockCode?: string; emailSent: boolean }> {
@@ -47,6 +49,11 @@ export class ClientAuthService {
   async verifyOtp(phone: string, code: string, meta?: { userAgent?: string; ip?: string }) {
     const result = await this.otpService.verify(phone, code);
     if (!result.valid) {
+      await this.auditLogService.recordSafely({
+        actorType: AuditActorType.CLIENT,
+        action: 'client.login.failed',
+        metadata: { phone, reason: 'wrong_code' },
+      });
       throw new UnauthorizedException('Invalid or expired code');
     }
 
@@ -68,6 +75,14 @@ export class ClientAuthService {
         // email is just silently dropped this time.
       }
     }
+
+    await this.auditLogService.recordSafely({
+      actorType: AuditActorType.CLIENT,
+      actorId: client.id,
+      action: 'client.login.succeeded',
+      targetType: 'Client',
+      targetId: client.id,
+    });
 
     const payload = { sub: client.id, type: 'client' as const };
 

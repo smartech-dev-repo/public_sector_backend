@@ -1,10 +1,11 @@
 import { ConflictException, Injectable, UnauthorizedException } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { generateSecret, generateURI, verify } from 'otplib';
+import { AuditLogService } from '../../audit/audit-log.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { TokenService } from '../token.service';
 import { SessionService } from '../../session/session.service';
-import { AgentStatus, SessionPrincipalType, TwoFactorMethod } from '../../generated/prisma/client';
+import { AgentStatus, SessionPrincipalType, TwoFactorMethod, AuditActorType } from '../../generated/prisma/client';
 import { hashPassword } from '../../common/password-hash.util';
 import { EmailService } from '../../email/email.service';
 import { generateOpaqueToken, hashToken } from '../../common/opaque-token.util';
@@ -30,18 +31,32 @@ export class AgentAuthService {
     private readonly tokenService: TokenService,
     private readonly sessionService: SessionService,
     private readonly emailService: EmailService,
+    private readonly auditLogService: AuditLogService,
     private readonly configService?: ConfigService,
   ) {}
+
+  private recordLoginFailure(reason: string, email?: string, agentId?: string) {
+    return this.auditLogService.recordSafely({
+      actorType: AuditActorType.AGENT,
+      actorId: agentId,
+      action: 'agent.login.failed',
+      targetType: agentId ? 'Agent' : undefined,
+      targetId: agentId,
+      metadata: { email, reason },
+    });
+  }
 
   async login(email: string, password: string, meta?: { userAgent?: string; ip?: string }) {
     const agent = await this.prisma.agent.findUnique({ where: { email } });
 
     if (!agent || agent.status !== 'APPROVED' || !agent.passwordHash) {
+      await this.recordLoginFailure(agent ? 'inactive_account' : 'unknown_account', email, agent?.id);
       throw new UnauthorizedException('Invalid credentials');
     }
 
     const passwordMatches = await bcrypt.compare(password, agent.passwordHash);
     if (!passwordMatches) {
+      await this.recordLoginFailure('wrong_password', email, agent.id);
       throw new UnauthorizedException('Invalid credentials');
     }
 
@@ -51,6 +66,13 @@ export class AgentAuthService {
       return this.beginTwoFactorLogin(agent);
     }
 
+    await this.auditLogService.recordSafely({
+      actorType: AuditActorType.AGENT,
+      actorId: agent.id,
+      action: 'agent.login.succeeded',
+      targetType: 'Agent',
+      targetId: agent.id,
+    });
     return this.issueTokens(agent, meta);
   }
 
@@ -69,6 +91,13 @@ export class AgentAuthService {
 
     const passwordMatches = await bcrypt.compare(currentPassword, agent.passwordHash!);
     if (!passwordMatches) {
+      await this.auditLogService.recordSafely({
+        actorType: AuditActorType.AGENT,
+        actorId: agentId,
+        action: 'agent.password.change_failed',
+        targetType: 'Agent',
+        targetId: agentId,
+      });
       throw new UnauthorizedException('Current password is incorrect');
     }
 
@@ -115,6 +144,13 @@ export class AgentAuthService {
         changePasswordCodeHash: null,
         changePasswordCodeExpiresAt: null,
       },
+    });
+    await this.auditLogService.recordSafely({
+      actorType: AuditActorType.AGENT,
+      actorId: agentId,
+      action: 'agent.password.changed',
+      targetType: 'Agent',
+      targetId: agentId,
     });
 
     const payload: JwtPayload = { sub: agentId, type: 'agent', mustChangePassword: false };
@@ -166,6 +202,13 @@ export class AgentAuthService {
     });
 
     await this.emailService.send({ to: agent.email, ...agentPasswordResetEmail({ token, code }) });
+    await this.auditLogService.recordSafely({
+      actorType: AuditActorType.AGENT,
+      actorId: agent.id,
+      action: 'agent.password.reset_requested',
+      targetType: 'Agent',
+      targetId: agent.id,
+    });
 
     return { devCode: devCodeEcho(this.configService, code) };
   }
@@ -193,6 +236,13 @@ export class AgentAuthService {
     });
 
     await this.sessionService.revokeAllForPrincipal(SessionPrincipalType.AGENT, agent.id, 'password_reset');
+    await this.auditLogService.recordSafely({
+      actorType: AuditActorType.AGENT,
+      actorId: agent.id,
+      action: 'agent.password.reset',
+      targetType: 'Agent',
+      targetId: agent.id,
+    });
   }
 
   async resetPasswordByCode(email: string, code: string, newPassword: string): Promise<void> {
@@ -222,6 +272,13 @@ export class AgentAuthService {
     });
 
     await this.sessionService.revokeAllForPrincipal(SessionPrincipalType.AGENT, agent.id, 'password_reset');
+    await this.auditLogService.recordSafely({
+      actorType: AuditActorType.AGENT,
+      actorId: agent.id,
+      action: 'agent.password.reset',
+      targetType: 'Agent',
+      targetId: agent.id,
+    });
   }
 
   async setupTwoFactor(agentId: string, method: TwoFactorMethod) {
@@ -277,6 +334,14 @@ export class AgentAuthService {
           twoFactorPendingMethod: null,
         },
       });
+      await this.auditLogService.recordSafely({
+        actorType: AuditActorType.AGENT,
+        actorId: agentId,
+        action: 'agent.2fa.enabled',
+        targetType: 'Agent',
+        targetId: agentId,
+        metadata: { method: TwoFactorMethod.TOTP },
+      });
       return;
     }
 
@@ -299,6 +364,14 @@ export class AgentAuthService {
         twoFactorEmailCodeExpiresAt: null,
       },
     });
+    await this.auditLogService.recordSafely({
+      actorType: AuditActorType.AGENT,
+      actorId: agentId,
+      action: 'agent.2fa.enabled',
+      targetType: 'Agent',
+      targetId: agentId,
+      metadata: { method: TwoFactorMethod.EMAIL },
+    });
   }
 
   async disableTwoFactor(agentId: string, currentPassword: string): Promise<void> {
@@ -306,6 +379,13 @@ export class AgentAuthService {
 
     const passwordMatches = await bcrypt.compare(currentPassword, agent.passwordHash!);
     if (!passwordMatches) {
+      await this.auditLogService.recordSafely({
+        actorType: AuditActorType.AGENT,
+        actorId: agentId,
+        action: 'agent.password.change_failed',
+        targetType: 'Agent',
+        targetId: agentId,
+      });
       throw new UnauthorizedException('Current password is incorrect');
     }
 
@@ -324,6 +404,13 @@ export class AgentAuthService {
         twoFactorEmailCodeHash: null,
         twoFactorEmailCodeExpiresAt: null,
       },
+    });
+    await this.auditLogService.recordSafely({
+      actorType: AuditActorType.AGENT,
+      actorId: agentId,
+      action: 'agent.2fa.disabled',
+      targetType: 'Agent',
+      targetId: agentId,
     });
   }
 
@@ -360,6 +447,7 @@ export class AgentAuthService {
     if (agent.twoFactorMethod === TwoFactorMethod.TOTP) {
       const result = await verify({ secret: agent.twoFactorSecret!, token: code });
       if (!result.valid) {
+        await this.recordLoginFailure('wrong_2fa_code', agent.email, agent.id);
         throw new UnauthorizedException('Invalid verification code');
       }
     } else {
@@ -369,6 +457,7 @@ export class AgentAuthService {
         agent.twoFactorEmailCodeExpiresAt < new Date() ||
         agent.twoFactorEmailCodeHash !== hashToken(code)
       ) {
+        await this.recordLoginFailure('wrong_2fa_code', agent.email, agent.id);
         throw new UnauthorizedException('Invalid verification code');
       }
       await this.prisma.agent.update({
@@ -377,6 +466,14 @@ export class AgentAuthService {
       });
     }
 
+    await this.auditLogService.recordSafely({
+      actorType: AuditActorType.AGENT,
+      actorId: agent.id,
+      action: 'agent.login.succeeded',
+      targetType: 'Agent',
+      targetId: agent.id,
+      metadata: { twoFactor: true },
+    });
     return this.issueTokens(agent, meta);
   }
 

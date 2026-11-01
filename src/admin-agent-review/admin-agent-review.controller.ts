@@ -103,7 +103,20 @@ export class AdminAgentReviewController {
   @Patch(':id/onboarding-access')
   @HttpCode(200)
   @RequirePermissions('agents:onboarding-access:manage')
-  setOnboardingAccess(@Param('id') id: string, @Body() dto: SetOnboardingAccessDto) {
-    return this.adminAgentReviewService.setOnboardingAccess(id, dto.canOnboardClients);
+  async setOnboardingAccess(
+    @Param('id') id: string,
+    @Body() dto: SetOnboardingAccessDto,
+    @Req() req: { user: JwtPayload },
+  ) {
+    const agent = await this.adminAgentReviewService.setOnboardingAccess(id, dto.canOnboardClients);
+    await this.auditLogService.record({
+      actorType: AuditActorType.ADMIN,
+      actorId: req.user.sub,
+      action: 'agent.onboarding_access.changed',
+      targetType: 'Agent',
+      targetId: id,
+      metadata: { canOnboardClients: dto.canOnboardClients },
+    });
+    return agent;
   }
 }

@@ -1,3 +1,4 @@
+import { AuditLogService } from '../../audit/audit-log.service';
 import { ConflictException, UnauthorizedException } from '@nestjs/common';
 import { hashPassword } from '../../common/password-hash.util';
 import { verify as otplibVerify } from 'otplib';
@@ -25,6 +26,8 @@ describe('AdminAuthService', () => {
   let adminInviteService: { findValidByToken: jest.Mock; markAccepted: jest.Mock };
   let emailService: { send: jest.Mock };
 
+  let auditLogService: { recordSafely: jest.Mock };
+
   beforeEach(() => {
     prisma = {
       adminUser: {
@@ -45,12 +48,14 @@ describe('AdminAuthService', () => {
     };
     adminInviteService = { findValidByToken: jest.fn(), markAccepted: jest.fn() };
     emailService = { send: jest.fn().mockResolvedValue(undefined) };
+    auditLogService = { recordSafely: jest.fn().mockResolvedValue(undefined) };
     service = new AdminAuthService(
       prisma as unknown as PrismaService,
       tokenService,
       sessionService as unknown as SessionService,
       adminInviteService as unknown as AdminInviteService,
       emailService as unknown as EmailService,
+      auditLogService as unknown as AuditLogService,
     );
   });
 
@@ -200,6 +205,7 @@ describe('AdminAuthService', () => {
         sessionService as unknown as SessionService,
         adminInviteService as unknown as AdminInviteService,
         emailService as unknown as EmailService,
+        auditLogService as unknown as AuditLogService,
         configService,
       );
       prisma.adminUser.findUnique.mockResolvedValue({ id: 'admin-1', email: 'a@example.com', isActive: true });
@@ -335,6 +341,7 @@ describe('AdminAuthService', () => {
         sessionService as unknown as SessionService,
         adminInviteService as unknown as AdminInviteService,
         emailService as unknown as EmailService,
+        auditLogService as unknown as AuditLogService,
         configService,
       );
 
@@ -581,6 +588,33 @@ describe('AdminAuthService', () => {
         where: { id: 'admin-1' },
         data: { twoFactorEmailCodeHash: null, twoFactorEmailCodeExpiresAt: null },
       });
+    });
+  });
+
+  describe('sign-in audit events', () => {
+    it('records a wrong password without storing the password', async () => {
+      prisma.adminUser.findUnique.mockResolvedValue({ id: 'admin-1', isActive: true, passwordHash: await hashPassword('right') });
+
+      await expect(service.login('a@example.com', 'super-secret-guess')).rejects.toThrow(UnauthorizedException);
+
+      expect(auditLogService.recordSafely).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: 'admin.login.failed',
+          actorId: 'admin-1',
+          metadata: { email: 'a@example.com', reason: 'wrong_password' },
+        }),
+      );
+      expect(JSON.stringify(auditLogService.recordSafely.mock.calls)).not.toContain('super-secret-guess');
+    });
+
+    it('records an attempt on an account that does not exist', async () => {
+      prisma.adminUser.findUnique.mockResolvedValue(null);
+
+      await expect(service.login('nobody@example.com', 'x')).rejects.toThrow(UnauthorizedException);
+
+      expect(auditLogService.recordSafely).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'admin.login.failed', metadata: { email: 'nobody@example.com', reason: 'unknown_account' } }),
+      );
     });
   });
 });

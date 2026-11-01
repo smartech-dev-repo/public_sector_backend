@@ -1,3 +1,4 @@
+import { AuditLogService } from '../../audit/audit-log.service';
 import { ConflictException, UnauthorizedException } from '@nestjs/common';
 import { verify as otplibVerify } from 'otplib';
 import { hashPassword } from '../../common/password-hash.util';
@@ -24,6 +25,8 @@ describe('AgentAuthService', () => {
   let sessionService: { createSession: jest.Mock; revokeAllForPrincipal: jest.Mock };
   let emailService: { send: jest.Mock };
 
+  let auditLogService: { recordSafely: jest.Mock };
+
   beforeEach(() => {
     prisma = {
       agent: {
@@ -41,11 +44,13 @@ describe('AgentAuthService', () => {
       revokeAllForPrincipal: jest.fn().mockResolvedValue(undefined),
     };
     emailService = { send: jest.fn().mockResolvedValue(undefined) };
+    auditLogService = { recordSafely: jest.fn().mockResolvedValue(undefined) };
     service = new AgentAuthService(
       prisma as unknown as PrismaService,
       tokenService,
       sessionService as unknown as SessionService,
       emailService as unknown as EmailService,
+      auditLogService as unknown as AuditLogService,
     );
   });
 
@@ -490,6 +495,7 @@ describe('AgentAuthService', () => {
         tokenService,
         sessionService as unknown as SessionService,
         emailService as unknown as EmailService,
+        auditLogService as unknown as AuditLogService,
         configService,
       );
 

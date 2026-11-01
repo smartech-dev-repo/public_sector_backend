@@ -1,8 +1,9 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditActorType, AuditLog, Prisma } from '../generated/prisma/client';
 import { buildPaginatedResult, PaginatedResult } from '../common/pagination/paginated-result';
 import { PrincipalResolverService } from '../common/principal-resolver.service';
+import { auditRequestContext } from './audit-request-context';
 
 export interface RecordAuditEventParams {
   actorType: AuditActorType;
@@ -15,9 +16,16 @@ export interface RecordAuditEventParams {
   userAgent?: string;
 }
 
+export type AuditEntryKind = 'event' | 'request';
+
+// The interceptor's baseline rows are named "METHOD /path (status)"; event names never contain " /".
+const REQUEST_ACTION_MARKER = ' /';
+
 export interface ListAuditEventsFilters {
   actorType?: AuditActorType;
+  actorId?: string;
   action?: string;
+  kind?: AuditEntryKind;
   targetType?: string;
   targetId?: string;
   createdFrom?: Date;
@@ -26,12 +34,15 @@ export interface ListAuditEventsFilters {
 
 @Injectable()
 export class AuditLogService {
+  private readonly logger = new Logger(AuditLogService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly principalResolver: PrincipalResolverService,
   ) {}
 
   async record(params: RecordAuditEventParams): Promise<void> {
+    const origin = auditRequestContext.getStore();
     await this.prisma.auditLog.create({
       data: {
         actorType: params.actorType,
@@ -40,10 +51,19 @@ export class AuditLogService {
         targetType: params.targetType,
         targetId: params.targetId,
         metadata: params.metadata,
-        ip: params.ip,
-        userAgent: params.userAgent,
+        ip: params.ip ?? origin?.ip,
+        userAgent: params.userAgent ?? origin?.userAgent,
       },
     });
+  }
+
+  /** For paths like sign-in, where a logging failure must never stop the user. */
+  async recordSafely(params: RecordAuditEventParams): Promise<void> {
+    try {
+      await this.record(params);
+    } catch (error) {
+      this.logger.error(`Could not record audit event ${params.action}: ${error instanceof Error ? error.message : error}`);
+    }
   }
 
   async list(
@@ -53,7 +73,13 @@ export class AuditLogService {
     const { page, limit } = pagination;
     const where: Prisma.AuditLogWhereInput = {
       actorType: filters.actorType,
-      action: filters.action,
+      actorId: filters.actorId,
+      action: filters.action
+        ? filters.action
+        : filters.kind === 'request'
+          ? { contains: REQUEST_ACTION_MARKER }
+          : undefined,
+      NOT: filters.kind === 'event' ? { action: { contains: REQUEST_ACTION_MARKER } } : undefined,
       targetType: filters.targetType,
       targetId: filters.targetId,
       createdAt:
