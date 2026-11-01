@@ -11,6 +11,7 @@ import {
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
+import { AgentOwnsClientGuard } from '../auth/agent-owns-client.guard';
 import { AuditEvent } from '../audit/audit-event.decorator';
 import { AuditEventInterceptor } from '../audit/audit-event.interceptor';
 import { FileInterceptor } from '@nestjs/platform-express';
@@ -36,12 +37,14 @@ export class AgentClientOnboardingController {
   }
 
   @Post(':clientId/onboarding/identity')
+  @UseGuards(AgentOwnsClientGuard)
   @AuditEvent({ action: 'client.onboarding.identity_submitted', targetType: 'Client', targetId: { param: 'clientId' }, result: ['step', 'identityVerified', 'faceMatchPassed'] })
   submitIdentity(@Param('clientId') clientId: string, @Body() dto: SubmitIdentityDto) {
     return this.clientOnboardingService.submitIdentityVerified(clientId, dto.bvn, dto.nin);
   }
 
   @Post(':clientId/onboarding/documents/:type')
+  @UseGuards(AgentOwnsClientGuard)
   @AuditEvent({ action: 'client.onboarding.document_uploaded', targetType: 'Client', targetId: { param: 'clientId' }, params: ['type'] })
   @UseInterceptors(
     FileInterceptor('file', {
@@ -72,12 +75,14 @@ export class AgentClientOnboardingController {
   }
 
   @Post(':clientId/onboarding/face-match')
+  @UseGuards(AgentOwnsClientGuard)
   @AuditEvent({ action: 'client.onboarding.face_match', targetType: 'Client', targetId: { param: 'clientId' }, result: ['step', 'identityVerified', 'faceMatchPassed'] })
   submitFaceMatch(@Param('clientId') clientId: string) {
     return this.clientOnboardingService.submitFaceMatchFromPassportPhoto(clientId);
   }
 
   @Get(':clientId/onboarding/status')
+  @UseGuards(AgentOwnsClientGuard)
   getStatus(@Param('clientId') clientId: string) {
     return this.clientOnboardingService.getStatus(clientId);
   }
