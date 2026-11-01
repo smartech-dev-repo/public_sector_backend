@@ -98,6 +98,30 @@ export class ApprovalsService {
     }
   }
 
+  // Decisions use live permissions, so a newly granted approver can act at once
+  // and one who lost the permission can't keep deciding on an old token.
+  private async withCurrentPermissions(user: JwtPayload): Promise<JwtPayload> {
+    return { ...user, permissions: await this.notificationService.currentPermissions(user.sub) };
+  }
+
+  /** The open request on each record, so lists can show it is waiting. */
+  async pendingFor(targetIds: string[]) {
+    const pending = await this.prisma.approvalRequest.findMany({
+      where: { status: ApprovalStatus.PENDING, targetId: { in: targetIds } },
+      select: { id: true, targetId: true, summary: true },
+    });
+    return new Map(
+      pending.map((row) => [row.targetId, { id: row.id, title: (row.summary as unknown as ApprovalSummary).title }]),
+    );
+  }
+
+  /** How many requests are open on one record, for actions that can run side by side. */
+  countPending(targetId: string, actions: string[]): Promise<number> {
+    return this.prisma.approvalRequest.count({
+      where: { status: ApprovalStatus.PENDING, targetId, action: { in: actions } },
+    });
+  }
+
   private accessWhere(user: JwtPayload): Prisma.ApprovalRequestWhereInput {
     return {
       OR: [{ requiredPermission: { in: user.permissions ?? [] } }, { requestedById: user.sub }, { assignedToId: user.sub }],
@@ -105,10 +129,11 @@ export class ApprovalsService {
   }
 
   async list(
-    user: JwtPayload,
+    caller: JwtPayload,
     filters: { view?: 'to_decide' | 'mine'; status?: ApprovalStatus; action?: string },
     pagination: { page: number; limit: number },
   ) {
+    const user = await this.withCurrentPermissions(caller);
     const { page, limit } = pagination;
     const views: Record<string, Prisma.ApprovalRequestWhereInput> = {
       to_decide: toDecideWhere(user),
@@ -134,7 +159,8 @@ export class ApprovalsService {
     return buildPaginatedResult(data, total, page, limit);
   }
 
-  async findById(user: JwtPayload, id: string) {
+  async findById(caller: JwtPayload, id: string) {
+    const user = await this.withCurrentPermissions(caller);
     const approval = await this.prisma.approvalRequest.findFirst({
       where: { id, ...this.accessWhere(user) },
       include: PEOPLE_INCLUDE,
@@ -192,7 +218,8 @@ export class ApprovalsService {
     });
   }
 
-  async approve(user: JwtPayload, id: string, note?: string) {
+  async approve(caller: JwtPayload, id: string, note?: string) {
+    const user = await this.withCurrentPermissions(caller);
     const approval = await this.loadForDecision(user, id);
     const handler = this.handlers.get(approval.action);
     if (!handler) {
@@ -219,7 +246,8 @@ export class ApprovalsService {
     return { status: ApprovalStatus.APPROVED };
   }
 
-  async reject(user: JwtPayload, id: string, note: string) {
+  async reject(caller: JwtPayload, id: string, note: string) {
+    const user = await this.withCurrentPermissions(caller);
     const approval = await this.loadForDecision(user, id);
     await this.claim(id, { status: ApprovalStatus.REJECTED, decidedById: user.sub, decisionNote: note });
     await this.audit(user.sub, 'approval.rejected', approval, { note });
@@ -242,7 +270,8 @@ export class ApprovalsService {
     return approval;
   }
 
-  async listAssignees(user: JwtPayload, id: string) {
+  async listAssignees(caller: JwtPayload, id: string) {
+    const user = await this.withCurrentPermissions(caller);
     const approval = await this.loadForAssigning(user, id);
     return this.prisma.adminUser.findMany({
       where: { isActive: true, id: { not: approval.requestedById } },
@@ -251,7 +280,8 @@ export class ApprovalsService {
     });
   }
 
-  async assign(user: JwtPayload, id: string, assigneeId: string | null) {
+  async assign(caller: JwtPayload, id: string, assigneeId: string | null) {
+    const user = await this.withCurrentPermissions(caller);
     const approval = await this.loadForAssigning(user, id);
     if (assigneeId === approval.requestedById) {
       throw new ForbiddenException('The admin who made this request cannot decide it');

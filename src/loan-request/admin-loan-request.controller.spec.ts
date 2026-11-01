@@ -20,7 +20,7 @@ describe('AdminLoanRequestController', () => {
   let auditLogService: { record: jest.Mock };
   const adminReq = { user: { sub: 'admin-1', type: 'admin' } as JwtPayload };
 
-  let approvalsService: { submit: jest.Mock; register: jest.Mock };
+  let approvalsService: { submit: jest.Mock; register: jest.Mock; pendingFor: jest.Mock };
   let registered: Record<string, ApprovalHandler>;
 
   beforeEach(() => {
@@ -38,6 +38,7 @@ describe('AdminLoanRequestController', () => {
     registered = {};
     approvalsService = {
       submit: jest.fn().mockResolvedValue({ pendingApproval: true, approvalId: 'ap1', status: 'PENDING' }),
+      pendingFor: jest.fn().mockResolvedValue(new Map()),
       register: jest.fn((action: string, handler: ApprovalHandler) => {
         registered[action] = handler;
       }),
@@ -107,10 +108,16 @@ describe('AdminLoanRequestController', () => {
   });
 
   describe('findOne', () => {
-    it('delegates to LoanRequestService.findById', () => {
+    it('delegates to LoanRequestService.findById', async () => {
       loanRequestService.findById.mockResolvedValue({ id: 'lr1' });
-      controller.findOne('lr1');
+      await controller.findOne('lr1');
       expect(loanRequestService.findById).toHaveBeenCalledWith('lr1');
+    });
+
+    it('says when the request is waiting for approval', async () => {
+      loanRequestService.findById.mockResolvedValue({ id: 'lr1' });
+      approvalsService.pendingFor.mockResolvedValue(new Map([['lr1', { id: 'ap1', title: 'Disburse loan' }]]));
+      await expect(controller.findOne('lr1')).resolves.toEqual({ id: 'lr1', pendingApproval: { id: 'ap1', title: 'Disburse loan' } });
     });
   });
 

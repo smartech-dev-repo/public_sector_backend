@@ -37,7 +37,8 @@ export class AdminClientActivityService {
     const loanRequestIds = loanRequests.map((loanRequest) => loanRequest.id);
 
     const clientAuditLogs = await this.prisma.auditLog.findMany({
-      where: { targetType: 'Client', targetId: clientId },
+      // What staff looked at isn't something the client did, and it has its own audit entry.
+      where: { targetType: 'Client', targetId: clientId, action: { notIn: ['client.profile.viewed', 'data.revealed'] } },
     });
     const loanRequestAuditLogs =
       loanRequestIds.length > 0

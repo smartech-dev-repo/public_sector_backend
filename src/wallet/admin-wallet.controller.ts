@@ -35,8 +35,8 @@ export class AdminWalletController implements OnModuleInit {
 
   @Get()
   @RequirePermissions('wallets:read')
-  getWallet(@Param('clientId') clientId: string, @Query() query: ListWalletEntriesQueryDto) {
-    return this.walletService.getWallet(
+  async getWallet(@Param('clientId') clientId: string, @Query() query: ListWalletEntriesQueryDto) {
+    const wallet = await this.walletService.getWallet(
       clientId,
       {
         direction: query.direction,
@@ -46,6 +46,8 @@ export class AdminWalletController implements OnModuleInit {
       },
       { page: query.page, limit: query.limit },
     );
+    const pendingRequests = await this.approvalsService.countPending(clientId, [WALLET_CREDIT, WALLET_DEBIT]);
+    return { ...wallet, pendingRequests };
   }
 
   @Post('credit')

@@ -25,7 +25,7 @@ describe('ApprovalsService', () => {
     adminUser: { findFirst: jest.Mock };
   };
   let audit: { record: jest.Mock };
-  let notifications: { notify: jest.Mock };
+  let notifications: { notify: jest.Mock; currentPermissions: jest.Mock };
   let handler: jest.Mock;
   let service: ApprovalsService;
 
@@ -41,7 +41,10 @@ describe('ApprovalsService', () => {
       adminUser: { findFirst: jest.fn().mockResolvedValue({ id: 'other', fullName: 'Other' }) },
     };
     audit = { record: jest.fn().mockResolvedValue(undefined) };
-    notifications = { notify: jest.fn().mockResolvedValue(undefined) };
+    notifications = {
+      notify: jest.fn().mockResolvedValue(undefined),
+      currentPermissions: jest.fn().mockResolvedValue(['approvals:loans']),
+    };
     handler = jest.fn().mockResolvedValue(undefined);
     service = new ApprovalsService(
       prisma as unknown as PrismaService,
@@ -86,7 +89,8 @@ describe('ApprovalsService', () => {
     });
 
     it('refuses an admin without the permission', async () => {
-      await expect(service.approve({ sub: 'x', type: 'admin', permissions: [] }, 'ap1')).rejects.toThrow(ForbiddenException);
+      notifications.currentPermissions.mockResolvedValue([]);
+      await expect(service.approve({ sub: 'x', type: 'admin', permissions: ['approvals:loans'] }, 'ap1')).rejects.toThrow(ForbiddenException);
     });
 
     it('runs the action as the checker', async () => {
@@ -132,6 +136,7 @@ describe('ApprovalsService', () => {
 
     it('the assigned admin can decide without holding the permission', async () => {
       prisma.approvalRequest.findUnique.mockResolvedValue(pending({ assignedToId: 'chosen' }));
+      notifications.currentPermissions.mockResolvedValue([]);
       await service.approve({ sub: 'chosen', type: 'admin', permissions: [] }, 'ap1');
       expect(handler).toHaveBeenCalled();
     });
@@ -141,6 +146,7 @@ describe('ApprovalsService', () => {
     });
 
     it('a maker without the permission cannot choose a checker', async () => {
+      notifications.currentPermissions.mockResolvedValue([]);
       await expect(service.assign({ sub: 'maker', type: 'admin', permissions: [] }, 'ap1', 'other')).rejects.toThrow(ForbiddenException);
     });
 
@@ -153,6 +159,12 @@ describe('ApprovalsService', () => {
       prisma.adminUser.findFirst.mockResolvedValue(null);
       await expect(service.assign(approver('checker'), 'ap1', 'gone')).rejects.toThrow(NotFoundException);
     });
+  });
+
+  it('uses live permissions, not the ones in an old sign-in token', async () => {
+    notifications.currentPermissions.mockResolvedValue(['approvals:loans']);
+    await service.approve({ sub: 'checker', type: 'admin', permissions: [] }, 'ap1');
+    expect(handler).toHaveBeenCalled();
   });
 
   it('only the maker can withdraw a request', async () => {

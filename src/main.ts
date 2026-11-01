@@ -3,6 +3,7 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { Logger } from 'nestjs-pino';
+import { NextFunction, Request, Response } from 'express';
 import { AppModule } from './app.module';
 import { getPasswordHashRounds } from './common/password-hash.util';
 
@@ -43,6 +44,12 @@ async function bootstrap() {
     app.set('trust proxy', trustProxyHops);
   }
   app.useLogger(app.get(Logger));
+  // Lists change constantly, so nothing between here and the browser may serve an old copy.
+  app.set('etag', false);
+  app.use((_req: Request, res: Response, next: NextFunction) => {
+    res.setHeader('Cache-Control', 'no-store');
+    next();
+  });
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
   app.enableCors({ origin: resolveCorsOrigin() });
   await app.listen(process.env.PORT ?? 3000);

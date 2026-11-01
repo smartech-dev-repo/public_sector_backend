@@ -8,6 +8,8 @@ export interface AuditEventOptions {
   /** Where the record's id comes from: a route param, the response, or the signed-in user. */
   targetId?: { param: string } | { result: string } | 'self';
   /** Allow-lists, so sensitive values such as a BVN can never reach the log by accident. */
+  /** Skip repeats by the same person on the same record within this time, for automatic reloads. */
+  repeatAfterMinutes?: number;
   params?: string[];
   body?: string[];
   result?: string[];

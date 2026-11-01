@@ -3,9 +3,10 @@ import { PaginationDto } from '../../common/pagination/pagination.dto';
 import { ClientLoanStatus } from '../../generated/prisma/client';
 
 export class ListClientLoansQueryDto extends PaginationDto {
+  @IsOptional()
   @IsString()
   @IsNotEmpty()
-  clientId: string;
+  clientId?: string;
 
   @IsOptional()
   @IsEnum(ClientLoanStatus)

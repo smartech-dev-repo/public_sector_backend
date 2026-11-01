@@ -51,8 +51,8 @@ export class AdminAgentReviewController implements OnModuleInit {
 
   @Get()
   @RequirePermissions('agents:read')
-  list(@Query() query: ListAgentsQueryDto) {
-    return this.adminAgentReviewService.list(
+  async list(@Query() query: ListAgentsQueryDto) {
+    const result = await this.adminAgentReviewService.list(
       {
         status: query.status,
         q: query.q,
@@ -63,6 +63,8 @@ export class AdminAgentReviewController implements OnModuleInit {
       },
       { page: query.page, limit: query.limit },
     );
+    const pending = await this.approvalsService.pendingFor(result.data.map((row) => row.id));
+    return { ...result, data: result.data.map((row) => ({ ...row, pendingApproval: pending.get(row.id) ?? null })) };
   }
 
   @Get('analytics')
@@ -76,8 +78,10 @@ export class AdminAgentReviewController implements OnModuleInit {
 
   @Get(':id')
   @RequirePermissions('agents:read')
-  findById(@Param('id') id: string) {
-    return this.adminAgentReviewService.findById(id);
+  async findById(@Param('id') id: string) {
+    const agent = await this.adminAgentReviewService.findById(id);
+    const pending = await this.approvalsService.pendingFor([id]);
+    return { ...agent, pendingApproval: pending.get(id) ?? null };
   }
 
   @Post(':id/approve')

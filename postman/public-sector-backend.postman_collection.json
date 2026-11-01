@@ -18959,7 +18959,7 @@
                     }
                   ]
                 },
-                "description": "Lists a client's ClientLoan history (clients:read). clientId is required -- 400 if omitted, see the sibling request below."
+                "description": "Lists a client's ClientLoan history (clients:read). clientId is required -- 400 if omitted, see the sibling request below. clientId is optional; leave it out to list every client loan."
               },
               "event": [
                 {
@@ -19055,7 +19055,7 @@
               ]
             },
             {
-              "name": "GET /admin/client-loans - Missing clientId (400)",
+              "name": "GET /admin/client-loans - All client loans",
               "request": {
                 "method": "GET",
                 "header": [
@@ -19074,23 +19074,23 @@
                     "client-loans"
                   ]
                 },
-                "description": "clientId is required, not an optional filter -- omitting it is a validation error."
+                "description": "clientId is optional. Without it, every client loan is listed."
               },
               "event": [
                 {
                   "listen": "test",
                   "script": {
                     "exec": [
-                      "pm.test('status 400', () => pm.response.to.have.status(400));"
+                      "pm.test('status 200', () => pm.response.to.have.status(200));"
                     ]
                   }
                 }
               ],
               "response": [
                 {
-                  "name": "Validation error - missing clientId (400)",
-                  "status": "Bad Request",
-                  "code": 400,
+                  "name": "Success - every client loan (200)",
+                  "status": "OK",
+                  "code": 200,
                   "_postman_previewlanguage": "json",
                   "header": [
                     {
@@ -19099,7 +19099,7 @@
                     }
                   ],
                   "cookie": [],
-                  "body": "{\n  \"statusCode\": 400,\n  \"message\": [\n    \"clientId should not be empty\",\n    \"clientId must be a string\"\n  ],\n  \"error\": \"Bad Request\"\n}",
+                  "body": "{\n  \"data\": [],\n  \"meta\": {\n    \"total\": 0,\n    \"page\": 1,\n    \"limit\": 25,\n    \"totalPages\": 0\n  }\n}",
                   "originalRequest": {
                     "method": "GET",
                     "header": [
@@ -19372,7 +19372,7 @@
                     "repayment-plan"
                   ]
                 },
-                "description": "Mirrors GET /client/client-loans/me for any platform-native ClientLoan by id (client-loans:read). Returns the loan with its full period-by-period schedule (disbursementDate to maturationDate inclusive) from LoanRequestService.getRepaymentPlanById() -- each period is MATCHED/UNDER_PAID/OVER_PAID/NO_DEDUCTION_FOUND once a ClientLoanRepaymentVariance row exists for it (written by ClientLoanReconciliationService.reconcileAll(), which runs automatically after every disbursed-loans/repayment-schedule upload), or UPCOMING with null actualAmount/variance otherwise."
+                "description": "Mirrors GET /client/client-loans/me for any platform-native ClientLoan by id (client-loans:read). Returns the loan with its full period-by-period schedule (disbursementDate to maturationDate inclusive) from LoanRequestService.getRepaymentPlanById() -- each period is MATCHED/UNDER_PAID/OVER_PAID/NO_DEDUCTION_FOUND once a ClientLoanRepaymentVariance row exists for it (written by ClientLoanReconciliationService.reconcileAll(), which runs automatically after every disbursed-loans/repayment-schedule upload), or UPCOMING with null actualAmount/variance otherwise. clientId is optional; leave it out to list every client loan."
               },
               "event": [
                 {
@@ -23408,7 +23408,8 @@
                     "notifications",
                     "summary"
                   ]
-                }
+                },
+                "description": "pendingApprovals is what this admin can decide; myPendingRequests is what they sent that is still waiting. Uses live permissions, not the sign-in token."
               },
               "event": [
                 {
@@ -23453,7 +23454,7 @@
                     }
                   ],
                   "cookie": [],
-                  "body": "{\n  \"unread\": 3,\n  \"byCategory\": {\n    \"approvals\": 2,\n    \"loans\": 1\n  },\n  \"pendingApprovals\": 2\n}"
+                  "body": "{\n  \"unread\": 3,\n  \"byCategory\": {\n    \"approvals\": 2,\n    \"loans\": 1\n  },\n  \"pendingApprovals\": 2,\n  \"myPendingRequests\": 1\n}"
                 }
               ]
             },

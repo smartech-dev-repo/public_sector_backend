@@ -56,7 +56,7 @@ export class AuditEventInterceptor implements NestInterceptor {
     );
   }
 
-  private recordOutcome(
+  private async recordOutcome(
     options: AuditEventOptions,
     request: AuditedRequest,
     result: unknown,
@@ -70,12 +70,20 @@ export class AuditEventInterceptor implements NestInterceptor {
       ...(failedStatus ? { status: failedStatus } : {}),
       ...(reason ? { error: reason } : {}),
     };
+    const targetId = this.resolveTargetId(options, request, result);
+    if (
+      options.repeatAfterMinutes &&
+      (await this.auditLogService.wasRecordedRecently(options.action, request.user?.sub, targetId, options.repeatAfterMinutes))
+    ) {
+      return;
+    }
+
     return this.auditLogService.recordSafely({
       actorType: ACTOR_TYPES[request.user?.type ?? ''] ?? AuditActorType.SYSTEM,
       actorId: request.user?.sub,
       action: failedStatus ? `${options.action}.failed` : options.action,
       targetType: options.targetType,
-      targetId: this.resolveTargetId(options, request, result),
+      targetId,
       // Round-trips Decimals and Dates into plain JSON.
       metadata: JSON.parse(JSON.stringify(metadata)) as Prisma.InputJsonObject,
     });

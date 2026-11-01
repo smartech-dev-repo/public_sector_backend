@@ -46,8 +46,8 @@ export class AdminLoanRequestController implements OnModuleInit {
   }
 
   @Get()
-  list(@Query() query: ListAdminLoanRequestsQueryDto) {
-    return this.loanRequestService.listAll(
+  async list(@Query() query: ListAdminLoanRequestsQueryDto) {
+    const result = await this.loanRequestService.listAll(
       {
         status: query.status,
         type: query.type,
@@ -59,11 +59,15 @@ export class AdminLoanRequestController implements OnModuleInit {
       },
       { page: query.page, limit: query.limit },
     );
+    const pending = await this.approvalsService.pendingFor(result.data.map((row) => row.id));
+    return { ...result, data: result.data.map((row) => ({ ...row, pendingApproval: pending.get(row.id) ?? null })) };
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.loanRequestService.findById(id);
+  async findOne(@Param('id') id: string) {
+    const loanRequest = await this.loanRequestService.findById(id);
+    const pending = await this.approvalsService.pendingFor([id]);
+    return { ...loanRequest, pendingApproval: pending.get(id) ?? null };
   }
 
   @Post(':id/approve')

@@ -87,6 +87,18 @@ export class NotificationService {
 
   constructor(private readonly prisma: PrismaService) {}
 
+  /**
+   * Read from the database, not the sign-in token, so a permission just granted
+   * or removed takes effect here straight away.
+   */
+  async currentPermissions(adminId: string): Promise<string[]> {
+    const admin = await this.prisma.adminUser.findUnique({
+      where: { id: adminId },
+      select: { role: { select: { permissions: { select: { permission: { select: { key: true } } } } } } },
+    });
+    return admin?.role.permissions.map((row) => row.permission.key) ?? [];
+  }
+
   /** Never throws: a notification problem must not affect the action that caused it. */
   async notify(notification: NewNotification): Promise<void> {
     try {
@@ -105,10 +117,11 @@ export class NotificationService {
     }
   }
 
-  private visibleTo(user: JwtPayload): Prisma.NotificationWhereInput {
+  private async visibleTo(user: JwtPayload): Promise<Prisma.NotificationWhereInput> {
+    const permissions = await this.currentPermissions(user.sub);
     return {
       AND: [
-        { OR: [{ recipientAdminId: user.sub }, { recipientAdminId: null, targetPermissions: { hasSome: user.permissions ?? [] } }] },
+        { OR: [{ recipientAdminId: user.sub }, { recipientAdminId: null, targetPermissions: { hasSome: permissions } }] },
         { OR: [{ excludeAdminId: null }, { excludeAdminId: { not: user.sub } }] },
       ],
     };
@@ -121,7 +134,7 @@ export class NotificationService {
   ) {
     const { page, limit } = pagination;
     const where: Prisma.NotificationWhereInput = {
-      ...this.visibleTo(user),
+      ...(await this.visibleTo(user)),
       category: filters.category,
       reads: filters.unread ? { none: { adminId: user.sub } } : undefined,
     };
@@ -146,11 +159,12 @@ export class NotificationService {
 
   /** The counts behind the bell and the menu badges. */
   async summary(user: JwtPayload) {
-    const permissions = user.permissions ?? [];
-    const [groups, pendingApprovals] = await Promise.all([
+    const permissions = await this.currentPermissions(user.sub);
+    const visible = await this.visibleTo(user);
+    const [groups, pendingApprovals, myPendingRequests] = await Promise.all([
       this.prisma.notification.groupBy({
         by: ['category'],
-        where: { ...this.visibleTo(user), reads: { none: { adminId: user.sub } } },
+        where: { ...visible, reads: { none: { adminId: user.sub } } },
         _count: { _all: true },
       }),
       this.prisma.approvalRequest.count({
@@ -160,15 +174,16 @@ export class NotificationService {
           OR: [{ assignedToId: user.sub }, { assignedToId: null, requiredPermission: { in: permissions } }],
         },
       }),
+      this.prisma.approvalRequest.count({ where: { status: 'PENDING', requestedById: user.sub } }),
     ]);
 
     const byCategory = Object.fromEntries(groups.map((group) => [group.category, group._count._all]));
     const unread = groups.reduce((sum, group) => sum + group._count._all, 0);
-    return { unread, byCategory, pendingApprovals };
+    return { unread, byCategory, pendingApprovals, myPendingRequests };
   }
 
   async markRead(user: JwtPayload, id: string): Promise<void> {
-    const notification = await this.prisma.notification.findFirst({ where: { id, ...this.visibleTo(user) } });
+    const notification = await this.prisma.notification.findFirst({ where: { id, ...(await this.visibleTo(user)) } });
     if (!notification) {
       throw new NotFoundException('Notification not found');
     }
@@ -181,7 +196,7 @@ export class NotificationService {
 
   async markAllRead(user: JwtPayload): Promise<void> {
     const unread = await this.prisma.notification.findMany({
-      where: { ...this.visibleTo(user), reads: { none: { adminId: user.sub } } },
+      where: { ...(await this.visibleTo(user)), reads: { none: { adminId: user.sub } } },
       select: { id: true },
     });
     await this.prisma.notificationRead.createMany({

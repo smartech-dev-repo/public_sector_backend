@@ -2,11 +2,14 @@ import { NotificationService } from './notification.service';
 import { PrismaService } from '../prisma/prisma.service';
 
 describe('NotificationService', () => {
-  let prisma: { notification: { create: jest.Mock; findMany: jest.Mock; count: jest.Mock; findFirst: jest.Mock; groupBy: jest.Mock } };
+  let prisma: { adminUser: { findUnique: jest.Mock }; notification: { create: jest.Mock; findMany: jest.Mock; count: jest.Mock; findFirst: jest.Mock; groupBy: jest.Mock } };
   let service: NotificationService;
 
   beforeEach(() => {
     prisma = {
+      adminUser: {
+        findUnique: jest.fn().mockResolvedValue({ role: { permissions: [{ permission: { key: 'audit:read' } }] } }),
+      },
       notification: {
         create: jest.fn().mockResolvedValue({}),
         findMany: jest.fn().mockResolvedValue([]),
@@ -47,8 +50,8 @@ describe('NotificationService', () => {
     await expect(service.notify({ category: 'x', title: 't', body: 'b', link: '/' })).resolves.toBeUndefined();
   });
 
-  it('only returns what the admin is allowed to see', async () => {
-    await service.list({ sub: 'a1', type: 'admin', permissions: ['audit:read'] }, {}, { page: 1, limit: 25 });
+  it('only returns what the admin is allowed to see, by their live permissions', async () => {
+    await service.list({ sub: 'a1', type: 'admin', permissions: [] }, {}, { page: 1, limit: 25 });
     const where = prisma.notification.findMany.mock.calls[0][0].where;
     expect(where.AND[0].OR).toEqual([
       { recipientAdminId: 'a1' },

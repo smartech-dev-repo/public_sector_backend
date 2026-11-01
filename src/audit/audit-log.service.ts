@@ -71,6 +71,14 @@ export class AuditLogService {
     void this.notificationService.fromAuditEvent(params);
   }
 
+  async wasRecordedRecently(action: string, actorId: string | undefined, targetId: string | undefined, minutes: number) {
+    const recent = await this.prisma.auditLog.findFirst({
+      where: { action, actorId, targetId, createdAt: { gte: new Date(Date.now() - minutes * 60000) } },
+      select: { id: true },
+    });
+    return recent !== null;
+  }
+
   /** For paths like sign-in, where a logging failure must never stop the user. */
   async recordSafely(params: RecordAuditEventParams): Promise<void> {
     try {

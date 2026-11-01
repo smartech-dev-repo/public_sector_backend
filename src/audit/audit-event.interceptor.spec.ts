@@ -14,7 +14,7 @@ const context = (request: Record<string, unknown>) =>
 const respond = (value: unknown): CallHandler => ({ handle: () => of(value) });
 
 describe('AuditEventInterceptor', () => {
-  let auditLogService: { recordSafely: jest.Mock };
+  let auditLogService: { recordSafely: jest.Mock; wasRecordedRecently: jest.Mock };
 
   const build = (options?: AuditEventOptions) =>
     new AuditEventInterceptor(
@@ -23,7 +23,10 @@ describe('AuditEventInterceptor', () => {
     );
 
   beforeEach(() => {
-    auditLogService = { recordSafely: jest.fn().mockResolvedValue(undefined) };
+    auditLogService = {
+      recordSafely: jest.fn().mockResolvedValue(undefined),
+      wasRecordedRecently: jest.fn().mockResolvedValue(false),
+    };
   });
 
   it('does nothing on a route without @AuditEvent', (done) => {
@@ -48,7 +51,8 @@ describe('AuditEventInterceptor', () => {
     };
     build(options)
       .intercept(context(request), respond({ step: 'IDENTITY_VERIFIED', bvn: '22222222222' }))
-      .subscribe(() => {
+      .subscribe(async () => {
+        await new Promise(setImmediate);
         expect(auditLogService.recordSafely).toHaveBeenCalledWith({
           actorType: 'AGENT',
           actorId: 'agent-1',
@@ -67,12 +71,25 @@ describe('AuditEventInterceptor', () => {
     build({ action: 'loan-request.created' })
       .intercept(context({ method: 'POST', user: { sub: 'c1', type: 'client' } }), handler)
       .subscribe({
-        error: () => {
+        error: async () => {
+          await new Promise(setImmediate);
           expect(auditLogService.recordSafely).toHaveBeenCalledWith(
             expect.objectContaining({ action: 'loan-request.created.failed', actorType: 'CLIENT', metadata: { status: 422 } }),
           );
           done();
         },
+      });
+  });
+
+  it('skips a repeat view inside the quiet period', (done) => {
+    auditLogService.wasRecordedRecently.mockResolvedValue(true);
+    build({ action: 'client.profile.viewed', repeatAfterMinutes: 5, targetId: { param: 'id' } })
+      .intercept(context({ method: 'GET', user: { sub: 'a1', type: 'admin' }, params: { id: 'c1' } }), respond({}))
+      .subscribe(async () => {
+        await new Promise(setImmediate);
+        expect(auditLogService.wasRecordedRecently).toHaveBeenCalledWith('client.profile.viewed', 'a1', 'c1', 5);
+        expect(auditLogService.recordSafely).not.toHaveBeenCalled();
+        done();
       });
   });
 

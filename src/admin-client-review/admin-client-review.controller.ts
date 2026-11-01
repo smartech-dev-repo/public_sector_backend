@@ -54,7 +54,7 @@ export class AdminClientReviewController {
 
   @Get(':id')
   @RequirePermissions('clients:review')
-  @AuditEvent({ action: 'client.profile.viewed', targetType: 'Client', targetId: { param: 'id' } })
+  @AuditEvent({ action: 'client.profile.viewed', targetType: 'Client', targetId: { param: 'id' }, repeatAfterMinutes: 5 })
   findOne(@Param('id') id: string) {
     return this.adminClientReviewService.findById(id);
   }

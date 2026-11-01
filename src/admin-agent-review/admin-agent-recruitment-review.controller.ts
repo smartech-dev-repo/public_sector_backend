@@ -6,6 +6,7 @@ import { JwtPayload } from '../auth/jwt-payload.interface';
 import { AuditInterceptor } from '../audit/audit.interceptor';
 import { AuditLogService } from '../audit/audit-log.service';
 import { AdminAgentRecruitmentReviewService } from './admin-agent-recruitment-review.service';
+import { ApprovalsService } from '../approvals/approvals.service';
 import { ListRecruitmentApplicationsQueryDto } from './dto/list-recruitment-applications-query.dto';
 import { RecruitmentApplicationAnalyticsQueryDto } from './dto/recruitment-application-analytics-query.dto';
 import { AuditActorType } from '../generated/prisma/client';
@@ -17,12 +18,13 @@ export class AdminAgentRecruitmentReviewController {
   constructor(
     private readonly adminAgentRecruitmentReviewService: AdminAgentRecruitmentReviewService,
     private readonly auditLogService: AuditLogService,
+    private readonly approvalsService: ApprovalsService,
   ) {}
 
   @Get()
   @RequirePermissions('agents:recruitment:read')
-  list(@Query() query: ListRecruitmentApplicationsQueryDto) {
-    return this.adminAgentRecruitmentReviewService.list(
+  async list(@Query() query: ListRecruitmentApplicationsQueryDto) {
+    const result = await this.adminAgentRecruitmentReviewService.list(
       {
         status: query.status,
         q: query.q,
@@ -31,6 +33,15 @@ export class AdminAgentRecruitmentReviewController {
       },
       { page: query.page, limit: query.limit },
     );
+    const agentIds = result.data.flatMap((row) => (row.submittedAgent ? [row.submittedAgent.id] : []));
+    const pending = await this.approvalsService.pendingFor(agentIds);
+    return {
+      ...result,
+      data: result.data.map((row) => ({
+        ...row,
+        pendingApproval: row.submittedAgent ? (pending.get(row.submittedAgent.id) ?? null) : null,
+      })),
+    };
   }
 
   @Get('analytics')

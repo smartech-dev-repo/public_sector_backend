@@ -40,7 +40,7 @@ describe('AdminClientActivityService', () => {
     await service.listActivities('c1');
     expect(prisma.auditLog.findMany).toHaveBeenCalledTimes(1);
     expect(prisma.auditLog.findMany).toHaveBeenCalledWith({
-      where: { targetType: 'Client', targetId: 'c1' },
+      where: { targetType: 'Client', targetId: 'c1', action: { notIn: ['client.profile.viewed', 'data.revealed'] } },
     });
   });
 

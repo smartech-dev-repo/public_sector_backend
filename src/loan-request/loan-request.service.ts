@@ -657,7 +657,7 @@ export class LoanRequestService {
   }
 
   async listByClient(
-    clientId: string,
+    clientId: string | undefined,
     filters: { status?: ClientLoanStatus; agency?: string; disbursedFrom?: Date; disbursedTo?: Date } = {},
     pagination: { page: number; limit: number } = { page: 1, limit: 25 },
   ) {
