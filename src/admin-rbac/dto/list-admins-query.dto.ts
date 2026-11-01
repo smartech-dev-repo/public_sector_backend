@@ -1,5 +1,5 @@
 import { Transform } from 'class-transformer';
-import { IsBoolean, IsISO8601, IsOptional, IsString } from 'class-validator';
+import { IsBoolean, IsISO8601, IsOptional, IsString, IsUUID } from 'class-validator';
 import { PaginationDto } from '../../common/pagination/pagination.dto';
 
 export class ListAdminsQueryDto extends PaginationDto {
@@ -7,6 +7,10 @@ export class ListAdminsQueryDto extends PaginationDto {
   @Transform(({ value }) => (value === 'true' ? true : value === 'false' ? false : value))
   @IsBoolean()
   isActive?: boolean;
+
+  @IsOptional()
+  @IsUUID()
+  roleId?: string;
 
   @IsOptional()
   @IsString()

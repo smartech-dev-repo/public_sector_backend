@@ -25,6 +25,7 @@ export class AdminRoleAssignmentController {
     return this.adminRoleAssignmentService.listAdmins(
       {
         isActive: query.isActive,
+        roleId: query.roleId,
         q: query.q,
         createdFrom: query.createdFrom ? new Date(query.createdFrom) : undefined,
         createdTo: query.createdTo ? new Date(query.createdTo) : undefined,

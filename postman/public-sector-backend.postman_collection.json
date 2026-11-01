@@ -6597,6 +6597,744 @@
               ]
             },
             {
+              "name": "GET /admin/roles/permission-options - Success",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/roles/permission-options",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "roles",
+                    "permission-options"
+                  ]
+                },
+                "description": "Requires roles:manage only (not permissions:manage). Unpaginated, so a role editor always sees the full catalog."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));",
+                      "pm.test('returns an array', () => pm.expect(pm.response.json()).to.be.an('array'));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Success - every permission, unpaginated (200)",
+                  "originalRequest": {
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/roles/permission-options",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "roles",
+                        "permission-options"
+                      ]
+                    }
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "[\n  {\n    \"id\": \"11111111-1111-4111-8111-111111111111\",\n    \"key\": \"admins:create\",\n    \"description\": \"Create admin users\",\n    \"createdAt\": \"2026-11-01T09:00:00.000Z\"\n  }\n]"
+                }
+              ]
+            },
+            {
+              "name": "GET /admin/roles/permission-options - Missing permission (403)",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{limited_admin_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/roles/permission-options",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "roles",
+                    "permission-options"
+                  ]
+                },
+                "description": "Call with a token that lacks roles:manage."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 403', () => pm.response.to.have.status(403));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Error - caller lacks roles:manage (403)",
+                  "originalRequest": {
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{limited_admin_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/roles/permission-options",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "roles",
+                        "permission-options"
+                      ]
+                    }
+                  },
+                  "status": "Forbidden",
+                  "code": 403,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"statusCode\": 403,\n  \"message\": \"Insufficient permissions\",\n  \"error\": \"Forbidden\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "PUT /admin/roles/:id/permissions - Success",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"permissionIds\": [\"{{permission_id}}\"]\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/admin/roles/{{role_id}}/permissions",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "roles",
+                    "{{role_id}}",
+                    "permissions"
+                  ]
+                },
+                "description": "Replaces the role's whole permission list in one transaction: anything not listed is removed. An empty array clears the role. Run 'POST /admin/roles - Success' and 'Admin > Permissions > POST /admin/permissions - Success' first."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));",
+                      "pm.test('reports added and removed', () => { const b = pm.response.json(); pm.expect(b.added).to.be.an('array'); pm.expect(b.removed).to.be.an('array'); });"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Success - list replaced, changes reported (200)",
+                  "originalRequest": {
+                    "method": "PUT",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      },
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"permissionIds\": [\"{{permission_id}}\"]\n}"
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/admin/roles/{{role_id}}/permissions",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "roles",
+                        "{{role_id}}",
+                        "permissions"
+                      ]
+                    }
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"added\": [\n    \"admins:create\"\n  ],\n  \"removed\": [\n    \"audit:read\"\n  ]\n}"
+                }
+              ]
+            },
+            {
+              "name": "PUT /admin/roles/:id/permissions - Validation error (400)",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"permissionIds\": [\"not-a-uuid\"]\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/admin/roles/{{role_id}}/permissions",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "roles",
+                    "{{role_id}}",
+                    "permissions"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 400', () => pm.response.to.have.status(400));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Error - permissionIds not UUIDs (400)",
+                  "originalRequest": {
+                    "method": "PUT",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      },
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"permissionIds\": [\"not-a-uuid\"]\n}"
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/admin/roles/{{role_id}}/permissions",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "roles",
+                        "{{role_id}}",
+                        "permissions"
+                      ]
+                    }
+                  },
+                  "status": "Bad Request",
+                  "code": 400,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"statusCode\": 400,\n  \"message\": [\n    \"each value in permissionIds must be a UUID\"\n  ],\n  \"error\": \"Bad Request\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "PUT /admin/roles/:id/permissions - Unknown permissionId (404)",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"permissionIds\": [\"00000000-0000-4000-8000-000000000000\"]\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/admin/roles/{{role_id}}/permissions",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "roles",
+                    "{{role_id}}",
+                    "permissions"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 404', () => pm.response.to.have.status(404));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Error - unknown permission, nothing written (404)",
+                  "originalRequest": {
+                    "method": "PUT",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      },
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"permissionIds\": [\"00000000-0000-4000-8000-000000000000\"]\n}"
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/admin/roles/{{role_id}}/permissions",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "roles",
+                        "{{role_id}}",
+                        "permissions"
+                      ]
+                    }
+                  },
+                  "status": "Not Found",
+                  "code": 404,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"statusCode\": 404,\n  \"message\": \"Permission(s) not found: 00000000-0000-4000-8000-000000000000\",\n  \"error\": \"Not Found\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "PUT /admin/roles/:id/permissions - Rejects editing SUPER_ADMIN (409)",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"permissionIds\": []\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/admin/roles/{{super_admin_role_id}}/permissions",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "roles",
+                    "{{super_admin_role_id}}",
+                    "permissions"
+                  ]
+                },
+                "description": "super_admin_role_id is captured automatically by 'Admin > Roles > GET /admin/roles - Success (all)' - run that first."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 409', () => pm.response.to.have.status(409));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Error - SUPER_ADMIN is locked (409)",
+                  "originalRequest": {
+                    "method": "PUT",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      },
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"permissionIds\": []\n}"
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/admin/roles/{{super_admin_role_id}}/permissions",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "roles",
+                        "{{super_admin_role_id}}",
+                        "permissions"
+                      ]
+                    }
+                  },
+                  "status": "Conflict",
+                  "code": 409,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"statusCode\": 409,\n  \"message\": \"The SUPER_ADMIN role always holds every permission and cannot be edited\",\n  \"error\": \"Conflict\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "PUT /admin/roles/:id/permissions - Missing permission (403)",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{limited_admin_access_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"permissionIds\": [\"{{permission_id}}\"]\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/admin/roles/{{role_id}}/permissions",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "roles",
+                    "{{role_id}}",
+                    "permissions"
+                  ]
+                },
+                "description": "Call with a token that lacks roles:manage."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 403', () => pm.response.to.have.status(403));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Error - caller lacks roles:manage (403)",
+                  "originalRequest": {
+                    "method": "PUT",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      },
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{limited_admin_access_token}}"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"permissionIds\": [\"{{permission_id}}\"]\n}"
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/admin/roles/{{role_id}}/permissions",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "roles",
+                        "{{role_id}}",
+                        "permissions"
+                      ]
+                    }
+                  },
+                  "status": "Forbidden",
+                  "code": 403,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"statusCode\": 403,\n  \"message\": \"Insufficient permissions\",\n  \"error\": \"Forbidden\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "PATCH /admin/roles/:id - Duplicate name (409)",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"SUPER_ADMIN\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/admin/roles/{{role_id}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "roles",
+                    "{{role_id}}"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 409', () => pm.response.to.have.status(409));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Error - name already used by another role (409)",
+                  "originalRequest": {
+                    "method": "PATCH",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      },
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"name\": \"SUPER_ADMIN\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/admin/roles/{{role_id}}",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "roles",
+                        "{{role_id}}"
+                      ]
+                    }
+                  },
+                  "status": "Conflict",
+                  "code": 409,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"statusCode\": 409,\n  \"message\": \"A role named \\\"SUPER_ADMIN\\\" already exists\",\n  \"error\": \"Conflict\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "DELETE /admin/roles/:id/permissions/:permissionId - Rejects editing SUPER_ADMIN (409)",
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/roles/{{super_admin_role_id}}/permissions/{{permission_id}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "roles",
+                    "{{super_admin_role_id}}",
+                    "permissions",
+                    "{{permission_id}}"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 409', () => pm.response.to.have.status(409));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Error - SUPER_ADMIN is locked (409)",
+                  "originalRequest": {
+                    "method": "DELETE",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/roles/{{super_admin_role_id}}/permissions/{{permission_id}}",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "roles",
+                        "{{super_admin_role_id}}",
+                        "permissions",
+                        "{{permission_id}}"
+                      ]
+                    }
+                  },
+                  "status": "Conflict",
+                  "code": 409,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"statusCode\": 409,\n  \"message\": \"The SUPER_ADMIN role always holds every permission and cannot be edited\",\n  \"error\": \"Conflict\"\n}"
+                }
+              ]
+            },
+            {
               "name": "DELETE /admin/roles/:id - Success",
               "request": {
                 "method": "DELETE",
@@ -7830,6 +8568,86 @@
                   ],
                   "cookie": [],
                   "body": "{\n  \"data\": [\n    {\n      \"id\": \"5e2f4b0a-1a2b-4c3d-8e4f-1a2b3c4d5e6f\",\n      \"email\": \"admin2@example.com\",\n      \"fullName\": \"Amaka Nwosu\",\n      \"isActive\": true,\n      \"createdAt\": \"2026-09-01T09:00:00.000Z\",\n      \"role\": {\n        \"id\": \"7c1d2e3f-4a5b-6c7d-8e9f-0a1b2c3d4e5f\",\n        \"name\": \"CLIENT_REVIEWER\",\n        \"description\": \"Reviews client onboarding submissions\",\n        \"departmentId\": \"3f2e1d0c-9b8a-4c6d-8e7f-0a1b2c3d4e5f\",\n        \"createdAt\": \"2026-08-15T10:00:00.000Z\"\n      },\n      \"department\": {\n        \"id\": \"3f2e1d0c-9b8a-4c6d-8e7f-0a1b2c3d4e5f\",\n        \"name\": \"Client Operations\",\n        \"description\": \"Handles client onboarding review\",\n        \"createdAt\": \"2026-08-01T09:00:00.000Z\"\n      }\n    },\n    {\n      \"id\": \"9b8a7c6d-5e4f-3a2b-1c0d-9e8f7a6b5c4d\",\n      \"email\": \"superadmin@example.com\",\n      \"fullName\": \"Chinedu Okafor\",\n      \"isActive\": true,\n      \"createdAt\": \"2026-07-10T08:30:00.000Z\",\n      \"role\": {\n        \"id\": \"1a2b3c4d-5e6f-7a8b-9c0d-1e2f3a4b5c6d\",\n        \"name\": \"SUPER_ADMIN\",\n        \"description\": \"Full administrative access\",\n        \"departmentId\": null,\n        \"createdAt\": \"2026-01-01T00:00:00.000Z\"\n      },\n      \"department\": null\n    }\n  ],\n  \"meta\": {\n    \"total\": 2,\n    \"page\": 1,\n    \"limit\": 25,\n    \"totalPages\": 1\n  }\n}"
+                }
+              ]
+            },
+            {
+              "name": "GET /admin/admins - Filtered by role",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/admins?roleId={{role_id}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "admins"
+                  ],
+                  "query": [
+                    {
+                      "key": "roleId",
+                      "value": "{{role_id}}"
+                    }
+                  ]
+                },
+                "description": "roleId narrows the list to the admins holding that role."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Success - admins holding one role (200)",
+                  "originalRequest": {
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/admins?roleId={{role_id}}",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "admins"
+                      ],
+                      "query": [
+                        {
+                          "key": "roleId",
+                          "value": "{{role_id}}"
+                        }
+                      ]
+                    }
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"data\": [\n    {\n      \"id\": \"22222222-2222-4222-8222-222222222222\",\n      \"email\": \"admin@example.com\",\n      \"fullName\": \"Sample Admin\",\n      \"isActive\": true,\n      \"createdAt\": \"2026-11-01T09:00:00.000Z\"\n    }\n  ],\n  \"meta\": {\n    \"total\": 1,\n    \"page\": 1,\n    \"limit\": 25,\n    \"totalPages\": 1\n  }\n}"
                 }
               ]
             },

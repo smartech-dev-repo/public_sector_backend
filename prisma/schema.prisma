@@ -31,6 +31,7 @@ model Role {
   admins       AdminUser[]
   invites      AdminInvite[]
   createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @default(now()) @updatedAt
 }
 
 model Department {

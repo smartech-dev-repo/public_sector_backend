@@ -8,6 +8,7 @@ const SUPER_ADMIN_ROLE_NAME = 'SUPER_ADMIN';
 
 export interface ListAdminsFilters {
   isActive?: boolean;
+  roleId?: string;
   q?: string;
   createdFrom?: Date;
   createdTo?: Date;
@@ -27,6 +28,7 @@ export class AdminRoleAssignmentService {
     const { page, limit } = pagination;
     const where: Prisma.AdminUserWhereInput = {
       isActive: filters.isActive,
+      roleId: filters.roleId,
       createdAt:
         filters.createdFrom || filters.createdTo
           ? { gte: filters.createdFrom, lte: filters.createdTo }

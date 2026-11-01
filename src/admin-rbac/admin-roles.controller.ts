@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Query, Req, UseGuards, UseInterceptors } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Put, Query, Req, UseGuards, UseInterceptors } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { PermissionsGuard } from '../auth/permissions.guard';
 import { RequirePermissions } from '../auth/permissions.decorator';
@@ -10,6 +10,7 @@ import { CreateRoleDto } from './dto/create-role.dto';
 import { UpdateRoleDto } from './dto/update-role.dto';
 import { AssignPermissionDto } from './dto/assign-permission.dto';
 import { AssignPermissionsBulkDto } from './dto/assign-permissions-bulk.dto';
+import { SetRolePermissionsDto } from './dto/set-role-permissions.dto';
 import { ListRolesQueryDto } from './dto/list-roles-query.dto';
 import { AuditActorType } from '../generated/prisma/client';
 
@@ -50,6 +51,14 @@ export class AdminRolesController {
     );
   }
 
+  // Declared before ':id' so it isn't captured as a role id. Lets `roles:manage`
+  // holders see what they can assign without also needing `permissions:manage`.
+  @Get('permission-options')
+  @RequirePermissions('roles:manage')
+  listPermissionOptions() {
+    return this.roleService.listPermissionOptions();
+  }
+
   @Get(':id')
   @RequirePermissions('roles:manage')
   findOne(@Param('id') id: string) {
@@ -58,8 +67,17 @@ export class AdminRolesController {
 
   @Patch(':id')
   @RequirePermissions('roles:manage')
-  update(@Param('id') id: string, @Body() dto: UpdateRoleDto) {
-    return this.roleService.update(id, dto);
+  async update(@Param('id') id: string, @Body() dto: UpdateRoleDto, @Req() req: { user: JwtPayload }) {
+    const role = await this.roleService.update(id, dto);
+    await this.auditLogService.record({
+      actorType: AuditActorType.ADMIN,
+      actorId: req.user.sub,
+      action: 'role.updated',
+      targetType: 'Role',
+      targetId: id,
+      metadata: { name: dto.name, description: dto.description, departmentId: dto.departmentId },
+    });
+    return role;
   }
 
   @Delete(':id')
@@ -115,6 +133,25 @@ export class AdminRolesController {
       metadata: { permissionIds: dto.permissionIds },
     });
     return { assigned: true };
+  }
+
+  @Put(':id/permissions')
+  @RequirePermissions('roles:manage')
+  async setPermissions(
+    @Param('id') id: string,
+    @Body() dto: SetRolePermissionsDto,
+    @Req() req: { user: JwtPayload },
+  ) {
+    const changes = await this.roleService.setPermissions(id, dto.permissionIds);
+    await this.auditLogService.record({
+      actorType: AuditActorType.ADMIN,
+      actorId: req.user.sub,
+      action: 'role.permissions.replaced',
+      targetType: 'Role',
+      targetId: id,
+      metadata: changes,
+    });
+    return changes;
   }
 
   @Delete(':id/permissions/:permissionId')

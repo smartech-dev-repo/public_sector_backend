@@ -15,7 +15,7 @@ describe('RoleService', () => {
     };
     adminUser: { count: jest.Mock };
     permission: { findUnique: jest.Mock; findMany: jest.Mock };
-    rolePermission: { upsert: jest.Mock; deleteMany: jest.Mock };
+    rolePermission: { upsert: jest.Mock; deleteMany: jest.Mock; createMany: jest.Mock };
     $transaction: jest.Mock;
   };
 
@@ -31,7 +31,7 @@ describe('RoleService', () => {
       },
       adminUser: { count: jest.fn() },
       permission: { findUnique: jest.fn(), findMany: jest.fn() },
-      rolePermission: { upsert: jest.fn(), deleteMany: jest.fn() },
+      rolePermission: { upsert: jest.fn(), deleteMany: jest.fn(), createMany: jest.fn() },
       $transaction: jest.fn(),
     };
     service = new RoleService(prisma as unknown as PrismaService);
@@ -60,7 +60,7 @@ describe('RoleService', () => {
     expect(prisma.role.update).toHaveBeenCalledWith({
       where: { id: 'role-1' },
       data: { name: undefined, description: 'new', departmentId: undefined },
-      include: { permissions: { include: { permission: true } }, department: { select: { id: true, name: true } } },
+      include: { permissions: { include: { permission: true } }, department: { select: { id: true, name: true } }, _count: { select: { admins: true } } },
     });
   });
 
@@ -69,7 +69,7 @@ describe('RoleService', () => {
     await service.create({ name: 'REVIEWER', departmentId: 'dept-1' });
     expect(prisma.role.create).toHaveBeenCalledWith({
       data: { name: 'REVIEWER', departmentId: 'dept-1' },
-      include: { permissions: { include: { permission: true } }, department: { select: { id: true, name: true } } },
+      include: { permissions: { include: { permission: true } }, department: { select: { id: true, name: true } }, _count: { select: { admins: true } } },
     });
   });
 
@@ -80,7 +80,7 @@ describe('RoleService', () => {
     expect(prisma.role.update).toHaveBeenCalledWith({
       where: { id: 'role-1' },
       data: { name: undefined, description: undefined, departmentId: null },
-      include: { permissions: { include: { permission: true } }, department: { select: { id: true, name: true } } },
+      include: { permissions: { include: { permission: true } }, department: { select: { id: true, name: true } }, _count: { select: { admins: true } } },
     });
   });
 
@@ -121,7 +121,80 @@ describe('RoleService', () => {
     });
   });
 
+  it('update converts a duplicate-name DB error into ConflictException', async () => {
+    prisma.role.findUnique.mockResolvedValue({ id: 'role-1', name: 'REVIEWER' });
+    prisma.role.update.mockRejectedValue(
+      Object.assign(new Error('Unique constraint'), { code: 'P2002' }),
+    );
+    await expect(service.update('role-1', { name: 'TAKEN' })).rejects.toThrow(ConflictException);
+  });
+
+  it('removePermission refuses to touch SUPER_ADMIN', async () => {
+    prisma.role.findUnique.mockResolvedValue({ id: 'role-1', name: 'SUPER_ADMIN' });
+    await expect(service.removePermission('role-1', 'perm-1')).rejects.toThrow(ConflictException);
+    expect(prisma.rolePermission.deleteMany).not.toHaveBeenCalled();
+  });
+
+  describe('setPermissions', () => {
+    const roleWith = (...keys: string[]) => ({
+      id: 'role-1',
+      name: 'REVIEWER',
+      permissions: keys.map((key) => ({ permission: { id: `id-${key}`, key } })),
+    });
+
+    it('replaces the list and reports what was added and removed', async () => {
+      prisma.role.findUnique.mockResolvedValue(roleWith('a:read', 'b:read'));
+      prisma.permission.findMany.mockResolvedValue([
+        { id: 'id-b:read', key: 'b:read' },
+        { id: 'id-c:read', key: 'c:read' },
+      ]);
+
+      const changes = await service.setPermissions('role-1', ['id-b:read', 'id-c:read', 'id-c:read']);
+
+      expect(changes).toEqual({ added: ['c:read'], removed: ['a:read'] });
+      expect(prisma.rolePermission.deleteMany).toHaveBeenCalledWith({
+        where: { roleId: 'role-1', permissionId: { notIn: ['id-b:read', 'id-c:read'] } },
+      });
+      expect(prisma.rolePermission.createMany).toHaveBeenCalledWith({
+        data: [
+          { roleId: 'role-1', permissionId: 'id-b:read' },
+          { roleId: 'role-1', permissionId: 'id-c:read' },
+        ],
+        skipDuplicates: true,
+      });
+      expect(prisma.$transaction).toHaveBeenCalledTimes(1);
+    });
+
+    it('clears every permission when given an empty list', async () => {
+      prisma.role.findUnique.mockResolvedValue(roleWith('a:read'));
+      prisma.permission.findMany.mockResolvedValue([]);
+
+      const changes = await service.setPermissions('role-1', []);
+
+      expect(changes).toEqual({ added: [], removed: ['a:read'] });
+      expect(prisma.rolePermission.deleteMany).toHaveBeenCalledWith({
+        where: { roleId: 'role-1', permissionId: { notIn: [] } },
+      });
+    });
+
+    it('rejects an unknown permission without writing anything', async () => {
+      prisma.role.findUnique.mockResolvedValue(roleWith());
+      prisma.permission.findMany.mockResolvedValue([]);
+
+      await expect(service.setPermissions('role-1', ['nope'])).rejects.toThrow(NotFoundException);
+      expect(prisma.$transaction).not.toHaveBeenCalled();
+    });
+
+    it('refuses to edit SUPER_ADMIN', async () => {
+      prisma.role.findUnique.mockResolvedValue({ ...roleWith(), name: 'SUPER_ADMIN' });
+
+      await expect(service.setPermissions('role-1', [])).rejects.toThrow(ConflictException);
+      expect(prisma.$transaction).not.toHaveBeenCalled();
+    });
+  });
+
   it('removePermission deletes the RolePermission row', async () => {
+    prisma.role.findUnique.mockResolvedValue({ id: 'role-1', name: 'REVIEWER' });
     await service.removePermission('role-1', 'perm-1');
     expect(prisma.rolePermission.deleteMany).toHaveBeenCalledWith({ where: { roleId: 'role-1', permissionId: 'perm-1' } });
   });
@@ -197,7 +270,7 @@ describe('RoleService', () => {
 
       expect(prisma.role.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          include: { permissions: { include: { permission: true } }, department: { select: { id: true, name: true } } },
+          include: { permissions: { include: { permission: true } }, department: { select: { id: true, name: true } }, _count: { select: { admins: true } } },
         }),
       );
     });
