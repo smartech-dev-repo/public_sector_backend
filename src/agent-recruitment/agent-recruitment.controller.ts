@@ -10,6 +10,8 @@ import {
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
+import { AuditEvent } from '../audit/audit-event.decorator';
+import { AuditEventInterceptor } from '../audit/audit-event.interceptor';
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { Throttle } from '@nestjs/throttler';
 import { AgentApplicationTokenGuard } from '../auth/agent-application-token.guard';
@@ -57,7 +59,9 @@ export class AgentRecruitmentController {
 
   @Post('submit')
   @UseGuards(AgentApplicationTokenGuard)
+  @AuditEvent({ action: 'agent.application_submitted', targetType: 'Agent', targetId: { result: 'id' } })
   @UseInterceptors(
+    AuditEventInterceptor,
     FileFieldsInterceptor([
       { name: 'cv', maxCount: 1 },
       { name: 'passportPhoto', maxCount: 1 },

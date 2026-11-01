@@ -70,6 +70,9 @@ model AdminUser {
   createdClients      Client[]           @relation("ClientCreatedByAdmin")
   reviewedAgents      Agent[]
   uploadedDocumentBatches DocumentUploadBatch[]
+  requestedApprovals ApprovalRequest[] @relation("ApprovalRequestedBy")
+  decidedApprovals   ApprovalRequest[] @relation("ApprovalDecidedBy")
+  assignedApprovals  ApprovalRequest[] @relation("ApprovalAssignedTo")
   profileImageKey String?
   createdAt    DateTime        @default(now())
   updatedAt    DateTime        @updatedAt
@@ -266,6 +269,76 @@ enum AuditActorType {
   AGENT
   CLIENT
   SYSTEM
+}
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+  FAILED
+}
+
+model ApprovalRequest {
+  id                 String         @id @default(uuid())
+  action             String
+  status             ApprovalStatus @default(PENDING)
+  requiredPermission String
+  targetType         String
+  targetId           String
+  summary            Json
+  payload            Json
+  /// Set only while pending, so one record can't have two open requests for the same action.
+  pendingKey         String?        @unique
+  requestedById      String
+  requestedBy        AdminUser      @relation("ApprovalRequestedBy", fields: [requestedById], references: [id])
+  /// When set, only this admin may decide, whatever their permissions.
+  assignedToId       String?
+  assignedTo         AdminUser?     @relation("ApprovalAssignedTo", fields: [assignedToId], references: [id])
+  decidedById        String?
+  decidedBy          AdminUser?     @relation("ApprovalDecidedBy", fields: [decidedById], references: [id])
+  decisionNote       String?
+  failureReason      String?
+  createdAt          DateTime       @default(now())
+  decidedAt          DateTime?
+
+  @@index([status, requiredPermission])
+  @@index([requestedById])
+  @@index([assignedToId])
+}
+
+model Notification {
+  id                String             @id @default(uuid())
+  category          String
+  title             String
+  body              String
+  link              String
+  targetPermissions String[]
+  recipientAdminId  String?
+  excludeAdminId    String?
+  reads             NotificationRead[]
+  createdAt         DateTime           @default(now())
+
+  @@index([createdAt])
+  @@index([recipientAdminId])
+}
+
+model NotificationRead {
+  notificationId String
+  notification   Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+  adminId        String
+  readAt         DateTime     @default(now())
+
+  @@id([notificationId, adminId])
+}
+
+model AlertRecipient {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  name      String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
 }
 
 model AuditLog {

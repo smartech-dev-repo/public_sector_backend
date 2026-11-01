@@ -30,7 +30,7 @@ export interface AlertableEvent {
 const escapeHtml = (value: string) =>
   value.replace(/[&<>"']/g, (char) => `&#${char.charCodeAt(0)};`);
 
-/** Emails the addresses in AUDIT_ALERT_EMAILS about high-risk events. Off when that is unset. */
+/** Emails the active alert recipients about high-risk events. Off when there are none. */
 @Injectable()
 export class AuditAlertService {
   private readonly logger = new Logger(AuditAlertService.name);
@@ -41,7 +41,13 @@ export class AuditAlertService {
     private readonly configService: ConfigService,
   ) {}
 
-  private recipients(): string[] {
+  // AUDIT_ALERT_EMAILS only applies until the first recipient is added on screen,
+  // so an existing setup keeps working and the list then has the final say.
+  private async recipients(): Promise<string[]> {
+    const saved = await this.prisma.alertRecipient.findMany();
+    if (saved.length > 0) {
+      return saved.filter((recipient) => recipient.isActive).map((recipient) => recipient.email);
+    }
     const raw = this.configService.get<string>('AUDIT_ALERT_EMAILS') ?? '';
     return raw.split(',').map((email) => email.trim()).filter(Boolean);
   }
@@ -49,12 +55,12 @@ export class AuditAlertService {
   /** Never throws: an alert problem must not affect the action being audited. */
   async evaluate(event: AlertableEvent): Promise<void> {
     try {
-      const recipients = this.recipients();
-      if (recipients.length === 0) return;
-
       const subject =
         ALERT_SUBJECTS[event.action] ?? (await this.failedLoginSubject(event)) ?? (await this.blockedAccessSubject(event));
       if (!subject) return;
+
+      const recipients = await this.recipients();
+      if (recipients.length === 0) return;
 
       const lines = [
         `What happened: ${subject}`,

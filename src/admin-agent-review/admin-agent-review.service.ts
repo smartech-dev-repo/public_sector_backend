@@ -130,6 +130,11 @@ export class AdminAgentReviewService {
   }
 
   async resendCredentials(id: string, reviewerId: string): Promise<void> {
+    const agent = await this.assertCanResendCredentials(id);
+    await this.issueCredentials(agent, {});
+  }
+
+  async assertCanResendCredentials(id: string): Promise<Agent> {
     const agent = await this.prisma.agent.findUnique({ where: { id } });
     if (!agent) {
       throw new NotFoundException('Agent not found');
@@ -140,8 +145,11 @@ export class AdminAgentReviewService {
     if (agent.hasLoggedIn) {
       throw new ConflictException('Credentials have already been used and can no longer be resent');
     }
+    return agent;
+  }
 
-    await this.issueCredentials(agent, {});
+  assertCanApprove(id: string): Promise<Agent> {
+    return this.loadPendingReview(id);
   }
 
   private async loadPendingReview(id: string): Promise<Agent> {

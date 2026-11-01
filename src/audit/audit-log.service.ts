@@ -5,6 +5,7 @@ import { buildPaginatedResult, PaginatedResult } from '../common/pagination/pagi
 import { PrincipalResolverService } from '../common/principal-resolver.service';
 import { auditRequestContext } from './audit-request-context';
 import { AuditAlertService } from './audit-alert.service';
+import { NotificationService } from '../notifications/notification.service';
 import { AuditOutcome, describeOutcome, outcomeWhere } from './audit-outcome';
 
 export interface RecordAuditEventParams {
@@ -45,6 +46,7 @@ export class AuditLogService {
     private readonly prisma: PrismaService,
     private readonly principalResolver: PrincipalResolverService,
     private readonly auditAlertService: AuditAlertService,
+    private readonly notificationService: NotificationService,
   ) {}
 
   async record(params: RecordAuditEventParams): Promise<void> {
@@ -66,6 +68,7 @@ export class AuditLogService {
       },
     });
     void this.auditAlertService.evaluate({ ...params, ip: params.ip ?? origin?.ip });
+    void this.notificationService.fromAuditEvent(params);
   }
 
   /** For paths like sign-in, where a logging failure must never stop the user. */

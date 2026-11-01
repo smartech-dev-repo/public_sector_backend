@@ -5,7 +5,7 @@ import { PrismaService } from '../prisma/prisma.service';
 
 describe('AuditAlertService', () => {
   let email: { send: jest.Mock };
-  let prisma: { auditLog: { count: jest.Mock } };
+  let prisma: { auditLog: { count: jest.Mock }; alertRecipient: { findMany: jest.Mock } };
 
   const build = (recipients?: string) =>
     new AuditAlertService(
@@ -16,7 +16,7 @@ describe('AuditAlertService', () => {
 
   beforeEach(() => {
     email = { send: jest.fn().mockResolvedValue(undefined) };
-    prisma = { auditLog: { count: jest.fn() } };
+    prisma = { auditLog: { count: jest.fn() }, alertRecipient: { findMany: jest.fn().mockResolvedValue([]) } };
   });
 
   it('stays silent when no recipients are configured', async () => {
@@ -74,6 +74,22 @@ describe('AuditAlertService', () => {
     expect(message.text).toContain('1.2.3.4');
     expect(JSON.stringify(message)).not.toContain('client-secret-id');
     expect(prisma.auditLog.count.mock.calls[0][0].where.actorId).toBe('agent-1');
+  });
+
+  it('prefers the saved list over the server setting, skipping anyone switched off', async () => {
+    prisma.alertRecipient.findMany.mockResolvedValue([
+      { email: 'on@x.test', isActive: true },
+      { email: 'off@x.test', isActive: false },
+    ]);
+    await build('env@x.test').evaluate({ action: 'admin.role.set', actorType: 'ADMIN' });
+    expect(email.send).toHaveBeenCalledTimes(1);
+    expect(email.send.mock.calls[0][0].to).toBe('on@x.test');
+  });
+
+  it('sends nothing when everyone on the saved list is switched off, even with the server setting', async () => {
+    prisma.alertRecipient.findMany.mockResolvedValue([{ email: 'off@x.test', isActive: false }]);
+    await build('env@x.test').evaluate({ action: 'admin.role.set', actorType: 'ADMIN' });
+    expect(email.send).not.toHaveBeenCalled();
   });
 
   it('never throws when email fails', async () => {

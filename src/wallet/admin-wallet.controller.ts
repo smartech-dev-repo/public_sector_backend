@@ -1,4 +1,5 @@
-import { Body, Controller, Get, HttpCode, Param, Post, Query, Req, UseGuards, UseInterceptors } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Param, Post, Query, Req, UseGuards, UseInterceptors, OnModuleInit } from '@nestjs/common';
+import { ApprovalsService } from '../approvals/approvals.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { PermissionsGuard } from '../auth/permissions.guard';
 import { RequirePermissions } from '../auth/permissions.decorator';
@@ -10,14 +11,27 @@ import { WalletService } from './wallet.service';
 import { WalletTransactionDto } from './dto/wallet-transaction.dto';
 import { ListWalletEntriesQueryDto } from './dto/list-wallet-entries-query.dto';
 
+const WALLET_CREDIT = 'wallet.credit';
+const WALLET_DEBIT = 'wallet.debit';
+
 @Controller('admin/clients/:clientId/wallet')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 @UseInterceptors(AuditInterceptor)
-export class AdminWalletController {
+export class AdminWalletController implements OnModuleInit {
   constructor(
     private readonly walletService: WalletService,
     private readonly auditLogService: AuditLogService,
+    private readonly approvalsService: ApprovalsService,
   ) {}
+
+  onModuleInit() {
+    this.approvalsService.register(WALLET_CREDIT, (payload, approval, deciderId) =>
+      this.runApproved('credit', payload, approval.targetId, deciderId, approval.requestedById),
+    );
+    this.approvalsService.register(WALLET_DEBIT, (payload, approval, deciderId) =>
+      this.runApproved('debit', payload, approval.targetId, deciderId, approval.requestedById),
+    );
+  }
 
   @Get()
   @RequirePermissions('wallets:read')
@@ -37,56 +51,62 @@ export class AdminWalletController {
   @Post('credit')
   @HttpCode(200)
   @RequirePermissions('wallets:manage')
-  async credit(
-    @Param('clientId') clientId: string,
-    @Body() dto: WalletTransactionDto,
-    @Req() req: { user: JwtPayload },
-  ) {
-    const balanceBefore = await this.walletService.getBalance(clientId);
-    const entry = await this.walletService.credit(clientId, dto.amount, dto.description, {
-      actorType: AuditActorType.ADMIN,
-      actorId: req.user.sub,
-    });
-    await this.auditLogService.record({
-      actorType: AuditActorType.ADMIN,
-      actorId: req.user.sub,
-      action: 'wallet.credit',
-      targetType: 'Client',
-      targetId: clientId,
-      metadata: {
-        amount: dto.amount,
-        description: dto.description,
-        changes: { balance: { from: balanceBefore, to: await this.walletService.getBalance(clientId) } },
-      },
-    });
-    return entry;
+  credit(@Param('clientId') clientId: string, @Body() dto: WalletTransactionDto, @Req() req: { user: JwtPayload }) {
+    return this.submit(WALLET_CREDIT, 'Credit client wallet', clientId, dto, req.user.sub);
   }
 
   @Post('debit')
   @HttpCode(200)
   @RequirePermissions('wallets:manage')
-  async debit(
-    @Param('clientId') clientId: string,
-    @Body() dto: WalletTransactionDto,
-    @Req() req: { user: JwtPayload },
-  ) {
-    const balanceBefore = await this.walletService.getBalance(clientId);
-    const entry = await this.walletService.debit(clientId, dto.amount, dto.description, {
-      actorType: AuditActorType.ADMIN,
-      actorId: req.user.sub,
+  debit(@Param('clientId') clientId: string, @Body() dto: WalletTransactionDto, @Req() req: { user: JwtPayload }) {
+    return this.submit(WALLET_DEBIT, 'Debit client wallet', clientId, dto, req.user.sub);
+  }
+
+  private async submit(action: string, title: string, clientId: string, dto: WalletTransactionDto, requestedById: string) {
+    // Throws for an unknown client, so a maker can't send a request that could never run.
+    await this.walletService.getBalance(clientId);
+    return this.approvalsService.submit({
+      action,
+      requiredPermission: 'approvals:wallets',
+      targetType: 'Client',
+      targetId: clientId,
+      summary: {
+        title,
+        details: [
+          { label: 'Amount', value: `₦${Number(dto.amount).toLocaleString('en-NG')}` },
+          { label: 'Description', value: dto.description },
+        ],
+        link: `/dashboard/clients/${clientId}`,
+      },
+      payload: { amount: dto.amount, description: dto.description },
+      requestedById,
+      allowParallel: true,
     });
+  }
+
+  private async runApproved(
+    action: 'credit' | 'debit',
+    payload: Record<string, unknown>,
+    clientId: string,
+    deciderId: string,
+    requestedById: string,
+  ) {
+    const amount = Number(payload.amount);
+    const description = String(payload.description);
+    const balanceBefore = await this.walletService.getBalance(clientId);
+    await this.walletService[action](clientId, amount, description, { actorType: AuditActorType.ADMIN, actorId: deciderId });
     await this.auditLogService.record({
       actorType: AuditActorType.ADMIN,
-      actorId: req.user.sub,
-      action: 'wallet.debit',
+      actorId: deciderId,
+      action: `wallet.${action}`,
       targetType: 'Client',
       targetId: clientId,
       metadata: {
-        amount: dto.amount,
-        description: dto.description,
+        amount,
+        description,
+        requestedById,
         changes: { balance: { from: balanceBefore, to: await this.walletService.getBalance(clientId) } },
       },
     });
-    return entry;
   }
 }

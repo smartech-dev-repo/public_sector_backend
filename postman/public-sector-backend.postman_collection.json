@@ -17371,7 +17371,7 @@
                     "credit"
                   ]
                 },
-                "description": "Requires the wallets:manage permission. Set client_id to a real Client row's id first."
+                "description": "Requires the wallets:manage permission. Set client_id to a real Client row's id first. Goes through maker-checker: this creates an approval request; nothing happens until another admin approves it."
               },
               "event": [
                 {
@@ -17379,10 +17379,8 @@
                   "script": {
                     "exec": [
                       "pm.test('status 200', () => pm.response.to.have.status(200));",
-                      "pm.test('created a CREDIT entry', () => {",
-                      "  const body = pm.response.json();",
-                      "  pm.expect(body.direction).to.eql('CREDIT');",
-                      "});"
+                      "pm.test('sent for approval', () => pm.expect(pm.response.json().pendingApproval).to.eql(true));",
+                      "pm.collectionVariables.set('approval_id', pm.response.json().approvalId);"
                     ]
                   }
                 }
@@ -17431,12 +17429,12 @@
                     }
                   ],
                   "cookie": [],
-                  "body": "{\n  \"id\": \"a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d\",\n  \"clientId\": \"f4a1b2c3-d4e5-4f67-8a9b-0c1d2e3f4a5b\",\n  \"amount\": \"5000\",\n  \"direction\": \"CREDIT\",\n  \"description\": \"Overpayment excess\",\n  \"actorType\": \"ADMIN\",\n  \"actorId\": \"9d8c7b6a-5e4f-4a3b-9c2d-1e0f9a8b7c6d\",\n  \"createdAt\": \"2026-09-20T09:15:00.000Z\"\n}"
+                  "body": "{\n  \"pendingApproval\": true,\n  \"approvalId\": \"55555555-5555-4555-8555-555555555555\",\n  \"status\": \"PENDING\"\n}"
                 }
               ]
             },
             {
-              "name": "POST /admin/clients/:clientId/wallet/debit - Insufficient balance (422)",
+              "name": "POST /admin/clients/:clientId/wallet/debit - Sent for approval",
               "request": {
                 "method": "POST",
                 "header": [
@@ -17466,21 +17464,22 @@
                     "debit"
                   ]
                 },
-                "description": "Requires the wallets:manage permission. A debit greater than the client's current balance is rejected with 422 and never writes an entry."
+                "description": "Goes through maker-checker: this creates an approval request. If the balance is too low when a second admin approves, the request is marked FAILED with that reason."
               },
               "event": [
                 {
                   "listen": "test",
                   "script": {
                     "exec": [
-                      "pm.test('status 422', () => pm.response.to.have.status(422));"
+                      "pm.test('status 200', () => pm.response.to.have.status(200));",
+                      "pm.test('sent for approval', () => pm.expect(pm.response.json().pendingApproval).to.eql(true));"
                     ]
                   }
                 }
               ],
               "response": [
                 {
-                  "name": "Insufficient balance (422)",
+                  "name": "Success - sent for approval (200)",
                   "originalRequest": {
                     "method": "POST",
                     "header": [
@@ -17512,8 +17511,8 @@
                     },
                     "description": "Requires the wallets:manage permission. A debit greater than the client's current balance is rejected with 422 and never writes an entry."
                   },
-                  "status": "Unprocessable Entity",
-                  "code": 422,
+                  "status": "OK",
+                  "code": 200,
                   "_postman_previewlanguage": "json",
                   "header": [
                     {
@@ -17522,7 +17521,7 @@
                     }
                   ],
                   "cookie": [],
-                  "body": "{\n  \"statusCode\": 422,\n  \"message\": \"Insufficient wallet balance\",\n  \"error\": \"Unprocessable Entity\"\n}"
+                  "body": "{\n  \"pendingApproval\": true,\n  \"approvalId\": \"55555555-5555-4555-8555-555555555555\",\n  \"status\": \"PENDING\"\n}"
                 }
               ]
             }
@@ -18146,7 +18145,7 @@
                   "mode": "raw",
                   "raw": "{\n  \"disbursedAt\": \"2026-01-15T00:00:00.000Z\"\n}"
                 },
-                "description": "disbursedAt is optional (ISO 8601 string); omit it to disburse as of now. Approve now goes straight from CONFIRMED to DISBURSED in one step (no resting APPROVED state) and creates the ClientLoan immediately, using disbursedAt (or now) for both LoanRequest.disbursedAt and the ClientLoan's disbursementDate/maturationDate."
+                "description": "disbursedAt is optional (ISO 8601 string); omit it to disburse as of now. Approve now goes straight from CONFIRMED to DISBURSED in one step (no resting APPROVED state) and creates the ClientLoan immediately, using disbursedAt (or now) for both LoanRequest.disbursedAt and the ClientLoan's disbursementDate/maturationDate. Goes through maker-checker: this creates an approval request; nothing happens until another admin approves it."
               },
               "event": [
                 {
@@ -18154,8 +18153,8 @@
                   "script": {
                     "exec": [
                       "pm.test('status 200', () => pm.response.to.have.status(200));",
-                      "pm.test('status is DISBURSED', () => pm.expect(pm.response.json().status).to.eql('DISBURSED'));",
-                      "pm.test('disbursedAt matches the supplied value', () => pm.expect(pm.response.json().disbursedAt).to.eql('2026-01-15T00:00:00.000Z'));"
+                      "pm.test('sent for approval', () => pm.expect(pm.response.json().pendingApproval).to.eql(true));",
+                      "pm.collectionVariables.set('approval_id', pm.response.json().approvalId);"
                     ]
                   }
                 }
@@ -18173,7 +18172,7 @@
                     }
                   ],
                   "cookie": [],
-                  "body": "{\n  \"id\": \"5c74a7fd-0c53-414f-9370-792896b0cf1f\",\n  \"clientId\": \"0cd16c5f-f375-407e-b9aa-85043a03d6a5\",\n  \"amount\": \"200000\",\n  \"status\": \"DISBURSED\",\n  \"confirmationSmsSentAt\": \"2026-09-21T10:00:00.000Z\",\n  \"confirmedAt\": \"2026-09-21T10:05:00.000Z\",\n  \"expiresAt\": \"2026-09-22T10:00:00.000Z\",\n  \"createdAt\": \"2026-09-21T10:00:00.000Z\",\n  \"updatedAt\": \"2026-09-21T10:05:00.000Z\",\n  \"tenorMonths\": 6,\n  \"interestRatePercent\": \"5\",\n  \"managementChargeType\": \"PERCENTAGE\",\n  \"managementChargeValue\": \"2\",\n  \"managementChargeApplication\": \"DEDUCT_FROM_DISBURSEMENT\",\n  \"managementChargeAmount\": \"4000\",\n  \"rejectionReason\": null,\n  \"approvedAt\": \"2026-01-15T00:00:00.000Z\",\n  \"disbursedAt\": \"2026-01-15T00:00:00.000Z\",\n  \"client\": {\n    \"id\": \"0cd16c5f-f375-407e-b9aa-85043a03d6a5\",\n    \"phone\": \"+2348020000001\",\n    \"email\": \"amaka.eze@example.com\",\n    \"status\": \"VERIFIED\",\n    \"onboarding\": {\n      \"employeeName\": \"Amaka Eze\",\n      \"agency\": \"NPF\",\n      \"onboardedByAgentId\": null,\n      \"ippisRecord\": {\n        \"agency\": \"NPF\",\n        \"staffId\": \"NPF0012345\",\n        \"employeeName\": \"Amaka Eze\",\n        \"employeeStatus\": \"ACTIVE\",\n        \"hireDate\": \"2012-04-01T00:00:00.000Z\",\n        \"department\": \"FINANCE\",\n        \"grade\": \"08\",\n        \"bankName\": \"Zenith Bank\",\n        \"accountNumber\": \"0123456789\"\n      }\n    }\n  },\n  \"topupTarget\": null\n}",
+                  "body": "{\n  \"pendingApproval\": true,\n  \"approvalId\": \"55555555-5555-4555-8555-555555555555\",\n  \"status\": \"PENDING\"\n}",
                   "originalRequest": {
                     "method": "POST",
                     "header": [
@@ -18216,7 +18215,7 @@
                     }
                   ],
                   "cookie": [],
-                  "body": "{\n  \"statusCode\": 400,\n  \"message\": \"disbursedAt cannot be in the future\",\n  \"error\": \"Bad Request\"\n}",
+                  "body": "{\n  \"pendingApproval\": true,\n  \"approvalId\": \"55555555-5555-4555-8555-555555555555\",\n  \"status\": \"PENDING\"\n}",
                   "originalRequest": {
                     "method": "POST",
                     "header": [
@@ -18340,7 +18339,7 @@
                     "confirm-code"
                   ]
                 },
-                "description": "Lets admin confirm a PENDING request stuck without a client reply, using the same OTP code emailed/SMSed to the client -- no client-ownership check (unlike the client/agent confirm-code routes). Copy the real code from the server log (or EMAIL_CODE_DEV_ECHO's devCode, same manual step as other OTP requests in this collection) before running this."
+                "description": "Lets admin confirm a PENDING request stuck without a client reply, using the same OTP code emailed/SMSed to the client -- no client-ownership check (unlike the client/agent confirm-code routes). Copy the real code from the server log (or EMAIL_CODE_DEV_ECHO's devCode, same manual step as other OTP requests in this collection) before running this. Goes through maker-checker: this creates an approval request; nothing happens until another admin approves it."
               },
               "event": [
                 {
@@ -18348,7 +18347,8 @@
                   "script": {
                     "exec": [
                       "pm.test('status 200', () => pm.response.to.have.status(200));",
-                      "pm.test('confirmed true', () => pm.expect(pm.response.json().confirmed).to.eql(true));"
+                      "pm.test('sent for approval', () => pm.expect(pm.response.json().pendingApproval).to.eql(true));",
+                      "pm.collectionVariables.set('approval_id', pm.response.json().approvalId);"
                     ]
                   }
                 }
@@ -18366,7 +18366,7 @@
                     }
                   ],
                   "cookie": [],
-                  "body": "{\n  \"confirmed\": true\n}",
+                  "body": "{\n  \"pendingApproval\": true,\n  \"approvalId\": \"55555555-5555-4555-8555-555555555555\",\n  \"status\": \"PENDING\"\n}",
                   "originalRequest": {
                     "method": "POST",
                     "header": [
@@ -18771,7 +18771,7 @@
                   "mode": "raw",
                   "raw": "{\n  \"disbursedAt\": \"2026-01-15T00:00:00.000Z\"\n}"
                 },
-                "description": "disbursedAt is optional (ISO 8601 string); omit it to disburse as of now. Only reachable if a LoanRequest is already APPROVED -- with Task 1's one-step approve+disburse, nothing currently puts a request into that resting state, so this endpoint stays for completeness/back-compat."
+                "description": "disbursedAt is optional (ISO 8601 string); omit it to disburse as of now. Only reachable if a LoanRequest is already APPROVED -- with Task 1's one-step approve+disburse, nothing currently puts a request into that resting state, so this endpoint stays for completeness/back-compat. Goes through maker-checker: this creates an approval request; nothing happens until another admin approves it."
               },
               "event": [
                 {
@@ -18779,7 +18779,8 @@
                   "script": {
                     "exec": [
                       "pm.test('status 200', () => pm.response.to.have.status(200));",
-                      "pm.test('status is DISBURSED', () => pm.expect(pm.response.json().status).to.eql('DISBURSED'));"
+                      "pm.test('sent for approval', () => pm.expect(pm.response.json().pendingApproval).to.eql(true));",
+                      "pm.collectionVariables.set('approval_id', pm.response.json().approvalId);"
                     ]
                   }
                 }
@@ -18797,7 +18798,7 @@
                     }
                   ],
                   "cookie": [],
-                  "body": "{\n  \"id\": \"5c74a7fd-0c53-414f-9370-792896b0cf1f\",\n  \"clientId\": \"0cd16c5f-f375-407e-b9aa-85043a03d6a5\",\n  \"amount\": \"200000\",\n  \"status\": \"DISBURSED\",\n  \"confirmationSmsSentAt\": \"2026-09-21T10:00:00.000Z\",\n  \"confirmedAt\": \"2026-09-21T10:05:00.000Z\",\n  \"expiresAt\": \"2026-09-22T10:00:00.000Z\",\n  \"createdAt\": \"2026-09-21T10:00:00.000Z\",\n  \"updatedAt\": \"2026-09-21T10:05:00.000Z\",\n  \"tenorMonths\": 6,\n  \"interestRatePercent\": \"5\",\n  \"managementChargeType\": \"PERCENTAGE\",\n  \"managementChargeValue\": \"2\",\n  \"managementChargeApplication\": \"DEDUCT_FROM_DISBURSEMENT\",\n  \"managementChargeAmount\": \"4000\",\n  \"rejectionReason\": null,\n  \"approvedAt\": \"2026-09-21T10:10:00.000Z\",\n  \"disbursedAt\": \"2026-01-15T00:00:00.000Z\",\n  \"client\": {\n    \"id\": \"0cd16c5f-f375-407e-b9aa-85043a03d6a5\",\n    \"phone\": \"+2348020000001\",\n    \"email\": \"amaka.eze@example.com\",\n    \"status\": \"VERIFIED\",\n    \"onboarding\": {\n      \"employeeName\": \"Amaka Eze\",\n      \"agency\": \"NPF\",\n      \"onboardedByAgentId\": null,\n      \"ippisRecord\": {\n        \"agency\": \"NPF\",\n        \"staffId\": \"NPF0012345\",\n        \"employeeName\": \"Amaka Eze\",\n        \"employeeStatus\": \"ACTIVE\",\n        \"hireDate\": \"2012-04-01T00:00:00.000Z\",\n        \"department\": \"FINANCE\",\n        \"grade\": \"08\",\n        \"bankName\": \"Zenith Bank\",\n        \"accountNumber\": \"0123456789\"\n      }\n    }\n  },\n  \"topupTarget\": null\n}",
+                  "body": "{\n  \"pendingApproval\": true,\n  \"approvalId\": \"55555555-5555-4555-8555-555555555555\",\n  \"status\": \"PENDING\"\n}",
                   "originalRequest": {
                     "method": "POST",
                     "header": [
@@ -19804,7 +19805,7 @@
                     "approve"
                   ]
                 },
-                "description": "Generates a temporary password, marks the agent APPROVED, and emails the credentials via EmailService."
+                "description": "Generates a temporary password, marks the agent APPROVED, and emails the credentials via EmailService. Goes through maker-checker: this creates an approval request; nothing happens until another admin approves it."
               },
               "event": [
                 {
@@ -19812,7 +19813,8 @@
                   "script": {
                     "exec": [
                       "pm.test('status 200', () => pm.response.to.have.status(200));",
-                      "pm.collectionVariables.set('agent_id', pm.collectionVariables.get('target_agent_id'));"
+                      "pm.test('sent for approval', () => pm.expect(pm.response.json().pendingApproval).to.eql(true));",
+                      "pm.collectionVariables.set('approval_id', pm.response.json().approvalId);"
                     ]
                   }
                 }
@@ -19852,7 +19854,7 @@
                     }
                   ],
                   "cookie": [],
-                  "body": "{\n  \"approved\": true\n}"
+                  "body": "{\n  \"pendingApproval\": true,\n  \"approvalId\": \"55555555-5555-4555-8555-555555555555\",\n  \"status\": \"PENDING\"\n}"
                 }
               ]
             },
@@ -20127,14 +20129,16 @@
                     "resend-credentials"
                   ]
                 },
-                "description": "Uses the agent approved above (target_agent_id) — must be APPROVED and not yet logged in. Regenerates and re-emails the temporary password."
+                "description": "Uses the agent approved above (target_agent_id) — must be APPROVED and not yet logged in. Regenerates and re-emails the temporary password. Goes through maker-checker: this creates an approval request; nothing happens until another admin approves it."
               },
               "event": [
                 {
                   "listen": "test",
                   "script": {
                     "exec": [
-                      "pm.test('status 200', () => pm.response.to.have.status(200));"
+                      "pm.test('status 200', () => pm.response.to.have.status(200));",
+                      "pm.test('sent for approval', () => pm.expect(pm.response.json().pendingApproval).to.eql(true));",
+                      "pm.collectionVariables.set('approval_id', pm.response.json().approvalId);"
                     ]
                   }
                 }
@@ -20174,7 +20178,7 @@
                     }
                   ],
                   "cookie": [],
-                  "body": "{\n  \"resent\": true\n}"
+                  "body": "{\n  \"pendingApproval\": true,\n  \"approvalId\": \"55555555-5555-4555-8555-555555555555\",\n  \"status\": \"PENDING\"\n}"
                 }
               ]
             },
@@ -21631,6 +21635,2036 @@
                   ],
                   "cookie": [],
                   "body": "{\n  \"statusCode\": 403,\n  \"message\": \"Insufficient permissions\",\n  \"error\": \"Forbidden\"\n}"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Alert Recipients",
+          "item": [
+            {
+              "name": "POST /admin/alert-recipients - Success",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"security@example.com\",\n  \"name\": \"Security team\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/admin/alert-recipients",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "alert-recipients"
+                  ]
+                },
+                "description": "Requires alerts:manage. Once any recipient exists, this list replaces AUDIT_ALERT_EMAILS."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 201', () => pm.response.to.have.status(201));",
+                      "pm.collectionVariables.set('alert_recipient_id', pm.response.json().id);"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Success - recipient added (201)",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      },
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"email\": \"security@example.com\",\n  \"name\": \"Security team\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/admin/alert-recipients",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "alert-recipients"
+                      ]
+                    }
+                  },
+                  "status": "Created",
+                  "code": 201,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"id\": \"44444444-4444-4444-8444-444444444444\",\n  \"email\": \"security@example.com\",\n  \"name\": \"Security team\",\n  \"isActive\": true,\n  \"createdAt\": \"2026-11-02T09:00:00.000Z\",\n  \"updatedAt\": \"2026-11-02T09:00:00.000Z\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "POST /admin/alert-recipients - Validation error (400)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"nope\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/admin/alert-recipients",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "alert-recipients"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 400', () => pm.response.to.have.status(400));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Error - not an email (400)",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      },
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"email\": \"nope\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/admin/alert-recipients",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "alert-recipients"
+                      ]
+                    }
+                  },
+                  "status": "Bad Request",
+                  "code": 400,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"statusCode\": 400,\n  \"message\": [\n    \"email must be an email\"\n  ],\n  \"error\": \"Bad Request\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "POST /admin/alert-recipients - Duplicate email (409)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"security@example.com\",\n  \"name\": \"Security team\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/admin/alert-recipients",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "alert-recipients"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 409', () => pm.response.to.have.status(409));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Error - already listed (409)",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      },
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"email\": \"security@example.com\",\n  \"name\": \"Security team\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/admin/alert-recipients",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "alert-recipients"
+                      ]
+                    }
+                  },
+                  "status": "Conflict",
+                  "code": 409,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"statusCode\": 409,\n  \"message\": \"security@example.com is already on the list\",\n  \"error\": \"Conflict\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "POST /admin/alert-recipients - Missing permission (403)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{limited_admin_access_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"security@example.com\",\n  \"name\": \"Security team\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/admin/alert-recipients",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "alert-recipients"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 403', () => pm.response.to.have.status(403));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Error - caller lacks alerts:manage (403)",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      },
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{limited_admin_access_token}}"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"email\": \"security@example.com\",\n  \"name\": \"Security team\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/admin/alert-recipients",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "alert-recipients"
+                      ]
+                    }
+                  },
+                  "status": "Forbidden",
+                  "code": 403,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"statusCode\": 403,\n  \"message\": \"Insufficient permissions\",\n  \"error\": \"Forbidden\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "GET /admin/alert-recipients - Success",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/alert-recipients",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "alert-recipients"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Success - every recipient (200)",
+                  "originalRequest": {
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/alert-recipients",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "alert-recipients"
+                      ]
+                    }
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "[\n  {\n    \"id\": \"44444444-4444-4444-8444-444444444444\",\n    \"email\": \"security@example.com\",\n    \"name\": \"Security team\",\n    \"isActive\": true,\n    \"createdAt\": \"2026-11-02T09:00:00.000Z\",\n    \"updatedAt\": \"2026-11-02T09:00:00.000Z\"\n  }\n]"
+                }
+              ]
+            },
+            {
+              "name": "PATCH /admin/alert-recipients/:id - Turn off",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"isActive\": false\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/admin/alert-recipients/{{alert_recipient_id}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "alert-recipients",
+                    "{{alert_recipient_id}}"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Success - recipient switched off (200)",
+                  "originalRequest": {
+                    "method": "PATCH",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      },
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"isActive\": false\n}"
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/admin/alert-recipients/{{alert_recipient_id}}",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "alert-recipients",
+                        "{{alert_recipient_id}}"
+                      ]
+                    }
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"id\": \"44444444-4444-4444-8444-444444444444\",\n  \"email\": \"security@example.com\",\n  \"name\": \"Security team\",\n  \"isActive\": false,\n  \"createdAt\": \"2026-11-02T09:00:00.000Z\",\n  \"updatedAt\": \"2026-11-02T09:00:00.000Z\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "PATCH /admin/alert-recipients/:id - Not found (404)",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"isActive\": true\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/admin/alert-recipients/00000000-0000-4000-8000-000000000000",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "alert-recipients",
+                    "00000000-0000-4000-8000-000000000000"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 404', () => pm.response.to.have.status(404));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Error - no such recipient (404)",
+                  "originalRequest": {
+                    "method": "PATCH",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      },
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"isActive\": true\n}"
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/admin/alert-recipients/00000000-0000-4000-8000-000000000000",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "alert-recipients",
+                        "00000000-0000-4000-8000-000000000000"
+                      ]
+                    }
+                  },
+                  "status": "Not Found",
+                  "code": 404,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"statusCode\": 404,\n  \"message\": \"Alert recipient not found\",\n  \"error\": \"Not Found\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "DELETE /admin/alert-recipients/:id - Success",
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/alert-recipients/{{alert_recipient_id}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "alert-recipients",
+                    "{{alert_recipient_id}}"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Success - recipient removed (200)",
+                  "originalRequest": {
+                    "method": "DELETE",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/alert-recipients/{{alert_recipient_id}}",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "alert-recipients",
+                        "{{alert_recipient_id}}"
+                      ]
+                    }
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"deleted\": true\n}"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Approvals",
+          "item": [
+            {
+              "name": "GET /admin/approvals - Waiting for me",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/approvals?view=to_decide",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "approvals"
+                  ]
+                },
+                "description": "view is to_decide or mine; omit for everything the caller may see. Admin only; each row's access depends on its permission, maker and assignee."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Success - requests this admin can decide (200)",
+                  "originalRequest": {
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/approvals?view=to_decide",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "approvals"
+                      ]
+                    }
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"data\": [\n    {\n      \"id\": \"55555555-5555-4555-8555-555555555555\",\n      \"action\": \"loan-request.approve\",\n      \"status\": \"PENDING\",\n      \"requiredPermission\": \"approvals:loans\",\n      \"summary\": {\n        \"title\": \"Approve and disburse loan\",\n        \"subject\": \"Sample Client\"\n      },\n      \"requestedBy\": {\n        \"id\": \"m\",\n        \"fullName\": \"Maker\",\n        \"email\": \"maker@example.com\"\n      },\n      \"assignedTo\": null,\n      \"decidedBy\": null\n    }\n  ],\n  \"meta\": {\n    \"total\": 1,\n    \"page\": 1,\n    \"limit\": 25,\n    \"totalPages\": 1\n  }\n}"
+                }
+              ]
+            },
+            {
+              "name": "GET /admin/approvals/:id - Success",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/approvals/{{approval_id}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "approvals",
+                    "{{approval_id}}"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Success - one request (200)",
+                  "originalRequest": {
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/approvals/{{approval_id}}",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "approvals",
+                        "{{approval_id}}"
+                      ]
+                    }
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"id\": \"55555555-5555-4555-8555-555555555555\",\n  \"action\": \"loan-request.approve\",\n  \"status\": \"PENDING\",\n  \"requiredPermission\": \"approvals:loans\",\n  \"summary\": {\n    \"title\": \"Approve and disburse loan\",\n    \"subject\": \"Sample Client\"\n  },\n  \"requestedBy\": {\n    \"id\": \"m\",\n    \"fullName\": \"Maker\",\n    \"email\": \"maker@example.com\"\n  },\n  \"assignedTo\": null,\n  \"decidedBy\": null,\n  \"canDecide\": true,\n  \"canAssign\": true,\n  \"isMine\": false\n}"
+                }
+              ]
+            },
+            {
+              "name": "GET /admin/approvals/:id - Not found or no access (404)",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/approvals/00000000-0000-4000-8000-000000000000",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "approvals",
+                    "00000000-0000-4000-8000-000000000000"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 404', () => pm.response.to.have.status(404));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Error - not visible to this admin (404)",
+                  "originalRequest": {
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/approvals/00000000-0000-4000-8000-000000000000",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "approvals",
+                        "00000000-0000-4000-8000-000000000000"
+                      ]
+                    }
+                  },
+                  "status": "Not Found",
+                  "code": 404,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"statusCode\": 404,\n  \"message\": \"Approval request not found\",\n  \"error\": \"Not Found\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "GET /admin/approvals/:id/assignees - Success",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/approvals/{{approval_id}}/assignees",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "approvals",
+                    "{{approval_id}}",
+                    "assignees"
+                  ]
+                },
+                "description": "Requires the request's approval permission. Excludes the maker."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Success - admins who can be assigned (200)",
+                  "originalRequest": {
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/approvals/{{approval_id}}/assignees",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "approvals",
+                        "{{approval_id}}",
+                        "assignees"
+                      ]
+                    }
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "[\n  {\n    \"id\": \"a\",\n    \"fullName\": \"Sample Admin\",\n    \"email\": \"admin@example.com\"\n  }\n]"
+                }
+              ]
+            },
+            {
+              "name": "POST /admin/approvals/:id/assign - Success",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{checker_admin_access_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"assigneeId\": \"66666666-6666-4666-8666-666666666666\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/admin/approvals/{{approval_id}}/assign",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "approvals",
+                    "{{approval_id}}",
+                    "assign"
+                  ]
+                },
+                "description": "Only holders of the approval permission can assign, so a maker cannot pick their checker. Send null to reopen it to any approver."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Success - assigned (200)",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      },
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{checker_admin_access_token}}"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"assigneeId\": \"66666666-6666-4666-8666-666666666666\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/admin/approvals/{{approval_id}}/assign",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "approvals",
+                        "{{approval_id}}",
+                        "assign"
+                      ]
+                    }
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"assignedToId\": \"66666666-6666-4666-8666-666666666666\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "POST /admin/approvals/:id/assign - Maker cannot assign (403)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{limited_admin_access_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"assigneeId\": null\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/admin/approvals/{{approval_id}}/assign",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "approvals",
+                    "{{approval_id}}",
+                    "assign"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 403', () => pm.response.to.have.status(403));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Error - caller is not an approver (403)",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      },
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{limited_admin_access_token}}"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"assigneeId\": null\n}"
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/admin/approvals/{{approval_id}}/assign",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "approvals",
+                        "{{approval_id}}",
+                        "assign"
+                      ]
+                    }
+                  },
+                  "status": "Forbidden",
+                  "code": 403,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"statusCode\": 403,\n  \"message\": \"You do not have permission to assign this request\",\n  \"error\": \"Forbidden\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "POST /admin/approvals/:id/approve - Success",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{checker_admin_access_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"note\": \"Checked\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/admin/approvals/{{approval_id}}/approve",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "approvals",
+                    "{{approval_id}}",
+                    "approve"
+                  ]
+                },
+                "description": "Must be a different admin from the maker. If assigned, only the assignee can decide. Runs the real action."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Success - action carried out (200)",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      },
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{checker_admin_access_token}}"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"note\": \"Checked\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/admin/approvals/{{approval_id}}/approve",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "approvals",
+                        "{{approval_id}}",
+                        "approve"
+                      ]
+                    }
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"status\": \"APPROVED\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "POST /admin/approvals/:id/approve - Own request (403)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/admin/approvals/{{approval_id}}/approve",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "approvals",
+                    "{{approval_id}}",
+                    "approve"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 403', () => pm.response.to.have.status(403));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Error - maker cannot decide (403)",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      },
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{}"
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/admin/approvals/{{approval_id}}/approve",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "approvals",
+                        "{{approval_id}}",
+                        "approve"
+                      ]
+                    }
+                  },
+                  "status": "Forbidden",
+                  "code": 403,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"statusCode\": 403,\n  \"message\": \"You cannot decide your own request. Another admin must do it.\",\n  \"error\": \"Forbidden\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "POST /admin/approvals/:id/approve - Could not complete (409)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{checker_admin_access_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/admin/approvals/{{approval_id}}/approve",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "approvals",
+                    "{{approval_id}}",
+                    "approve"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 409', () => pm.response.to.have.status(409));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Error - record moved on, request marked FAILED (409)",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      },
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{checker_admin_access_token}}"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{}"
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/admin/approvals/{{approval_id}}/approve",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "approvals",
+                        "{{approval_id}}",
+                        "approve"
+                      ]
+                    }
+                  },
+                  "status": "Conflict",
+                  "code": 409,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"statusCode\": 409,\n  \"message\": \"Loan request must be CONFIRMED to approve\",\n  \"error\": \"Conflict\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "POST /admin/approvals/:id/reject - Success",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{checker_admin_access_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"note\": \"Amount is wrong\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/admin/approvals/{{approval_id}}/reject",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "approvals",
+                    "{{approval_id}}",
+                    "reject"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Success - rejected (200)",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      },
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{checker_admin_access_token}}"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"note\": \"Amount is wrong\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/admin/approvals/{{approval_id}}/reject",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "approvals",
+                        "{{approval_id}}",
+                        "reject"
+                      ]
+                    }
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"status\": \"REJECTED\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "POST /admin/approvals/:id/reject - Reason required (400)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{checker_admin_access_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"note\": \"\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/admin/approvals/{{approval_id}}/reject",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "approvals",
+                    "{{approval_id}}",
+                    "reject"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 400', () => pm.response.to.have.status(400));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Error - no reason (400)",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      },
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{checker_admin_access_token}}"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"note\": \"\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/admin/approvals/{{approval_id}}/reject",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "approvals",
+                        "{{approval_id}}",
+                        "reject"
+                      ]
+                    }
+                  },
+                  "status": "Bad Request",
+                  "code": 400,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"statusCode\": 400,\n  \"message\": [\n    \"note should not be empty\"\n  ],\n  \"error\": \"Bad Request\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "POST /admin/approvals/:id/cancel - Success",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/approvals/{{approval_id}}/cancel",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "approvals",
+                    "{{approval_id}}",
+                    "cancel"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Success - withdrawn by the maker (200)",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/approvals/{{approval_id}}/cancel",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "approvals",
+                        "{{approval_id}}",
+                        "cancel"
+                      ]
+                    }
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"status\": \"CANCELLED\"\n}"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Notifications",
+          "item": [
+            {
+              "name": "GET /admin/notifications - Success",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/notifications",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "notifications"
+                  ]
+                },
+                "description": "Filters: category, unread. Only shows notifications for the caller's permissions or addressed to them."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Success - what this admin may see (200)",
+                  "originalRequest": {
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/notifications",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "notifications"
+                      ]
+                    }
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"data\": [\n    {\n      \"id\": \"n1\",\n      \"category\": \"approvals\",\n      \"title\": \"Approval needed\",\n      \"body\": \"Disburse loan: Sample Client\",\n      \"link\": \"/dashboard/approvals/1\",\n      \"createdAt\": \"2026-11-02T09:00:00.000Z\",\n      \"readAt\": null\n    }\n  ],\n  \"meta\": {\n    \"total\": 1,\n    \"page\": 1,\n    \"limit\": 25,\n    \"totalPages\": 1\n  }\n}"
+                }
+              ]
+            },
+            {
+              "name": "GET /admin/notifications - Unauthenticated (401)",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer invalid"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/notifications",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "notifications"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 401', () => pm.response.to.have.status(401));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Error - not signed in (401)",
+                  "originalRequest": {
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer invalid"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/notifications",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "notifications"
+                      ]
+                    }
+                  },
+                  "status": "Unauthorized",
+                  "code": 401,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"statusCode\": 401,\n  \"message\": \"Unauthorized\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "GET /admin/notifications/summary - Success",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/notifications/summary",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "notifications",
+                    "summary"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Success - counts for the bell and menu (200)",
+                  "originalRequest": {
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/notifications/summary",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "notifications",
+                        "summary"
+                      ]
+                    }
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"unread\": 3,\n  \"byCategory\": {\n    \"approvals\": 2,\n    \"loans\": 1\n  },\n  \"pendingApprovals\": 2\n}"
+                }
+              ]
+            },
+            {
+              "name": "POST /admin/notifications/:id/read - Success",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/notifications/{{notification_id}}/read",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "notifications",
+                    "{{notification_id}}",
+                    "read"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Success - marked read (200)",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/notifications/{{notification_id}}/read",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "notifications",
+                        "{{notification_id}}",
+                        "read"
+                      ]
+                    }
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"read\": true\n}"
+                }
+              ]
+            },
+            {
+              "name": "POST /admin/notifications/:id/read - Not found (404)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/notifications/00000000-0000-4000-8000-000000000000/read",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "notifications",
+                    "00000000-0000-4000-8000-000000000000",
+                    "read"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 404', () => pm.response.to.have.status(404));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Error - not visible to this admin (404)",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/notifications/00000000-0000-4000-8000-000000000000/read",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "notifications",
+                        "00000000-0000-4000-8000-000000000000",
+                        "read"
+                      ]
+                    }
+                  },
+                  "status": "Not Found",
+                  "code": 404,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"statusCode\": 404,\n  \"message\": \"Notification not found\",\n  \"error\": \"Not Found\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "POST /admin/notifications/read-all - Success",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/notifications/read-all",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "notifications",
+                    "read-all"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Success - all marked read (200)",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/notifications/read-all",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "notifications",
+                        "read-all"
+                      ]
+                    }
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"read\": true\n}"
                 }
               ]
             }

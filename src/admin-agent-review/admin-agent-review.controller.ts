@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpCode, Param, Patch, Post, Query, Req, UseGuards, UseInterceptors } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Param, Patch, Post, Query, Req, UseGuards, UseInterceptors, OnModuleInit } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { PermissionsGuard } from '../auth/permissions.guard';
 import { RequirePermissions } from '../auth/permissions.decorator';
@@ -12,16 +12,42 @@ import { ListAgentsQueryDto } from './dto/list-agents-query.dto';
 import { SetOnboardingAccessDto } from './dto/set-onboarding-access.dto';
 import { AgentAnalyticsQueryDto } from './dto/agent-analytics-query.dto';
 import { AuditActorType } from '../generated/prisma/client';
+import { ApprovalsService } from '../approvals/approvals.service';
+
+const AGENT_APPROVE = 'agent.approve';
+const AGENT_RESEND_CREDENTIALS = 'agent.resend_credentials';
 
 @Controller('admin/agents')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 @UseInterceptors(AuditInterceptor)
-export class AdminAgentReviewController {
+export class AdminAgentReviewController implements OnModuleInit {
   constructor(
     private readonly adminAgentReviewService: AdminAgentReviewService,
     private readonly auditLogService: AuditLogService,
     private readonly adminAgentAnalyticsService: AdminAgentAnalyticsService,
+    private readonly approvalsService: ApprovalsService,
   ) {}
+
+  onModuleInit() {
+    const agentEvent = (action: string, deciderId: string, id: string, requestedById: string) =>
+      this.auditLogService.record({
+        actorType: AuditActorType.ADMIN,
+        actorId: deciderId,
+        action,
+        targetType: 'Agent',
+        targetId: id,
+        metadata: { requestedById },
+      });
+
+    this.approvalsService.register(AGENT_APPROVE, async (_payload, approval, deciderId) => {
+      await this.adminAgentReviewService.approve(approval.targetId, deciderId);
+      await agentEvent('agent.approved', deciderId, approval.targetId, approval.requestedById);
+    });
+    this.approvalsService.register(AGENT_RESEND_CREDENTIALS, async (_payload, approval, deciderId) => {
+      await this.adminAgentReviewService.resendCredentials(approval.targetId, deciderId);
+      await agentEvent('agent.credentials_resent', deciderId, approval.targetId, approval.requestedById);
+    });
+  }
 
   @Get()
   @RequirePermissions('agents:read')
@@ -58,15 +84,15 @@ export class AdminAgentReviewController {
   @HttpCode(200)
   @RequirePermissions('agents:review')
   async approve(@Param('id') id: string, @Req() req: { user: JwtPayload }) {
-    await this.adminAgentReviewService.approve(id, req.user.sub);
-    await this.auditLogService.record({
-      actorType: AuditActorType.ADMIN,
-      actorId: req.user.sub,
-      action: 'agent.approved',
+    const agent = await this.adminAgentReviewService.assertCanApprove(id);
+    return this.approvalsService.submit({
+      action: AGENT_APPROVE,
+      requiredPermission: 'approvals:agents',
       targetType: 'Agent',
       targetId: id,
+      summary: { title: 'Approve agent', subject: agent.fullName, details: [{ label: 'Email', value: agent.email }], link: `/dashboard/agent/${id}` },
+      requestedById: req.user.sub,
     });
-    return { approved: true };
   }
 
   @Post(':id/reject')
@@ -89,15 +115,15 @@ export class AdminAgentReviewController {
   @HttpCode(200)
   @RequirePermissions('agents:review')
   async resendCredentials(@Param('id') id: string, @Req() req: { user: JwtPayload }) {
-    await this.adminAgentReviewService.resendCredentials(id, req.user.sub);
-    await this.auditLogService.record({
-      actorType: AuditActorType.ADMIN,
-      actorId: req.user.sub,
-      action: 'agent.credentials_resent',
+    const agent = await this.adminAgentReviewService.assertCanResendCredentials(id);
+    return this.approvalsService.submit({
+      action: AGENT_RESEND_CREDENTIALS,
+      requiredPermission: 'approvals:agents',
       targetType: 'Agent',
       targetId: id,
+      summary: { title: 'Resend agent sign-in code', subject: agent.fullName, details: [{ label: 'Email', value: agent.email }], link: `/dashboard/agent/${id}` },
+      requestedById: req.user.sub,
     });
-    return { resent: true };
   }
 
   @Patch(':id/onboarding-access')

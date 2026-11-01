@@ -19,6 +19,7 @@ import { LoanProductResolverService } from './eligibility/loan-product-resolver.
 import { SmsModule } from '../sms/sms.module';
 import { ClientLoansModule } from '../client-loans/client-loans.module';
 import { AuditModule } from '../audit/audit.module';
+import { ApprovalsModule } from '../approvals/approvals.module';
 import { WalletModule } from '../wallet/wallet.module';
 import { EmailModule } from '../email/email.module';
 import { LoanSettingsModule } from '../loan-settings/loan-settings.module';
@@ -29,6 +30,7 @@ import { LoanSettingsModule } from '../loan-settings/loan-settings.module';
     SmsModule,
     ClientLoansModule,
     AuditModule,
+    ApprovalsModule,
     WalletModule,
     EmailModule,
     LoanSettingsModule,

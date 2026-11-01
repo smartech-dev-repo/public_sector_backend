@@ -4,6 +4,7 @@ import { PrincipalResolverService } from '../common/principal-resolver.service';
 import { AuditActorType } from '../generated/prisma/client';
 import { auditRequestContext } from './audit-request-context';
 import { AuditAlertService } from './audit-alert.service';
+import { NotificationService } from '../notifications/notification.service';
 
 describe('AuditLogService', () => {
   let service: AuditLogService;
@@ -20,6 +21,7 @@ describe('AuditLogService', () => {
       prisma as unknown as PrismaService,
       principalResolver as unknown as PrincipalResolverService,
       auditAlertService as unknown as AuditAlertService,
+      { fromAuditEvent: jest.fn().mockResolvedValue(undefined) } as unknown as NotificationService,
     );
   });
 

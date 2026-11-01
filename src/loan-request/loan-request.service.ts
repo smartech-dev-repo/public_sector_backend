@@ -446,7 +446,7 @@ export class LoanRequestService {
     await this.verifyCodeAndConfirm(loanRequest, code);
   }
 
-  private async verifyCodeAndConfirm(loanRequest: LoanRequest, code: string): Promise<void> {
+  private assertValidCode(loanRequest: LoanRequest, code: string): void {
     if (loanRequest.status !== LoanRequestStatus.PENDING) {
       throw new ConflictException(`Loan request is not PENDING (currently ${loanRequest.status})`);
     }
@@ -458,8 +458,42 @@ export class LoanRequestService {
     ) {
       throw new UnauthorizedException('Invalid or expired verification code');
     }
+  }
 
+  private async verifyCodeAndConfirm(loanRequest: LoanRequest, code: string): Promise<void> {
+    this.assertValidCode(loanRequest, code);
     await this.confirmPending(loanRequest);
+  }
+
+  /** Checks an admin-entered code now, so a checker never has to see or handle it. */
+  async checkConfirmationCode(id: string, code: string): Promise<LoanRequest> {
+    const loanRequest = await this.prisma.loanRequest.findUnique({ where: { id } });
+    if (!loanRequest) {
+      throw new NotFoundException('Loan request not found');
+    }
+    this.assertValidCode(loanRequest, code);
+    return loanRequest;
+  }
+
+  /** Completes a confirmation whose code was already checked when it was sent for approval. */
+  async confirmAfterApproval(id: string): Promise<void> {
+    const loanRequest = await this.prisma.loanRequest.findUnique({ where: { id } });
+    if (!loanRequest || loanRequest.status !== LoanRequestStatus.PENDING) {
+      throw new ConflictException(`Loan request is no longer PENDING (currently ${loanRequest?.status ?? 'missing'})`);
+    }
+    await this.confirmPending(loanRequest);
+  }
+
+  /** Stops a maker sending a request that could never be carried out. */
+  async requireStatus(id: string, status: LoanRequestStatus, actionLabel: string) {
+    const loanRequest = await this.prisma.loanRequest.findUnique({
+      where: { id },
+      include: { client: { select: { phone: true, onboarding: { select: { employeeName: true } } } } },
+    });
+    if (!loanRequest || loanRequest.status !== status) {
+      throw new ConflictException(`Loan request must be ${status} to ${actionLabel}`);
+    }
+    return loanRequest;
   }
 
   private async confirmPending(pending: LoanRequest): Promise<void> {

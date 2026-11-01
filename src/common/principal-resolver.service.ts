@@ -63,6 +63,15 @@ const REGISTRY: Record<string, RegistryEntry> = {
   Permission: {
     findMany: (p, ids) => p.permission.findMany({ where: { id: { in: ids } }, select: { id: true, key: true } }),
   },
+  AlertRecipient: {
+    findMany: (p, ids) => p.alertRecipient.findMany({ where: { id: { in: ids } }, select: { id: true, email: true } }),
+  },
+  ApprovalRequest: {
+    findMany: async (p, ids) => {
+      const rows = await p.approvalRequest.findMany({ where: { id: { in: ids } }, select: { id: true, summary: true } });
+      return rows.map((row) => ({ id: row.id, name: (row.summary as { title?: string }).title }));
+    },
+  },
   ManagementFee: {
     findMany: (p, ids) => p.managementFee.findMany({ where: { id: { in: ids } }, select: { id: true, name: true } }),
   },

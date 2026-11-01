@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { AuditModule } from '../audit/audit.module';
 import { AuthModule } from '../auth/auth.module';
 import { EmailModule } from '../email/email.module';
 import { IdentityVerificationModule } from '../identity-verification/identity-verification.module';
@@ -8,7 +9,7 @@ import { AgentRecruitmentService } from './agent-recruitment.service';
 import { AgentApplicationTokenGuard } from '../auth/agent-application-token.guard';
 
 @Module({
-  imports: [AuthModule, EmailModule, IdentityVerificationModule, FileStorageModule],
+  imports: [AuthModule, AuditModule, EmailModule, IdentityVerificationModule, FileStorageModule],
   controllers: [AgentRecruitmentController],
   providers: [AgentRecruitmentService, AgentApplicationTokenGuard],
 })

@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { ApprovalsModule } from '../approvals/approvals.module';
 import { AuditModule } from '../audit/audit.module';
 import { EmailModule } from '../email/email.module';
 import { FileStorageModule } from '../file-storage/file-storage.module';
@@ -9,7 +10,7 @@ import { AdminAgentRecruitmentReviewController } from './admin-agent-recruitment
 import { AdminAgentRecruitmentReviewService } from './admin-agent-recruitment-review.service';
 
 @Module({
-  imports: [AuditModule, EmailModule, FileStorageModule],
+  imports: [AuditModule, EmailModule, FileStorageModule, ApprovalsModule],
   controllers: [AdminAgentReviewController, AdminAgentRecruitmentReviewController],
   providers: [AdminAgentReviewService, AdminAgentAnalyticsService, AdminAgentRecruitmentReviewService],
 })
