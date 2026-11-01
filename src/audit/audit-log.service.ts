@@ -5,6 +5,7 @@ import { buildPaginatedResult, PaginatedResult } from '../common/pagination/pagi
 import { PrincipalResolverService } from '../common/principal-resolver.service';
 import { auditRequestContext } from './audit-request-context';
 import { AuditAlertService } from './audit-alert.service';
+import { AuditOutcome, describeOutcome, outcomeWhere } from './audit-outcome';
 
 export interface RecordAuditEventParams {
   actorType: AuditActorType;
@@ -25,6 +26,9 @@ const REQUEST_ACTION_MARKER = ' /';
 export interface ListAuditEventsFilters {
   actorType?: AuditActorType;
   actorId?: string;
+  /** Matches who did it by name, email or phone. */
+  actor?: string;
+  outcome?: AuditOutcome;
   action?: string;
   kind?: AuditEntryKind;
   targetType?: string;
@@ -76,9 +80,9 @@ export class AuditLogService {
   async list(
     filters: ListAuditEventsFilters = {},
     pagination: { page: number; limit: number } = { page: 1, limit: 25 },
-  ): Promise<PaginatedResult<AuditLog & { actor: Record<string, unknown> | null; target: Record<string, unknown> | null }>> {
+  ): Promise<PaginatedResult<AuditLog & { actor: unknown; target: unknown; outcome: AuditOutcome; reason: string | null }>> {
     const { page, limit } = pagination;
-    const where = this.buildWhere(filters);
+    const where = await this.buildWhere(filters);
 
     const [data, total] = await Promise.all([
       this.prisma.auditLog.findMany({ where, orderBy: { createdAt: 'desc' }, skip: (page - 1) * limit, take: limit }),
@@ -90,7 +94,7 @@ export class AuditLogService {
 
   /** The newest rows matching the filters, up to `maxRows`, plus how many matched in all. */
   async listForExport(filters: ListAuditEventsFilters, maxRows: number) {
-    const where = this.buildWhere(filters);
+    const where = await this.buildWhere(filters);
     const [data, total] = await Promise.all([
       this.prisma.auditLog.findMany({ where, orderBy: { createdAt: 'desc' }, take: maxRows }),
       this.prisma.auditLog.count({ where }),
@@ -98,8 +102,18 @@ export class AuditLogService {
     return { rows: await this.withPrincipals(data), total };
   }
 
-  private buildWhere(filters: ListAuditEventsFilters): Prisma.AuditLogWhereInput {
+  private async buildWhere(filters: ListAuditEventsFilters): Promise<Prisma.AuditLogWhereInput> {
+    const conditions: Prisma.AuditLogWhereInput[] = [];
+    if (filters.outcome) {
+      conditions.push(outcomeWhere(filters.outcome));
+    }
+    if (filters.actor) {
+      const ids = await this.principalResolver.searchIds(filters.actor);
+      conditions.push({ actorId: { in: [...ids.ADMIN, ...ids.AGENT, ...ids.CLIENT] } });
+    }
+
     return {
+      AND: conditions.length > 0 ? conditions : undefined,
       actorType: filters.actorType,
       actorId: filters.actorId,
       action: filters.action
@@ -126,6 +140,7 @@ export class AuditLogService {
 
     return data.map((row) => ({
       ...row,
+      ...describeOutcome(row.action, row.metadata),
       actor: (row.actorId && resolved.get(`${row.actorType}:${row.actorId}`)) || null,
       target: (row.targetType && row.targetId && resolved.get(`${row.targetType}:${row.targetId}`)) || null,
     }));

@@ -4,6 +4,7 @@ import { Observable, tap } from 'rxjs';
 import { AuditLogService } from './audit-log.service';
 import { AUDIT_EVENT_KEY, AuditEventOptions } from './audit-event.decorator';
 import { runWithRequestOrigin } from './audit-context.interceptor';
+import { errorReason } from './audit-outcome';
 import { JwtPayload } from '../auth/jwt-payload.interface';
 import { AuditActorType, Prisma } from '../generated/prisma/client';
 
@@ -47,7 +48,7 @@ export class AuditEventInterceptor implements NestInterceptor {
           next: (result) => void this.recordOutcome(options, request, result),
           error: (error: { status?: number }) => {
             if (request.method !== 'GET') {
-              void this.recordOutcome(options, request, undefined, error?.status ?? 500);
+              void this.recordOutcome(options, request, undefined, error?.status ?? 500, errorReason(error));
             }
           },
         }),
@@ -55,12 +56,19 @@ export class AuditEventInterceptor implements NestInterceptor {
     );
   }
 
-  private recordOutcome(options: AuditEventOptions, request: AuditedRequest, result: unknown, failedStatus?: number) {
+  private recordOutcome(
+    options: AuditEventOptions,
+    request: AuditedRequest,
+    result: unknown,
+    failedStatus?: number,
+    reason?: string,
+  ) {
     const metadata = {
       ...pick(request.params, options.params),
       ...pick(request.body, options.body),
       ...pick(result, options.result),
       ...(failedStatus ? { status: failedStatus } : {}),
+      ...(reason ? { error: reason } : {}),
     };
     return this.auditLogService.recordSafely({
       actorType: ACTOR_TYPES[request.user?.type ?? ''] ?? AuditActorType.SYSTEM,

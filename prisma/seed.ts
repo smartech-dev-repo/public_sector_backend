@@ -23,6 +23,7 @@ const BOOTSTRAP_PERMISSIONS: Array<{ key: string; description: string }> = [
   { key: 'permissions:manage', description: 'Create, edit, and delete permission definitions' },
   { key: 'reconciliation:read', description: 'View loan repayment reconciliation variances' },
   { key: 'wallets:read', description: "View a client's wallet balance and entries" },
+  { key: 'sessions:manage', description: "View every user's sessions and sign users out" },
   { key: 'wallets:manage', description: "Credit or debit a client's wallet" },
   { key: 'loan-products:manage', description: 'Create/edit the loan product catalog (sectors, amount/tenor range, interest tiers, service-length eligibility)' },
   { key: 'management-fees:manage', description: 'Create, edit, and delete the management fees loan products pick from' },

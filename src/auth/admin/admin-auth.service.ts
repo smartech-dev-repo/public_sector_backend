@@ -36,7 +36,7 @@ export class AdminAuthService {
     return this.auditLogService.recordSafely({
       actorType: AuditActorType.ADMIN,
       actorId: adminId,
-      action: 'admin.login.failed',
+      action: reason === 'inactive_account' ? 'admin.login.denied' : 'admin.login.failed',
       targetType: adminId ? 'AdminUser' : undefined,
       targetId: adminId,
       metadata: { email, reason },

@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditLogService } from '../audit/audit-log.service';
 import { generateOpaqueToken, hashToken } from '../common/opaque-token.util';
@@ -159,7 +159,7 @@ export class SessionService {
   async listActiveSessions(
     principalType: SessionPrincipalType,
     principalId: string,
-    filters: { createdFrom?: Date; createdTo?: Date } = {},
+    filters: { q?: string; createdFrom?: Date; createdTo?: Date } = {},
     pagination: { page: number; limit: number } = { page: 1, limit: 25 },
   ): Promise<PaginatedResult<SessionSummary>> {
     const { page, limit } = pagination;
@@ -168,6 +168,12 @@ export class SessionService {
       principalId,
       revokedAt: null,
       expiresAt: { gt: new Date() },
+      OR: filters.q
+        ? [
+            { ip: { contains: filters.q, mode: 'insensitive' } },
+            { userAgent: { contains: filters.q, mode: 'insensitive' } },
+          ]
+        : undefined,
       createdAt:
         filters.createdFrom || filters.createdTo
           ? { gte: filters.createdFrom, lte: filters.createdTo }
@@ -189,6 +195,75 @@ export class SessionService {
     }));
 
     return buildPaginatedResult(data, total, page, limit);
+  }
+
+  /** Every user's sessions, for the back office, newest activity first. */
+  async listForAdmin(
+    filters: {
+      userType?: SessionPrincipalType;
+      userId?: string;
+      status?: 'active' | 'revoked' | 'expired';
+      idsByType?: Partial<Record<SessionPrincipalType, string[]>>;
+      createdFrom?: Date;
+      createdTo?: Date;
+    },
+    pagination: { page: number; limit: number },
+  ) {
+    const { page, limit } = pagination;
+    const now = new Date();
+    const statusWhere: Record<string, Prisma.SessionWhereInput> = {
+      active: { revokedAt: null, expiresAt: { gt: now } },
+      revoked: { revokedAt: { not: null } },
+      expired: { revokedAt: null, expiresAt: { lte: now } },
+    };
+    const where: Prisma.SessionWhereInput = {
+      ...(filters.status ? statusWhere[filters.status] : {}),
+      principalType: filters.userType,
+      principalId: filters.userId,
+      OR: filters.idsByType
+        ? Object.entries(filters.idsByType).map(([type, ids]) => ({
+            principalType: type as SessionPrincipalType,
+            principalId: { in: ids },
+          }))
+        : undefined,
+      createdAt:
+        filters.createdFrom || filters.createdTo
+          ? { gte: filters.createdFrom, lte: filters.createdTo }
+          : undefined,
+    };
+
+    const [sessions, total] = await Promise.all([
+      this.prisma.session.findMany({
+        where,
+        omit: { refreshTokenHash: true },
+        orderBy: { lastUsedAt: 'desc' },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      this.prisma.session.count({ where }),
+    ]);
+
+    const data = sessions.map((session) => ({
+      ...session,
+      status: session.revokedAt ? 'revoked' : session.expiresAt <= now ? 'expired' : 'active',
+    }));
+    return buildPaginatedResult(data, total, page, limit);
+  }
+
+  /** Signs out one session on an admin's instruction, and returns whose it was. */
+  async revokeById(sessionId: string) {
+    const session = await this.prisma.session.findUnique({ where: { id: sessionId } });
+    if (!session) {
+      throw new NotFoundException('Session not found');
+    }
+    if (session.revokedAt) {
+      throw new ConflictException('This session has already been signed out');
+    }
+    await this.prisma.session.update({
+      where: { id: sessionId },
+      data: { revokedAt: new Date(), revokedReason: 'admin_forced' },
+    });
+    return session;
   }
 
   async revokeOwnSession(

@@ -93,6 +93,24 @@ const REGISTRY: Record<string, RegistryEntry> = {
 export class PrincipalResolverService {
   constructor(private readonly prisma: PrismaService) {}
 
+  /** Ids of the admins, agents and clients whose name, email or phone contains `q`. */
+  async searchIds(q: string): Promise<Record<'ADMIN' | 'AGENT' | 'CLIENT', string[]>> {
+    const match = { contains: q, mode: 'insensitive' as const };
+    const take = 500;
+    const select = { id: true };
+    const [admins, agents, clients] = await Promise.all([
+      this.prisma.adminUser.findMany({ where: { OR: [{ email: match }, { fullName: match }] }, select, take }),
+      this.prisma.agent.findMany({ where: { OR: [{ email: match }, { fullName: match }, { phone: match }] }, select, take }),
+      this.prisma.client.findMany({
+        where: { OR: [{ phone: match }, { email: match }, { onboarding: { employeeName: match } }] },
+        select,
+        take,
+      }),
+    ]);
+    const ids = (rows: { id: string }[]) => rows.map((row) => row.id);
+    return { ADMIN: ids(admins), AGENT: ids(agents), CLIENT: ids(clients) };
+  }
+
   async resolveMany(refs: PrincipalRef[]): Promise<Map<string, ResolvedPrincipal>> {
     const byType = new Map<string, Set<string>>();
     for (const ref of refs) {

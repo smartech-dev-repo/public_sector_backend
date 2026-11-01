@@ -1,4 +1,4 @@
-import { IsEnum, IsIn, IsISO8601, IsOptional, IsString, IsUUID } from 'class-validator';
+import { IsEnum, IsIn, IsISO8601, IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
 import { PaginationDto } from '../../common/pagination/pagination.dto';
 import { AuditActorType } from '../../generated/prisma/client';
 
@@ -10,6 +10,15 @@ export class ListAuditLogsQueryDto extends PaginationDto {
   @IsOptional()
   @IsUUID()
   actorId?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  actor?: string;
+
+  @IsOptional()
+  @IsIn(['success', 'failed', 'blocked'])
+  outcome?: 'success' | 'failed' | 'blocked';
 
   @IsOptional()
   @IsIn(['event', 'request'])

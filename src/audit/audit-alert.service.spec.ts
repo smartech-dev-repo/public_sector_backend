@@ -49,6 +49,33 @@ describe('AuditAlertService', () => {
     expect(email.send).toHaveBeenCalledTimes(1);
   });
 
+  it('alerts once, on the third blocked attempt by the same agent, without naming the client', async () => {
+    const event = {
+      action: 'agent.client_access.denied',
+      actorType: 'AGENT',
+      actorId: 'agent-1',
+      targetType: 'Client',
+      targetId: 'client-secret-id',
+      ip: '1.2.3.4',
+    };
+    prisma.auditLog.count.mockResolvedValue(2);
+    await build('sec@x.test').evaluate(event);
+    prisma.auditLog.count.mockResolvedValue(4);
+    await build('sec@x.test').evaluate(event);
+    expect(email.send).not.toHaveBeenCalled();
+
+    prisma.auditLog.count.mockResolvedValue(3);
+    await build('sec@x.test').evaluate(event);
+
+    expect(email.send).toHaveBeenCalledTimes(1);
+    const message = email.send.mock.calls[0][0];
+    expect(message.subject).toContain('blocked');
+    expect(message.text).toContain('agent-1');
+    expect(message.text).toContain('1.2.3.4');
+    expect(JSON.stringify(message)).not.toContain('client-secret-id');
+    expect(prisma.auditLog.count.mock.calls[0][0].where.actorId).toBe('agent-1');
+  });
+
   it('never throws when email fails', async () => {
     email.send.mockRejectedValue(new Error('smtp down'));
     await expect(build('a@x.test').evaluate({ action: 'admin.role.set', actorType: 'ADMIN' })).resolves.toBeUndefined();

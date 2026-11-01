@@ -13,6 +13,9 @@ const ALERT_SUBJECTS: Record<string, string> = {
 const FAILED_LOGIN_ACTIONS = ['admin.login.failed', 'agent.login.failed'];
 const FAILED_LOGIN_THRESHOLD = 5;
 const FAILED_LOGIN_WINDOW_MS = 15 * 60 * 1000;
+const BLOCKED_ACCESS_ACTION = 'agent.client_access.denied';
+const BLOCKED_ACCESS_THRESHOLD = 3;
+const BLOCKED_ACCESS_WINDOW_MS = 15 * 60 * 1000;
 
 export interface AlertableEvent {
   action: string;
@@ -49,7 +52,8 @@ export class AuditAlertService {
       const recipients = this.recipients();
       if (recipients.length === 0) return;
 
-      const subject = ALERT_SUBJECTS[event.action] ?? (await this.failedLoginSubject(event));
+      const subject =
+        ALERT_SUBJECTS[event.action] ?? (await this.failedLoginSubject(event)) ?? (await this.blockedAccessSubject(event));
       if (!subject) return;
 
       const lines = [
@@ -57,7 +61,8 @@ export class AuditAlertService {
         `Event: ${event.action}`,
         `Time: ${new Date().toISOString()}`,
         `Done by: ${event.actorType}${event.actorId ? ` ${event.actorId}` : ''}`,
-        event.targetId ? `Record: ${event.targetType} ${event.targetId}` : null,
+        // Blocked access alerts are about the agent, so they name no client.
+        event.targetId && event.action !== BLOCKED_ACCESS_ACTION ? `Record: ${event.targetType} ${event.targetId}` : null,
         event.ip ? `IP address: ${event.ip}` : null,
       ].filter((line): line is string => line !== null);
 
@@ -74,6 +79,22 @@ export class AuditAlertService {
     } catch (error) {
       this.logger.error(`Could not send audit alert for ${event.action}: ${error instanceof Error ? error.message : error}`);
     }
+  }
+
+  // Like failed sign-ins, this fires only on the attempt that reaches the threshold.
+  private async blockedAccessSubject(event: AlertableEvent): Promise<string | null> {
+    if (event.action !== BLOCKED_ACCESS_ACTION || !event.actorId) return null;
+
+    const attempts = await this.prisma.auditLog.count({
+      where: {
+        action: BLOCKED_ACCESS_ACTION,
+        actorId: event.actorId,
+        createdAt: { gte: new Date(Date.now() - BLOCKED_ACCESS_WINDOW_MS) },
+      },
+    });
+    return attempts === BLOCKED_ACCESS_THRESHOLD
+      ? `An agent was blocked from other agents' clients ${BLOCKED_ACCESS_THRESHOLD} times in 15 minutes`
+      : null;
   }
 
   // Fires once, on the attempt that reaches the threshold, so a long attack sends one email.

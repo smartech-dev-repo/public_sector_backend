@@ -83,6 +83,7 @@ export class SessionAuthController {
       toSessionPrincipalType(req.user.type),
       req.user.sub,
       {
+        q: query.q,
         createdFrom: query.createdFrom ? new Date(query.createdFrom) : undefined,
         createdTo: query.createdTo ? new Date(query.createdTo) : undefined,
       },

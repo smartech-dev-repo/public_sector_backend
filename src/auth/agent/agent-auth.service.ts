@@ -39,7 +39,7 @@ export class AgentAuthService {
     return this.auditLogService.recordSafely({
       actorType: AuditActorType.AGENT,
       actorId: agentId,
-      action: 'agent.login.failed',
+      action: reason === 'inactive_account' ? 'agent.login.denied' : 'agent.login.failed',
       targetType: agentId ? 'Agent' : undefined,
       targetId: agentId,
       metadata: { email, reason },

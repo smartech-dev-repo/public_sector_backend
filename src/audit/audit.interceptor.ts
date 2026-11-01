@@ -3,6 +3,7 @@ import { Observable, tap } from 'rxjs';
 import { AuditLogService } from './audit-log.service';
 import { runWithRequestOrigin } from './audit-context.interceptor';
 import { auditRequestContext } from './audit-request-context';
+import { errorReason } from './audit-outcome';
 import { JwtPayload } from '../auth/jwt-payload.interface';
 import { AuditActorType } from '../generated/prisma/client';
 
@@ -36,13 +37,13 @@ export class AuditInterceptor implements NestInterceptor {
               this.logBestEffort(request, 200);
             }
           },
-          error: (error: { status?: number }) => this.logBestEffort(request, error?.status ?? 500),
+          error: (error: { status?: number }) => this.logBestEffort(request, error?.status ?? 500, errorReason(error)),
         }),
       ),
     );
   }
 
-  private logBestEffort(request: AuditableRequest, status: number): void {
+  private logBestEffort(request: AuditableRequest, status: number, reason?: string): void {
     const userAgent = request.headers['user-agent'];
     // Fire-and-forget: this is the automatic *baseline* safety net (see the
     // design doc, §2.3) — it must never slow down or break the actual
@@ -53,6 +54,7 @@ export class AuditInterceptor implements NestInterceptor {
         actorType: AuditActorType.ADMIN,
         actorId: request.user?.sub,
         action: `${request.method} ${request.url} (${status})`,
+        metadata: reason ? { error: reason } : undefined,
         ip: request.ip,
         userAgent: typeof userAgent === 'string' ? userAgent : undefined,
       })
