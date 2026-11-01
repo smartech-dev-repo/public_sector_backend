@@ -3,16 +3,24 @@ import { PrismaService } from '../prisma/prisma.service';
 import { PrincipalResolverService } from '../common/principal-resolver.service';
 import { AuditActorType } from '../generated/prisma/client';
 import { auditRequestContext } from './audit-request-context';
+import { AuditAlertService } from './audit-alert.service';
 
 describe('AuditLogService', () => {
   let service: AuditLogService;
   let prisma: { auditLog: { create: jest.Mock; findMany: jest.Mock; count: jest.Mock } };
   let principalResolver: { resolveMany: jest.Mock };
 
+  let auditAlertService: { evaluate: jest.Mock };
+
   beforeEach(() => {
     prisma = { auditLog: { create: jest.fn(), findMany: jest.fn(), count: jest.fn() } };
     principalResolver = { resolveMany: jest.fn().mockResolvedValue(new Map()) };
-    service = new AuditLogService(prisma as unknown as PrismaService, principalResolver as unknown as PrincipalResolverService);
+    auditAlertService = { evaluate: jest.fn().mockResolvedValue(undefined) };
+    service = new AuditLogService(
+      prisma as unknown as PrismaService,
+      principalResolver as unknown as PrincipalResolverService,
+      auditAlertService as unknown as AuditAlertService,
+    );
   });
 
   it('writes a row with every provided field', async () => {

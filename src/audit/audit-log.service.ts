@@ -4,6 +4,7 @@ import { AuditActorType, AuditLog, Prisma } from '../generated/prisma/client';
 import { buildPaginatedResult, PaginatedResult } from '../common/pagination/paginated-result';
 import { PrincipalResolverService } from '../common/principal-resolver.service';
 import { auditRequestContext } from './audit-request-context';
+import { AuditAlertService } from './audit-alert.service';
 
 export interface RecordAuditEventParams {
   actorType: AuditActorType;
@@ -39,10 +40,15 @@ export class AuditLogService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly principalResolver: PrincipalResolverService,
+    private readonly auditAlertService: AuditAlertService,
   ) {}
 
   async record(params: RecordAuditEventParams): Promise<void> {
     const origin = auditRequestContext.getStore();
+    // Set before the write: the automatic row is decided the moment the handler returns.
+    if (origin && !params.action.includes(REQUEST_ACTION_MARKER)) {
+      origin.namedEventRecorded = true;
+    }
     await this.prisma.auditLog.create({
       data: {
         actorType: params.actorType,
@@ -55,6 +61,7 @@ export class AuditLogService {
         userAgent: params.userAgent ?? origin?.userAgent,
       },
     });
+    void this.auditAlertService.evaluate({ ...params, ip: params.ip ?? origin?.ip });
   }
 
   /** For paths like sign-in, where a logging failure must never stop the user. */
@@ -71,7 +78,28 @@ export class AuditLogService {
     pagination: { page: number; limit: number } = { page: 1, limit: 25 },
   ): Promise<PaginatedResult<AuditLog & { actor: Record<string, unknown> | null; target: Record<string, unknown> | null }>> {
     const { page, limit } = pagination;
-    const where: Prisma.AuditLogWhereInput = {
+    const where = this.buildWhere(filters);
+
+    const [data, total] = await Promise.all([
+      this.prisma.auditLog.findMany({ where, orderBy: { createdAt: 'desc' }, skip: (page - 1) * limit, take: limit }),
+      this.prisma.auditLog.count({ where }),
+    ]);
+
+    return buildPaginatedResult(await this.withPrincipals(data), total, page, limit);
+  }
+
+  /** The newest rows matching the filters, up to `maxRows`, plus how many matched in all. */
+  async listForExport(filters: ListAuditEventsFilters, maxRows: number) {
+    const where = this.buildWhere(filters);
+    const [data, total] = await Promise.all([
+      this.prisma.auditLog.findMany({ where, orderBy: { createdAt: 'desc' }, take: maxRows }),
+      this.prisma.auditLog.count({ where }),
+    ]);
+    return { rows: await this.withPrincipals(data), total };
+  }
+
+  private buildWhere(filters: ListAuditEventsFilters): Prisma.AuditLogWhereInput {
+    return {
       actorType: filters.actorType,
       actorId: filters.actorId,
       action: filters.action
@@ -87,24 +115,19 @@ export class AuditLogService {
           ? { gte: filters.createdFrom, lte: filters.createdTo }
           : undefined,
     };
+  }
 
-    const [data, total] = await Promise.all([
-      this.prisma.auditLog.findMany({ where, orderBy: { createdAt: 'desc' }, skip: (page - 1) * limit, take: limit }),
-      this.prisma.auditLog.count({ where }),
-    ]);
-
+  private async withPrincipals(data: AuditLog[]) {
     const refs = [
       ...data.map((row) => ({ type: row.actorType as string, id: row.actorId })),
       ...data.map((row) => ({ type: row.targetType ?? '', id: row.targetId })),
     ];
     const resolved = await this.principalResolver.resolveMany(refs);
 
-    const enriched = data.map((row) => ({
+    return data.map((row) => ({
       ...row,
       actor: (row.actorId && resolved.get(`${row.actorType}:${row.actorId}`)) || null,
       target: (row.targetType && row.targetId && resolved.get(`${row.targetType}:${row.targetId}`)) || null,
     }));
-
-    return buildPaginatedResult(enriched, total, page, limit);
   }
 }

@@ -13,7 +13,8 @@ describe('RoleService', () => {
       delete: jest.Mock;
       count: jest.Mock;
     };
-    adminUser: { count: jest.Mock };
+    adminUser: { count: jest.Mock; updateMany: jest.Mock };
+    department: { findUnique: jest.Mock };
     permission: { findUnique: jest.Mock; findMany: jest.Mock };
     rolePermission: { upsert: jest.Mock; deleteMany: jest.Mock; createMany: jest.Mock };
     $transaction: jest.Mock;
@@ -29,7 +30,8 @@ describe('RoleService', () => {
         delete: jest.fn(),
         count: jest.fn(),
       },
-      adminUser: { count: jest.fn() },
+      adminUser: { count: jest.fn(), updateMany: jest.fn() },
+      department: { findUnique: jest.fn().mockResolvedValue({ id: 'dept-1' }) },
       permission: { findUnique: jest.fn(), findMany: jest.fn() },
       rolePermission: { upsert: jest.fn(), deleteMany: jest.fn(), createMany: jest.fn() },
       $transaction: jest.fn(),
@@ -76,12 +78,44 @@ describe('RoleService', () => {
   it('update sets departmentId when given, and clears it when explicitly set to null', async () => {
     prisma.role.findUnique.mockResolvedValue({ id: 'role-1', name: 'REVIEWER' });
     prisma.role.update.mockResolvedValue({ id: 'role-1', name: 'REVIEWER', departmentId: null });
+    prisma.$transaction.mockResolvedValue([{ id: 'role-1', departmentId: null }, { count: 0 }]);
     await service.update('role-1', { departmentId: null });
     expect(prisma.role.update).toHaveBeenCalledWith({
       where: { id: 'role-1' },
       data: { name: undefined, description: undefined, departmentId: null },
       include: { permissions: { include: { permission: true } }, department: { select: { id: true, name: true } }, _count: { select: { admins: true } } },
     });
+  });
+
+  it('update moves the role\'s admins when its department changes, in one transaction', async () => {
+    prisma.role.findUnique.mockResolvedValue({ id: 'role-1', name: 'REVIEWER', departmentId: 'dept-old' });
+    prisma.role.update.mockReturnValue('role-update');
+    prisma.adminUser.updateMany.mockReturnValue('holders-update');
+    prisma.$transaction.mockResolvedValue([{ id: 'role-1', departmentId: 'dept-1' }, { count: 2 }]);
+
+    const role = await service.update('role-1', { departmentId: 'dept-1' });
+
+    expect(prisma.$transaction).toHaveBeenCalledWith(['role-update', 'holders-update']);
+    expect(prisma.adminUser.updateMany).toHaveBeenCalledWith({ where: { roleId: 'role-1' }, data: { departmentId: 'dept-1' } });
+    expect(role).toEqual({ id: 'role-1', departmentId: 'dept-1' });
+  });
+
+  it('update leaves admins alone when the department is unchanged', async () => {
+    prisma.role.findUnique.mockResolvedValue({ id: 'role-1', name: 'REVIEWER', departmentId: 'dept-1' });
+    prisma.role.update.mockResolvedValue({ id: 'role-1' });
+
+    await service.update('role-1', { departmentId: 'dept-1', description: 'x' });
+
+    expect(prisma.adminUser.updateMany).not.toHaveBeenCalled();
+  });
+
+  it('create and update refuse an unknown department', async () => {
+    prisma.department.findUnique.mockResolvedValue(null);
+    prisma.role.findUnique.mockResolvedValue({ id: 'role-1', name: 'REVIEWER' });
+
+    await expect(service.create({ name: 'X', departmentId: 'nope' })).rejects.toThrow(NotFoundException);
+    await expect(service.update('role-1', { departmentId: 'nope' })).rejects.toThrow(NotFoundException);
+    expect(prisma.role.create).not.toHaveBeenCalled();
   });
 
   it('remove rejects deleting SUPER_ADMIN', async () => {

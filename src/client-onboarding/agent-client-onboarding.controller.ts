@@ -11,6 +11,8 @@ import {
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
+import { AuditEvent } from '../audit/audit-event.decorator';
+import { AuditEventInterceptor } from '../audit/audit-event.interceptor';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { AgentOnlyGuard } from '../auth/agent-only.guard';
@@ -23,20 +25,24 @@ import { ClientDocumentType } from '../generated/prisma/client';
 
 @Controller('agent/clients')
 @UseGuards(JwtAuthGuard, AgentOnlyGuard, AgentCanOnboardClientsGuard)
+@UseInterceptors(AuditEventInterceptor)
 export class AgentClientOnboardingController {
   constructor(private readonly clientOnboardingService: ClientOnboardingService) {}
 
   @Post('onboarding/ippis-lookup')
+  @AuditEvent({ action: 'client.onboarding.started', targetType: 'Client', targetId: { result: 'clientId' }, result: ['step', 'identityVerified', 'faceMatchPassed'] })
   startOnboarding(@Body() dto: StaffOnboardingLookupDto, @Req() req: { user: JwtPayload }) {
     return this.clientOnboardingService.agentStartOnboarding(dto.ippisNumber, dto.phone, req.user.sub);
   }
 
   @Post(':clientId/onboarding/identity')
+  @AuditEvent({ action: 'client.onboarding.identity_submitted', targetType: 'Client', targetId: { param: 'clientId' }, result: ['step', 'identityVerified', 'faceMatchPassed'] })
   submitIdentity(@Param('clientId') clientId: string, @Body() dto: SubmitIdentityDto) {
     return this.clientOnboardingService.submitIdentityVerified(clientId, dto.bvn, dto.nin);
   }
 
   @Post(':clientId/onboarding/documents/:type')
+  @AuditEvent({ action: 'client.onboarding.document_uploaded', targetType: 'Client', targetId: { param: 'clientId' }, params: ['type'] })
   @UseInterceptors(
     FileInterceptor('file', {
       limits: { fileSize: 5 * 1024 * 1024 },
@@ -66,6 +72,7 @@ export class AgentClientOnboardingController {
   }
 
   @Post(':clientId/onboarding/face-match')
+  @AuditEvent({ action: 'client.onboarding.face_match', targetType: 'Client', targetId: { param: 'clientId' }, result: ['step', 'identityVerified', 'faceMatchPassed'] })
   submitFaceMatch(@Param('clientId') clientId: string) {
     return this.clientOnboardingService.submitFaceMatchFromPassportPhoto(clientId);
   }

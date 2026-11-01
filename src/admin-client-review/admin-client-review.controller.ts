@@ -1,4 +1,6 @@
 import { Body, Controller, Get, HttpCode, Param, Post, Query, Req, UseGuards, UseInterceptors } from '@nestjs/common';
+import { AuditEvent } from '../audit/audit-event.decorator';
+import { AuditEventInterceptor } from '../audit/audit-event.interceptor';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { PermissionsGuard } from '../auth/permissions.guard';
 import { RequirePermissions } from '../auth/permissions.decorator';
@@ -16,7 +18,7 @@ import { AuditActorType, ClientStatus } from '../generated/prisma/client';
 
 @Controller('admin/clients')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
-@UseInterceptors(AuditInterceptor)
+@UseInterceptors(AuditInterceptor, AuditEventInterceptor)
 export class AdminClientReviewController {
   constructor(
     private readonly adminClientReviewService: AdminClientReviewService,
@@ -52,6 +54,7 @@ export class AdminClientReviewController {
 
   @Get(':id')
   @RequirePermissions('clients:review')
+  @AuditEvent({ action: 'client.profile.viewed', targetType: 'Client', targetId: { param: 'id' } })
   findOne(@Param('id') id: string) {
     return this.adminClientReviewService.findById(id);
   }

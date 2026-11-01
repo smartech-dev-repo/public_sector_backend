@@ -52,6 +52,7 @@ export class AdminRoleAssignmentService {
           fullName: true,
           isActive: true,
           createdAt: true,
+          updatedAt: true,
           role: true,
           department: true,
           profileImageKey: true,

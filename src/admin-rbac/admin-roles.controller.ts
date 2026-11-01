@@ -60,6 +60,12 @@ export class AdminRolesController {
     return this.roleService.listPermissionOptions();
   }
 
+  @Get('department-options')
+  @RequirePermissions('roles:manage')
+  listDepartmentOptions() {
+    return this.roleService.listDepartmentOptions();
+  }
+
   @Get(':id')
   @RequirePermissions('roles:manage')
   findOne(@Param('id') id: string) {
@@ -77,7 +83,13 @@ export class AdminRolesController {
       action: 'role.updated',
       targetType: 'Role',
       targetId: id,
-      metadata: { changes: auditChanges(before, role, ['name', 'description', 'departmentId']) } as Prisma.InputJsonObject,
+      metadata: {
+        changes: auditChanges(
+          { ...before, department: before.department?.name ?? null },
+          { ...role, department: (role as typeof before).department?.name ?? null },
+          ['name', 'description', 'department'],
+        ),
+      } as Prisma.InputJsonObject,
     });
     return role;
   }

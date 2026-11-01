@@ -45,6 +45,39 @@ describe('AuditInterceptor', () => {
     interceptor.intercept(buildContext(request), handler).subscribe(() => done());
   });
 
+  it('skips the automatic row when the handler recorded a named event', (done) => {
+    const request = { method: 'POST', url: '/admin/roles', headers: {} };
+    const handler: CallHandler = {
+      handle: () => {
+        auditRequestContext.getStore()!.namedEventRecorded = true;
+        return of(true);
+      },
+    };
+    interceptor.intercept(buildContext(request), handler).subscribe(() => {
+      setImmediate(() => {
+        expect(auditLogService.record).not.toHaveBeenCalled();
+        done();
+      });
+    });
+  });
+
+  it('still logs a failed request after a named event', (done) => {
+    const request = { method: 'POST', url: '/admin/roles', headers: {} };
+    const handler: CallHandler = {
+      handle: () => {
+        auditRequestContext.getStore()!.namedEventRecorded = true;
+        return throwError(() => ({ status: 409 }));
+      },
+    };
+    interceptor.intercept(buildContext(request), handler).subscribe({
+      error: () =>
+        setImmediate(() => {
+          expect(auditLogService.record).toHaveBeenCalledTimes(1);
+          done();
+        }),
+    });
+  });
+
   it('logs a baseline entry for a successful mutating request', (done) => {
     const request = {
       method: 'POST',

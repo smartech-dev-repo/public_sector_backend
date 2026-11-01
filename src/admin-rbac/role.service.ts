@@ -28,7 +28,17 @@ const ROLE_WITH_RELATIONS_INCLUDE = {
 export class RoleService {
   constructor(private readonly prisma: PrismaService) {}
 
+  // Foreign-key failures would surface as a 500, so a bad id is refused up front.
+  private async assertDepartmentExists(departmentId?: string | null): Promise<void> {
+    if (!departmentId) return;
+    const department = await this.prisma.department.findUnique({ where: { id: departmentId } });
+    if (!department) {
+      throw new NotFoundException('Department not found');
+    }
+  }
+
   async create(params: CreateRoleParams): Promise<Role> {
+    await this.assertDepartmentExists(params.departmentId);
     try {
       return await this.prisma.role.create({ data: params, include: ROLE_WITH_RELATIONS_INCLUDE });
     } catch (error) {
@@ -82,12 +92,23 @@ export class RoleService {
     if (role.name === SUPER_ADMIN_ROLE_NAME && params.name && params.name !== role.name) {
       throw new ConflictException('The SUPER_ADMIN role cannot be renamed');
     }
+    await this.assertDepartmentExists(params.departmentId);
+    const updateRole = this.prisma.role.update({
+      where: { id },
+      data: { name: params.name, description: params.description, departmentId: params.departmentId },
+      include: ROLE_WITH_RELATIONS_INCLUDE,
+    });
     try {
-      return await this.prisma.role.update({
-        where: { id },
-        data: { name: params.name, description: params.description, departmentId: params.departmentId },
-        include: ROLE_WITH_RELATIONS_INCLUDE,
-      });
+      const departmentChanged = params.departmentId !== undefined && params.departmentId !== role.departmentId;
+      if (!departmentChanged) {
+        return await updateRole;
+      }
+      // An admin's department comes from their role, so holders move with it.
+      const [updated] = await this.prisma.$transaction([
+        updateRole,
+        this.prisma.adminUser.updateMany({ where: { roleId: id }, data: { departmentId: params.departmentId } }),
+      ]);
+      return updated;
     } catch (error) {
       if (isUniqueConstraintError(error)) {
         throw new ConflictException(`A role named "${params.name}" already exists`);
@@ -139,6 +160,10 @@ export class RoleService {
         }),
       ),
     );
+  }
+
+  listDepartmentOptions() {
+    return this.prisma.department.findMany({ select: { id: true, name: true }, orderBy: { name: 'asc' } });
   }
 
   listPermissionOptions() {

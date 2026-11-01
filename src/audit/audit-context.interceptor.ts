@@ -9,7 +9,11 @@ interface RequestOrigin {
 
 export function runWithRequestOrigin<T>(request: RequestOrigin, handle: () => Observable<T>): Observable<T> {
   const userAgent = request.headers['user-agent'];
-  const origin = { ip: request.ip, userAgent: typeof userAgent === 'string' ? userAgent : undefined };
+  // Reuses an outer interceptor's context, so both see the same namedEventRecorded flag.
+  const origin = auditRequestContext.getStore() ?? {
+    ip: request.ip,
+    userAgent: typeof userAgent === 'string' ? userAgent : undefined,
+  };
   return new Observable<T>((subscriber) => auditRequestContext.run(origin, () => handle().subscribe(subscriber)));
 }
 

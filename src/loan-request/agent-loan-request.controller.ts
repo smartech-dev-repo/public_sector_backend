@@ -1,4 +1,6 @@
-import { Body, Controller, HttpCode, NotFoundException, Param, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, HttpCode, NotFoundException, Param, Post, Req, UseGuards, UseInterceptors } from '@nestjs/common';
+import { AuditEvent } from '../audit/audit-event.decorator';
+import { AuditEventInterceptor } from '../audit/audit-event.interceptor';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { AgentOnlyGuard } from '../auth/agent-only.guard';
 import { AgentCanOnboardClientsGuard } from '../auth/agent-can-onboard-clients.guard';
@@ -10,6 +12,7 @@ import { ConfirmLoanRequestCodeDto } from './dto/confirm-loan-request-code.dto';
 
 @Controller('agent/clients/:clientId/loan-requests')
 @UseGuards(JwtAuthGuard, AgentOnlyGuard, AgentCanOnboardClientsGuard)
+@UseInterceptors(AuditEventInterceptor)
 export class AgentLoanRequestController {
   constructor(
     private readonly prisma: PrismaService,
@@ -27,18 +30,21 @@ export class AgentLoanRequestController {
   }
 
   @Post()
+  @AuditEvent({ action: 'loan-request.created', targetType: 'LoanRequest', targetId: { result: 'id' }, result: ['amount', 'tenorMonths', 'status', 'type'] })
   async create(@Param('clientId') clientId: string, @Body() dto: CreateLoanRequestDto, @Req() req: { user: JwtPayload }) {
     await this.assertOwnsClient(clientId, req.user.sub);
     return this.loanRequestService.create(clientId, dto.amount, dto.tenorMonths);
   }
 
   @Post('topup')
+  @AuditEvent({ action: 'loan-request.topup_created', targetType: 'LoanRequest', targetId: { result: 'id' }, result: ['amount', 'tenorMonths', 'status', 'type'] })
   async createTopup(@Param('clientId') clientId: string, @Body() dto: CreateLoanRequestDto, @Req() req: { user: JwtPayload }) {
     await this.assertOwnsClient(clientId, req.user.sub);
     return this.loanRequestService.createTopup(clientId, dto.amount, dto.tenorMonths);
   }
 
   @Post(':id/resend')
+  @AuditEvent({ action: 'loan-request.code_resent', targetType: 'LoanRequest', targetId: { param: 'id' } })
   @HttpCode(200)
   async resend(@Param('clientId') clientId: string, @Param('id') id: string, @Req() req: { user: JwtPayload }) {
     await this.assertOwnsClient(clientId, req.user.sub);
@@ -46,6 +52,7 @@ export class AgentLoanRequestController {
   }
 
   @Post(':id/confirm-code')
+  @AuditEvent({ action: 'loan-request.code_confirmed', targetType: 'LoanRequest', targetId: { param: 'id' } })
   @HttpCode(200)
   async confirmCode(
     @Param('clientId') clientId: string,

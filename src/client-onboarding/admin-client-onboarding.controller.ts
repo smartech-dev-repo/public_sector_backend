@@ -11,6 +11,8 @@ import {
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
+import { AuditEvent } from '../audit/audit-event.decorator';
+import { AuditEventInterceptor } from '../audit/audit-event.interceptor';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { PermissionsGuard } from '../auth/permissions.guard';
@@ -24,23 +26,26 @@ import { ClientDocumentType } from '../generated/prisma/client';
 
 @Controller('admin/clients')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
-@UseInterceptors(AuditInterceptor)
+@UseInterceptors(AuditInterceptor, AuditEventInterceptor)
 export class AdminClientOnboardingController {
   constructor(private readonly clientOnboardingService: ClientOnboardingService) {}
 
   @Post('onboarding/ippis-lookup')
+  @AuditEvent({ action: 'client.onboarding.started', targetType: 'Client', targetId: { result: 'clientId' }, result: ['step', 'identityVerified', 'faceMatchPassed'] })
   @RequirePermissions('clients:onboard')
   startOnboarding(@Body() dto: StaffOnboardingLookupDto, @Req() req: { user: JwtPayload }) {
     return this.clientOnboardingService.adminStartOnboarding(dto.ippisNumber, dto.phone, req.user.sub);
   }
 
   @Post(':clientId/onboarding/identity')
+  @AuditEvent({ action: 'client.onboarding.identity_submitted', targetType: 'Client', targetId: { param: 'clientId' }, result: ['step', 'identityVerified', 'faceMatchPassed'] })
   @RequirePermissions('clients:onboard')
   submitIdentity(@Param('clientId') clientId: string, @Body() dto: SubmitIdentityDto) {
     return this.clientOnboardingService.submitIdentityVerified(clientId, dto.bvn, dto.nin);
   }
 
   @Post(':clientId/onboarding/documents/:type')
+  @AuditEvent({ action: 'client.onboarding.document_uploaded', targetType: 'Client', targetId: { param: 'clientId' }, params: ['type'] })
   @RequirePermissions('clients:onboard')
   @UseInterceptors(
     FileInterceptor('file', {
@@ -71,6 +76,7 @@ export class AdminClientOnboardingController {
   }
 
   @Post(':clientId/onboarding/face-match')
+  @AuditEvent({ action: 'client.onboarding.face_match', targetType: 'Client', targetId: { param: 'clientId' }, result: ['step', 'identityVerified', 'faceMatchPassed'] })
   @RequirePermissions('clients:onboard')
   submitFaceMatch(@Param('clientId') clientId: string) {
     return this.clientOnboardingService.submitFaceMatchFromPassportPhoto(clientId);

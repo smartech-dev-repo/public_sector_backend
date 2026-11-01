@@ -10,7 +10,8 @@ export class UpdateRoleDto {
   @IsString()
   description?: string;
 
+  // null unlinks the role from its department.
   @IsOptional()
   @IsUUID()
-  departmentId?: string;
+  departmentId?: string | null;
 }
