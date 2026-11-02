@@ -155,7 +155,7 @@ describe('ApprovalsService', () => {
       prisma.adminUser.findMany.mockResolvedValue([]);
       await service.listAssignees(approver('checker'), 'ap1');
       await service.assign(approver('checker'), 'ap1', 'other');
-      const role = { permissions: { some: { permission: { key: 'approvals:loans' } } } };
+      const role = { OR: [{ name: 'SUPER_ADMIN' }, { permissions: { some: { permission: { key: 'approvals:loans' } } } }] };
       expect(prisma.adminUser.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ role }) }));
       expect(prisma.adminUser.findFirst).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ role, id: 'other' }) }));
     });

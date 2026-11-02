@@ -5,7 +5,7 @@ import { JwtPayload } from '../auth/jwt-payload.interface';
 import { buildPaginatedResult } from '../common/pagination/paginated-result';
 import { isUniqueConstraintError } from '../common/is-unique-constraint-error.util';
 import { ApprovalRequest, ApprovalStatus, AuditActorType, Prisma } from '../generated/prisma/client';
-import { NotificationService } from '../notifications/notification.service';
+import { NotificationService, SUPER_ADMIN_ROLE_NAME } from '../notifications/notification.service';
 import { PrismaService } from '../prisma/prisma.service';
 
 export interface ApprovalSummary {
@@ -282,7 +282,7 @@ export class ApprovalsService {
     return {
       isActive: true,
       id: { not: approval.requestedById },
-      role: { permissions: { some: { permission: { key: approval.requiredPermission } } } },
+      role: { OR: [{ name: SUPER_ADMIN_ROLE_NAME }, { permissions: { some: { permission: { key: approval.requiredPermission } } } }] },
     };
   }
 

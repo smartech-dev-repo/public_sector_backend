@@ -2,11 +2,12 @@ import { NotificationService } from './notification.service';
 import { PrismaService } from '../prisma/prisma.service';
 
 describe('NotificationService', () => {
-  let prisma: { adminUser: { findUnique: jest.Mock }; notification: { create: jest.Mock; findMany: jest.Mock; count: jest.Mock; findFirst: jest.Mock; groupBy: jest.Mock } };
+  let prisma: { permission: { findMany: jest.Mock }; adminUser: { findUnique: jest.Mock }; notification: { create: jest.Mock; findMany: jest.Mock; count: jest.Mock; findFirst: jest.Mock; groupBy: jest.Mock } };
   let service: NotificationService;
 
   beforeEach(() => {
     prisma = {
+      permission: { findMany: jest.fn().mockResolvedValue([]) },
       adminUser: {
         findUnique: jest.fn().mockResolvedValue({ role: { permissions: [{ permission: { key: 'audit:read' } }] } }),
       },
@@ -57,5 +58,11 @@ describe('NotificationService', () => {
       { recipientAdminId: 'a1' },
       { recipientAdminId: null, targetPermissions: { hasSome: ['audit:read'] } },
     ]);
+  });
+
+  it('treats SUPER_ADMIN as holding every permission, even without the role rows', async () => {
+    prisma.adminUser.findUnique.mockResolvedValue({ role: { name: 'SUPER_ADMIN', permissions: [] } });
+    prisma.permission.findMany.mockResolvedValue([{ key: 'approvals:agents' }, { key: 'approvals:loans' }]);
+    await expect(service.currentPermissions('sa')).resolves.toEqual(['approvals:agents', 'approvals:loans']);
   });
 });

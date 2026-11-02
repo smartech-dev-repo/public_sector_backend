@@ -4,6 +4,8 @@ import { Prisma } from '../generated/prisma/client';
 import { buildPaginatedResult } from '../common/pagination/paginated-result';
 import { JwtPayload } from '../auth/jwt-payload.interface';
 
+export const SUPER_ADMIN_ROLE_NAME = 'SUPER_ADMIN';
+
 export interface NewNotification {
   category: string;
   title: string;
@@ -101,8 +103,13 @@ export class NotificationService {
   async currentPermissions(adminId: string): Promise<string[]> {
     const admin = await this.prisma.adminUser.findUnique({
       where: { id: adminId },
-      select: { role: { select: { permissions: { select: { permission: { select: { key: true } } } } } } },
+      select: { role: { select: { name: true, permissions: { select: { permission: { select: { key: true } } } } } } },
     });
+    // SUPER_ADMIN always holds everything, including permissions added after its rows were written.
+    if (admin?.role.name === SUPER_ADMIN_ROLE_NAME) {
+      const permissions = await this.prisma.permission.findMany({ select: { key: true } });
+      return permissions.map((permission) => permission.key);
+    }
     return admin?.role.permissions.map((row) => row.permission.key) ?? [];
   }
 
