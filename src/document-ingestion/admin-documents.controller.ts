@@ -271,9 +271,16 @@ export class AdminDocumentsController {
     );
   }
 
+  // The upload wizard follows the batch it just created, so an uploader needs this
+  // even without documents:read.
   @Get('batches/:id')
-  @RequirePermissions('documents:read')
-  getBatch(@Param('id') id: string) {
-    return this.documentBatchService.findById(id);
+  async getBatch(@Param('id') id: string, @Req() req: { user: JwtPayload }) {
+    const batch = await this.documentBatchService.findById(id);
+    const permissions = req.user.permissions ?? [];
+    const canRead = batch && permissions.includes(DOCUMENT_UPLOAD_PERMISSIONS[batch.documentType]);
+    if (!permissions.includes('documents:read') && !canRead) {
+      throw new ForbiddenException('Insufficient permissions');
+    }
+    return batch;
   }
 }

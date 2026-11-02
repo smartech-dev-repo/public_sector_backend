@@ -11017,7 +11017,7 @@
                     "{{ippis_batch_id}}"
                   ]
                 },
-                "description": "Run 'POST /admin/documents/ippis-broadsheet/upload - Success' first to populate ippis_batch_id. Note the batch reaches COMPLETED asynchronously via the BullMQ worker — if you run this immediately, status may still show PENDING/PROCESSING; wait a second and retry if so."
+                "description": "Run 'POST /admin/documents/ippis-broadsheet/upload - Success' first to populate ippis_batch_id. Note the batch reaches COMPLETED asynchronously via the BullMQ worker — if you run this immediately, status may still show PENDING/PROCESSING; wait a second and retry if so. Allowed with documents:read, or with the upload permission for that document type, so the upload wizard can follow its own batch."
               },
               "event": [
                 {
@@ -11091,7 +11091,8 @@
                     "batches",
                     "{{ippis_batch_id}}"
                   ]
-                }
+                },
+                "description": " Allowed with documents:read, or with the upload permission for that document type, so the upload wizard can follow its own batch."
               },
               "event": [
                 {
@@ -12061,7 +12062,8 @@
                     "batches",
                     "{{ippis_batch_id}}"
                   ]
-                }
+                },
+                "description": " Allowed with documents:read, or with the upload permission for that document type, so the upload wizard can follow its own batch."
               },
               "event": [
                 {

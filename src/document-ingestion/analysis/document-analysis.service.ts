@@ -24,6 +24,11 @@ function headerSet(headerValues: unknown[]): Set<string> {
 
 // Dry run of the three parsers: the same mappers decide what a row means, but
 // nothing is written, so the review step can report what a merge would do.
+// This runs in the API process, so a long unbroken loop would stall every request
+// and stop the queue renewing its lock on the job.
+const YIELD_EVERY_ROWS = 500;
+const yieldToEventLoop = () => new Promise((resolve) => setImmediate(resolve));
+
 @Injectable()
 export class DocumentAnalysisService {
   constructor(private readonly prisma: PrismaService) {}
@@ -84,6 +89,8 @@ export class DocumentAnalysisService {
       }
 
       for (let rowNumber = 2; rowNumber <= worksheet.rowCount; rowNumber++) {
+       if (rowNumber % YIELD_EVERY_ROWS === 0) await yieldToEventLoop();
+        if (rowNumber % YIELD_EVERY_ROWS === 0) await yieldToEventLoop();
         const row = worksheet.getRow(rowNumber);
         if (!row.hasValues) continue;
         builder.countRow(sheet);
@@ -164,6 +171,7 @@ export class DocumentAnalysisService {
       const headerValues = worksheet.getRow(headerRowNumber).values as unknown[];
 
       for (let rowNumber = headerRowNumber + 1; rowNumber <= worksheet.rowCount; rowNumber++) {
+        if (rowNumber % YIELD_EVERY_ROWS === 0) await yieldToEventLoop();
         const row = worksheet.getRow(rowNumber);
         if (!row.hasValues) continue;
         builder.countRow(sheet);
@@ -227,6 +235,7 @@ export class DocumentAnalysisService {
     const headerValues = worksheet.getRow(headerRowNumber).values as unknown[];
 
     for (let rowNumber = headerRowNumber + 1; rowNumber <= worksheet.rowCount; rowNumber++) {
+      if (rowNumber % YIELD_EVERY_ROWS === 0) await yieldToEventLoop();
       const row = worksheet.getRow(rowNumber);
       if (!row.hasValues) continue;
       builder.countRow(sheet);

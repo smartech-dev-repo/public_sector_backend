@@ -55,6 +55,12 @@ describe('DocumentIngestionProcessor', () => {
     );
   });
 
+  it('marks the upload failed when a job dies outside the normal error path', async () => {
+    documentBatchService.markFailed = jest.fn().mockResolvedValue(undefined);
+    await processor.onJobFailed({ data: { batchId: 'batch-1' } } as never, new Error('job stalled more than allowable limit'));
+    expect(documentBatchService.markFailed).toHaveBeenCalledWith('batch-1', expect.stringContaining('upload the file again'));
+  });
+
   it('only analyzes on an analyze-batch job, and never touches the parser', async () => {
     documentBatchService.findRawById.mockResolvedValue({
       id: 'batch-1',

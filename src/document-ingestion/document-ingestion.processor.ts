@@ -1,4 +1,4 @@
-import { Processor, WorkerHost } from '@nestjs/bullmq';
+import { OnWorkerEvent, Processor, WorkerHost } from '@nestjs/bullmq';
 import { Inject, Logger } from '@nestjs/common';
 import { Job } from 'bullmq';
 import { DOCUMENT_INGESTION_QUEUE } from './document-ingestion-queue.constants';
@@ -19,7 +19,8 @@ export interface DocumentIngestionJobData {
 
 const RECONCILIATION_TRIGGER_TYPES: DocumentType[] = [DocumentType.DISBURSED_LOANS, DocumentType.REPAYMENT_SCHEDULE];
 
-@Processor(DOCUMENT_INGESTION_QUEUE)
+// Reviewing a large workbook is slow, and a job that loses its lock is run twice.
+@Processor(DOCUMENT_INGESTION_QUEUE, { lockDuration: 5 * 60 * 1000 })
 export class DocumentIngestionProcessor extends WorkerHost {
   private readonly logger = new Logger(DocumentIngestionProcessor.name);
 
@@ -85,6 +86,15 @@ export class DocumentIngestionProcessor extends WorkerHost {
       targetId: batch.id,
       metadata: { documentType: batch.documentType, fileName: batch.originalFileName, period: batch.period, ...details },
     });
+  }
+
+  // Errors inside process() are caught there. This is for what never reaches that
+  // catch, such as the worker dying mid-job, which would leave the upload stuck forever.
+  @OnWorkerEvent('failed')
+  async onJobFailed(job: Job<DocumentIngestionJobData> | undefined, error: Error): Promise<void> {
+    if (!job) return;
+    this.logger.error(`Batch ${job.data.batchId} job failed: ${error.message}`);
+    await this.documentBatchService.markFailed(job.data.batchId, 'Processing stopped unexpectedly. Please upload the file again.');
   }
 
   private async analyze(batch: DocumentUploadBatch): Promise<void> {
