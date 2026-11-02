@@ -1,7 +1,8 @@
-import { IsPhoneNumber, IsString, Length } from 'class-validator';
+import { IsString, Length } from 'class-validator';
+import { IsNigerianPhone } from '../../../common/is-nigerian-phone.decorator';
 
 export class VerifyOtpDto {
-  @IsPhoneNumber()
+  @IsNigerianPhone()
   phone: string;
 
   // Must track PHONE_OTP_LENGTH's default (4) — class-validator DTOs

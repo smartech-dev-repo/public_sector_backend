@@ -1,7 +1,8 @@
-import { IsEmail, IsOptional, IsPhoneNumber } from 'class-validator';
+import { IsEmail, IsOptional } from 'class-validator';
+import { IsNigerianPhone } from '../../../common/is-nigerian-phone.decorator';
 
 export class RequestOtpDto {
-  @IsPhoneNumber()
+  @IsNigerianPhone()
   phone: string;
 
   @IsOptional()

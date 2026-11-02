@@ -17,13 +17,14 @@ async function buildWorkbook(sheets: Record<string, { headers: string[]; rows: u
 
 describe('IppisBroadsheetParser', () => {
   let parser: IppisBroadsheetParser;
-  let prisma: { ippisRecord: { findMany: jest.Mock; upsert: jest.Mock } };
+  let prisma: { ippisRecord: { findMany: jest.Mock; upsert: jest.Mock }; clientOnboarding: { findMany: jest.Mock } };
   let sectorService: { codes: jest.Mock };
   let snapshotExportService: { exportSnapshot: jest.Mock };
 
   beforeEach(() => {
     prisma = {
       ippisRecord: { findMany: jest.fn().mockResolvedValue([]), upsert: jest.fn().mockResolvedValue({}) },
+      clientOnboarding: { findMany: jest.fn().mockResolvedValue([]) },
     };
     sectorService = { codes: jest.fn().mockResolvedValue(['NPF', 'NSCDC', 'IMMIGRATION', 'CORRECTIONAL', 'CUSTOMS', 'LASG']) };
     snapshotExportService = { exportSnapshot: jest.fn().mockResolvedValue({ id: 'snap-1' }) };
@@ -35,6 +36,19 @@ describe('IppisBroadsheetParser', () => {
   });
 
   const NPF_HEADERS = ['Staff ID', 'Employee Name', 'Employee Status', 'Bvn'];
+
+  it('does not merge a row whose phone belongs to another staff member', async () => {
+    const buffer = await buildWorkbook({
+      NPF: { headers: ['Staff ID', 'Employee Name', 'Telephone Number'], rows: [['NPF/1', 'Jane Doe', '08031234567'], ['NPF/2', 'John Doe', '8031234567']] },
+    });
+
+    const result = await parser.parse({} as DocumentUploadBatch, buffer);
+
+    expect(prisma.ippisRecord.upsert).toHaveBeenCalledTimes(1);
+    expect(result.rowsCreated).toBe(1);
+    expect(result.rowsSkipped).toBe(1);
+    expect(result.warnings.join()).toContain('already belongs to another staff member');
+  });
 
   it('parses rows from a recognized agency sheet and upserts each as a new record', async () => {
     const buffer = await buildWorkbook({

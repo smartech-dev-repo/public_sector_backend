@@ -1,11 +1,12 @@
-import { IsPhoneNumber, IsString, Length, MinLength } from 'class-validator';
+import { IsString, Length, MinLength } from 'class-validator';
+import { IsNigerianPhone } from '../../common/is-nigerian-phone.decorator';
 
 export class SubmitRecruitmentApplicationDto {
   @IsString()
   @MinLength(1)
   fullName: string;
 
-  @IsPhoneNumber()
+  @IsNigerianPhone()
   phone: string;
 
   @IsString()

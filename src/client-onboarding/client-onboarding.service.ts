@@ -1,5 +1,6 @@
 import { ConflictException, Inject, Injectable, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
 import { extname } from 'path';
+import { isUniqueConstraintError } from '../common/is-unique-constraint-error.util';
 import { PrismaService } from '../prisma/prisma.service';
 import { IdentityVerificationService } from '../identity-verification/identity-verification.service';
 import { IdentityLookupResult } from '../identity-verification/identity-verification-provider.interface';
@@ -7,7 +8,7 @@ import { FACE_VERIFICATION_PROVIDER, FaceVerificationProvider } from '../face-ve
 import { FILE_STORAGE_PROVIDER, FileStorageProvider } from '../file-storage/file-storage-provider.interface';
 import { ClientDocumentType, ClientStatus, OnboardingStep } from '../generated/prisma/client';
 import { computeLengthOfService } from './length-of-service.util';
-import { normalizeNigerianPhone, phonesTally } from '../common/normalize-nigerian-phone.util';
+import { normalizeNigerianPhone, phonesTally, validNigerianPhone } from '../common/normalize-nigerian-phone.util';
 
 @Injectable()
 export class ClientOnboardingService {
@@ -53,7 +54,8 @@ export class ClientOnboardingService {
     onboardedById?: string,
     onboardedByAgentId?: string,
   ) {
-    const onboarding = await this.prisma.clientOnboarding.create({
+    const onboarding = await this.prisma.clientOnboarding
+      .create({
       data: {
         clientId,
         ippisRecordId: ippisRecord.id,
@@ -68,7 +70,14 @@ export class ClientOnboardingService {
         onboardedById,
         onboardedByAgentId,
       },
-    });
+    })
+      .catch((error: unknown) => {
+        // The phone's client is already onboarded under a different IPPIS record.
+        if (isUniqueConstraintError(error)) {
+          throw new ConflictException('This phone number is already registered to another client');
+        }
+        throw error;
+      });
 
     await this.prisma.client.update({
       where: { id: clientId },
@@ -152,7 +161,9 @@ export class ClientOnboardingService {
     return this.narrowOnboarding(await this.createOnboardingRecord(client.id, ippisRecord, adminId));
   }
 
-  async agentStartOnboarding(ippisNumber: string, phone: string, agentId: string) {
+  // The agent gives only the IPPIS number. The client is created on the record's phone,
+  // so they can log in with that number by OTP and carry on from where the agent stopped.
+  async agentStartOnboarding(ippisNumber: string, agentId: string) {
     const ippisRecord = await this.prisma.ippisRecord.findFirst({
       where: { staffId: { equals: ippisNumber, mode: 'insensitive' } },
     });
@@ -165,19 +176,22 @@ export class ClientOnboardingService {
     });
     if (existing) {
       if (existing.onboardedByAgentId === agentId) {
-        await this.assertOnboardedClientPhone(existing.clientId, phone);
         return this.narrowOnboarding(existing);
       }
       throw new ConflictException('This client has already been onboarded');
     }
 
-    this.assertPhoneTallies(ippisRecord.phone, phone);
+    const phone = ippisRecord.phone && validNigerianPhone(ippisRecord.phone);
+    if (!phone) {
+      throw new UnprocessableEntityException(
+        'This IPPIS record has no valid phone number. Correct it in the broadsheet before onboarding',
+      );
+    }
 
-    const normalizedPhone = normalizeNigerianPhone(phone);
     const client = await this.prisma.client.upsert({
-      where: { phone: normalizedPhone },
+      where: { phone },
       update: {},
-      create: { phone: normalizedPhone },
+      create: { phone },
     });
 
     return this.narrowOnboarding(await this.createOnboardingRecord(client.id, ippisRecord, undefined, agentId));

@@ -1,3 +1,5 @@
+import { validNigerianPhone } from '../../common/normalize-nigerian-phone.util';
+
 export const IPPIS_KNOWN_HEADERS: Record<string, keyof Omit<MappedIppisFields, 'rawFields'>> = {
   'staff id': 'staffId',
   'employee name': 'employeeName',
@@ -79,6 +81,11 @@ function stringifyIdLikeValue(value: unknown): string | null {
   if (value === null || value === undefined || value === '') return null;
   if (typeof value === 'number') return String(Math.trunc(value));
   return String(value).trim() || null;
+}
+
+// A number that can't be read stays as uploaded, so the review can flag it.
+function storedPhone(value: string | null): string | null {
+  return value && (validNigerianPhone(value) ?? value);
 }
 
 function parseSalaryCell(value: unknown): number | null {
@@ -163,7 +170,7 @@ export function mapIppisRow(rowByHeader: Record<string, unknown>): RowMappingRes
       paymentThreeMonthsAgo: threeMonthsAgo.amount,
       paymentTwoMonthsAgo: twoMonthsAgo.amount,
       paymentLastMonth: lastMonth.amount,
-      phone: stringifyIdLikeValue(rowByHeader['telephone number']),
+      phone: storedPhone(stringifyIdLikeValue(rowByHeader['telephone number'])),
       bankName: stringOrNull(rowByHeader['bank name']),
       accountNumber: stringOrNull(rowByHeader['account number']),
       pfaName: stringOrNull(rowByHeader['pfa name']),

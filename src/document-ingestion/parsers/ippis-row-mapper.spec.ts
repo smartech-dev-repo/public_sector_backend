@@ -34,7 +34,7 @@ describe('mapIppisRow', () => {
     expect(result.record.employeeName).toBe('Jane Doe');
     expect(result.record.hireDate).toEqual(new Date('2020-01-15'));
     expect(result.record.bvn).toBe('22345678901');
-    expect(result.record.phone).toBe('8031234567');
+    expect(result.record.phone).toBe('+2348031234567');
     expect(result.record.department).toBeNull();
     expect(result.warnings).toEqual([]);
   });

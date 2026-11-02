@@ -26,6 +26,7 @@ function ippisRow(staffId: unknown, name: unknown, overrides: Record<string, unk
 describe('DocumentAnalysisService', () => {
   let prisma: {
     ippisRecord: { findMany: jest.Mock };
+    clientOnboarding: { findMany: jest.Mock };
     loanRepaymentRecord: { findMany: jest.Mock };
     loan: { findMany: jest.Mock };
   };
@@ -36,6 +37,7 @@ describe('DocumentAnalysisService', () => {
   beforeEach(() => {
     prisma = {
       ippisRecord: { findMany: jest.fn().mockResolvedValue([]) },
+      clientOnboarding: { findMany: jest.fn().mockResolvedValue([]) },
       loanRepaymentRecord: { findMany: jest.fn().mockResolvedValue([]) },
       loan: { findMany: jest.fn().mockResolvedValue([]) },
     };
@@ -126,7 +128,28 @@ describe('DocumentAnalysisService', () => {
     expect(result.verdict).toBe('REUPLOAD_REQUIRED');
   });
 
-  it('warns on rows onboarding cannot use: missing, malformed and shared phones', async () => {
+  it('warns on rows onboarding cannot use: missing and malformed phones', async () => {
+    const result = await service.analyze(
+      batch(DocumentType.IPPIS_BROADSHEET),
+      await workbookBuffer({
+        NPF: [
+          HEADERS,
+          ippisRow(1, 'A'),
+          ippisRow(2, 'B', { 'telephone number': '123' }),
+          ippisRow(3, 'C', { 'telephone number': null }),
+        ],
+      }),
+    );
+    expect(result.verdict).toBe('MERGE_WITH_CORRECTIONS');
+    expect(result.rowsWithWarnings).toBe(2);
+    expect(result.rowsToSkip).toBe(0);
+  });
+
+  it('rejects a row whose phone is used by another row, record or registered client', async () => {
+    prisma.ippisRecord.findMany.mockResolvedValue([{ agency: 'NPF', staffId: 'OLD', phone: '08050000001' }]);
+    prisma.clientOnboarding.findMany.mockResolvedValue([
+      { client: { phone: '+2348050000002' }, ippisRecord: { agency: 'NPF', staffId: 'REGISTERED' } },
+    ]);
     const result = await service.analyze(
       batch(DocumentType.IPPIS_BROADSHEET),
       await workbookBuffer({
@@ -134,14 +157,15 @@ describe('DocumentAnalysisService', () => {
           HEADERS,
           ippisRow(1, 'A', { 'telephone number': '8000000001' }),
           ippisRow(2, 'B', { 'telephone number': '08000000001' }),
-          ippisRow(3, 'C', { 'telephone number': '123' }),
-          ippisRow(4, 'D', { 'telephone number': null }),
+          ippisRow(3, 'C', { 'telephone number': '8050000001' }),
+          ippisRow(4, 'D', { 'telephone number': '+2348050000002' }),
+          ippisRow(5, 'E', { 'telephone number': '8000000005' }),
         ],
       }),
     );
-    expect(result.verdict).toBe('MERGE_WITH_CORRECTIONS');
-    expect(result.rowsWithWarnings).toBe(3);
-    expect(result.rowsToSkip).toBe(0);
+    expect(result.validRows).toBe(2);
+    expect(result.rowsToSkip).toBe(3);
+    expect(result.issueGroups[0]).toMatchObject({ severity: 'ERROR', count: 3 });
   });
 
   it('warns on an unusable month payment', async () => {

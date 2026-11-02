@@ -8,6 +8,7 @@ import { DocumentParser, ParseResult } from '../document-parser.interface';
 import { DocumentUploadBatch, DocumentType, Prisma } from '../../generated/prisma/client';
 import { IPPIS_KNOWN_HEADERS, isRowMappingFailure, mapIppisRow } from './ippis-row-mapper';
 import { buildRowByHeader } from './build-row-by-header';
+import { PHONE_ALREADY_USED, buildIppisPhoneRegister, ippisKey } from '../ippis-phone-register';
 import { loadUploadedWorkbook } from './load-uploaded-workbook';
 
 export const REQUIRED_IPPIS_HEADERS = ['staff id', 'employee name'];
@@ -43,7 +44,8 @@ export class IppisBroadsheetParser implements DocumentParser {
     const sectors = await this.sectorService.codes();
 
     const currentRecords = await this.prisma.ippisRecord.findMany();
-    const existingKeys = new Set(currentRecords.map((r) => `${r.agency}::${r.staffId}`));
+    const existingKeys = new Set(currentRecords.map((r) => ippisKey(r.agency, r.staffId)));
+    const phones = await buildIppisPhoneRegister(this.prisma, currentRecords, workbook, sectors);
 
     const snapshot = await this.snapshotExportService.exportSnapshot({
       documentType: DocumentType.IPPIS_BROADSHEET,
@@ -98,7 +100,12 @@ export class IppisBroadsheetParser implements DocumentParser {
         }
         warnings.push(...mapped.warnings.map((w) => `Sheet "${agency}" row ${rowNumber}: ${w}`));
 
-        const key = `${agency}::${mapped.record.staffId}`;
+        const key = ippisKey(agency, mapped.record.staffId);
+        if (!phones.claim(key, mapped.record.phone)) {
+          rowsSkipped++;
+          warnings.push(`Sheet "${agency}" row ${rowNumber}: ${PHONE_ALREADY_USED}`);
+          continue;
+        }
         const isUpdate = existingKeys.has(key);
 
         await this.prisma.ippisRecord.upsert({

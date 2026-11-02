@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import * as ExcelJS from 'exceljs';
 import { PrismaService } from '../../prisma/prisma.service';
 import { DocumentType, DocumentUploadBatch } from '../../generated/prisma/client';
-import { normalizeNigerianPhone } from '../../common/normalize-nigerian-phone.util';
+import { validNigerianPhone } from '../../common/normalize-nigerian-phone.util';
 import { buildRowByHeader } from '../parsers/build-row-by-header';
 import { loadUploadedWorkbook } from '../parsers/load-uploaded-workbook';
 import { REQUIRED_IPPIS_HEADERS, isIppisDataSheet } from '../parsers/ippis-broadsheet.parser';
@@ -14,8 +14,8 @@ import { isLoanRowMappingFailure, mapLoanRow } from '../parsers/loan-row-mapper'
 import { findRepaymentHeaderRowNumber, isRepaymentDataSheet } from '../parsers/repayment-schedule.parser';
 import { isRepaymentRowMappingFailure, mapRepaymentRow } from '../parsers/repayment-row-mapper';
 import { AnalysisBuilder, DocumentAnalysis } from './analysis-builder';
+import { PHONE_ALREADY_USED, buildIppisPhoneRegister, ippisKey } from '../ippis-phone-register';
 
-const VALID_E164_NIGERIAN_PHONE = /^\+234\d{10}$/;
 
 function headerSet(headerValues: unknown[]): Set<string> {
   return new Set(
@@ -62,10 +62,10 @@ export class DocumentAnalysisService {
   }
 
   private async analyzeIppis(workbook: ExcelJS.Workbook, sectors: string[], builder: AnalysisBuilder): Promise<void> {
-    const existing = await this.prisma.ippisRecord.findMany({ select: { agency: true, staffId: true } });
-    const existingKeys = new Set(existing.map((r) => `${r.agency}::${r.staffId}`));
+    const existing = await this.prisma.ippisRecord.findMany({ select: { agency: true, staffId: true, phone: true } });
+    const existingKeys = new Set(existing.map((r) => ippisKey(r.agency, r.staffId)));
+    const phones = await buildIppisPhoneRegister(this.prisma, existing, workbook, sectors);
     const seenStaff = new Set<string>();
-    const staffByPhone = new Map<string, string>();
     let recognizedSheets = 0;
 
     for (const worksheet of workbook.worksheets) {
@@ -113,7 +113,7 @@ export class DocumentAnalysisService {
         mapped.warnings.forEach((warning) => builder.addIssue('WARNING', warning, location));
 
         const { staffId, phone } = mapped.record;
-        const key = `${agency}::${staffId}`;
+        const key = ippisKey(agency, staffId);
         if (seenStaff.has(key)) {
           builder.addIssue('WARNING', 'Duplicate Staff ID in this file; the last row wins', location);
         }
@@ -124,13 +124,11 @@ export class DocumentAnalysisService {
             builder.addIssue('WARNING', 'No telephone number, so this staff member cannot onboard', location);
           }
         } else {
-          const normalizedPhone = normalizeNigerianPhone(phone);
-          if (!VALID_E164_NIGERIAN_PHONE.test(normalizedPhone)) {
+          if (!validNigerianPhone(phone)) {
             builder.addIssue('WARNING', 'Telephone number is not a valid Nigerian number, so this staff member cannot onboard', location);
-          } else if (staffByPhone.has(normalizedPhone) && staffByPhone.get(normalizedPhone) !== key) {
-            builder.addIssue('WARNING', 'Telephone number is shared with another staff member, so only one of them can onboard', location);
-          } else {
-            staffByPhone.set(normalizedPhone, key);
+          } else if (!phones.claim(key, phone)) {
+            builder.addIssue('ERROR', PHONE_ALREADY_USED, location);
+            continue;
           }
         }
 

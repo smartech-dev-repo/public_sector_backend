@@ -150,6 +150,43 @@ describe('Agent-initiated client onboarding (e2e)', () => {
     expect(secondRes.body.clientId).toBe(firstRes.body.clientId);
   });
 
+  it('lets a client log in with the IPPIS phone and continue from where the agent stopped', async () => {
+    const { accessToken } = await createAgent('handover', true);
+    const staffId = `E2E-AGENT-HANDOVER-${Date.now()}`;
+    const localPhone = `0808${Date.now().toString().slice(-7)}`;
+    createdStaffIds.push(staffId);
+    await prisma.ippisRecord.create({ data: { agency: 'NPF', staffId, employeeName: 'Handover Client', phone: localPhone } });
+
+    const lookup = await request(app.getHttpServer())
+      .post('/agent/clients/onboarding/ippis-lookup')
+      .set('Authorization', `Bearer ${accessToken}`)
+      .send({ ippisNumber: staffId })
+      .expect(201);
+    const { clientId } = lookup.body;
+    createdClientIds.push(clientId);
+
+    const requested = await request(app.getHttpServer()).post('/auth/client/otp/request').send({ phone: localPhone }).expect(200);
+    const login = await request(app.getHttpServer())
+      .post('/auth/client/otp/verify')
+      .send({ phone: localPhone, code: requested.body.mockCode });
+    expect(login.status).toBeLessThan(300);
+
+    const claims = JSON.parse(Buffer.from(login.body.accessToken.split('.')[1], 'base64url').toString());
+    expect(claims.sub).toBe(clientId);
+
+    const status = await request(app.getHttpServer())
+      .get('/client/onboarding/status')
+      .set('Authorization', `Bearer ${login.body.accessToken}`)
+      .expect(200);
+    expect(status.body.step).toBe('IPPIS_LINKED');
+
+    await request(app.getHttpServer())
+      .post('/client/onboarding/ippis-link')
+      .set('Authorization', `Bearer ${login.body.accessToken}`)
+      .send({ ippisNumber: staffId })
+      .expect((res) => expect(res.body.clientId).toBe(clientId));
+  });
+
   it('rejects a different agent from onboarding a client another agent already started', async () => {
     const { accessToken: firstAgentToken } = await createAgent('owner', true);
     const { accessToken: otherAgentToken } = await createAgent('intruder', true);

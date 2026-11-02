@@ -17178,7 +17178,7 @@
                       "value": "application/json"
                     }
                   ],
-                  "body": "{\n  \"statusCode\": 400,\n  \"message\": [\n    \"phone must be a valid Nigerian phone number\"\n  ],\n  \"error\": \"Bad Request\"\n}"
+                  "body": "{\n  \"statusCode\": 400,\n  \"message\": [\n    \"Enter a valid Nigerian mobile number, such as 08031234567\"\n  ],\n  \"error\": \"Bad Request\"\n}"
                 }
               ]
             }
@@ -27519,7 +27519,7 @@
                     }
                   ],
                   "cookie": [],
-                  "body": "{\n  \"statusCode\": 400,\n  \"message\": [\n    \"phone must be a valid phone number\"\n  ],\n  \"error\": \"Bad Request\"\n}"
+                  "body": "{\n  \"statusCode\": 400,\n  \"message\": [\n    \"Enter a valid Nigerian mobile number, such as 08031234567\"\n  ],\n  \"error\": \"Bad Request\"\n}"
                 }
               ]
             },
@@ -29097,9 +29097,9 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\"ippisNumber\": \"NPF/20456\", \"phone\": \"{{client_phone}}\"}"
+                  "raw": "{\"ippisNumber\": \"NPF/20456\"}"
                 },
-                "description": "Requires the caller to be an Agent with canOnboardClients=true (AgentCanOnboardClientsGuard) — grant it first via Admin > Agents > PATCH /admin/agents/:id/onboarding-access."
+                "description": "Requires the caller to be an Agent with canOnboardClients=true (AgentCanOnboardClientsGuard) — grant it first via Admin > Agents > PATCH /admin/agents/:id/onboarding-access. Send only the IPPIS number: the client is created on the phone from the IPPIS record, and logs in with it by OTP to continue."
               },
               "event": [
                 {
@@ -29141,7 +29141,7 @@
                     },
                     "body": {
                       "mode": "raw",
-                      "raw": "{\"ippisNumber\": \"NPF/20456\", \"phone\": \"{{client_phone}}\"}"
+                      "raw": "{\"ippisNumber\": \"NPF/20456\"}"
                     }
                   },
                   "status": "Created",
@@ -29772,7 +29772,7 @@
               ]
             },
             {
-              "name": "POST /agent/clients/onboarding/ippis-lookup - Phone does not tally (422)",
+              "name": "POST /agent/clients/onboarding/ippis-lookup - No valid phone on the IPPIS record (422)",
               "request": {
                 "method": "POST",
                 "header": [
@@ -29799,7 +29799,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\"ippisNumber\": \"{{test_ippis_staff_id}}\", \"phone\": \"+2348000000099\"}",
+                  "raw": "{\"ippisNumber\": \"{{test_ippis_staff_id}}\"}",
                   "options": {
                     "raw": {
                       "language": "json"
@@ -29820,7 +29820,7 @@
               ],
               "response": [
                 {
-                  "name": "POST /agent/clients/onboarding/ippis-lookup - Phone does not tally (422)",
+                  "name": "422 No valid phone",
                   "originalRequest": {
                     "method": "POST",
                     "header": [
@@ -29847,7 +29847,7 @@
                     },
                     "body": {
                       "mode": "raw",
-                      "raw": "{\"ippisNumber\": \"{{test_ippis_staff_id}}\", \"phone\": \"+2348000000099\"}",
+                      "raw": "{\"ippisNumber\": \"{{test_ippis_staff_id}}\"}",
                       "options": {
                         "raw": {
                           "language": "json"
@@ -29864,7 +29864,7 @@
                       "value": "application/json"
                     }
                   ],
-                  "body": "{\n  \"statusCode\": 422,\n  \"message\": \"This phone number does not match the IPPIS record for this IPPIS number\",\n  \"error\": \"Unprocessable Entity\"\n}"
+                  "body": "{\n  \"message\": \"This IPPIS record has no valid phone number. Correct it in the broadsheet before onboarding\",\n  \"error\": \"Unprocessable Entity\",\n  \"statusCode\": 422\n}"
                 }
               ]
             },
@@ -29896,7 +29896,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\"ippisNumber\": \"{{test_ippis_staff_id}}\"}",
+                  "raw": "{}",
                   "options": {
                     "raw": {
                       "language": "json"
@@ -29944,7 +29944,7 @@
                     },
                     "body": {
                       "mode": "raw",
-                      "raw": "{\"ippisNumber\": \"{{test_ippis_staff_id}}\"}",
+                      "raw": "{}",
                       "options": {
                         "raw": {
                           "language": "json"
@@ -29961,7 +29961,7 @@
                       "value": "application/json"
                     }
                   ],
-                  "body": "{\n  \"statusCode\": 400,\n  \"message\": [\n    \"phone must be a valid Nigerian phone number\"\n  ],\n  \"error\": \"Bad Request\"\n}"
+                  "body": "{\n  \"statusCode\": 400,\n  \"message\": [\n    \"ippisNumber must be longer than or equal to 1 characters\",\n    \"ippisNumber must be a string\"\n  ],\n  \"error\": \"Bad Request\"\n}"
                 }
               ]
             }
@@ -31342,7 +31342,7 @@
                     }
                   ],
                   "cookie": [],
-                  "body": "{\n  \"statusCode\": 400,\n  \"message\": [\n    \"phone must be a valid phone number\"\n  ],\n  \"error\": \"Bad Request\"\n}"
+                  "body": "{\n  \"statusCode\": 400,\n  \"message\": [\n    \"Enter a valid Nigerian mobile number, such as 08031234567\"\n  ],\n  \"error\": \"Bad Request\"\n}"
                 }
               ]
             },

@@ -214,16 +214,13 @@ describe('ClientOnboardingService', () => {
       expect(prisma.clientOnboarding.create).not.toHaveBeenCalled();
     });
 
-    it.each(['adminStartOnboarding', 'agentStartOnboarding'] as const)(
-      '%s rejects a phone that does not tally, and creates no client',
-      async (method) => {
-        prisma.clientOnboarding.findUnique.mockResolvedValue(null);
-        prisma.ippisRecord.findFirst.mockResolvedValue(record);
+    it('rejects a phone that does not tally, and creates no client', async () => {
+      prisma.clientOnboarding.findUnique.mockResolvedValue(null);
+      prisma.ippisRecord.findFirst.mockResolvedValue(record);
 
-        await expect(service[method]('NPF/1', '08011111111', 'actor-1')).rejects.toThrow(UnprocessableEntityException);
-        expect(prisma.client.upsert).not.toHaveBeenCalled();
-      },
-    );
+      await expect(service.adminStartOnboarding('NPF/1', '08011111111', 'admin-1')).rejects.toThrow(UnprocessableEntityException);
+      expect(prisma.client.upsert).not.toHaveBeenCalled();
+    });
 
     it('checks a resumed onboarding against the onboarded client, not a changed IPPIS phone', async () => {
       prisma.clientOnboarding.findUnique.mockResolvedValue({ id: 'existing', clientId: 'client-1' });
@@ -239,7 +236,7 @@ describe('ClientOnboardingService', () => {
   describe('agentStartOnboarding', () => {
     it('rejects when the IPPIS number is not found', async () => {
       prisma.ippisRecord.findFirst.mockResolvedValue(null);
-      await expect(service.agentStartOnboarding('NPF/1', '+2348000000000', 'agent-1')).rejects.toThrow(NotFoundException);
+      await expect(service.agentStartOnboarding('NPF/1', 'agent-1')).rejects.toThrow(NotFoundException);
     });
 
     it('resumes its own prior attempt when onboardedByAgentId matches this agent', async () => {
@@ -247,7 +244,7 @@ describe('ClientOnboardingService', () => {
       prisma.ippisRecord.findFirst.mockResolvedValue({ id: 'ippis-1', phone: '+2348000000000' });
       prisma.clientOnboarding.findUnique.mockResolvedValue(existingOnboarding);
 
-      const result = await service.agentStartOnboarding('NPF/1', '+2348000000000', 'agent-1');
+      const result = await service.agentStartOnboarding('NPF/1', 'agent-1');
 
       expect(result).toEqual({ ...existingOnboarding, bvnSelfieUrl: null, ninSelfieUrl: null, liveSelfieUrl: null });
       expect(prisma.client.upsert).not.toHaveBeenCalled();
@@ -257,7 +254,7 @@ describe('ClientOnboardingService', () => {
       prisma.ippisRecord.findFirst.mockResolvedValue({ id: 'ippis-1', phone: '+2348000000000' });
       prisma.clientOnboarding.findUnique.mockResolvedValue({ id: 'existing', onboardedByAgentId: 'other-agent' });
 
-      await expect(service.agentStartOnboarding('NPF/1', '+2348000000000', 'agent-1')).rejects.toThrow(ConflictException);
+      await expect(service.agentStartOnboarding('NPF/1', 'agent-1')).rejects.toThrow(ConflictException);
     });
 
     it('rejects when the client was already self-onboarded', async () => {
@@ -268,7 +265,7 @@ describe('ClientOnboardingService', () => {
         onboardedByAgentId: null,
       });
 
-      await expect(service.agentStartOnboarding('NPF/1', '+2348000000000', 'agent-1')).rejects.toThrow(ConflictException);
+      await expect(service.agentStartOnboarding('NPF/1', 'agent-1')).rejects.toThrow(ConflictException);
     });
 
     it('rejects when the client was already admin-onboarded', async () => {
@@ -279,14 +276,33 @@ describe('ClientOnboardingService', () => {
         onboardedByAgentId: null,
       });
 
-      await expect(service.agentStartOnboarding('NPF/1', '+2348000000000', 'agent-1')).rejects.toThrow(ConflictException);
+      await expect(service.agentStartOnboarding('NPF/1', 'agent-1')).rejects.toThrow(ConflictException);
+    });
+
+    it('refuses a record whose phone cannot be read, and creates no client', async () => {
+      prisma.ippisRecord.findFirst.mockResolvedValue({ id: 'ippis-1', phone: '803123' });
+      prisma.clientOnboarding.findUnique.mockResolvedValue(null);
+
+      await expect(service.agentStartOnboarding('NPF/1', 'agent-1')).rejects.toThrow(UnprocessableEntityException);
+      expect(prisma.client.upsert).not.toHaveBeenCalled();
+    });
+
+    it('creates the client on the +234 form of the phone on the IPPIS record', async () => {
+      prisma.ippisRecord.findFirst.mockResolvedValue({ id: 'ippis-1', phone: '08038847641' });
+      prisma.clientOnboarding.findUnique.mockResolvedValue(null);
+      prisma.client.upsert.mockResolvedValue({ id: 'client-1' });
+      prisma.clientOnboarding.create.mockResolvedValue({ id: 'onboarding-1' });
+
+      await service.agentStartOnboarding('NPF/1', 'agent-1');
+
+      expect(prisma.client.upsert).toHaveBeenCalledWith(expect.objectContaining({ where: { phone: '+2348038847641' } }));
     });
 
     it('rejects with UnprocessableEntityException when the IPPIS record has no phone number on file', async () => {
       prisma.ippisRecord.findFirst.mockResolvedValue({ id: 'ippis-1', phone: null });
       prisma.clientOnboarding.findUnique.mockResolvedValue(null);
 
-      await expect(service.agentStartOnboarding('NPF/1', '+2348000000000', 'agent-1')).rejects.toThrow(UnprocessableEntityException);
+      await expect(service.agentStartOnboarding('NPF/1', 'agent-1')).rejects.toThrow(UnprocessableEntityException);
     });
 
     it('resolves the client by phone and creates the onboarding with onboardedByAgentId', async () => {
@@ -305,7 +321,7 @@ describe('ClientOnboardingService', () => {
       prisma.client.upsert.mockResolvedValue({ id: 'client-1', phone: '+2348000000000' });
       prisma.clientOnboarding.create.mockResolvedValue({ id: 'onboarding-1' });
 
-      await service.agentStartOnboarding('NPF/1', '+2348000000000', 'agent-1');
+      await service.agentStartOnboarding('NPF/1', 'agent-1');
 
       expect(prisma.client.upsert).toHaveBeenCalledWith({
         where: { phone: '+2348000000000' },
@@ -332,7 +348,7 @@ describe('ClientOnboardingService', () => {
       prisma.client.upsert.mockResolvedValue({ id: 'client-1', phone: '+2348038847641' });
       prisma.clientOnboarding.create.mockResolvedValue({ id: 'onboarding-1' });
 
-      await service.agentStartOnboarding('NPF/1', '08038847641', 'agent-1');
+      await service.agentStartOnboarding('NPF/1', 'agent-1');
 
       expect(prisma.client.upsert).toHaveBeenCalledWith({
         where: { phone: '+2348038847641' },
