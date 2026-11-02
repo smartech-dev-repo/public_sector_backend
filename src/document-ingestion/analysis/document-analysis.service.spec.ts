@@ -1,3 +1,4 @@
+import { SectorService } from '../../sectors/sector.service';
 import * as ExcelJS from 'exceljs';
 import { DocumentAnalysisService } from './document-analysis.service';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -38,7 +39,10 @@ describe('DocumentAnalysisService', () => {
       loanRepaymentRecord: { findMany: jest.fn().mockResolvedValue([]) },
       loan: { findMany: jest.fn().mockResolvedValue([]) },
     };
-    service = new DocumentAnalysisService(prisma as unknown as PrismaService);
+    service = new DocumentAnalysisService(
+      prisma as unknown as PrismaService,
+      { codes: jest.fn().mockResolvedValue(['NPF', 'NSCDC', 'IMMIGRATION', 'CORRECTIONAL', 'CUSTOMS', 'LASG']) } as unknown as SectorService,
+    );
   });
 
   it('requires a reupload for a file that is not a workbook', async () => {
@@ -53,6 +57,43 @@ describe('DocumentAnalysisService', () => {
       await workbookBuffer({ Sheet1: [HEADERS, ippisRow(1, 'A')] }),
     );
     expect(result.verdict).toBe('REUPLOAD_REQUIRED');
+  });
+
+  it('names a sheet whose sector is not set up, and keeps its rows out of the merge', async () => {
+    const result = await service.analyze(
+      batch(DocumentType.IPPIS_BROADSHEET),
+      await workbookBuffer({ NPF: [HEADERS, ippisRow(1, 'A')], FRSC: [HEADERS, ippisRow(2, 'B')] }),
+    );
+    expect(result.unknownSectors).toEqual([{ sheet: 'FRSC', rows: 1, likelyTypoOf: null }]);
+    expect(result.validRows).toBe(1);
+    expect(result.canMerge).toBe(true);
+  });
+
+  it('never tells the reviewer every row can be merged when a sheet is left out', async () => {
+    const result = await service.analyze(
+      batch(DocumentType.IPPIS_BROADSHEET),
+      await workbookBuffer({ NPF: [HEADERS, ippisRow(1, 'A')], FRSC: [HEADERS, ippisRow(2, 'B'), ippisRow(3, 'C')] }),
+    );
+    expect(result.verdict).toBe('MERGE_WITH_CORRECTIONS');
+    expect(result.recommendation).toContain('2 rows on the sheets listed above will also be left out');
+    expect(result.issueGroups).toEqual([]);
+  });
+
+  it('flags a default-named sheet holding data, but not a notes sheet', async () => {
+    const result = await service.analyze(
+      batch(DocumentType.IPPIS_BROADSHEET),
+      await workbookBuffer({ NPF: [HEADERS, ippisRow(1, 'A')], Notes: [['Prepared by'], ['Finance']], Sheet1: [HEADERS, ippisRow(2, 'B')] }),
+    );
+    expect(result.unknownSectors).toEqual([{ sheet: 'Sheet1', rows: 1, likelyTypoOf: null }]);
+  });
+
+  it('suggests the likely sector for a typo', async () => {
+    const result = await service.analyze(
+      batch(DocumentType.IPPIS_BROADSHEET),
+      await workbookBuffer({ NPF: [HEADERS, ippisRow(1, 'A')], NFP: [HEADERS, ippisRow(2, 'B')] }),
+    );
+    expect(result.unknownSectors).toEqual([{ sheet: 'NFP', rows: 1, likelyTypoOf: 'NPF' }]);
+    expect(JSON.stringify(result.issues)).toContain('looks like a typo of');
   });
 
   it('counts creates and updates and passes a clean broadsheet', async () => {

@@ -65,7 +65,7 @@ describe('mapLoanRow', () => {
       expect.objectContaining({ ok: true, record: expect.objectContaining({ agency: 'CORRECTIONAL' }) }),
     );
     expect(mapLoanRow({ ...baseRow, ippis: 'NCS123456' })).toEqual(
-      expect.objectContaining({ ok: true, record: expect.objectContaining({ agency: 'CUSTOM' }) }),
+      expect.objectContaining({ ok: true, record: expect.objectContaining({ agency: 'CUSTOMS' }) }),
     );
   });
 

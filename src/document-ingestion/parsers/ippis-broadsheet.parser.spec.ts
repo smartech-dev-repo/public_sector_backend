@@ -1,3 +1,4 @@
+import { SectorService } from '../../sectors/sector.service';
 import * as ExcelJS from 'exceljs';
 import { IppisBroadsheetParser } from './ippis-broadsheet.parser';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -17,16 +18,19 @@ async function buildWorkbook(sheets: Record<string, { headers: string[]; rows: u
 describe('IppisBroadsheetParser', () => {
   let parser: IppisBroadsheetParser;
   let prisma: { ippisRecord: { findMany: jest.Mock; upsert: jest.Mock } };
+  let sectorService: { codes: jest.Mock };
   let snapshotExportService: { exportSnapshot: jest.Mock };
 
   beforeEach(() => {
     prisma = {
       ippisRecord: { findMany: jest.fn().mockResolvedValue([]), upsert: jest.fn().mockResolvedValue({}) },
     };
+    sectorService = { codes: jest.fn().mockResolvedValue(['NPF', 'NSCDC', 'IMMIGRATION', 'CORRECTIONAL', 'CUSTOMS', 'LASG']) };
     snapshotExportService = { exportSnapshot: jest.fn().mockResolvedValue({ id: 'snap-1' }) };
     parser = new IppisBroadsheetParser(
       prisma as unknown as PrismaService,
       snapshotExportService as unknown as SnapshotExportService,
+      sectorService as unknown as SectorService,
     );
   });
 
@@ -66,7 +70,7 @@ describe('IppisBroadsheetParser', () => {
 
   it('skips an unrecognized sheet with a warning and does not fail the batch', async () => {
     const buffer = await buildWorkbook({
-      SomeOtherAgency: { headers: NPF_HEADERS, rows: [['X/1', 'John Doe', 'Active', 22345678901]] },
+      SomeOtherAgency: { headers: ['Prepared by', 'Date'], rows: [['Finance', 'May']] },
     });
 
     const result = await parser.parse({} as DocumentUploadBatch, buffer);
@@ -146,5 +150,32 @@ describe('IppisBroadsheetParser', () => {
         rows: [expect.objectContaining({ id: 'r1', rawFields: JSON.stringify({ 'email address': 'x@example.com' }) })],
       }),
     );
+  });
+
+  describe('sectors', () => {
+    it('merges a sector that is set up, whatever the case of the sheet name', async () => {
+      const buffer = await buildWorkbook({ ' lasg ': { headers: NPF_HEADERS, rows: [['L/1', 'Ada', 'Active', 22345678901]] } });
+
+      await parser.parse({} as DocumentUploadBatch, buffer);
+
+      expect(prisma.ippisRecord.upsert.mock.calls[0][0].create.agency).toBe('LASG');
+    });
+
+    it('leaves out a sheet whose sector is not set up, and says so', async () => {
+      const buffer = await buildWorkbook({ FRSC: { headers: NPF_HEADERS, rows: [['F/1', 'Ada', 'Active', 22345678901]] } });
+
+      const result = await parser.parse({} as DocumentUploadBatch, buffer);
+
+      expect(prisma.ippisRecord.upsert).not.toHaveBeenCalled();
+      expect(result.warnings.join()).toContain('FRSC');
+    });
+
+    it('files an old CUSTOM sheet under CUSTOMS', async () => {
+      const buffer = await buildWorkbook({ CUSTOM: { headers: NPF_HEADERS, rows: [['C/1', 'Ada', 'Active', 22345678901]] } });
+
+      await parser.parse({} as DocumentUploadBatch, buffer);
+
+      expect(prisma.ippisRecord.upsert.mock.calls[0][0].create.agency).toBe('CUSTOMS');
+    });
   });
 });

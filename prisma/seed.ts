@@ -26,6 +26,7 @@ const BOOTSTRAP_PERMISSIONS: Array<{ key: string; description: string }> = [
   { key: 'approvals:loans', description: 'Decide loan approvals, disbursements and code confirmations sent for approval' },
   { key: 'approvals:agents', description: 'Decide agent approvals and credential resends sent for approval' },
   { key: 'approvals:wallets', description: 'Decide wallet credits and debits sent for approval' },
+  { key: 'sectors:manage', description: 'Add, rename and remove sectors' },
   { key: 'alerts:manage', description: 'Choose who receives security alert emails' },
   { key: 'sessions:manage', description: "View every user's sessions and sign users out" },
   { key: 'wallets:manage', description: "Credit or debit a client's wallet" },

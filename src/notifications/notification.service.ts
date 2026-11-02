@@ -76,6 +76,13 @@ const NOTIFICATION_RULES: Record<string, NotificationRule> = {
     link: '/dashboard/broadsheet',
     targetPermissions: ['documents:read'],
   }),
+  'sector.created': (event) => ({
+    category: 'loans',
+    title: `New sector added: ${(event.metadata as { code?: string } | undefined)?.code}`,
+    body: 'Add it to the loan products it should get. Until then its staff see no products.',
+    link: '/dashboard/loan-terms',
+    targetPermissions: ['loan-products:manage'],
+  }),
   'session.reuse_detected': securityRule('A stolen session may be in use'),
   'agent.client_access.denied': securityRule("An agent was blocked from another agent's client"),
   'admin.2fa.disabled': securityRule('An admin turned off two-factor sign-in'),

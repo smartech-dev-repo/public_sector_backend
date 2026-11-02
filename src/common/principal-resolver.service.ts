@@ -72,6 +72,9 @@ const REGISTRY: Record<string, RegistryEntry> = {
       return rows.map((row) => ({ id: row.id, name: (row.summary as { title?: string }).title }));
     },
   },
+  Sector: {
+    findMany: (p, ids) => p.sector.findMany({ where: { id: { in: ids } }, select: { id: true, code: true, name: true } }),
+  },
   ManagementFee: {
     findMany: (p, ids) => p.managementFee.findMany({ where: { id: { in: ids } }, select: { id: true, name: true } }),
   },

@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { SectorsModule } from '../sectors/sectors.module';
 import { AuditModule } from '../audit/audit.module';
 import { LoanProductsService } from './loan-products.service';
 import { AdminLoanProductsController } from './admin-loan-products.controller';
@@ -10,7 +11,7 @@ import { ClientLoansModule } from '../client-loans/client-loans.module';
 import { ManagementFeesModule } from '../management-fees/management-fees.module';
 
 @Module({
-  imports: [AuditModule, LoanSettingsModule, LoanRequestModule, ClientLoansModule, ManagementFeesModule],
+  imports: [AuditModule, SectorsModule, LoanSettingsModule, LoanRequestModule, ClientLoansModule, ManagementFeesModule],
   controllers: [AdminLoanProductsController, ClientLoanProductsController, AgentLoanProductsController],
   providers: [LoanProductsService],
   exports: [LoanProductsService],

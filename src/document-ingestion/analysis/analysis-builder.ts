@@ -40,6 +40,8 @@ export interface DocumentAnalysis {
   issueGroups: AnalysisIssueGroup[];
   issues: AnalysisIssue[];
   issuesTruncated: boolean;
+  /** Sheets holding data that will be left out because their name isn't a set-up sector. */
+  unknownSectors: { sheet: string; rows: number; likelyTypoOf: string | null }[];
 }
 
 // The stored analysis is a JSON column polled by the wizard; a badly broken file
@@ -67,6 +69,7 @@ function toTitle(message: string): string {
 
 export class AnalysisBuilder {
   private readonly issues: AnalysisIssue[] = [];
+  private readonly unknownSectors: DocumentAnalysis['unknownSectors'] = [];
   private readonly groups = new Map<string, AnalysisIssueGroup>();
   private readonly sheets: AnalysisSheet[] = [];
   private readonly warnedRows = new Set<string>();
@@ -80,6 +83,16 @@ export class AnalysisBuilder {
     const sheet = { name, recognized, rows: 0, validRows: 0 };
     this.sheets.push(sheet);
     return sheet;
+  }
+
+  addUnknownSector(sheet: string, rows: number, likelyTypoOf: string | null): void {
+    this.unknownSectors.push({ sheet, rows, likelyTypoOf });
+    // Listed sheet by sheet in the review, so it stays out of the grouped issues,
+    // whose titles drop quoted names.
+    const message = likelyTypoOf
+      ? `Sheet "${sheet}" will not be merged. It looks like a typo of "${likelyTypoOf}", so rename it and upload again`
+      : `Sheet "${sheet}" will not be merged because it is not a set-up sector. Add the sector or rename the sheet, then upload again`;
+    this.issues.push({ severity: 'WARNING', title: message, message: maskLongDigitRuns(message), sheet });
   }
 
   addIssue(severity: IssueSeverity, message: string, location: { sheet?: string; row?: number } = {}): void {
@@ -122,6 +135,9 @@ export class AnalysisBuilder {
     const rejectedRatio = this.totalRows === 0 ? 0 : rowsToSkip / this.totalRows;
     const hasWarnings = [...this.groups.values()].some((group) => group.severity === 'WARNING');
 
+    const rowsLeftOut = this.unknownSectors.reduce((sum, sheet) => sum + sheet.rows, 0);
+    const leftOutNote = rowsLeftOut === 0 ? '' : ` ${rowsLeftOut} ${rowsLeftOut === 1 ? 'row' : 'rows'} on the sheets listed above will also be left out.`;
+
     let verdict: AnalysisVerdict;
     let severity: AnalysisSeverity;
     let recommendation: string;
@@ -134,7 +150,11 @@ export class AnalysisBuilder {
     } else if (rowsToSkip > 0) {
       verdict = 'MERGE_WITH_CORRECTIONS';
       severity = rejectedRatio >= MODERATE_REJECTED_RATIO ? 'MODERATE' : 'MINOR';
-      recommendation = `${this.validRows} rows can be merged and ${rowsToSkip} will be skipped. Check the rows listed below in your file, correct them and upload it again, or merge now and upload the corrected rows later.`;
+      recommendation = `${this.validRows} rows can be merged and ${rowsToSkip} will be skipped. Check the rows listed below in your file, correct them and upload it again, or merge now and upload the corrected rows later.${leftOutNote}`;
+    } else if (this.unknownSectors.length > 0) {
+      verdict = 'MERGE_WITH_CORRECTIONS';
+      severity = 'MINOR';
+      recommendation = `${this.validRows} rows can be merged.${leftOutNote} Fix those sheets and upload again, or merge now and upload them later.`;
     } else if (hasWarnings) {
       verdict = 'MERGE_WITH_CORRECTIONS';
       severity = 'MINOR';
@@ -161,6 +181,7 @@ export class AnalysisBuilder {
       issueGroups: [...this.groups.values()].sort((a, b) => SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity] || b.count - a.count),
       issues: sorted.slice(0, MAX_STORED_ISSUES),
       issuesTruncated: sorted.length > MAX_STORED_ISSUES,
+      unknownSectors: this.unknownSectors,
     };
   }
 }

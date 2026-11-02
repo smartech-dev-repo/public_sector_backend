@@ -11,6 +11,7 @@ import { RepaymentScheduleParser } from './parsers/repayment-schedule.parser';
 import { DocumentAnalysisService } from './analysis/document-analysis.service';
 import { DOCUMENT_PARSERS } from './document-parser.interface';
 import { FileStorageModule } from '../file-storage/file-storage.module';
+import { SectorsModule } from '../sectors/sectors.module';
 import { AuditModule } from '../audit/audit.module';
 import { DocumentType } from '../generated/prisma/client';
 import { AdminDocumentsController } from './admin-documents.controller';
@@ -21,6 +22,7 @@ import { ReconciliationModule } from '../reconciliation/reconciliation.module';
     BullModule.registerQueue({ name: DOCUMENT_INGESTION_QUEUE }),
     FileStorageModule,
     AuditModule,
+    SectorsModule,
     ReconciliationModule,
   ],
   controllers: [AdminDocumentsController],

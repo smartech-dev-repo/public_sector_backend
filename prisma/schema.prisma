@@ -332,6 +332,14 @@ model NotificationRead {
   @@id([notificationId, adminId])
 }
 
+model Sector {
+  id        String   @id @default(uuid())
+  /// The agency value on records and loan products, and the sheet name in uploads.
+  code      String   @unique
+  name      String?
+  createdAt DateTime @default(now())
+}
+
 model AlertRecipient {
   id        String   @id @default(uuid())
   email     String   @unique

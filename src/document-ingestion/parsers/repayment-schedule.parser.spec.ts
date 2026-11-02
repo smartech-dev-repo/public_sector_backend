@@ -1,3 +1,4 @@
+import { SectorService } from '../../sectors/sector.service';
 import * as ExcelJS from 'exceljs';
 import { RepaymentScheduleParser } from './repayment-schedule.parser';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -17,16 +18,19 @@ function batchWithPeriod(period: string | null): DocumentUploadBatch {
 describe('RepaymentScheduleParser', () => {
   let parser: RepaymentScheduleParser;
   let prisma: { loanRepaymentRecord: { findMany: jest.Mock; upsert: jest.Mock } };
+  let sectorService: { codes: jest.Mock };
   let snapshotExportService: { exportSnapshot: jest.Mock };
 
   beforeEach(() => {
     prisma = {
       loanRepaymentRecord: { findMany: jest.fn().mockResolvedValue([]), upsert: jest.fn().mockResolvedValue({}) },
     };
+    sectorService = { codes: jest.fn().mockResolvedValue(['NPF', 'NSCDC', 'IMMIGRATION', 'CORRECTIONAL', 'CUSTOMS', 'LASG']) };
     snapshotExportService = { exportSnapshot: jest.fn().mockResolvedValue({ id: 'snap-1' }) };
     parser = new RepaymentScheduleParser(
       prisma as unknown as PrismaService,
       snapshotExportService as unknown as SnapshotExportService,
+      sectorService as unknown as SectorService,
     );
   });
 
@@ -102,14 +106,27 @@ describe('RepaymentScheduleParser', () => {
   it('skips an unrecognized sheet with a warning and does not fail the batch', async () => {
     const buffer = await buildWorkbook((wb) => {
       const sheet = wb.addWorksheet('SomeOtherAgency');
-      sheet.addRow(['Staff ID', 'Amount']);
-      sheet.addRow(['X/1', 100]);
+      sheet.addRow(['Prepared by', 'Date']);
+      sheet.addRow(['Finance', 'May']);
     });
 
     const result = await parser.parse(batchWithPeriod('2024-11'), buffer);
 
     expect(result.rowsProcessed).toBe(0);
     expect(result.warnings.some((w) => w.includes('SomeOtherAgency'))).toBe(true);
+  });
+
+  it('leaves out repayments for a sector that is not set up', async () => {
+    const buffer = await buildWorkbook((wb) => {
+      const sheet = wb.addWorksheet('FRSC');
+      sheet.addRow(['Staff ID', 'Amount']);
+      sheet.addRow(['F/1', 100]);
+    });
+
+    const result = await parser.parse(batchWithPeriod('2024-11'), buffer);
+
+    expect(result.rowsProcessed).toBe(0);
+    expect(result.warnings.join()).toContain('FRSC');
   });
 
   it('skips an invalid row but still processes the rest of the sheet', async () => {

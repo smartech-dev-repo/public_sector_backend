@@ -5,15 +5,16 @@ import { DocumentType, DocumentUploadBatch } from '../../generated/prisma/client
 import { normalizeNigerianPhone } from '../../common/normalize-nigerian-phone.util';
 import { buildRowByHeader } from '../parsers/build-row-by-header';
 import { loadUploadedWorkbook } from '../parsers/load-uploaded-workbook';
-import { IPPIS_AGENCIES } from '../parsers/ippis-broadsheet.parser';
+import { REQUIRED_IPPIS_HEADERS, isIppisDataSheet } from '../parsers/ippis-broadsheet.parser';
+import { SectorService } from '../../sectors/sector.service';
+import { closestSector, normalizeSectorCode } from '../../sectors/sector-code.util';
 import { IPPIS_KNOWN_HEADERS, isRowMappingFailure, mapIppisRow } from '../parsers/ippis-row-mapper';
 import { HEADER_SCAN_LIMIT, findHeaderRowNumber } from '../parsers/disbursed-loans.parser';
 import { isLoanRowMappingFailure, mapLoanRow } from '../parsers/loan-row-mapper';
-import { REPAYMENT_AGENCIES, findRepaymentHeaderRowNumber } from '../parsers/repayment-schedule.parser';
+import { findRepaymentHeaderRowNumber, isRepaymentDataSheet } from '../parsers/repayment-schedule.parser';
 import { isRepaymentRowMappingFailure, mapRepaymentRow } from '../parsers/repayment-row-mapper';
 import { AnalysisBuilder, DocumentAnalysis } from './analysis-builder';
 
-const REQUIRED_IPPIS_HEADERS = ['staff id', 'employee name'];
 const VALID_E164_NIGERIAN_PHONE = /^\+234\d{10}$/;
 
 function headerSet(headerValues: unknown[]): Set<string> {
@@ -31,7 +32,10 @@ const yieldToEventLoop = () => new Promise((resolve) => setImmediate(resolve));
 
 @Injectable()
 export class DocumentAnalysisService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly sectorService: SectorService,
+  ) {}
 
   async analyze(batch: DocumentUploadBatch, fileBuffer: Buffer): Promise<DocumentAnalysis> {
     const builder = new AnalysisBuilder();
@@ -45,10 +49,10 @@ export class DocumentAnalysisService {
 
     switch (batch.documentType) {
       case DocumentType.IPPIS_BROADSHEET:
-        await this.analyzeIppis(workbook, builder);
+        await this.analyzeIppis(workbook, await this.sectorService.codes(), builder);
         break;
       case DocumentType.REPAYMENT_SCHEDULE:
-        await this.analyzeRepayments(workbook, batch.period, builder);
+        await this.analyzeRepayments(workbook, await this.sectorService.codes(), batch.period, builder);
         break;
       case DocumentType.DISBURSED_LOANS:
         await this.analyzeLoans(workbook, builder);
@@ -57,7 +61,7 @@ export class DocumentAnalysisService {
     return builder.build();
   }
 
-  private async analyzeIppis(workbook: ExcelJS.Workbook, builder: AnalysisBuilder): Promise<void> {
+  private async analyzeIppis(workbook: ExcelJS.Workbook, sectors: string[], builder: AnalysisBuilder): Promise<void> {
     const existing = await this.prisma.ippisRecord.findMany({ select: { agency: true, staffId: true } });
     const existingKeys = new Set(existing.map((r) => `${r.agency}::${r.staffId}`));
     const seenStaff = new Set<string>();
@@ -65,10 +69,15 @@ export class DocumentAnalysisService {
     let recognizedSheets = 0;
 
     for (const worksheet of workbook.worksheets) {
-      const agency = IPPIS_AGENCIES.find((a) => a.toLowerCase() === worksheet.name.trim().toLowerCase());
-      const sheet = builder.addSheet(worksheet.name, Boolean(agency));
-      if (!agency) {
-        builder.addIssue('WARNING', `Unrecognized sheet "${worksheet.name}" will be ignored`);
+      const agency = normalizeSectorCode(worksheet.name);
+      const isKnownSector = sectors.includes(agency);
+      const sheet = builder.addSheet(worksheet.name, isKnownSector);
+      if (!isKnownSector) {
+        if (isIppisDataSheet(worksheet)) {
+          builder.addUnknownSector(worksheet.name.trim(), Math.max(worksheet.actualRowCount - 1, 0), closestSector(agency, sectors));
+        } else {
+          builder.addIssue('WARNING', 'Sheet has no data columns and will be ignored', { sheet: worksheet.name });
+        }
         continue;
       }
       recognizedSheets++;
@@ -130,12 +139,13 @@ export class DocumentAnalysisService {
     }
 
     if (recognizedSheets === 0) {
-      builder.addIssue('CRITICAL', `No agency sheet found. Sheets must be named ${IPPIS_AGENCIES.join(', ')}`);
+      builder.addIssue('CRITICAL', 'No set-up sector found. Name each sheet after a sector in Configuration, or add the sector there first');
     }
   }
 
   private async analyzeRepayments(
     workbook: ExcelJS.Workbook,
+    sectors: string[],
     period: string | null,
     builder: AnalysisBuilder,
   ): Promise<void> {
@@ -152,10 +162,15 @@ export class DocumentAnalysisService {
     let recognizedSheets = 0;
 
     for (const worksheet of workbook.worksheets) {
-      const agency = REPAYMENT_AGENCIES.find((a) => a.toLowerCase() === worksheet.name.trim().toLowerCase());
-      const sheet = builder.addSheet(worksheet.name, Boolean(agency));
-      if (!agency) {
-        builder.addIssue('WARNING', `Unrecognized sheet "${worksheet.name}" will be ignored`);
+      const agency = normalizeSectorCode(worksheet.name);
+      const isKnownSector = sectors.includes(agency);
+      const sheet = builder.addSheet(worksheet.name, isKnownSector);
+      if (!isKnownSector) {
+        if (isRepaymentDataSheet(worksheet)) {
+          builder.addUnknownSector(worksheet.name.trim(), worksheet.rowCount - (findRepaymentHeaderRowNumber(worksheet) ?? 0), closestSector(agency, sectors));
+        } else {
+          builder.addIssue('WARNING', 'Sheet has no data columns and will be ignored', { sheet: worksheet.name });
+        }
         continue;
       }
       recognizedSheets++;
@@ -203,7 +218,7 @@ export class DocumentAnalysisService {
     }
 
     if (recognizedSheets === 0) {
-      builder.addIssue('CRITICAL', `No agency sheet found. Sheets must be named ${REPAYMENT_AGENCIES.join(', ')}`);
+      builder.addIssue('CRITICAL', 'No set-up sector found. Name each sheet after a sector in Configuration, or add the sector there first');
     }
   }
 

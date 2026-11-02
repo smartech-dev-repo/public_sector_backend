@@ -1,8 +1,7 @@
 import * as ExcelJS from 'exceljs';
 import { DocumentType } from '../generated/prisma/client';
 import { MAX_SPREADSHEET_BYTES } from './spreadsheet-upload.options';
-import { IPPIS_AGENCIES } from './parsers/ippis-broadsheet.parser';
-import { REPAYMENT_AGENCIES } from './parsers/repayment-schedule.parser';
+import { KNOWN_AGENCIES } from '../common/known-agencies.constant';
 
 export interface TemplateColumn {
   header: string;
@@ -116,17 +115,17 @@ export const DOCUMENT_TEMPLATES: Record<DocumentType, DocumentTemplate> = {
     fileName: 'ippis-broadsheet-template.xlsx',
     summary: 'The monthly payroll master. Each row adds or updates one staff record.',
     acceptedFormats: ['.xlsx', '.csv'],
-    csvAgencies: [...IPPIS_AGENCIES],
+    csvAgencies: [...KNOWN_AGENCIES],
     maxFileSizeBytes: MAX_SPREADSHEET_BYTES,
     requiresPeriod: false,
     notes: [
-      'In .xlsx, keep one sheet per agency, named exactly NPF, NSCDC, IMMIGRATION or CORRECTIONAL. Other sheets are ignored.',
-      'A .csv holds one agency: use the same columns and choose the agency in the next step.',
+      'In .xlsx, keep one sheet per sector, named after the sector. A new sector must be added in Configuration first. Other sheets are not merged.',
+      'A .csv holds one sector: use the same columns and choose the sector in the next step.',
       'Keep the headers in row 1 and do not rename them.',
       'Fill the three payment columns oldest to newest: 3 months ago, 2 months ago, last month.',
       'Blank cells overwrite what is on record for that staff member.',
     ],
-    sheets: [{ names: [...IPPIS_AGENCIES], columns: IPPIS_COLUMNS }],
+    sheets: [{ names: [...KNOWN_AGENCIES], columns: IPPIS_COLUMNS }],
   },
   [DocumentType.REPAYMENT_SCHEDULE]: {
     documentType: DocumentType.REPAYMENT_SCHEDULE,
@@ -134,17 +133,17 @@ export const DOCUMENT_TEMPLATES: Record<DocumentType, DocumentTemplate> = {
     fileName: 'repayment-schedule-template.xlsx',
     summary: 'Monthly deductions per agency, used for repayment reconciliation.',
     acceptedFormats: ['.xlsx', '.csv'],
-    csvAgencies: [...REPAYMENT_AGENCIES],
+    csvAgencies: [...KNOWN_AGENCIES],
     maxFileSizeBytes: MAX_SPREADSHEET_BYTES,
     requiresPeriod: true,
     notes: [
       'Every agency sheet uses the same columns. Leave optional columns blank where an agency does not report them.',
-      'In .xlsx, keep the sheet names exactly as in the template. Sheets you do not need can stay empty.',
-      'A .csv holds one agency: use the same columns and choose the agency in the next step.',
+      'In .xlsx, name each sheet after its sector. A new sector must be added in Configuration first. Sheets you do not need can stay empty.',
+      'A .csv holds one sector: use the same columns and choose the sector in the next step.',
       'Choose the repayment month in the next step. Sheets with no Period column use that month.',
       'Merging a schedule re-runs repayment reconciliation.',
     ],
-    sheets: [{ names: [...REPAYMENT_AGENCIES], columns: REPAYMENT_COLUMNS }],
+    sheets: [{ names: [...KNOWN_AGENCIES], columns: REPAYMENT_COLUMNS }],
   },
   [DocumentType.DISBURSED_LOANS]: {
     documentType: DocumentType.DISBURSED_LOANS,
@@ -164,9 +163,16 @@ export const DOCUMENT_TEMPLATES: Record<DocumentType, DocumentTemplate> = {
   },
 };
 
-export async function buildTemplateWorkbook(documentType: DocumentType): Promise<Buffer> {
+/** A template with the live sector list. A type without per-sector sheets is unchanged. */
+export function templateForSectors(documentType: DocumentType, sectors: string[]): DocumentTemplate {
+  const template = DOCUMENT_TEMPLATES[documentType];
+  if (template.csvAgencies.length === 0) return template;
+  return { ...template, csvAgencies: sectors, sheets: template.sheets.map((sheet) => ({ ...sheet, names: sectors })) };
+}
+
+export async function buildTemplateWorkbook(documentType: DocumentType, sectors: string[] = [...KNOWN_AGENCIES]): Promise<Buffer> {
   const workbook = new ExcelJS.Workbook();
-  for (const sheet of DOCUMENT_TEMPLATES[documentType].sheets) {
+  for (const sheet of templateForSectors(documentType, sectors).sheets) {
     sheet.names.forEach((name, index) => {
       const worksheet = workbook.addWorksheet(name);
       const header = worksheet.addRow(sheet.columns.map((column) => column.header));

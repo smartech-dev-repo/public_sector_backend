@@ -1,5 +1,3 @@
-export type AgencyKey = 'NPF' | 'NSCDC' | 'IMMIGRATION' | 'CORRECTIONAL' | 'CUSTOM' | 'LASG';
-
 export interface MappedRepaymentFields {
   staffId: string;
   elementName: string;

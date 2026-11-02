@@ -11,7 +11,7 @@ import { LoanProductsService } from './loan-products.service';
 import { CreateLoanProductDto } from './dto/create-loan-product.dto';
 import { UpdateLoanProductDto } from './dto/update-loan-product.dto';
 import { ListAdminLoanProductsQueryDto } from './dto/list-admin-loan-products-query.dto';
-import { KNOWN_AGENCIES } from '../common/known-agencies.constant';
+import { SectorService } from '../sectors/sector.service';
 import { ManagementFeesService } from '../management-fees/management-fees.service';
 
 const AUDITED_PRODUCT_FIELDS = [
@@ -40,11 +40,12 @@ export class AdminLoanProductsController {
     private readonly loanProductsService: LoanProductsService,
     private readonly managementFeesService: ManagementFeesService,
     private readonly auditLogService: AuditLogService,
+    private readonly sectorService: SectorService,
   ) {}
 
   @Get('sectors')
-  sectors() {
-    return { sectors: KNOWN_AGENCIES };
+  async sectors() {
+    return { sectors: await this.sectorService.codes() };
   }
 
   @Get('management-fees')

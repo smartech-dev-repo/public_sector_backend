@@ -44,7 +44,10 @@ import {
   DOCUMENT_SLUGS,
   DOCUMENT_TEMPLATES,
   DOCUMENT_UPLOAD_PERMISSIONS,
+  templateForSectors,
 } from './document-templates';
+import { SectorService } from '../sectors/sector.service';
+import { normalizeSectorCode } from '../sectors/sector-code.util';
 
 @Controller('admin/documents')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
@@ -55,6 +58,7 @@ export class AdminDocumentsController {
     @Inject(FILE_STORAGE_PROVIDER) private readonly fileStorageProvider: FileStorageProvider,
     @InjectQueue(DOCUMENT_INGESTION_QUEUE) private readonly queue: Queue<DocumentIngestionJobData>,
     private readonly auditLogService: AuditLogService,
+    private readonly sectorService: SectorService,
   ) {}
 
   private recordUploadEvent(
@@ -139,15 +143,15 @@ export class AdminDocumentsController {
   }
 
   @Get('templates/:documentType')
-  getTemplateSpec(@Param('documentType') slug: string, @Req() req: { user: JwtPayload }) {
-    return DOCUMENT_TEMPLATES[this.resolveDocumentType(slug, req.user)];
+  async getTemplateSpec(@Param('documentType') slug: string, @Req() req: { user: JwtPayload }) {
+    return templateForSectors(this.resolveDocumentType(slug, req.user), await this.sectorService.codes());
   }
 
   @Get('templates/:documentType/download')
   @Header('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
   async downloadTemplate(@Param('documentType') slug: string, @Req() req: { user: JwtPayload }) {
     const documentType = this.resolveDocumentType(slug, req.user);
-    return new StreamableFile(await buildTemplateWorkbook(documentType), {
+    return new StreamableFile(await buildTemplateWorkbook(documentType, await this.sectorService.codes()), {
       disposition: `attachment; filename="${DOCUMENT_TEMPLATES[documentType].fileName}"`,
     });
   }
@@ -168,10 +172,10 @@ export class AdminDocumentsController {
       throw new BadRequestException('period is required for a repayment schedule');
     }
 
-    const { csvAgencies } = DOCUMENT_TEMPLATES[documentType];
-    const needsAgency = isCsvFile(file.originalname) && csvAgencies.length > 0;
-    if (needsAgency && !csvAgencies.includes(dto.agency ?? '')) {
-      throw new BadRequestException(`A CSV needs an agency: one of ${csvAgencies.join(', ')}`);
+    const needsAgency = isCsvFile(file.originalname) && DOCUMENT_TEMPLATES[documentType].csvAgencies.length > 0;
+    const sector = dto.agency ? normalizeSectorCode(dto.agency) : '';
+    if (needsAgency && !(await this.sectorService.codes()).includes(sector)) {
+      throw new BadRequestException('A CSV needs a sector that is set up in Configuration');
     }
 
     const batch = await this.storeUpload(
@@ -180,7 +184,7 @@ export class AdminDocumentsController {
       req.user.sub,
       dto.period,
       DocumentBatchStatus.ANALYZING,
-      needsAgency ? dto.agency : undefined,
+      needsAgency ? sector : undefined,
     );
     await this.queue.add(ANALYZE_BATCH_JOB, { batchId: batch.id });
     await this.recordUploadEvent(req.user.sub, 'document.upload.submitted', batch, { fileSizeBytes: batch.fileSizeBytes });

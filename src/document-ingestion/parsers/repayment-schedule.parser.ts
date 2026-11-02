@@ -1,14 +1,15 @@
 import { Injectable } from '@nestjs/common';
+import { SectorService } from '../../sectors/sector.service';
+import { normalizeSectorCode } from '../../sectors/sector-code.util';
 import * as ExcelJS from 'exceljs';
 import { PrismaService } from '../../prisma/prisma.service';
 import { SnapshotExportService } from '../snapshot-export.service';
 import { DocumentParser, ParseResult } from '../document-parser.interface';
 import { DocumentUploadBatch, DocumentType, Prisma } from '../../generated/prisma/client';
-import { AgencyKey, isRepaymentHeaderRow, isRepaymentRowMappingFailure, mapRepaymentRow } from './repayment-row-mapper';
+import { isRepaymentHeaderRow, isRepaymentRowMappingFailure, mapRepaymentRow } from './repayment-row-mapper';
 import { buildRowByHeader } from './build-row-by-header';
 import { loadUploadedWorkbook } from './load-uploaded-workbook';
 
-export const REPAYMENT_AGENCIES: AgencyKey[] = ['NPF', 'NSCDC', 'IMMIGRATION', 'CORRECTIONAL', 'CUSTOM', 'LASG'];
 const HEADER_SCAN_LIMIT = 5;
 
 const SNAPSHOT_COLUMNS = [
@@ -28,15 +29,23 @@ export function findRepaymentHeaderRowNumber(worksheet: ExcelJS.Worksheet): numb
   return null;
 }
 
+/** Whether a sheet with an unknown name holds repayments, so the review can say what would be left out. */
+export function isRepaymentDataSheet(worksheet: ExcelJS.Worksheet): boolean {
+  const headerRowNumber = findRepaymentHeaderRowNumber(worksheet);
+  return headerRowNumber !== null && worksheet.rowCount > headerRowNumber;
+}
+
 @Injectable()
 export class RepaymentScheduleParser implements DocumentParser {
   constructor(
     private readonly prisma: PrismaService,
     private readonly snapshotExportService: SnapshotExportService,
+    private readonly sectorService: SectorService,
   ) {}
 
   async parse(batch: DocumentUploadBatch, fileBuffer: Buffer): Promise<ParseResult> {
     const workbook = await loadUploadedWorkbook(batch, fileBuffer);
+    const sectors = await this.sectorService.codes();
 
     const currentRecords = await this.prisma.loanRepaymentRecord.findMany();
     const existingKeys = new Set(
@@ -60,9 +69,9 @@ export class RepaymentScheduleParser implements DocumentParser {
     const warnings: string[] = [];
 
     for (const worksheet of workbook.worksheets) {
-      const agency = REPAYMENT_AGENCIES.find((a) => a.toLowerCase() === worksheet.name.trim().toLowerCase());
-      if (!agency) {
-        warnings.push(`Unrecognized sheet "${worksheet.name}" skipped`);
+      const agency = normalizeSectorCode(worksheet.name);
+      if (!sectors.includes(agency)) {
+        warnings.push(`Sheet "${worksheet.name}" skipped: it is not a set-up sector`);
         continue;
       }
 

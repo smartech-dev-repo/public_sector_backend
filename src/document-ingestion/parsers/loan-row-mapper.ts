@@ -26,7 +26,7 @@ const AGENCY_PREFIXES: Record<string, string> = {
   CD: 'NSCDC',
   NI: 'IMMIGRATION',
   PR: 'CORRECTIONAL',
-  NCS: 'CUSTOM',
+  NCS: 'CUSTOMS',
 };
 
 const MONTH_ABBREVIATIONS: Record<string, number> = {

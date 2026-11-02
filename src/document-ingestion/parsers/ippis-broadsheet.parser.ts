@@ -1,4 +1,7 @@
 import { Injectable } from '@nestjs/common';
+import * as ExcelJS from 'exceljs';
+import { SectorService } from '../../sectors/sector.service';
+import { normalizeSectorCode } from '../../sectors/sector-code.util';
 import { PrismaService } from '../../prisma/prisma.service';
 import { SnapshotExportService } from '../snapshot-export.service';
 import { DocumentParser, ParseResult } from '../document-parser.interface';
@@ -7,7 +10,18 @@ import { IPPIS_KNOWN_HEADERS, isRowMappingFailure, mapIppisRow } from './ippis-r
 import { buildRowByHeader } from './build-row-by-header';
 import { loadUploadedWorkbook } from './load-uploaded-workbook';
 
-export const IPPIS_AGENCIES = ['NPF', 'NSCDC', 'IMMIGRATION', 'CORRECTIONAL'];
+export const REQUIRED_IPPIS_HEADERS = ['staff id', 'employee name'];
+
+/** Whether a sheet with an unknown name holds staff records, so the review can say what would be left out. */
+export function isIppisDataSheet(worksheet: ExcelJS.Worksheet): boolean {
+  if (worksheet.rowCount <= 1) return false;
+  const headers = new Set(
+    (worksheet.getRow(1).values as unknown[])
+      .filter((header): header is string => typeof header === 'string')
+      .map((header) => header.trim().toLowerCase()),
+  );
+  return REQUIRED_IPPIS_HEADERS.every((header) => headers.has(header));
+}
 
 const SNAPSHOT_COLUMNS = [
   'id', 'agency', 'staffId', 'employeeName', 'employeeStatus', 'hireDate', 'dateOfBirth',
@@ -21,10 +35,12 @@ export class IppisBroadsheetParser implements DocumentParser {
   constructor(
     private readonly prisma: PrismaService,
     private readonly snapshotExportService: SnapshotExportService,
+    private readonly sectorService: SectorService,
   ) {}
 
   async parse(batch: DocumentUploadBatch, fileBuffer: Buffer): Promise<ParseResult> {
     const workbook = await loadUploadedWorkbook(batch, fileBuffer);
+    const sectors = await this.sectorService.codes();
 
     const currentRecords = await this.prisma.ippisRecord.findMany();
     const existingKeys = new Set(currentRecords.map((r) => `${r.agency}::${r.staffId}`));
@@ -46,9 +62,9 @@ export class IppisBroadsheetParser implements DocumentParser {
     const warnings: string[] = [];
 
     for (const worksheet of workbook.worksheets) {
-      const agency = IPPIS_AGENCIES.find((a) => a.toLowerCase() === worksheet.name.trim().toLowerCase());
-      if (!agency) {
-        warnings.push(`Unrecognized sheet "${worksheet.name}" skipped`);
+      const agency = normalizeSectorCode(worksheet.name);
+      if (!sectors.includes(agency)) {
+        warnings.push(`Sheet "${worksheet.name}" skipped: it is not a set-up sector`);
         continue;
       }
 
