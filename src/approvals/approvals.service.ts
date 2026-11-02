@@ -156,7 +156,14 @@ export class ApprovalsService {
       }),
       this.prisma.approvalRequest.count({ where }),
     ]);
-    return buildPaginatedResult(data, total, page, limit);
+    const rows = data.map((row) => ({ ...row, canDecide: this.canDecide(user, row), isMine: row.requestedById === user.sub }));
+    return buildPaginatedResult(rows, total, page, limit);
+  }
+
+  private canDecide(user: JwtPayload, approval: Pick<ApprovalRequest, 'status' | 'requestedById' | 'assignedToId' | 'requiredPermission'>): boolean {
+    if (approval.status !== ApprovalStatus.PENDING || approval.requestedById === user.sub) return false;
+    if (approval.assignedToId) return approval.assignedToId === user.sub;
+    return (user.permissions ?? []).includes(approval.requiredPermission);
   }
 
   async findById(caller: JwtPayload, id: string) {
@@ -171,9 +178,8 @@ export class ApprovalsService {
     }
     const isApprover = (user.permissions ?? []).includes(approval.requiredPermission);
     const pending = approval.status === ApprovalStatus.PENDING;
-    const canDecide =
-      pending && approval.requestedById !== user.sub && (approval.assignedToId ? approval.assignedToId === user.sub : isApprover);
-    return { ...approval, canDecide, canAssign: pending && isApprover, isMine: approval.requestedById === user.sub };
+    const isMine = approval.requestedById === user.sub;
+    return { ...approval, canDecide: this.canDecide(user, approval), canAssign: pending && (isApprover || isMine), isMine };
   }
 
   private async loadForDecision(user: JwtPayload, id: string) {
@@ -260,8 +266,9 @@ export class ApprovalsService {
     if (!approval) {
       throw new NotFoundException('Approval request not found');
     }
-    // Only approvers assign, so a maker can never pick their own checker.
-    if (!(user.permissions ?? []).includes(approval.requiredPermission)) {
+    // A maker can choose who decides their request, but only from admins who hold the approval
+    // permission, and never themselves.
+    if (approval.requestedById !== user.sub && !(user.permissions ?? []).includes(approval.requiredPermission)) {
       throw new ForbiddenException('You do not have permission to assign this request');
     }
     if (approval.status !== ApprovalStatus.PENDING) {
@@ -270,11 +277,20 @@ export class ApprovalsService {
     return approval;
   }
 
+  /** Who may be given this request: active admins whose role can approve it, except its maker. */
+  private assignableWhere(approval: ApprovalRequest): Prisma.AdminUserWhereInput {
+    return {
+      isActive: true,
+      id: { not: approval.requestedById },
+      role: { permissions: { some: { permission: { key: approval.requiredPermission } } } },
+    };
+  }
+
   async listAssignees(caller: JwtPayload, id: string) {
     const user = await this.withCurrentPermissions(caller);
     const approval = await this.loadForAssigning(user, id);
     return this.prisma.adminUser.findMany({
-      where: { isActive: true, id: { not: approval.requestedById } },
+      where: this.assignableWhere(approval),
       select: { id: true, fullName: true, email: true },
       orderBy: { fullName: 'asc' },
     });
@@ -288,10 +304,10 @@ export class ApprovalsService {
     }
 
     const assignee = assigneeId
-      ? await this.prisma.adminUser.findFirst({ where: { id: assigneeId, isActive: true }, select: { id: true, fullName: true } })
+      ? await this.prisma.adminUser.findFirst({ where: { ...this.assignableWhere(approval), id: assigneeId }, select: { id: true, fullName: true } })
       : null;
     if (assigneeId && !assignee) {
-      throw new NotFoundException('Admin not found');
+      throw new NotFoundException('That admin cannot approve this request');
     }
 
     const { count } = await this.prisma.approvalRequest.updateMany({

@@ -22354,7 +22354,7 @@
                     }
                   ],
                   "cookie": [],
-                  "body": "{\n  \"data\": [\n    {\n      \"id\": \"55555555-5555-4555-8555-555555555555\",\n      \"action\": \"loan-request.approve\",\n      \"status\": \"PENDING\",\n      \"requiredPermission\": \"approvals:loans\",\n      \"summary\": {\n        \"title\": \"Approve and disburse loan\",\n        \"subject\": \"Sample Client\"\n      },\n      \"requestedBy\": {\n        \"id\": \"m\",\n        \"fullName\": \"Maker\",\n        \"email\": \"maker@example.com\"\n      },\n      \"assignedTo\": null,\n      \"decidedBy\": null\n    }\n  ],\n  \"meta\": {\n    \"total\": 1,\n    \"page\": 1,\n    \"limit\": 25,\n    \"totalPages\": 1\n  }\n}"
+                  "body": "{\n  \"data\": [\n    {\n      \"id\": \"55555555-5555-4555-8555-555555555555\",\n      \"action\": \"loan-request.approve\",\n      \"status\": \"PENDING\",\n      \"requiredPermission\": \"approvals:loans\",\n      \"summary\": {\n        \"title\": \"Approve and disburse loan\",\n        \"subject\": \"Sample Client\"\n      },\n      \"requestedBy\": {\n        \"id\": \"m\",\n        \"fullName\": \"Maker\",\n        \"email\": \"maker@example.com\"\n      },\n      \"assignedTo\": null,\n      \"decidedBy\": null,\n      \"canDecide\": true,\n      \"isMine\": false\n    }\n  ],\n  \"meta\": {\n    \"total\": 1,\n    \"page\": 1,\n    \"limit\": 25,\n    \"totalPages\": 1\n  }\n}"
                 }
               ]
             },

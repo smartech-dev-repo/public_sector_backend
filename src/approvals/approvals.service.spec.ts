@@ -22,7 +22,7 @@ const pending = (overrides = {}) => ({
 describe('ApprovalsService', () => {
   let prisma: {
     approvalRequest: { create: jest.Mock; findUnique: jest.Mock; findFirst: jest.Mock; update: jest.Mock; updateMany: jest.Mock };
-    adminUser: { findFirst: jest.Mock };
+    adminUser: { findMany: jest.Mock; findFirst: jest.Mock };
   };
   let audit: { record: jest.Mock };
   let notifications: { notify: jest.Mock; currentPermissions: jest.Mock };
@@ -38,7 +38,7 @@ describe('ApprovalsService', () => {
         update: jest.fn(),
         updateMany: jest.fn().mockResolvedValue({ count: 1 }),
       },
-      adminUser: { findFirst: jest.fn().mockResolvedValue({ id: 'other', fullName: 'Other' }) },
+      adminUser: { findMany: jest.fn(), findFirst: jest.fn().mockResolvedValue({ id: 'other', fullName: 'Other' }) },
     };
     audit = { record: jest.fn().mockResolvedValue(undefined) };
     notifications = {
@@ -145,9 +145,24 @@ describe('ApprovalsService', () => {
       await expect(service.assign(approver('checker'), 'ap1', 'maker')).rejects.toThrow(ForbiddenException);
     });
 
-    it('a maker without the permission cannot choose a checker', async () => {
+    it('a maker can choose who decides their own request, without the approval permission', async () => {
       notifications.currentPermissions.mockResolvedValue([]);
-      await expect(service.assign({ sub: 'maker', type: 'admin', permissions: [] }, 'ap1', 'other')).rejects.toThrow(ForbiddenException);
+      await service.assign({ sub: 'maker', type: 'admin', permissions: [] }, 'ap1', 'other');
+      expect(notifications.notify).toHaveBeenCalledWith(expect.objectContaining({ recipientAdminId: 'other' }));
+    });
+
+    it('only offers and accepts admins who hold the approval permission', async () => {
+      prisma.adminUser.findMany.mockResolvedValue([]);
+      await service.listAssignees(approver('checker'), 'ap1');
+      await service.assign(approver('checker'), 'ap1', 'other');
+      const role = { permissions: { some: { permission: { key: 'approvals:loans' } } } };
+      expect(prisma.adminUser.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ role }) }));
+      expect(prisma.adminUser.findFirst).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ role, id: 'other' }) }));
+    });
+
+    it('an unrelated admin without the permission cannot assign', async () => {
+      notifications.currentPermissions.mockResolvedValue([]);
+      await expect(service.assign({ sub: 'stranger', type: 'admin', permissions: [] }, 'ap1', 'other')).rejects.toThrow(ForbiddenException);
     });
 
     it('tells the assignee', async () => {
