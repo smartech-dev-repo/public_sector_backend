@@ -1,10 +1,37 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { Prisma } from '../generated/prisma/client';
+import {
+  AgentStatus,
+  ClientStatus,
+  DocumentBatchStatus,
+  DocumentType,
+  LoanRequestStatus,
+  Prisma,
+} from '../generated/prisma/client';
+import { DOCUMENT_UPLOAD_PERMISSIONS } from '../document-ingestion/document-templates';
 import { buildPaginatedResult } from '../common/pagination/paginated-result';
 import { JwtPayload } from '../auth/jwt-payload.interface';
 
 export const SUPER_ADMIN_ROLE_NAME = 'SUPER_ADMIN';
+
+/**
+ * Menu alerts: work that is waiting on an admin's decision right now, counted
+ * from live data, so a count drops as soon as the work is done. Only areas the
+ * admin can act on are counted. Work already sent for approval is left to the
+ * Approvals count, so nothing is counted twice.
+ */
+export interface ActionAlerts {
+  /** Confirmed loans to approve or reject, and approved loans to disburse. */
+  loanRequests: number;
+  /** Sectors no active loan product covers, so their staff see no products. */
+  loanProducts: number;
+  /** Uploads analysed and waiting for a confirm-or-cancel decision. */
+  broadsheet: number;
+  /** Clients whose onboarding needs a manual approve-or-reject. */
+  clients: number;
+  /** Submitted agent applications waiting for review. */
+  agentRecruitment: number;
+}
 
 export interface NewNotification {
   category: string;
@@ -193,7 +220,54 @@ export class NotificationService {
 
     const byCategory = Object.fromEntries(groups.map((group) => [group.category, group._count._all]));
     const unread = groups.reduce((sum, group) => sum + group._count._all, 0);
-    return { unread, byCategory, pendingApprovals, myPendingRequests };
+    const alerts = await this.actionAlerts(permissions);
+    return { unread, byCategory, pendingApprovals, myPendingRequests, alerts };
+  }
+
+  async actionAlerts(permissions: string[]): Promise<ActionAlerts> {
+    const holds = (key: string) => permissions.includes(key);
+    const uploadTypes = (Object.keys(DOCUMENT_UPLOAD_PERMISSIONS) as DocumentType[]).filter((type) =>
+      holds(DOCUMENT_UPLOAD_PERMISSIONS[type]),
+    );
+
+    const inApproval = await this.prisma.approvalRequest.findMany({
+      where: { status: 'PENDING', targetType: { in: ['LoanRequest', 'Agent'] } },
+      select: { targetType: true, targetId: true },
+    });
+    const awaitingApproval = (type: string) => inApproval.filter((row) => row.targetType === type).map((row) => row.targetId);
+
+    const [loanRequests, loanProducts, broadsheet, clients, agentRecruitment] = await Promise.all([
+      holds('loan-requests:review')
+        ? this.prisma.loanRequest.count({
+            where: {
+              status: { in: [LoanRequestStatus.CONFIRMED, LoanRequestStatus.APPROVED] },
+              id: { notIn: awaitingApproval('LoanRequest') },
+            },
+          })
+        : 0,
+      holds('loan-products:manage') ? this.uncoveredSectorCount() : 0,
+      uploadTypes.length
+        ? this.prisma.documentUploadBatch.count({
+            where: { status: DocumentBatchStatus.AWAITING_CONFIRMATION, documentType: { in: uploadTypes } },
+          })
+        : 0,
+      holds('clients:review') ? this.prisma.client.count({ where: { status: ClientStatus.MANUAL_REVIEW } }) : 0,
+      holds('agents:review')
+        ? this.prisma.agent.count({
+            where: { status: AgentStatus.PENDING_REVIEW, id: { notIn: awaitingApproval('Agent') } },
+          })
+        : 0,
+    ]);
+    return { loanRequests, loanProducts, broadsheet, clients, agentRecruitment };
+  }
+
+  private async uncoveredSectorCount(): Promise<number> {
+    const [sectors, products] = await Promise.all([
+      this.prisma.sector.findMany({ select: { code: true } }),
+      this.prisma.loanProduct.findMany({ where: { isActive: true }, select: { sectors: true } }),
+    ]);
+    const covered = new Set(products.flatMap((product) => product.sectors));
+    return sectors.filter((sector) => !covered.has(sector.code)).length;
   }
 
   async markRead(user: JwtPayload, id: string): Promise<void> {

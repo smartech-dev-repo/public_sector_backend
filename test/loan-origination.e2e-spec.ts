@@ -304,6 +304,13 @@ describe('Agent-assisted loan origination with email-OTP confirmation (e2e)', ()
   const agency = 'NPF';
   const productCode = `E2E-AGENT-ORIGIN-PRODUCT-${Date.now()}`;
   const createdAgentIds: string[] = [];
+  const approvalPhone = '+2348031234567';
+  let savedApprovalPhone: string | null = null;
+  let loanSettingsId: string;
+
+  async function setApprovalPhone(phone: string | null) {
+    await prisma.loanSettings.update({ where: { id: loanSettingsId }, data: { loanApprovalPhone: phone } });
+  }
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -335,9 +342,15 @@ describe('Agent-assisted loan origination with email-OTP confirmation (e2e)', ()
         managementChargeApplication: 'DEDUCT_FROM_DISBURSEMENT',
       },
     });
+
+    const settings = (await prisma.loanSettings.findFirst()) ?? (await prisma.loanSettings.create({ data: {} }));
+    loanSettingsId = settings.id;
+    savedApprovalPhone = settings.loanApprovalPhone;
+    await setApprovalPhone(approvalPhone);
   });
 
   afterAll(async () => {
+    await setApprovalPhone(savedApprovalPhone);
     await prisma.clientLoan.deleteMany({ where: { agency, staffId: { startsWith: staffIdPrefix } } });
     await prisma.loanRequest.deleteMany({
       where: { client: { onboarding: { ippisRecord: { staffId: { startsWith: staffIdPrefix } } } } },
@@ -426,9 +439,29 @@ describe('Agent-assisted loan origination with email-OTP confirmation (e2e)', ()
   );
 
   it(
-    'runs the full agent-initiated flow: agent creates the request, agent relays and submits the emailed code, request auto-disburses under threshold',
+    'refuses an agent loan request until the loan approval phone is set',
     async () => {
-      const { agentAccessToken, client } = await createAgentWithClient('0000003', 'C');
+      const { agentAccessToken, client } = await createAgentWithClient('0000005', 'E');
+      await setApprovalPhone(null);
+      try {
+        const res = await request(app.getHttpServer())
+          .post(`/agent/clients/${client.id}/loan-requests`)
+          .set('Authorization', `Bearer ${agentAccessToken}`)
+          .send({ amount: 5000, tenorMonths: 3 })
+          .expect(409);
+        expect(res.body.message).toContain('loan approval phone number');
+        expect(await prisma.loanRequest.count({ where: { clientId: client.id } })).toBe(0);
+      } finally {
+        await setApprovalPhone(approvalPhone);
+      }
+    },
+    20000,
+  );
+
+  it(
+    'agent-made request: only an admin can confirm the code the client sends to the approval phone',
+    async () => {
+      const { agent, agentAccessToken, client, clientAccessToken } = await createAgentWithClient('0000003', 'C');
 
       const createRes = await request(app.getHttpServer())
         .post(`/agent/clients/${client.id}/loan-requests`)
@@ -438,29 +471,47 @@ describe('Agent-assisted loan origination with email-OTP confirmation (e2e)', ()
       const loanRequestId = createRes.body.id;
       expect(createRes.body).not.toHaveProperty('confirmationCodeHash');
       expect(createRes.body).not.toHaveProperty('confirmationCodeExpiresAt');
+      expect(createRes.body.requestedByAgentId).toBe(agent.id);
+
+      const stored = await prisma.loanRequest.findUniqueOrThrow({ where: { id: loanRequestId } });
+      expect(stored.confirmationCodeExpiresAt).toEqual(stored.expiresAt);
+
+      const detail = await request(app.getHttpServer())
+        .get(`/admin/loan-requests/${loanRequestId}`)
+        .set('Authorization', `Bearer ${adminAccessToken}`)
+        .expect(200);
+      expect(detail.body.requestedByAgent).toEqual({ id: agent.id, fullName: agent.fullName, phone: agent.phone });
+
+      // A YES reply can't confirm it: an admin has to enter the code.
+      await request(app.getHttpServer())
+        .post('/webhooks/sms/inbound')
+        .send({ phone: client.phone, message: 'YES' })
+        .expect(200);
+      expect((await prisma.loanRequest.findUniqueOrThrow({ where: { id: loanRequestId } })).status).toBe('PENDING');
 
       if (!createRes.body.devCode) {
-        // EMAIL_CODE_DEV_ECHO isn't set in this environment -- there's no way
-        // to read the real code back out (it's hashed), so this test can only
-        // verify creation succeeded, not the full confirm path.
+        // EMAIL_CODE_DEV_ECHO isn't set here, so the hashed code can't be read back.
         return;
       }
 
-      await request(app.getHttpServer())
-        .post(`/agent/clients/${client.id}/loan-requests/${loanRequestId}/confirm-code`)
-        .set('Authorization', `Bearer ${agentAccessToken}`)
-        .send({ code: createRes.body.devCode })
-        .expect(200)
-        .expect({ confirmed: true });
+      for (const [path, token] of [
+        [`/agent/clients/${client.id}/loan-requests/${loanRequestId}/confirm-code`, agentAccessToken],
+        [`/client/loan-requests/${loanRequestId}/confirm-code`, clientAccessToken],
+      ]) {
+        const res = await request(app.getHttpServer())
+          .post(path)
+          .set('Authorization', `Bearer ${token}`)
+          .send({ code: createRes.body.devCode })
+          .expect(403);
+        expect(res.body.message).toContain('requested by an agent');
+      }
+      expect((await prisma.loanRequest.findUniqueOrThrow({ where: { id: loanRequestId } })).status).toBe('PENDING');
 
-      const confirmedRequest = await prisma.loanRequest.findUniqueOrThrow({ where: { id: loanRequestId } });
-      expect(['CONFIRMED', 'DISBURSED']).toContain(confirmedRequest.status);
-
-      await request(app.getHttpServer())
-        .post(`/agent/clients/${client.id}/loan-requests/${loanRequestId}/confirm-code`)
-        .set('Authorization', `Bearer ${agentAccessToken}`)
-        .send({ code: createRes.body.devCode })
-        .expect(409);
+      const adminRes = await request(app.getHttpServer())
+        .post(`/admin/loan-requests/${loanRequestId}/confirm-code`)
+        .set('Authorization', `Bearer ${adminAccessToken}`)
+        .send({ code: createRes.body.devCode });
+      expect([200, 201]).toContain(adminRes.status);
     },
     20000,
   );

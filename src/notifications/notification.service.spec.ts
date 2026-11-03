@@ -2,7 +2,8 @@ import { NotificationService } from './notification.service';
 import { PrismaService } from '../prisma/prisma.service';
 
 describe('NotificationService', () => {
-  let prisma: { permission: { findMany: jest.Mock }; adminUser: { findUnique: jest.Mock }; notification: { create: jest.Mock; findMany: jest.Mock; count: jest.Mock; findFirst: jest.Mock; groupBy: jest.Mock } };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let prisma: any;
   let service: NotificationService;
 
   beforeEach(() => {
@@ -64,5 +65,54 @@ describe('NotificationService', () => {
     prisma.adminUser.findUnique.mockResolvedValue({ role: { name: 'SUPER_ADMIN', permissions: [] } });
     prisma.permission.findMany.mockResolvedValue([{ key: 'approvals:agents' }, { key: 'approvals:loans' }]);
     await expect(service.currentPermissions('sa')).resolves.toEqual(['approvals:agents', 'approvals:loans']);
+  });
+
+  describe('actionAlerts', () => {
+    beforeEach(() => {
+      Object.assign(prisma, {
+        approvalRequest: { findMany: jest.fn().mockResolvedValue([]) },
+        loanRequest: { count: jest.fn().mockResolvedValue(3) },
+        documentUploadBatch: { count: jest.fn().mockResolvedValue(2) },
+        client: { count: jest.fn().mockResolvedValue(4) },
+        agent: { count: jest.fn().mockResolvedValue(5) },
+        sector: { findMany: jest.fn().mockResolvedValue([{ code: 'NPF' }, { code: 'CUSTOMS' }, { code: 'LASG' }]) },
+        loanProduct: { findMany: jest.fn().mockResolvedValue([{ sectors: ['NPF'] }, { sectors: ['CUSTOMS'] }]) },
+      });
+    });
+
+    it('counts only what each permission can act on', async () => {
+      await expect(service.actionAlerts(['loan-requests:review'])).resolves.toEqual({
+        loanRequests: 3, loanProducts: 0, broadsheet: 0, clients: 0, agentRecruitment: 0,
+      });
+      expect(prisma.client.count).not.toHaveBeenCalled();
+      expect(prisma.agent.count).not.toHaveBeenCalled();
+    });
+
+    it('counts every area for an admin who holds everything', async () => {
+      const all = ['loan-requests:review', 'loan-products:manage', 'ippis:upload', 'loans:upload', 'repayments:upload', 'clients:review', 'agents:review'];
+      await expect(service.actionAlerts(all)).resolves.toEqual({
+        loanRequests: 3, loanProducts: 1, broadsheet: 2, clients: 4, agentRecruitment: 5,
+      });
+    });
+
+    it('counts decisions, not activity: confirmed or approved loans, uploads awaiting confirmation, manual-review clients, unreviewed agents', async () => {
+      await service.actionAlerts(['loan-requests:review', 'ippis:upload', 'clients:review', 'agents:review']);
+      expect(prisma.loanRequest.count.mock.calls[0][0].where.status).toEqual({ in: ['CONFIRMED', 'APPROVED'] });
+      expect(prisma.documentUploadBatch.count.mock.calls[0][0].where).toEqual({
+        status: 'AWAITING_CONFIRMATION', documentType: { in: ['IPPIS_BROADSHEET'] },
+      });
+      expect(prisma.client.count.mock.calls[0][0].where).toEqual({ status: 'MANUAL_REVIEW' });
+      expect(prisma.agent.count.mock.calls[0][0].where.status).toBe('PENDING_REVIEW');
+    });
+
+    it('leaves work already sent for approval to the Approvals count', async () => {
+      prisma.approvalRequest.findMany.mockResolvedValue([
+        { targetType: 'LoanRequest', targetId: 'lr1' },
+        { targetType: 'Agent', targetId: 'a1' },
+      ]);
+      await service.actionAlerts(['loan-requests:review', 'agents:review']);
+      expect(prisma.loanRequest.count.mock.calls[0][0].where.id).toEqual({ notIn: ['lr1'] });
+      expect(prisma.agent.count.mock.calls[0][0].where.id).toEqual({ notIn: ['a1'] });
+    });
   });
 });

@@ -5,6 +5,7 @@ import { LoanSettings } from '../generated/prisma/client';
 export interface UpdateLoanSettingsInput {
   retirementAgeYears?: number;
   maxServiceYears?: number;
+  loanApprovalPhone?: string;
 }
 
 @Injectable()

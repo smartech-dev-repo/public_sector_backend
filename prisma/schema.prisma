@@ -53,33 +53,33 @@ model RolePermission {
 }
 
 model AdminUser {
-  id           String          @id @default(uuid())
-  email        String          @unique
-  passwordHash String
-  firstName    String
-  lastName     String
-  fullName     String
-  isActive     Boolean         @default(true)
-  roleId       String
-  role         Role            @relation(fields: [roleId], references: [id])
-  departmentId String?
-  department   Department?     @relation(fields: [departmentId], references: [id])
-  sentInvites  AdminInvite[]
-  reviewedOnboardings ClientOnboarding[] @relation("ClientOnboardingReviewedBy")
-  onboardedClients    ClientOnboarding[] @relation("ClientOnboardingByAdmin")
-  createdClients      Client[]           @relation("ClientCreatedByAdmin")
-  reviewedAgents      Agent[]
-  uploadedDocumentBatches DocumentUploadBatch[]
-  requestedApprovals ApprovalRequest[] @relation("ApprovalRequestedBy")
-  decidedApprovals   ApprovalRequest[] @relation("ApprovalDecidedBy")
-  assignedApprovals  ApprovalRequest[] @relation("ApprovalAssignedTo")
-  profileImageKey String?
-  createdAt    DateTime        @default(now())
-  updatedAt    DateTime        @updatedAt
+  id                          String                @id @default(uuid())
+  email                       String                @unique
+  passwordHash                String
+  firstName                   String
+  lastName                    String
+  fullName                    String
+  isActive                    Boolean               @default(true)
+  roleId                      String
+  role                        Role                  @relation(fields: [roleId], references: [id])
+  departmentId                String?
+  department                  Department?           @relation(fields: [departmentId], references: [id])
+  sentInvites                 AdminInvite[]
+  reviewedOnboardings         ClientOnboarding[]    @relation("ClientOnboardingReviewedBy")
+  onboardedClients            ClientOnboarding[]    @relation("ClientOnboardingByAdmin")
+  createdClients              Client[]              @relation("ClientCreatedByAdmin")
+  reviewedAgents              Agent[]
+  uploadedDocumentBatches     DocumentUploadBatch[]
+  requestedApprovals          ApprovalRequest[]     @relation("ApprovalRequestedBy")
+  decidedApprovals            ApprovalRequest[]     @relation("ApprovalDecidedBy")
+  assignedApprovals           ApprovalRequest[]     @relation("ApprovalAssignedTo")
+  profileImageKey             String?
+  createdAt                   DateTime              @default(now())
+  updatedAt                   DateTime              @updatedAt
   passwordResetTokenHash      String?
   passwordResetTokenExpiresAt DateTime?
   twoFactorMethod             TwoFactorMethod?
-  twoFactorEnabled            Boolean          @default(false)
+  twoFactorEnabled            Boolean               @default(false)
   twoFactorSecret             String?
   twoFactorPendingSecret      String?
   twoFactorPendingMethod      TwoFactorMethod?
@@ -99,40 +99,41 @@ enum AgentStatus {
 }
 
 model Agent {
-  id                     String      @id @default(uuid())
-  email                  String      @unique
-  phone                  String
-  fullName               String
-  address                String
-  passwordHash           String?
-  status                 AgentStatus @default(PENDING_REVIEW)
-  cvKey                  String
-  supportingDocumentKeys String[]    @default([])
-  gender                 String?
-  city                   String?
-  state                  String?
-  localGovernment        String?
-  nin                    String?
-  ninVerified            Boolean?
-  ninVerifiedName        String?
-  coverLetter            String?
-  passportPhotoKey       String?
-  identityDocumentKey    String?
-  mustChangePassword     Boolean     @default(true)
-  hasLoggedIn            Boolean     @default(false)
-  canOnboardClients      Boolean     @default(false)
-  reviewedBy             String?
-  reviewedByAdmin        AdminUser? @relation(fields: [reviewedBy], references: [id])
-  reviewedAt             DateTime?
-  rejectionReason        String?
-  createdAt              DateTime    @default(now())
-  updatedAt              DateTime    @updatedAt
-  onboardedClients       ClientOnboarding[]
-  agentApplication       AgentApplication?
+  id                          String             @id @default(uuid())
+  email                       String             @unique
+  phone                       String
+  fullName                    String
+  address                     String
+  passwordHash                String?
+  status                      AgentStatus        @default(PENDING_REVIEW)
+  cvKey                       String
+  supportingDocumentKeys      String[]           @default([])
+  gender                      String?
+  city                        String?
+  state                       String?
+  localGovernment             String?
+  nin                         String?
+  ninVerified                 Boolean?
+  ninVerifiedName             String?
+  coverLetter                 String?
+  passportPhotoKey            String?
+  identityDocumentKey         String?
+  mustChangePassword          Boolean            @default(true)
+  hasLoggedIn                 Boolean            @default(false)
+  canOnboardClients           Boolean            @default(false)
+  reviewedBy                  String?
+  reviewedByAdmin             AdminUser?         @relation(fields: [reviewedBy], references: [id])
+  reviewedAt                  DateTime?
+  rejectionReason             String?
+  createdAt                   DateTime           @default(now())
+  updatedAt                   DateTime           @updatedAt
+  onboardedClients            ClientOnboarding[]
+  loanRequests                LoanRequest[]
+  agentApplication            AgentApplication?
   passwordResetTokenHash      String?
   passwordResetTokenExpiresAt DateTime?
   twoFactorMethod             TwoFactorMethod?
-  twoFactorEnabled            Boolean          @default(false)
+  twoFactorEnabled            Boolean            @default(false)
   twoFactorSecret             String?
   twoFactorPendingSecret      String?
   twoFactorPendingMethod      TwoFactorMethod?
@@ -186,19 +187,19 @@ enum ClientStatus {
 }
 
 model Client {
-  id        String       @id @default(uuid())
-  phone     String       @unique
-  email     String?      @unique
-  status    ClientStatus @default(PHONE_VERIFIED)
-  createdById String?
-  createdByAdmin AdminUser? @relation("ClientCreatedByAdmin", fields: [createdById], references: [id])
-  createdAt DateTime     @default(now())
-  updatedAt DateTime     @updatedAt
+  id             String       @id @default(uuid())
+  phone          String       @unique
+  email          String?      @unique
+  status         ClientStatus @default(PHONE_VERIFIED)
+  createdById    String?
+  createdByAdmin AdminUser?   @relation("ClientCreatedByAdmin", fields: [createdById], references: [id])
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
 
-  onboarding ClientOnboarding?
-  loanRequests LoanRequest[]
+  onboarding    ClientOnboarding?
+  loanRequests  LoanRequest[]
   walletEntries WalletEntry[]
-  clientLoans ClientLoan[]
+  clientLoans   ClientLoan[]
 }
 
 enum OtpPurpose {
@@ -422,39 +423,39 @@ model DataSnapshotExport {
 }
 
 model IppisRecord {
-  id              String    @id @default(uuid())
-  agency          String
-  staffId         String
-  employeeName    String
-  employeeStatus  String?
-  hireDate        DateTime?
-  dateOfBirth     DateTime?
-  maritalStatus   String?
-  gender          String?
-  jobTitle        String?
-  department      String?
-  subOrganization String?
-  grade           String?
-  step            String?
-  salary          Decimal?
+  id                    String    @id @default(uuid())
+  agency                String
+  staffId               String
+  employeeName          String
+  employeeStatus        String?
+  hireDate              DateTime?
+  dateOfBirth           DateTime?
+  maritalStatus         String?
+  gender                String?
+  jobTitle              String?
+  department            String?
+  subOrganization       String?
+  grade                 String?
+  step                  String?
+  salary                Decimal?
   paymentThreeMonthsAgo Decimal?
   paymentTwoMonthsAgo   Decimal?
   paymentLastMonth      Decimal?
-  phone           String?
-  bankName        String?
-  accountNumber   String?
-  pfaName         String?
-  pinNumber       String?
-  dateTerminated  DateTime?
-  bvn             String?
-  legacyId        String?
-  rawFields       Json?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-
-  @@unique([agency, staffId])
+  phone                 String?
+  bankName              String?
+  accountNumber         String?
+  pfaName               String?
+  pinNumber             String?
+  dateTerminated        DateTime?
+  bvn                   String?
+  legacyId              String?
+  rawFields             Json?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
 
   clientOnboarding ClientOnboarding?
+
+  @@unique([agency, staffId])
 }
 
 enum OnboardingStep {
@@ -474,17 +475,17 @@ enum ClientDocumentType {
 }
 
 model ClientOnboarding {
-  id                String         @id @default(uuid())
-  clientId          String         @unique
-  client            Client         @relation(fields: [clientId], references: [id])
-  ippisRecordId     String         @unique
-  ippisRecord       IppisRecord    @relation(fields: [ippisRecordId], references: [id])
-  employeeName      String
-  agency            String
-  bankName          String?
-  accountNumber     String?
-  employeeStatus    String?
-  legacyId          String?
+  id                  String           @id @default(uuid())
+  clientId            String           @unique
+  client              Client           @relation(fields: [clientId], references: [id])
+  ippisRecordId       String           @unique
+  ippisRecord         IppisRecord      @relation(fields: [ippisRecordId], references: [id])
+  employeeName        String
+  agency              String
+  bankName            String?
+  accountNumber       String?
+  employeeStatus      String?
+  legacyId            String?
   identityDateOfBirth DateTime?
   identityGender      String?
   identityPhoneNumber String?
@@ -496,28 +497,28 @@ model ClientOnboarding {
   city                String?
   zipCode             String?
   maritalStatus       String?
-  bvn               String?
-  nin               String?
-  bvnSelfie         String?
-  ninSelfie         String?
-  liveSelfieKey     String?
-  identityVerified  Boolean?
-  faceMatchBvnScore Float?
-  faceMatchNinScore Float?
-  faceMatchPassed   Boolean?
-  step              OnboardingStep @default(PHONE_VERIFIED)
-  failureReasons    Json?
-  reviewedBy String?
-  reviewedByAdmin AdminUser? @relation("ClientOnboardingReviewedBy", fields: [reviewedBy], references: [id])
-  onboardedById String?
-  onboardedByAdmin AdminUser? @relation("ClientOnboardingByAdmin", fields: [onboardedById], references: [id])
-  onboardedByAgentId String?
-  onboardedByAgent Agent? @relation(fields: [onboardedByAgentId], references: [id])
-  reviewedAt DateTime?
-  reviewNote String?
-  documents         ClientDocument[]
-  createdAt         DateTime       @default(now())
-  updatedAt         DateTime       @updatedAt
+  bvn                 String?
+  nin                 String?
+  bvnSelfie           String?
+  ninSelfie           String?
+  liveSelfieKey       String?
+  identityVerified    Boolean?
+  faceMatchBvnScore   Float?
+  faceMatchNinScore   Float?
+  faceMatchPassed     Boolean?
+  step                OnboardingStep   @default(PHONE_VERIFIED)
+  failureReasons      Json?
+  reviewedBy          String?
+  reviewedByAdmin     AdminUser?       @relation("ClientOnboardingReviewedBy", fields: [reviewedBy], references: [id])
+  onboardedById       String?
+  onboardedByAdmin    AdminUser?       @relation("ClientOnboardingByAdmin", fields: [onboardedById], references: [id])
+  onboardedByAgentId  String?
+  onboardedByAgent    Agent?           @relation(fields: [onboardedByAgentId], references: [id])
+  reviewedAt          DateTime?
+  reviewNote          String?
+  documents           ClientDocument[]
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
 }
 
 model ClientDocument {
@@ -532,8 +533,8 @@ model ClientDocument {
 }
 
 model Loan {
-  id                     String    @id @default(uuid())
-  customerId             String    @unique
+  id                     String              @id @default(uuid())
+  customerId             String              @unique
   customerName           String
   accountNumber          String
   address                String?
@@ -553,17 +554,17 @@ model Loan {
   bvn                    String?
   interestRatePercent    Decimal
   accountOfficer         String?
-  hasPreviouslyTakenLoan Boolean   @default(false)
+  hasPreviouslyTakenLoan Boolean             @default(false)
   rawFields              Json?
-  createdAt              DateTime  @default(now())
-  updatedAt              DateTime  @updatedAt
+  createdAt              DateTime            @default(now())
+  updatedAt              DateTime            @updatedAt
   repaymentVariances     RepaymentVariance[]
 
   @@index([ippisNumber])
 }
 
 model LoanRepaymentRecord {
-  id            String    @id @default(uuid())
+  id            String   @id @default(uuid())
   agency        String
   staffId       String
   period        String?
@@ -571,7 +572,7 @@ model LoanRepaymentRecord {
   elementDetail String?
   amount        Decimal
   rawFields     Json?
-  createdAt     DateTime  @default(now())
+  createdAt     DateTime @default(now())
 
   @@unique([agency, staffId, period, elementName])
 }
@@ -600,31 +601,33 @@ model ManagementFee {
 }
 
 model LoanProduct {
-  id                           String                       @id @default(uuid())
-  productName                  String
-  productCode                  String                       @unique
-  sectors                      String[]
-  minimumAmount                Decimal
-  maximumAmount                Decimal
-  minimumTenorMonths           Int
-  maximumTenorMonths           Int
-  interestTiers                Json
-  managementChargeType         ManagementChargeType
-  managementChargeValue        Decimal
-  managementChargeApplication  ManagementChargeApplication
-  managementFeeId              String?
-  managementFee                ManagementFee?               @relation(fields: [managementFeeId], references: [id], onDelete: Restrict)
-  minimumServiceMonthsLeft     Int?
-  maximumMonthsInService       Int?
-  isActive                     Boolean                      @default(true)
-  createdAt                    DateTime                     @default(now())
-  updatedAt                    DateTime                     @updatedAt
+  id                          String                      @id @default(uuid())
+  productName                 String
+  productCode                 String                      @unique
+  sectors                     String[]
+  minimumAmount               Decimal
+  maximumAmount               Decimal
+  minimumTenorMonths          Int
+  maximumTenorMonths          Int
+  interestTiers               Json
+  managementChargeType        ManagementChargeType
+  managementChargeValue       Decimal
+  managementChargeApplication ManagementChargeApplication
+  managementFeeId             String?
+  managementFee               ManagementFee?              @relation(fields: [managementFeeId], references: [id], onDelete: Restrict)
+  minimumServiceMonthsLeft    Int?
+  maximumMonthsInService      Int?
+  isActive                    Boolean                     @default(true)
+  createdAt                   DateTime                    @default(now())
+  updatedAt                   DateTime                    @updatedAt
 }
 
 model LoanSettings {
   id                 String   @id @default(uuid())
   retirementAgeYears Int      @default(60)
   maxServiceYears    Int      @default(35)
+  /// Admin number an agent-assisted client sends their loan code to. Stored as +234XXXXXXXXXX.
+  loanApprovalPhone  String?
   updatedAt          DateTime @updatedAt
 }
 
@@ -643,31 +646,36 @@ enum LoanRequestType {
 }
 
 model LoanRequest {
-  id                    String            @id @default(uuid())
-  clientId              String
-  client                Client            @relation(fields: [clientId], references: [id])
-  amount                Decimal
-  status                LoanRequestStatus @default(PENDING)
-  confirmationSmsSentAt DateTime?
-  confirmedAt           DateTime?
-  confirmationCodeHash      String?
-  confirmationCodeExpiresAt DateTime?
-  expiresAt             DateTime
-  createdAt             DateTime          @default(now())
-  updatedAt             DateTime          @updatedAt
-  tenorMonths                  Int
-  interestRatePercent          Decimal
-  managementChargeType         ManagementChargeType
-  managementChargeValue        Decimal
-  managementChargeApplication  ManagementChargeApplication
-  managementChargeAmount       Decimal
-  rejectionReason               String?
-  approvedAt                    DateTime?
-  disbursedAt                   DateTime?
-  type            LoanRequestType @default(ORIGINATION)
-  clientLoan      ClientLoan?     @relation("OriginatingRequest")
-  topupTargetId   String?
-  topupTarget     ClientLoan?     @relation("TopupRequests", fields: [topupTargetId], references: [id])
+  id                          String                      @id @default(uuid())
+  clientId                    String
+  client                      Client                      @relation(fields: [clientId], references: [id])
+  amount                      Decimal
+  status                      LoanRequestStatus           @default(PENDING)
+  confirmationSmsSentAt       DateTime?
+  confirmedAt                 DateTime?
+  confirmationCodeHash        String?
+  confirmationCodeExpiresAt   DateTime?
+  expiresAt                   DateTime
+  createdAt                   DateTime                    @default(now())
+  updatedAt                   DateTime                    @updatedAt
+  tenorMonths                 Int
+  interestRatePercent         Decimal
+  managementChargeType        ManagementChargeType
+  managementChargeValue       Decimal
+  managementChargeApplication ManagementChargeApplication
+  managementChargeAmount      Decimal
+  rejectionReason             String?
+  approvedAt                  DateTime?
+  disbursedAt                 DateTime?
+  type                        LoanRequestType             @default(ORIGINATION)
+  clientLoan                  ClientLoan?                 @relation("OriginatingRequest")
+  topupTargetId               String?
+  topupTarget                 ClientLoan?                 @relation("TopupRequests", fields: [topupTargetId], references: [id])
+  /// Set when an agent made the request for the client. The code then goes to an admin, not back to the app.
+  requestedByAgentId          String?
+  requestedByAgent            Agent?                      @relation(fields: [requestedByAgentId], references: [id], onDelete: SetNull)
+
+  @@index([requestedByAgentId])
 }
 
 enum ClientLoanStatus {
@@ -677,29 +685,29 @@ enum ClientLoanStatus {
 }
 
 model ClientLoan {
-  id                            String                       @id @default(uuid())
-  clientId                      String
-  client                        Client                       @relation(fields: [clientId], references: [id])
-  loanRequestId                 String                       @unique
-  loanRequest                   LoanRequest                  @relation("OriginatingRequest", fields: [loanRequestId], references: [id])
-  topupRequests                 LoanRequest[]                @relation("TopupRequests")
-  agency                        String
-  staffId                       String
-  principalAmount                Decimal
-  disbursedAmount                Decimal
-  principalBalance                Decimal
-  tenorMonths                     Int
-  interestRatePercent             Decimal
-  managementChargeType            ManagementChargeType
-  managementChargeValue           Decimal
-  managementChargeApplication     ManagementChargeApplication
-  managementChargeAmount          Decimal
-  disbursementDate                 DateTime
-  maturationDate                    DateTime
-  status                            ClientLoanStatus            @default(ACTIVE)
-  createdAt                         DateTime                    @default(now())
-  updatedAt                         DateTime                    @updatedAt
-  repaymentVariances ClientLoanRepaymentVariance[]
+  id                          String                        @id @default(uuid())
+  clientId                    String
+  client                      Client                        @relation(fields: [clientId], references: [id])
+  loanRequestId               String                        @unique
+  loanRequest                 LoanRequest                   @relation("OriginatingRequest", fields: [loanRequestId], references: [id])
+  topupRequests               LoanRequest[]                 @relation("TopupRequests")
+  agency                      String
+  staffId                     String
+  principalAmount             Decimal
+  disbursedAmount             Decimal
+  principalBalance            Decimal
+  tenorMonths                 Int
+  interestRatePercent         Decimal
+  managementChargeType        ManagementChargeType
+  managementChargeValue       Decimal
+  managementChargeApplication ManagementChargeApplication
+  managementChargeAmount      Decimal
+  disbursementDate            DateTime
+  maturationDate              DateTime
+  status                      ClientLoanStatus              @default(ACTIVE)
+  createdAt                   DateTime                      @default(now())
+  updatedAt                   DateTime                      @updatedAt
+  repaymentVariances          ClientLoanRepaymentVariance[]
 }
 
 enum VarianceStatus {

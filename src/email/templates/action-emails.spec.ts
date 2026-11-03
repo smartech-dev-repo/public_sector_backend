@@ -1,5 +1,5 @@
 // src/email/templates/action-emails.spec.ts
-import { agentApplicationRejectedEmail, agentCredentialsEmail, loanRequestConfirmationEmail } from './action-emails';
+import { agentApplicationRejectedEmail, agentCredentialsEmail } from './action-emails';
 
 describe('agentApplicationRejectedEmail', () => {
   it('includes the fullName and reason', () => {
@@ -37,32 +37,15 @@ describe('agentCredentialsEmail', () => {
   });
 });
 
-describe('loanRequestConfirmationEmail', () => {
-  it('includes the amount for an origination request', () => {
-    const result = loanRequestConfirmationEmail({ amount: 5000, type: 'ORIGINATION' });
-    expect(result.subject).toBe('Confirm your loan request');
-    expect(result.text).toContain('5000');
-    expect(result.text).not.toContain('top-up');
-  });
-
-  it('includes "top-up" for a topup request', () => {
-    const result = loanRequestConfirmationEmail({ amount: 5000, type: 'TOPUP' });
-    expect(result.text).toContain('top-up');
-    expect(result.text).toContain('5000');
-  });
-});
-
 describe('every action-email template', () => {
   it('opens with a greeting and closes with a sign-off', () => {
     const rejected = agentApplicationRejectedEmail({ fullName: 'Jane Doe', reason: 'Incomplete CV' });
     const credentials = agentCredentialsEmail({ fullName: 'Jane Doe', email: 'jane@example.com', temporaryPassword: 'temp123' });
-    const loanConfirmation = loanRequestConfirmationEmail({ amount: 5000, type: 'ORIGINATION' });
-    for (const result of [rejected, credentials, loanConfirmation]) {
+    for (const result of [rejected, credentials]) {
       expect(result.text).toContain('Warm regards,\nThe Moneyfield Team');
       expect(result.html).toContain('Warm regards');
     }
     expect(rejected.text).toContain('Hi Jane Doe,');
     expect(credentials.text).toContain('Hi Jane Doe,');
-    expect(loanConfirmation.text).toContain('Hello,');
   });
 });

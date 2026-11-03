@@ -38,7 +38,7 @@ describe('AgentLoanRequestController', () => {
       expect(loanRequestService.create).not.toHaveBeenCalled();
     });
 
-    it('delegates to LoanRequestService.create with the clientId, not the agent id', async () => {
+    it('delegates to LoanRequestService.create for the client, recording the agent as requester', async () => {
       prisma.client.findFirst.mockResolvedValue({ id: 'client-1' });
       loanRequestService.create.mockResolvedValue({ id: 'lr1' });
 
@@ -48,7 +48,7 @@ describe('AgentLoanRequestController', () => {
         where: { id: 'client-1', onboarding: { onboardedByAgentId: 'agent-1' } },
         select: { id: true },
       });
-      expect(loanRequestService.create).toHaveBeenCalledWith('client-1', 5000, 6);
+      expect(loanRequestService.create).toHaveBeenCalledWith('client-1', 5000, 6, 'agent-1');
     });
   });
 
@@ -67,7 +67,7 @@ describe('AgentLoanRequestController', () => {
 
       await controller.createTopup('client-1', { amount: 5000, tenorMonths: 6 }, agentReq);
 
-      expect(loanRequestService.createTopup).toHaveBeenCalledWith('client-1', 5000, 6);
+      expect(loanRequestService.createTopup).toHaveBeenCalledWith('client-1', 5000, 6, 'agent-1');
     });
   });
 

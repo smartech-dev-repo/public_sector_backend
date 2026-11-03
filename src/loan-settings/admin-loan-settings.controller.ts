@@ -34,7 +34,7 @@ export class AdminLoanSettingsController {
       actorType: AuditActorType.ADMIN,
       actorId: req.user.sub,
       action: 'loan-settings.updated',
-      metadata: { changes: auditChanges(before, settings, ['retirementAgeYears', 'maxServiceYears']) } as Prisma.InputJsonObject,
+      metadata: { changes: auditChanges(before, settings, ['retirementAgeYears', 'maxServiceYears', 'loanApprovalPhone']) } as Prisma.InputJsonObject,
     });
     return settings;
   }

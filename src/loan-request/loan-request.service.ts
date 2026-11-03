@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   Logger,
   NotFoundException,
@@ -22,8 +23,8 @@ import { generatePeriodRange, toPeriodKey } from '../reconciliation/period.util'
 import { computeExpectedInstallment } from '../reconciliation/amortization.util';
 import { WalletService } from '../wallet/wallet.service';
 import { EmailService } from '../email/email.service';
-import { loanRequestConfirmationEmail } from '../email/templates/action-emails';
-import { loanConfirmationCodeEmail } from '../email/templates/verification-code-emails';
+import { LoanSettingsService } from '../loan-settings/loan-settings.service';
+import { loanConfirmationEmail, loanConfirmationSms } from './loan-confirmation-messages';
 import { hashToken } from '../common/opaque-token.util';
 import { generateNumericCode } from '../common/generate-numeric-code.util';
 import { devCodeEcho } from '../common/dev-code-echo.util';
@@ -46,6 +47,21 @@ import {
 const EXPIRY_MS = 24 * 60 * 60 * 1000;
 const LOAN_CONFIRMATION_CODE_TTL_MS = 10 * 60 * 1000;
 
+export const LOAN_APPROVAL_PHONE_MISSING =
+  'Agents cannot request loans until an admin sets the loan approval phone number under Configuration → Loan Settings';
+export const AGENT_REQUEST_NEEDS_ADMIN =
+  'This loan was requested by an agent. The client must send the code to the loan approval phone number, and an admin confirms it';
+
+interface ConfirmationTarget {
+  client: { phone: string; email: string | null };
+  ippisRecord?: { phone: string | null } | null;
+  amount: number;
+  topup: boolean;
+  /** Set for an agent-made request: the client is told to send the code here. */
+  approvalPhone: string | null;
+  codeExpiresAt: Date;
+}
+
 export interface LoanRequestExpiryJobData {
   loanRequestId: string;
 }
@@ -64,43 +80,54 @@ export class LoanRequestService {
     private readonly loanProductResolverService: LoanProductResolverService,
     private readonly configService?: ConfigService,
     private readonly emailService?: EmailService,
+    private readonly loanSettingsService?: LoanSettingsService,
   ) {}
-
-  private confirmationMessage(amount: number, type: LoanRequestType = LoanRequestType.ORIGINATION): string {
-    return type === LoanRequestType.TOPUP
-      ? `Reply YES to confirm your loan top-up of ₦${amount}`
-      : `Reply YES to confirm your loan request of ₦${amount}`;
-  }
 
   private resolveSmsPhone(client: { phone: string }, ippisRecord?: { phone: string | null } | null): string {
     return client.phone || ippisRecord?.phone || client.phone;
   }
 
-  private async sendEmailCopy(email: string | null, amount: number, type: LoanRequestType): Promise<void> {
-    if (!email) return;
-    try {
-      await this.emailService?.send({ to: email, ...loanRequestConfirmationEmail({ amount, type }) });
-    } catch (error) {
-      const err = error instanceof Error ? error.message : String(error);
-      this.logger.warn(`Loan-request confirmation email to ${email} failed: ${err}`);
+  /** The admin approval phone, required before an agent can request a loan. */
+  private async requireApprovalPhone(): Promise<string> {
+    const settings = await this.loanSettingsService?.get();
+    if (!settings?.loanApprovalPhone) {
+      throw new ConflictException(LOAN_APPROVAL_PHONE_MISSING);
     }
+    return settings.loanApprovalPhone;
   }
 
-  private async issueConfirmationCode(email: string | null): Promise<{
+  /**
+   * Issues a fresh code and sends it by SMS (and email when the client has one).
+   * A client-made request gets a short-lived code for the app; an agent-made one
+   * tells the client to send the code to the admin approval phone, so it lasts
+   * as long as the request does.
+   */
+  private async sendConfirmationCode(target: ConfirmationTarget): Promise<{
     confirmationCodeHash: string;
     confirmationCodeExpiresAt: Date;
     devCode?: string;
   }> {
     const length = Number(this.configService?.get('EMAIL_CODE_LENGTH') ?? 6);
     const code = generateNumericCode(length);
-    const confirmationCodeExpiresAt = new Date(Date.now() + LOAN_CONFIRMATION_CODE_TTL_MS);
+    const ttlMinutes = Math.max(1, Math.ceil((target.codeExpiresAt.getTime() - Date.now()) / 60000));
+    const params = {
+      code,
+      amount: target.amount,
+      topup: target.topup,
+      approvalPhone: target.approvalPhone,
+      ttlMinutes,
+    };
 
+    await this.smsService.send({
+      type: SmsType.LOAN_CONFIRMATION,
+      phone: this.resolveSmsPhone(target.client, target.ippisRecord),
+      message: loanConfirmationSms(params),
+    });
+
+    const email = target.client.email;
     if (email) {
       try {
-        await this.emailService?.send({
-          to: email,
-          ...loanConfirmationCodeEmail({ code, ttlMinutes: LOAN_CONFIRMATION_CODE_TTL_MS / 60000 }),
-        });
+        await this.emailService?.send({ to: email, ...loanConfirmationEmail(params) });
       } catch (error) {
         const err = error instanceof Error ? error.message : String(error);
         this.logger.warn(`Loan-request confirmation code email to ${email} failed: ${err}`);
@@ -109,9 +136,13 @@ export class LoanRequestService {
 
     return {
       confirmationCodeHash: hashToken(code),
-      confirmationCodeExpiresAt,
+      confirmationCodeExpiresAt: target.codeExpiresAt,
       devCode: devCodeEcho(this.configService, code),
     };
+  }
+
+  private codeExpiry(agentRequested: boolean, requestExpiresAt: Date): Date {
+    return agentRequested ? requestExpiresAt : new Date(Date.now() + LOAN_CONFIRMATION_CODE_TTL_MS);
   }
 
   private async createClientLoanFromRequest(loanRequestId: string, disbursementDate: Date = new Date()): Promise<void> {
@@ -265,7 +296,8 @@ export class LoanRequestService {
     return { appliedAmount, remainingBalance, status: newStatus };
   }
 
-  async create(clientId: string, amount: number, tenorMonths: number) {
+  /** `requestedByAgentId` is set when an agent makes the request for the client. */
+  async create(clientId: string, amount: number, tenorMonths: number, requestedByAgentId?: string) {
     const client = await this.prisma.client.findUniqueOrThrow({ where: { id: clientId } });
     const onboarding = await this.prisma.clientOnboarding.findUnique({
       where: { clientId },
@@ -274,6 +306,7 @@ export class LoanRequestService {
     if (!onboarding) {
       throw new ConflictException('Client has not completed onboarding');
     }
+    const approvalPhone = requestedByAgentId ? await this.requireApprovalPhone() : null;
 
     const eligibility = await this.eligibilityService.check(client, onboarding.ippisRecord, amount);
     if (!eligibility.eligible) {
@@ -287,17 +320,20 @@ export class LoanRequestService {
         ? (amount * Number(product.managementChargeValue)) / 100
         : Number(product.managementChargeValue);
 
-    await this.smsService.send({
-      type: SmsType.LOAN_CONFIRMATION,
-      phone: this.resolveSmsPhone(client, onboarding.ippisRecord),
-      message: this.confirmationMessage(amount),
+    const expiresAt = new Date(Date.now() + EXPIRY_MS);
+    const { confirmationCodeHash, confirmationCodeExpiresAt, devCode } = await this.sendConfirmationCode({
+      client,
+      ippisRecord: onboarding.ippisRecord,
+      amount,
+      topup: false,
+      approvalPhone,
+      codeExpiresAt: this.codeExpiry(!!requestedByAgentId, expiresAt),
     });
-    await this.sendEmailCopy(client.email, amount, LoanRequestType.ORIGINATION);
-    const { confirmationCodeHash, confirmationCodeExpiresAt, devCode } = await this.issueConfirmationCode(client.email);
 
     const loanRequest = await this.prisma.loanRequest.create({
       data: {
         clientId,
+        requestedByAgentId: requestedByAgentId ?? null,
         amount,
         tenorMonths,
         interestRatePercent: tier.interestRatePercent,
@@ -305,7 +341,7 @@ export class LoanRequestService {
         managementChargeValue: product.managementChargeValue,
         managementChargeApplication: product.managementChargeApplication,
         managementChargeAmount,
-        expiresAt: new Date(Date.now() + EXPIRY_MS),
+        expiresAt,
         confirmationSmsSentAt: new Date(),
         confirmationCodeHash,
         confirmationCodeExpiresAt,
@@ -318,7 +354,7 @@ export class LoanRequestService {
     return { ...loanRequest, devCode };
   }
 
-  async createTopup(clientId: string, amount: number, tenorMonths: number) {
+  async createTopup(clientId: string, amount: number, tenorMonths: number, requestedByAgentId?: string) {
     const client = await this.prisma.client.findUniqueOrThrow({ where: { id: clientId } });
     const onboarding = await this.prisma.clientOnboarding.findUnique({
       where: { clientId },
@@ -327,6 +363,7 @@ export class LoanRequestService {
     if (!onboarding) {
       throw new ConflictException('Client has not completed onboarding');
     }
+    const approvalPhone = requestedByAgentId ? await this.requireApprovalPhone() : null;
 
     const eligibility = await this.topupEligibilityService.check(client, onboarding.ippisRecord, amount);
     if (!eligibility.eligible) {
@@ -345,17 +382,20 @@ export class LoanRequestService {
         ? (amount * Number(product.managementChargeValue)) / 100
         : Number(product.managementChargeValue);
 
-    await this.smsService.send({
-      type: SmsType.LOAN_CONFIRMATION,
-      phone: this.resolveSmsPhone(client, onboarding.ippisRecord),
-      message: this.confirmationMessage(amount, LoanRequestType.TOPUP),
+    const expiresAt = new Date(Date.now() + EXPIRY_MS);
+    const { confirmationCodeHash, confirmationCodeExpiresAt, devCode } = await this.sendConfirmationCode({
+      client,
+      ippisRecord: onboarding.ippisRecord,
+      amount,
+      topup: true,
+      approvalPhone,
+      codeExpiresAt: this.codeExpiry(!!requestedByAgentId, expiresAt),
     });
-    await this.sendEmailCopy(client.email, amount, LoanRequestType.TOPUP);
-    const { confirmationCodeHash, confirmationCodeExpiresAt, devCode } = await this.issueConfirmationCode(client.email);
 
     const loanRequest = await this.prisma.loanRequest.create({
       data: {
         clientId,
+        requestedByAgentId: requestedByAgentId ?? null,
         amount,
         tenorMonths,
         type: LoanRequestType.TOPUP,
@@ -365,7 +405,7 @@ export class LoanRequestService {
         managementChargeValue: product.managementChargeValue,
         managementChargeApplication: product.managementChargeApplication,
         managementChargeAmount,
-        expiresAt: new Date(Date.now() + EXPIRY_MS),
+        expiresAt,
         confirmationSmsSentAt: new Date(),
         confirmationCodeHash,
         confirmationCodeExpiresAt,
@@ -391,13 +431,16 @@ export class LoanRequestService {
       where: { id: clientId },
       include: { onboarding: { include: { ippisRecord: true } } },
     });
-    await this.smsService.send({
-      type: SmsType.LOAN_CONFIRMATION,
-      phone: this.resolveSmsPhone(client, client.onboarding?.ippisRecord),
-      message: this.confirmationMessage(Number(loanRequest.amount)),
+    // Worded for whoever made the request, not whoever asks for the resend.
+    const agentRequested = !!loanRequest.requestedByAgentId;
+    const { confirmationCodeHash, confirmationCodeExpiresAt, devCode } = await this.sendConfirmationCode({
+      client,
+      ippisRecord: client.onboarding?.ippisRecord,
+      amount: Number(loanRequest.amount),
+      topup: loanRequest.type === LoanRequestType.TOPUP,
+      approvalPhone: agentRequested ? await this.requireApprovalPhone() : null,
+      codeExpiresAt: this.codeExpiry(agentRequested, loanRequest.expiresAt),
     });
-    await this.sendEmailCopy(client.email, Number(loanRequest.amount), LoanRequestType.ORIGINATION);
-    const { confirmationCodeHash, confirmationCodeExpiresAt, devCode } = await this.issueConfirmationCode(client.email);
 
     const updated = await this.prisma.loanRequest.update({
       where: { id },
@@ -419,8 +462,9 @@ export class LoanRequestService {
       return;
     }
 
+    // Agent-made requests need an admin to enter the code, so a reply can't confirm them.
     const pending = await this.prisma.loanRequest.findFirst({
-      where: { clientId: client.id, status: LoanRequestStatus.PENDING },
+      where: { clientId: client.id, status: LoanRequestStatus.PENDING, requestedByAgentId: null },
       orderBy: { createdAt: 'desc' },
     });
     if (!pending) {
@@ -430,10 +474,14 @@ export class LoanRequestService {
     await this.confirmPending(pending);
   }
 
+  /** Client or agent entering the code. Agent-made requests are confirmed by an admin instead. */
   async confirmByCode(clientId: string, id: string, code: string): Promise<void> {
     const loanRequest = await this.prisma.loanRequest.findUnique({ where: { id } });
     if (!loanRequest || loanRequest.clientId !== clientId) {
       throw new NotFoundException('Loan request not found');
+    }
+    if (loanRequest.requestedByAgentId) {
+      throw new ForbiddenException(AGENT_REQUEST_NEEDS_ADMIN);
     }
     await this.verifyCodeAndConfirm(loanRequest, code);
   }
@@ -542,6 +590,7 @@ export class LoanRequestService {
       },
     },
     topupTarget: { select: { id: true, status: true, agency: true } },
+    requestedByAgent: { select: { id: true, fullName: true, phone: true } },
   } as const;
 
   async approve(id: string, disbursedAt?: Date) {

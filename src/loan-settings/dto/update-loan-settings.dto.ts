@@ -1,4 +1,5 @@
 import { IsInt, IsOptional, IsPositive } from 'class-validator';
+import { IsNigerianPhone } from '../../common/is-nigerian-phone.decorator';
 
 export class UpdateLoanSettingsDto {
   @IsOptional()
@@ -10,4 +11,9 @@ export class UpdateLoanSettingsDto {
   @IsInt()
   @IsPositive()
   maxServiceYears?: number;
+
+  /** Admin number clients send their code to when an agent requested the loan. Stored as +234…. */
+  @IsOptional()
+  @IsNigerianPhone()
+  loanApprovalPhone?: string;
 }

@@ -33,16 +33,3 @@ export function agentCredentialsEmail(params: { fullName: string; email: string;
     text: wrapEmailLayoutText({ headline: 'Your account is ready', bodyText }),
   };
 }
-
-export function loanRequestConfirmationEmail(params: { amount: number; type: 'ORIGINATION' | 'TOPUP' }): { subject: string; html: string; text: string } {
-  // src/loan-request/loan-request.service.spec.ts asserts `text` contains
-  // the amount (e.g. "5000") and, for topups, the substring "top-up".
-  const kind = params.type === 'TOPUP' ? 'loan top-up' : 'loan';
-  const bodyText = `Hello,\n\nWe've received your ${kind} request for ₦${params.amount}. To confirm it, reply YES to the SMS we sent to your registered phone number. This email is a copy of that message for your records.\n\n${CLOSING_TEXT}`;
-  const bodyHtml = `<p>Hello,</p><p>We've received your ${kind} request for ₦${params.amount}. To confirm it, reply YES to the SMS we sent to your registered phone number. This email is a copy of that message for your records.</p>${CLOSING_HTML}`;
-  return {
-    subject: 'Confirm your loan request',
-    html: wrapEmailLayout({ headline: 'Confirm your loan request', bodyHtml }),
-    text: wrapEmailLayoutText({ headline: 'Confirm your loan request', bodyText }),
-  };
-}

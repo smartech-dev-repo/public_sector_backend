@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, NotFoundException, UnauthorizedException, UnprocessableEntityException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, NotFoundException, UnauthorizedException, UnprocessableEntityException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Queue } from 'bullmq';
 import { LoanRequestService } from './loan-request.service';
@@ -10,6 +10,7 @@ import { SmsType } from '../sms/sms-type';
 import { LoanProductResolverService } from './eligibility/loan-product-resolver.service';
 import { WalletService } from '../wallet/wallet.service';
 import { EmailService } from '../email/email.service';
+import { LoanSettingsService } from '../loan-settings/loan-settings.service';
 import { LoanRequestType } from '../generated/prisma/client';
 import { hashToken } from '../common/opaque-token.util';
 
@@ -127,7 +128,7 @@ describe('LoanRequestService', () => {
       expect(smsService.send).toHaveBeenCalledWith({
         type: SmsType.LOAN_CONFIRMATION,
         phone: '+2348000000000',
-        message: expect.stringContaining('5000'),
+        message: expect.stringContaining('NGN 5,000'),
       });
       expect(prisma.loanRequest.create).toHaveBeenCalledWith({
         data: expect.objectContaining({
@@ -169,7 +170,7 @@ describe('LoanRequestService', () => {
       await service.create('c1', 5000, 6);
 
       expect(emailService.send).toHaveBeenCalledWith(
-        expect.objectContaining({ to: 'client@example.com', text: expect.stringContaining('5000') }),
+        expect.objectContaining({ to: 'client@example.com', text: expect.stringContaining('NGN 5,000') }),
       );
     });
 
@@ -342,8 +343,110 @@ describe('LoanRequestService', () => {
       expect(smsService.send).toHaveBeenCalledWith({
         type: SmsType.LOAN_CONFIRMATION,
         phone: '+2348099999999',
-        message: expect.stringContaining('5000'),
+        message: expect.stringContaining('NGN 5,000'),
       });
+    });
+  });
+
+  describe('agent-made requests', () => {
+    const product = {
+      product: { managementChargeType: 'PERCENTAGE', managementChargeValue: 2, managementChargeApplication: 'DEDUCT_FROM_DISBURSEMENT' },
+      tier: { minTenorMonths: 1, maxTenorMonths: 12, interestRatePercent: 5 },
+    };
+    let loanSettingsService: { get: jest.Mock };
+
+    const build = () =>
+      new LoanRequestService(
+        prisma as unknown as PrismaService,
+        eligibilityService as unknown as EligibilityService,
+        smsService as unknown as SmsService,
+        expiryQueue as unknown as Queue,
+        topupEligibilityService as unknown as TopupEligibilityService,
+        walletService as unknown as WalletService,
+        loanProductResolverService as unknown as LoanProductResolverService,
+        undefined,
+        emailService as unknown as EmailService,
+        loanSettingsService as unknown as LoanSettingsService,
+      );
+
+    beforeEach(() => {
+      loanSettingsService = { get: jest.fn().mockResolvedValue({ loanApprovalPhone: '+2348031234567' }) };
+      prisma.client.findUniqueOrThrow.mockResolvedValue({ id: 'c1', phone: '+2348000000000', email: 'client@example.com', status: 'VERIFIED' });
+      prisma.clientOnboarding.findUnique.mockResolvedValue({ ippisRecord: { salary: 1000000, agency: 'NPF' } });
+      eligibilityService.check.mockResolvedValue({ eligible: true });
+      topupEligibilityService.check.mockResolvedValue({ eligible: true });
+      prisma.clientLoan.findFirst.mockResolvedValue({ id: 'cl1' });
+      loanProductResolverService.resolve.mockResolvedValue(product);
+      prisma.loanRequest.create.mockResolvedValue({ id: 'lr1' });
+    });
+
+    it('texts the client the code and the admin number to send it to, and records the agent', async () => {
+      await build().create('c1', 500000, 6, 'agent-1');
+
+      const { message, phone } = smsService.send.mock.calls[0][0];
+      expect(phone).toBe('+2348000000000');
+      expect(message).toMatch(/^Moneyfield: Your agent requested a NGN 500,000 loan for you\. To approve it, send code \d{6} to 08031234567\./);
+      expect(message.length).toBeLessThanOrEqual(160);
+      const data = prisma.loanRequest.create.mock.calls[0][0].data;
+      expect(data.requestedByAgentId).toBe('agent-1');
+      // The code lasts as long as the request, since an admin has to enter it.
+      expect(data.confirmationCodeExpiresAt).toEqual(data.expiresAt);
+    });
+
+    it('emails the same instruction with the code', async () => {
+      await build().create('c1', 500000, 6, 'agent-1');
+      const mail = emailService.send.mock.calls[0][0];
+      expect(mail.to).toBe('client@example.com');
+      expect(mail.text).toMatch(/Your verification code is: \d{6}/);
+      expect(mail.text).toContain('send this code by SMS to 08031234567');
+      expect(mail.text).toContain('expires in 24 hours');
+    });
+
+    it('words a top-up as a top-up', async () => {
+      await build().createTopup('c1', 50000, 6, 'agent-1');
+      expect(smsService.send.mock.calls[0][0].message).toContain('NGN 50,000 loan top-up for you');
+    });
+
+    it('refuses before sending anything when no approval phone is set', async () => {
+      loanSettingsService.get.mockResolvedValue({ loanApprovalPhone: null });
+      await expect(build().create('c1', 500000, 6, 'agent-1')).rejects.toThrow(ConflictException);
+      expect(smsService.send).not.toHaveBeenCalled();
+      expect(prisma.loanRequest.create).not.toHaveBeenCalled();
+    });
+
+    it('texts a client-made request a code for the app, with no admin number', async () => {
+      await build().create('c1', 500000, 6);
+      const { message } = smsService.send.mock.calls[0][0];
+      expect(message).toMatch(/^Moneyfield: Your code to confirm your NGN 500,000 loan request is \d{6}\. It expires in 10 minutes\./);
+      expect(message).not.toContain('08031234567');
+      expect(loanSettingsService.get).not.toHaveBeenCalled();
+      expect(prisma.loanRequest.create.mock.calls[0][0].data.requestedByAgentId).toBeNull();
+    });
+
+    it('resends an agent-made request with the admin wording, even when the client asks', async () => {
+      const expiresAt = new Date(Date.now() + 5 * 60 * 60 * 1000);
+      prisma.loanRequest.findUnique.mockResolvedValue({
+        id: 'lr1', clientId: 'c1', status: 'PENDING', amount: 500000, type: 'TOPUP', requestedByAgentId: 'agent-1', expiresAt,
+      });
+      prisma.loanRequest.update.mockResolvedValue({ id: 'lr1' });
+      await build().resend('c1', 'lr1');
+      expect(smsService.send.mock.calls[0][0].message).toContain('loan top-up for you. To approve it, send code');
+      expect(prisma.loanRequest.update.mock.calls[0][0].data.confirmationCodeExpiresAt).toEqual(expiresAt);
+    });
+
+    it('does not let the client or agent confirm an agent-made request with the code', async () => {
+      prisma.loanRequest.findUnique.mockResolvedValue({ id: 'lr1', clientId: 'c1', status: 'PENDING', requestedByAgentId: 'agent-1' });
+      await expect(build().confirmByCode('c1', 'lr1', '123456')).rejects.toThrow(ForbiddenException);
+      expect(prisma.loanRequest.update).not.toHaveBeenCalled();
+    });
+
+    it('does not let a YES reply confirm an agent-made request', async () => {
+      prisma.client.findUnique.mockResolvedValue({ id: 'c1' });
+      prisma.loanRequest.findFirst.mockResolvedValue(null);
+      await build().confirmByPhone('+2348000000000', 'YES');
+      expect(prisma.loanRequest.findFirst).toHaveBeenCalledWith(
+        expect.objectContaining({ where: expect.objectContaining({ requestedByAgentId: null }) }),
+      );
     });
   });
 
@@ -368,7 +471,7 @@ describe('LoanRequestService', () => {
       expect(smsService.send).toHaveBeenCalledWith({
         type: SmsType.LOAN_CONFIRMATION,
         phone: '+2348000000000',
-        message: expect.stringContaining('5000'),
+        message: expect.stringContaining('NGN 5,000'),
       });
       expect(prisma.loanRequest.update).toHaveBeenCalledWith({
         where: { id: 'lr1' },
@@ -389,7 +492,7 @@ describe('LoanRequestService', () => {
       await service.resend('c1', 'lr1');
 
       expect(emailService.send).toHaveBeenCalledWith(
-        expect.objectContaining({ to: 'client@example.com', text: expect.stringContaining('5000') }),
+        expect.objectContaining({ to: 'client@example.com', text: expect.stringContaining('NGN 5,000') }),
       );
     });
 
@@ -407,7 +510,7 @@ describe('LoanRequestService', () => {
       expect(smsService.send).toHaveBeenCalledWith({
         type: SmsType.LOAN_CONFIRMATION,
         phone: '+2348099999999',
-        message: expect.stringContaining('5000'),
+        message: expect.stringContaining('NGN 5,000'),
       });
     });
   });
@@ -743,6 +846,7 @@ describe('LoanRequestService', () => {
             },
           },
           topupTarget: { select: { id: true, status: true, agency: true } },
+          requestedByAgent: { select: { id: true, fullName: true, phone: true } },
         },
         omit: { confirmationCodeHash: true, confirmationCodeExpiresAt: true },
       });
@@ -838,6 +942,7 @@ describe('LoanRequestService', () => {
             },
           },
           topupTarget: { select: { id: true, status: true, agency: true } },
+          requestedByAgent: { select: { id: true, fullName: true, phone: true } },
         },
         omit: { confirmationCodeHash: true, confirmationCodeExpiresAt: true },
       });
@@ -911,6 +1016,7 @@ describe('LoanRequestService', () => {
             },
           },
           topupTarget: { select: { id: true, status: true, agency: true } },
+          requestedByAgent: { select: { id: true, fullName: true, phone: true } },
         },
         omit: { confirmationCodeHash: true, confirmationCodeExpiresAt: true },
       });
@@ -968,6 +1074,7 @@ describe('LoanRequestService', () => {
               },
             },
             topupTarget: { select: { id: true, status: true, agency: true } },
+            requestedByAgent: { select: { id: true, fullName: true, phone: true } },
           },
           omit: { confirmationCodeHash: true, confirmationCodeExpiresAt: true },
         }),

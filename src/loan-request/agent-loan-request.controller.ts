@@ -33,14 +33,14 @@ export class AgentLoanRequestController {
   @AuditEvent({ action: 'loan-request.created', targetType: 'LoanRequest', targetId: { result: 'id' }, result: ['amount', 'tenorMonths', 'status', 'type'] })
   async create(@Param('clientId') clientId: string, @Body() dto: CreateLoanRequestDto, @Req() req: { user: JwtPayload }) {
     await this.assertOwnsClient(clientId, req.user.sub);
-    return this.loanRequestService.create(clientId, dto.amount, dto.tenorMonths);
+    return this.loanRequestService.create(clientId, dto.amount, dto.tenorMonths, req.user.sub);
   }
 
   @Post('topup')
   @AuditEvent({ action: 'loan-request.topup_created', targetType: 'LoanRequest', targetId: { result: 'id' }, result: ['amount', 'tenorMonths', 'status', 'type'] })
   async createTopup(@Param('clientId') clientId: string, @Body() dto: CreateLoanRequestDto, @Req() req: { user: JwtPayload }) {
     await this.assertOwnsClient(clientId, req.user.sub);
-    return this.loanRequestService.createTopup(clientId, dto.amount, dto.tenorMonths);
+    return this.loanRequestService.createTopup(clientId, dto.amount, dto.tenorMonths, req.user.sub);
   }
 
   @Post(':id/resend')
