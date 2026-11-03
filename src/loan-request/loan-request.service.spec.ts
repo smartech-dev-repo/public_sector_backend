@@ -705,6 +705,33 @@ describe('LoanRequestService', () => {
     });
   });
 
+  describe('mock loan code for admins', () => {
+    const build = (env: Record<string, string>) =>
+      new LoanRequestService(
+        prisma as unknown as PrismaService,
+        eligibilityService as unknown as EligibilityService,
+        smsService as unknown as SmsService,
+        expiryQueue as unknown as Queue,
+        topupEligibilityService as unknown as TopupEligibilityService,
+        walletService as unknown as WalletService,
+        loanProductResolverService as unknown as LoanProductResolverService,
+        { get: (key: string) => env[key] } as unknown as ConfigService,
+        emailService as unknown as EmailService,
+      );
+    const pending = { id: 'lr1', status: 'PENDING', confirmationCodeHash: hashToken('482913'), confirmationCodeExpiresAt: new Date(Date.now() + 60000), expiresAt: new Date(Date.now() + 3600000) };
+
+    it('accepts MOCK_LOAN_CODE from an admin only when enabled', async () => {
+      prisma.loanRequest.findUnique.mockResolvedValue(pending);
+      await expect(build({ ENABLE_MOCK_LOAN_CODE: 'true', MOCK_LOAN_CODE: '123456' }).checkConfirmationCode('lr1', '123456')).resolves.toBe(pending);
+      await expect(build({ ENABLE_MOCK_LOAN_CODE: 'false', MOCK_LOAN_CODE: '123456' }).checkConfirmationCode('lr1', '123456')).rejects.toThrow(UnauthorizedException);
+    });
+
+    it('never accepts it from the client or agent path', async () => {
+      prisma.loanRequest.findUnique.mockResolvedValue({ ...pending, clientId: 'c1', requestedByAgentId: null });
+      await expect(build({ ENABLE_MOCK_LOAN_CODE: 'true', MOCK_LOAN_CODE: '123456' }).confirmByCode('c1', 'lr1', '123456')).rejects.toThrow(UnauthorizedException);
+    });
+  });
+
   describe('adminConfirmByCode', () => {
     it('throws NotFoundException when the loan request does not exist', async () => {
       prisma.loanRequest.findUnique.mockResolvedValue(null);

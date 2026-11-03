@@ -1,4 +1,7 @@
 import { ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { JwtPayload } from '../auth/jwt-payload.interface';
+import { assertClientInScope } from '../common/client-scope.util';
+import { agentSearchWhere, clientSearchWhere } from '../common/client-search.util';
 import { PrismaService } from '../prisma/prisma.service';
 import { ClientStatus, OnboardingStep, Prisma } from '../generated/prisma/client';
 import { ClientOnboardingService } from '../client-onboarding/client-onboarding.service';
@@ -21,6 +24,10 @@ export interface ListClientsFilters {
   createdTo?: Date;
   onboardingSource?: OnboardingSource;
   agentId?: string;
+  /** The onboarding agent's name, email or phone. */
+  agent?: string;
+  /** Which clients this admin may see; undefined for all. */
+  scope?: Prisma.ClientWhereInput;
 }
 
 @Injectable()
@@ -32,14 +39,22 @@ export class AdminClientReviewService {
     private readonly clientLoanSummaryService: ClientLoanSummaryService,
   ) {}
 
+  /** 404 when the client is outside this admin's record scope. */
+  assertInScope(id: string, user: Pick<JwtPayload, 'sub' | 'permissions'>): Promise<void> {
+    return assertClientInScope(this.prisma, user, id);
+  }
+
   async list(
     filters: ListClientsFilters = {},
     pagination: { page: number; limit: number } = { page: 1, limit: 25 },
   ) {
     const { page, limit } = pagination;
+    const agent = agentSearchWhere(filters.agent);
     const where: Prisma.ClientWhereInput = {
+      AND: [filters.scope, clientSearchWhere(filters.q), agent ? { onboarding: { onboardedByAgent: agent } } : undefined].filter(
+        (part): part is Prisma.ClientWhereInput => !!part,
+      ),
       status: filters.status,
-      phone: filters.q ? { contains: filters.q, mode: 'insensitive' } : undefined,
       createdAt:
         filters.createdFrom || filters.createdTo
           ? { gte: filters.createdFrom, lte: filters.createdTo }

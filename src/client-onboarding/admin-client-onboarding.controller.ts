@@ -1,3 +1,4 @@
+import { ClientInScope } from '../auth/client-scope.guard';
 import {
   BadRequestException,
   Body,
@@ -38,6 +39,7 @@ export class AdminClientOnboardingController {
   }
 
   @Post(':clientId/onboarding/identity')
+  @ClientInScope('clientId')
   @AuditEvent({ action: 'client.onboarding.identity_submitted', targetType: 'Client', targetId: { param: 'clientId' }, result: ['step', 'identityVerified', 'faceMatchPassed'] })
   @RequirePermissions('clients:onboard')
   submitIdentity(@Param('clientId') clientId: string, @Body() dto: SubmitIdentityDto) {
@@ -45,6 +47,7 @@ export class AdminClientOnboardingController {
   }
 
   @Post(':clientId/onboarding/documents/:type')
+  @ClientInScope('clientId')
   @AuditEvent({ action: 'client.onboarding.document_uploaded', targetType: 'Client', targetId: { param: 'clientId' }, params: ['type'] })
   @RequirePermissions('clients:onboard')
   @UseInterceptors(
@@ -76,6 +79,7 @@ export class AdminClientOnboardingController {
   }
 
   @Post(':clientId/onboarding/face-match')
+  @ClientInScope('clientId')
   @AuditEvent({ action: 'client.onboarding.face_match', targetType: 'Client', targetId: { param: 'clientId' }, result: ['step', 'identityVerified', 'faceMatchPassed'] })
   @RequirePermissions('clients:onboard')
   submitFaceMatch(@Param('clientId') clientId: string) {
@@ -83,6 +87,7 @@ export class AdminClientOnboardingController {
   }
 
   @Get(':clientId/onboarding/status')
+  @ClientInScope('clientId')
   @RequirePermissions('clients:onboard')
   getStatus(@Param('clientId') clientId: string) {
     return this.clientOnboardingService.getStatus(clientId);

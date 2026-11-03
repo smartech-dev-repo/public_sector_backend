@@ -15,6 +15,11 @@ export class ListAdminLoanRequestsQueryDto extends PaginationDto {
   @IsString()
   clientId?: string;
 
+  /** Client name, phone, email, IPPIS number or ID. */
+  @IsOptional()
+  @IsString()
+  search?: string;
+
   @IsOptional()
   @IsISO8601()
   createdFrom?: string;

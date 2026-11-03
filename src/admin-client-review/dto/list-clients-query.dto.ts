@@ -7,6 +7,7 @@ export class ListClientsQueryDto extends PaginationDto {
   @IsEnum(ClientStatus)
   status?: ClientStatus;
 
+  /** Client name, phone, email, IPPIS number or ID. */
   @IsOptional()
   @IsString()
   q?: string;
@@ -26,4 +27,9 @@ export class ListClientsQueryDto extends PaginationDto {
   @IsOptional()
   @IsUUID()
   agentId?: string;
+
+  /** The onboarding agent's name, email or phone. */
+  @IsOptional()
+  @IsString()
+  agent?: string;
 }

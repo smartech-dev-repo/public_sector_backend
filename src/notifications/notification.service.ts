@@ -9,6 +9,7 @@ import {
   Prisma,
 } from '../generated/prisma/client';
 import { DOCUMENT_UPLOAD_PERMISSIONS } from '../document-ingestion/document-templates';
+import { clientScope } from '../common/client-scope.util';
 import { buildPaginatedResult } from '../common/pagination/paginated-result';
 import { JwtPayload } from '../auth/jwt-payload.interface';
 
@@ -21,7 +22,7 @@ export const SUPER_ADMIN_ROLE_NAME = 'SUPER_ADMIN';
  * Approvals count, so nothing is counted twice.
  */
 export interface ActionAlerts {
-  /** Confirmed loans to approve or reject, and approved loans to disburse. */
+  /** Confirmed loans to approve or reject, and approved loans to disburse, per the admin's loan permissions. */
   loanRequests: number;
   /** Sectors no active loan product covers, so their staff see no products. */
   loanProducts: number;
@@ -72,7 +73,7 @@ const NOTIFICATION_RULES: Record<string, NotificationRule> = {
     title: 'Loan confirmed by the client',
     body: 'This request is ready for review.',
     link: `/dashboard/loan-requests/${event.targetId}`,
-    targetPermissions: ['loan-requests:review'],
+    targetPermissions: ['loan-requests:manage', 'loan-requests:reject'],
   }),
   'agent.application_submitted': (event) => ({
     category: 'agents',
@@ -220,12 +221,19 @@ export class NotificationService {
 
     const byCategory = Object.fromEntries(groups.map((group) => [group.category, group._count._all]));
     const unread = groups.reduce((sum, group) => sum + group._count._all, 0);
-    const alerts = await this.actionAlerts(permissions);
+    const alerts = await this.actionAlerts(permissions, user.sub);
     return { unread, byCategory, pendingApprovals, myPendingRequests, alerts };
   }
 
-  async actionAlerts(permissions: string[]): Promise<ActionAlerts> {
+  async actionAlerts(permissions: string[], adminId?: string): Promise<ActionAlerts> {
     const holds = (key: string) => permissions.includes(key);
+    // Counted only over the clients this admin may see.
+    const scope = adminId ? clientScope({ sub: adminId, permissions }) : undefined;
+    // Approve or reject decides a confirmed loan; disburse moves an approved one.
+    const loanStatuses = [
+      ...(holds('loan-requests:manage') || holds('loan-requests:reject') ? [LoanRequestStatus.CONFIRMED] : []),
+      ...(holds('loan-requests:disburse') ? [LoanRequestStatus.APPROVED] : []),
+    ];
     const uploadTypes = (Object.keys(DOCUMENT_UPLOAD_PERMISSIONS) as DocumentType[]).filter((type) =>
       holds(DOCUMENT_UPLOAD_PERMISSIONS[type]),
     );
@@ -237,11 +245,12 @@ export class NotificationService {
     const awaitingApproval = (type: string) => inApproval.filter((row) => row.targetType === type).map((row) => row.targetId);
 
     const [loanRequests, loanProducts, broadsheet, clients, agentRecruitment] = await Promise.all([
-      holds('loan-requests:review')
+      loanStatuses.length
         ? this.prisma.loanRequest.count({
             where: {
-              status: { in: [LoanRequestStatus.CONFIRMED, LoanRequestStatus.APPROVED] },
+              status: { in: loanStatuses },
               id: { notIn: awaitingApproval('LoanRequest') },
+              client: scope,
             },
           })
         : 0,
@@ -251,7 +260,9 @@ export class NotificationService {
             where: { status: DocumentBatchStatus.AWAITING_CONFIRMATION, documentType: { in: uploadTypes } },
           })
         : 0,
-      holds('clients:review') ? this.prisma.client.count({ where: { status: ClientStatus.MANUAL_REVIEW } }) : 0,
+      holds('clients:review')
+        ? this.prisma.client.count({ where: { status: ClientStatus.MANUAL_REVIEW, ...(scope ? { AND: [scope] } : {}) } })
+        : 0,
       holds('agents:review')
         ? this.prisma.agent.count({
             where: { status: AgentStatus.PENDING_REVIEW, id: { notIn: awaitingApproval('Agent') } },

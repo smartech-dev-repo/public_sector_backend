@@ -52,7 +52,7 @@ describe('AdminClientReviewService', () => {
 
       expect(prisma.client.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: { status: undefined, phone: undefined, createdAt: undefined, onboarding: undefined },
+          where: { AND: [], status: undefined, createdAt: undefined, onboarding: undefined },
           include: {
             createdByAdmin: { select: { id: true, fullName: true, email: true } },
             onboarding: {
@@ -71,17 +71,17 @@ describe('AdminClientReviewService', () => {
       expect(result.meta).toEqual({ total: 0, page: 1, limit: 25, totalPages: 0 });
     });
 
-    it('filters by status and searches phone when given', async () => {
+    it('filters by status and searches name, phone, email or IPPIS number when given', async () => {
       prisma.client.findMany.mockResolvedValue([]);
       prisma.client.count.mockResolvedValue(0);
 
-      await service.list({ status: 'MANUAL_REVIEW' as never, q: '0801' });
+      await service.list({ status: 'MANUAL_REVIEW' as never, q: '08031' });
 
       expect(prisma.client.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({
             status: 'MANUAL_REVIEW',
-            phone: { contains: '0801', mode: 'insensitive' },
+            AND: [expect.objectContaining({ OR: expect.arrayContaining([{ phone: { contains: '8031' } }, { onboarding: { employeeName: { contains: '08031', mode: 'insensitive' } } }]) })],
           }),
         }),
       );

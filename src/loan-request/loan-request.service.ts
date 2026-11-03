@@ -24,6 +24,9 @@ import { computeExpectedInstallment } from '../reconciliation/amortization.util'
 import { WalletService } from '../wallet/wallet.service';
 import { EmailService } from '../email/email.service';
 import { LoanSettingsService } from '../loan-settings/loan-settings.service';
+import { assertClientInScope } from '../common/client-scope.util';
+import { allOf, clientSearchWhere } from '../common/client-search.util';
+import { JwtPayload } from '../auth/jwt-payload.interface';
 import { loanConfirmationEmail, loanConfirmationSms } from './loan-confirmation-messages';
 import { hashToken } from '../common/opaque-token.util';
 import { generateNumericCode } from '../common/generate-numeric-code.util';
@@ -494,9 +497,24 @@ export class LoanRequestService {
     await this.verifyCodeAndConfirm(loanRequest, code);
   }
 
-  private assertValidCode(loanRequest: LoanRequest, code: string): void {
+  /**
+   * Dev and test only: with ENABLE_MOCK_LOAN_CODE=true an admin can confirm any
+   * pending loan with MOCK_LOAN_CODE instead of the code the client received.
+   * Never enable it in a real deployment.
+   */
+  private isMockLoanCode(code: string): boolean {
+    if (this.configService?.get('ENABLE_MOCK_LOAN_CODE') !== 'true') return false;
+    const mock = String(this.configService?.get('MOCK_LOAN_CODE') ?? '');
+    return mock.length > 0 && code === mock;
+  }
+
+  private assertValidCode(loanRequest: LoanRequest, code: string, allowMock = false): void {
     if (loanRequest.status !== LoanRequestStatus.PENDING) {
       throw new ConflictException(`Loan request is not PENDING (currently ${loanRequest.status})`);
+    }
+    if (allowMock && this.isMockLoanCode(code)) {
+      if (loanRequest.expiresAt < new Date()) throw new UnauthorizedException('Invalid or expired verification code');
+      return;
     }
     if (
       !loanRequest.confirmationCodeHash ||
@@ -519,7 +537,7 @@ export class LoanRequestService {
     if (!loanRequest) {
       throw new NotFoundException('Loan request not found');
     }
-    this.assertValidCode(loanRequest, code);
+    this.assertValidCode(loanRequest, code, true);
     return loanRequest;
   }
 
@@ -662,8 +680,17 @@ export class LoanRequestService {
     return { ...loanRequest, availableActions: computeAvailableAdminActions(loanRequest.status) };
   }
 
+  /** 404 when the loan's client is outside this admin's record scope. */
+  async assertInScope(id: string, user: Pick<JwtPayload, 'sub' | 'permissions'>): Promise<void> {
+    const loanRequest = await this.prisma.loanRequest.findUnique({ where: { id }, select: { clientId: true } });
+    if (!loanRequest) throw new NotFoundException('Loan request not found');
+    await assertClientInScope(this.prisma, user, loanRequest.clientId);
+  }
+
   async listAll(
     filters: {
+      scope?: Prisma.ClientWhereInput;
+      search?: string;
       status?: LoanRequestStatus;
       type?: LoanRequestType;
       clientId?: string;
@@ -675,7 +702,8 @@ export class LoanRequestService {
     pagination: { page: number; limit: number } = { page: 1, limit: 25 },
   ) {
     const { page, limit } = pagination;
-    const where = {
+    const where: Prisma.LoanRequestWhereInput = {
+      client: allOf(filters.scope, clientSearchWhere(filters.search)),
       status: filters.status,
       type: filters.type,
       clientId: filters.clientId,
@@ -707,11 +735,22 @@ export class LoanRequestService {
 
   async listByClient(
     clientId: string | undefined,
-    filters: { status?: ClientLoanStatus; agency?: string; disbursedFrom?: Date; disbursedTo?: Date } = {},
+    filters: {
+      scope?: Prisma.ClientWhereInput;
+      search?: string;
+      status?: ClientLoanStatus;
+      agency?: string;
+      disbursedFrom?: Date;
+      disbursedTo?: Date;
+    } = {},
     pagination: { page: number; limit: number } = { page: 1, limit: 25 },
   ) {
     const { page, limit } = pagination;
+    const search = clientSearchWhere(filters.search);
     const where: Prisma.ClientLoanWhereInput = {
+      client: allOf(filters.scope),
+      // A loan's own staff ID counts too, for loans whose client record is thin.
+      ...(search ? { OR: [{ client: search }, { staffId: { contains: filters.search!.trim(), mode: 'insensitive' } }] } : {}),
       clientId,
       status: filters.status,
       agency: filters.agency,
@@ -738,7 +777,13 @@ export class LoanRequestService {
     return buildPaginatedResult(data, total, page, limit);
   }
 
-  async exportDisbursementSummaryCsv(month: string): Promise<string> {
+  async assertClientLoanInScope(id: string, user: Pick<JwtPayload, 'sub' | 'permissions'>): Promise<void> {
+    const loan = await this.prisma.clientLoan.findUnique({ where: { id }, select: { clientId: true } });
+    if (!loan) throw new NotFoundException('Loan not found');
+    await assertClientInScope(this.prisma, user, loan.clientId);
+  }
+
+  async exportDisbursementSummaryCsv(month: string, scope?: Prisma.ClientWhereInput): Promise<string> {
     const match = /^(\d{4})-(\d{2})$/.exec(month);
     if (!match) {
       throw new BadRequestException('month must be in YYYY-MM format');
@@ -749,7 +794,7 @@ export class LoanRequestService {
     const end = new Date(year, monthIndex + 1, 1);
 
     const loans = await this.prisma.clientLoan.findMany({
-      where: { disbursementDate: { gte: start, lt: end } },
+      where: { disbursementDate: { gte: start, lt: end }, client: scope },
       include: { client: { include: { onboarding: true } } },
       orderBy: { disbursementDate: 'asc' },
     });

@@ -26,7 +26,7 @@ describe('NotificationService', () => {
   it('turns a confirmed loan into a notification for loan reviewers, linking to the loan', async () => {
     await service.fromAuditEvent({ action: 'loan-request.code_confirmed', actorType: 'CLIENT', targetId: 'lr1' });
     expect(prisma.notification.create.mock.calls[0][0].data).toEqual(
-      expect.objectContaining({ category: 'loans', link: '/dashboard/loan-requests/lr1', targetPermissions: ['loan-requests:review'] }),
+      expect.objectContaining({ category: 'loans', link: '/dashboard/loan-requests/lr1', targetPermissions: ['loan-requests:manage', 'loan-requests:reject'] }),
     );
   });
 
@@ -81,7 +81,7 @@ describe('NotificationService', () => {
     });
 
     it('counts only what each permission can act on', async () => {
-      await expect(service.actionAlerts(['loan-requests:review'])).resolves.toEqual({
+      await expect(service.actionAlerts(['loan-requests:manage'])).resolves.toEqual({
         loanRequests: 3, loanProducts: 0, broadsheet: 0, clients: 0, agentRecruitment: 0,
       });
       expect(prisma.client.count).not.toHaveBeenCalled();
@@ -89,14 +89,14 @@ describe('NotificationService', () => {
     });
 
     it('counts every area for an admin who holds everything', async () => {
-      const all = ['loan-requests:review', 'loan-products:manage', 'ippis:upload', 'loans:upload', 'repayments:upload', 'clients:review', 'agents:review'];
+      const all = ['loan-requests:manage', 'loan-requests:disburse', 'loan-products:manage', 'ippis:upload', 'loans:upload', 'repayments:upload', 'clients:review', 'agents:review'];
       await expect(service.actionAlerts(all)).resolves.toEqual({
         loanRequests: 3, loanProducts: 1, broadsheet: 2, clients: 4, agentRecruitment: 5,
       });
     });
 
     it('counts decisions, not activity: confirmed or approved loans, uploads awaiting confirmation, manual-review clients, unreviewed agents', async () => {
-      await service.actionAlerts(['loan-requests:review', 'ippis:upload', 'clients:review', 'agents:review']);
+      await service.actionAlerts(['loan-requests:manage', 'loan-requests:disburse', 'ippis:upload', 'clients:review', 'agents:review']);
       expect(prisma.loanRequest.count.mock.calls[0][0].where.status).toEqual({ in: ['CONFIRMED', 'APPROVED'] });
       expect(prisma.documentUploadBatch.count.mock.calls[0][0].where).toEqual({
         status: 'AWAITING_CONFIRMATION', documentType: { in: ['IPPIS_BROADSHEET'] },
@@ -110,9 +110,23 @@ describe('NotificationService', () => {
         { targetType: 'LoanRequest', targetId: 'lr1' },
         { targetType: 'Agent', targetId: 'a1' },
       ]);
-      await service.actionAlerts(['loan-requests:review', 'agents:review']);
+      await service.actionAlerts(['loan-requests:manage', 'agents:review']);
       expect(prisma.loanRequest.count.mock.calls[0][0].where.id).toEqual({ notIn: ['lr1'] });
       expect(prisma.agent.count.mock.calls[0][0].where.id).toEqual({ notIn: ['a1'] });
+    });
+
+    it('counts loans by the actions the admin holds', async () => {
+      await service.actionAlerts(['loan-requests:disburse']);
+      expect(prisma.loanRequest.count.mock.calls[0][0].where.status).toEqual({ in: ['APPROVED'] });
+    });
+
+    it('counts only clients in the admin\'s record scope unless they hold all records', async () => {
+      await service.actionAlerts(['loan-requests:manage', 'clients:review'], 'admin-1');
+      const own = { OR: [{ createdById: 'admin-1' }, { onboarding: { onboardedById: 'admin-1' } }] };
+      expect(prisma.loanRequest.count.mock.calls[0][0].where.client).toEqual(own);
+      expect(prisma.client.count.mock.calls[0][0].where.AND).toEqual([own]);
+      await service.actionAlerts(['loan-requests:manage', 'clients:all-records'], 'admin-1');
+      expect(prisma.loanRequest.count.mock.calls[1][0].where.client).toBeUndefined();
     });
   });
 });

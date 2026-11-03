@@ -5413,7 +5413,7 @@
                     "revoke-all"
                   ]
                 },
-                "description": "Set client_id to a real Client row's id first (e.g. captured after a successful OTP verify, or from the database)."
+                "description": "Set client_id to a real Client row's id first (e.g. captured after a successful OTP verify, or from the database). Admins without `clients:all-records` only see clients they onboarded or created; anything else is 404."
               },
               "event": [
                 {
@@ -5487,7 +5487,8 @@
                     "sessions",
                     "revoke-all"
                   ]
-                }
+                },
+                "description": "Admins without `clients:all-records` only see clients they onboarded or created; anything else is 404."
               },
               "event": [
                 {
@@ -15410,7 +15411,8 @@
                     "admin",
                     "clients"
                   ]
-                }
+                },
+                "description": "Admins without `clients:all-records` only see clients they onboarded or created; anything else is 404."
               },
               "event": [
                 {
@@ -15436,6 +15438,88 @@
                       "path": [
                         "admin",
                         "clients"
+                      ]
+                    }
+                  },
+                  "status": "Unauthorized",
+                  "code": 401,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"statusCode\": 401,\n  \"message\": \"Unauthorized\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "GET /admin/clients - Search by name, phone, IPPIS number or agent",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/admin/clients?q=08031234567&agent=Ada",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "clients"
+                  ],
+                  "query": [
+                    {
+                      "key": "q",
+                      "value": "08031234567",
+                      "description": "Client name, phone (any format), email, IPPIS number or ID"
+                    },
+                    {
+                      "key": "agent",
+                      "value": "Ada",
+                      "description": "Onboarding agent's name, email or phone"
+                    }
+                  ]
+                },
+                "description": "`q` searches the client's name, phone, email, IPPIS number or ID; `agent` searches the onboarding agent. Admins without `clients:all-records` only see clients they onboarded or created."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 401', () => pm.response.to.have.status(401));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "401 Unauthorized",
+                  "originalRequest": {
+                    "method": "GET",
+                    "header": [],
+                    "url": {
+                      "raw": "{{base_url}}/admin/clients?q=08031234567&agent=Ada",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "clients"
+                      ],
+                      "query": [
+                        {
+                          "key": "q",
+                          "value": "08031234567",
+                          "description": "Client name, phone (any format), email, IPPIS number or ID"
+                        },
+                        {
+                          "key": "agent",
+                          "value": "Ada",
+                          "description": "Onboarding agent's name, email or phone"
+                        }
                       ]
                     }
                   },
@@ -15509,7 +15593,7 @@
                     }
                   ]
                 },
-                "description": "Lists clients, filterable by status, searchable by q across phone, plus a createdFrom/createdTo date range over createdAt. Paginated (page/limit, default 1/25, limit capped at 100). Requires clients:review. Response is { data, meta }."
+                "description": "Lists clients, filterable by status, searchable by q across phone, plus a createdFrom/createdTo date range over createdAt. Paginated (page/limit, default 1/25, limit capped at 100). Requires clients:review. Response is { data, meta }. Admins without `clients:all-records` only see clients they onboarded or created; anything else is 404."
               },
               "event": [
                 {
@@ -15591,7 +15675,7 @@
                     "{{review_client_id}}"
                   ]
                 },
-                "description": "Run 'GET /admin/clients - Filtered by status' first to populate review_client_id from a real MANUAL_REVIEW client. onboarding.documents resolves each uploaded ClientDocument's storageKey to a viewable URL via GET /admin/documents/files/:key (documents:read). onboarding.bvnSelfieUrl/ninSelfieUrl/liveSelfieUrl resolve the identity-photo storage keys the same way. onboarding.ippisRecord is trimmed to review-relevant fields only (agency, staffId, employeeName, employeeStatus, hireDate, department, grade, bankName, accountNumber) — salary, pinNumber, pfaName, and rawFields are excluded."
+                "description": "Run 'GET /admin/clients - Filtered by status' first to populate review_client_id from a real MANUAL_REVIEW client. onboarding.documents resolves each uploaded ClientDocument's storageKey to a viewable URL via GET /admin/documents/files/:key (documents:read). onboarding.bvnSelfieUrl/ninSelfieUrl/liveSelfieUrl resolve the identity-photo storage keys the same way. onboarding.ippisRecord is trimmed to review-relevant fields only (agency, staffId, employeeName, employeeStatus, hireDate, department, grade, bankName, accountNumber) — salary, pinNumber, pfaName, and rawFields are excluded. Admins without `clients:all-records` only see clients they onboarded or created; anything else is 404."
               },
               "event": [
                 {
@@ -15695,7 +15779,7 @@
                     }
                   ]
                 },
-                "description": "Merged, timestamp-descending activity timeline for one client (clients:read). Combines AuditLog rows targeting the client or their loan requests, the client's own loan-request creation/confirmation, Session logins, CLIENT-actor WalletEntry rows, and the current ClientOnboarding step -- all derived at query time, no separate feed table. Filterable by type; occurredFrom/occurredTo date-range over each entry's timestamp; paginated in memory (page/limit, default 1/25, limit capped at 100). Response is { data, meta }."
+                "description": "Merged, timestamp-descending activity timeline for one client (clients:read). Combines AuditLog rows targeting the client or their loan requests, the client's own loan-request creation/confirmation, Session logins, CLIENT-actor WalletEntry rows, and the current ClientOnboarding step -- all derived at query time, no separate feed table. Filterable by type; occurredFrom/occurredTo date-range over each entry's timestamp; paginated in memory (page/limit, default 1/25, limit capped at 100). Response is { data, meta }. Admins without `clients:all-records` only see clients they onboarded or created; anything else is 404."
               },
               "event": [
                 {
@@ -15888,7 +15972,8 @@
                     "{{review_client_id}}",
                     "retry"
                   ]
-                }
+                },
+                "description": "Admins without `clients:all-records` only see clients they onboarded or created; anything else is 404."
               },
               "event": [
                 {
@@ -15975,7 +16060,8 @@
                     "{{review_client_id}}",
                     "retry"
                   ]
-                }
+                },
+                "description": "Admins without `clients:all-records` only see clients they onboarded or created; anything else is 404."
               },
               "event": [
                 {
@@ -16055,7 +16141,7 @@
                     "approve"
                   ]
                 },
-                "description": "Returns 409 if review_client_id was already moved out of MANUAL_REVIEW by the retry request above (expected when running this folder top-to-bottom)."
+                "description": "Returns 409 if review_client_id was already moved out of MANUAL_REVIEW by the retry request above (expected when running this folder top-to-bottom). Admins without `clients:all-records` only see clients they onboarded or created; anything else is 404."
               },
               "event": [
                 {
@@ -16133,7 +16219,7 @@
                     }
                   ]
                 },
-                "description": "Filters the client list by derived onboarding source: SELF (neither onboardedById nor onboardedByAgentId set), AGENT (onboardedByAgentId set), or ADMIN (onboardedById set). Requires clients:review."
+                "description": "Filters the client list by derived onboarding source: SELF (neither onboardedById nor onboardedByAgentId set), AGENT (onboardedByAgentId set), or ADMIN (onboardedById set). Requires clients:review. Admins without `clients:all-records` only see clients they onboarded or created; anything else is 404."
               },
               "event": [
                 {
@@ -16193,7 +16279,7 @@
                     }
                   ]
                 },
-                "description": "Filters the client list to clients onboarded by a specific Agent. AdminClientReviewService.buildOnboardingWhere() merges this with any onboardingSource filter, but agentId's exact onboardedByAgentId match always wins. Requires clients:review. Response is { data, meta }. Scoped here to the agent captured in agent_id (see Admin > Review > POST /admin/agents/:id/approve - Success) — run that first, or substitute any Agent id directly; an id with no onboarded clients returns an empty data array."
+                "description": "Filters the client list to clients onboarded by a specific Agent. AdminClientReviewService.buildOnboardingWhere() merges this with any onboardingSource filter, but agentId's exact onboardedByAgentId match always wins. Requires clients:review. Response is { data, meta }. Scoped here to the agent captured in agent_id (see Admin > Review > POST /admin/agents/:id/approve - Success) — run that first, or substitute any Agent id directly; an id with no onboarded clients returns an empty data array. Admins without `clients:all-records` only see clients they onboarded or created; anything else is 404."
               },
               "event": [
                 {
@@ -16614,7 +16700,7 @@
                   "mode": "raw",
                   "raw": "{\"bvn\": \"12345678901\", \"nin\": \"98765432109\"}"
                 },
-                "description": "clientId is populated automatically by the ippis-lookup request above."
+                "description": "clientId is populated automatically by the ippis-lookup request above. Admins without `clients:all-records` only see clients they onboarded or created; anything else is 404."
               },
               "response": [
                 {
@@ -16743,7 +16829,7 @@
                     }
                   ]
                 },
-                "description": "Repeat for NIN_CARD, WORK_ID, and SIGNATURE as well — all 4 document types must be uploaded before the face-match request below will succeed."
+                "description": "Repeat for NIN_CARD, WORK_ID, and SIGNATURE as well — all 4 document types must be uploaded before the face-match request below will succeed. Admins without `clients:all-records` only see clients they onboarded or created; anything else is 404."
               },
               "response": [
                 {
@@ -16867,7 +16953,7 @@
                     "face-match"
                   ]
                 },
-                "description": "No file/body needed — compares the already-uploaded PASSPORT_PHOTO document against the BVN/NIN lookup photos instead of a live selfie. All 4 documents must be uploaded first."
+                "description": "No file/body needed — compares the already-uploaded PASSPORT_PHOTO document against the BVN/NIN lookup photos instead of a live selfie. All 4 documents must be uploaded first. Admins without `clients:all-records` only see clients they onboarded or created; anything else is 404."
               },
               "response": [
                 {
@@ -17005,7 +17091,8 @@
                     "onboarding",
                     "status"
                   ]
-                }
+                },
+                "description": "Admins without `clients:all-records` only see clients they onboarded or created; anything else is 404."
               },
               "response": [
                 {
@@ -17305,7 +17392,7 @@
                     }
                   ]
                 },
-                "description": "Set client_id to a real Client row's id first (e.g. captured after a successful OTP verify, or from the database)."
+                "description": "Set client_id to a real Client row's id first (e.g. captured after a successful OTP verify, or from the database). Admins without `clients:all-records` only see clients they onboarded or created; anything else is 404."
               },
               "event": [
                 {
@@ -17431,7 +17518,7 @@
                     "credit"
                   ]
                 },
-                "description": "Requires the wallets:manage permission. Set client_id to a real Client row's id first. Goes through maker-checker: this creates an approval request; nothing happens until another admin approves it."
+                "description": "Requires the wallets:manage permission. Set client_id to a real Client row's id first. Goes through maker-checker: this creates an approval request; nothing happens until another admin approves it. Admins without `clients:all-records` only see clients they onboarded or created; anything else is 404."
               },
               "event": [
                 {
@@ -17524,7 +17611,7 @@
                     "debit"
                   ]
                 },
-                "description": "Goes through maker-checker: this creates an approval request. If the balance is too low when a second admin approves, the request is marked FAILED with that reason."
+                "description": "Goes through maker-checker: this creates an approval request. If the balance is too low when a second admin approves, the request is marked FAILED with that reason. Admins without `clients:all-records` only see clients they onboarded or created; anything else is 404."
               },
               "event": [
                 {
@@ -17613,7 +17700,7 @@
                     {
                       "key": "clientId",
                       "value": "",
-                      "description": "Optional. Scopes the list to one client's loan requests (added alongside status/type; loan-requests:review permission unchanged).",
+                      "description": "Optional. Scopes the list to one client's loan requests (requires loan-requests:read). For finding a client by name, phone or IPPIS number, use `search`.",
                       "disabled": true
                     },
                     {
@@ -17666,7 +17753,7 @@
                     }
                   ]
                 },
-                "description": "Lists all admin-visible loan requests. Accepts optional status/type/clientId query filters (clientId added by the admin client visibility feature; still gated by loan-requests:review only), plus createdFrom/createdTo and disbursedFrom/disbursedTo date ranges. Paginated (page/limit, default 1/25, limit capped at 100). Response is { data, meta }."
+                "description": "Requires `loan-requests:read`. Lists all admin-visible loan requests. Accepts optional status/type/clientId query filters (clientId added by the admin client visibility feature; still gated by loan-requests:read only), plus createdFrom/createdTo and disbursedFrom/disbursedTo date ranges. Paginated (page/limit, default 1/25, limit capped at 100). Response is { data, meta }. Admins without `clients:all-records` only see clients they onboarded or created; anything else is 404."
               },
               "event": [
                 {
@@ -17720,6 +17807,201 @@
               ]
             },
             {
+              "name": "GET /admin/loan-requests - Search by name, phone or IPPIS number",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/loan-requests?clientId=&status=CONFIRMED&type=TOPUP&createdFrom=2026-01-01&createdTo=2026-12-31&disbursedFrom=2026-01-01&disbursedTo=2026-12-31&page=1&limit=25&search=08031234567",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "loan-requests"
+                  ],
+                  "query": [
+                    {
+                      "key": "clientId",
+                      "value": "",
+                      "description": "Optional. Scopes the list to one client's loan requests (requires loan-requests:read). For finding a client by name, phone or IPPIS number, use `search`.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "status",
+                      "value": "CONFIRMED",
+                      "description": "Optional. Exact match on LoanRequestStatus.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "type",
+                      "value": "TOPUP",
+                      "description": "Optional. ORIGINATION | TOPUP.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "createdFrom",
+                      "value": "2026-01-01",
+                      "description": "Optional. ISO8601 date. Filters createdAt >= this value.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "createdTo",
+                      "value": "2026-12-31",
+                      "description": "Optional. ISO8601 date. Filters createdAt <= this value.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "disbursedFrom",
+                      "value": "2026-01-01",
+                      "description": "Optional. ISO8601 date. Filters disbursedAt >= this value.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "disbursedTo",
+                      "value": "2026-12-31",
+                      "description": "Optional. ISO8601 date. Filters disbursedAt <= this value.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "page",
+                      "value": "1",
+                      "description": "Optional. Page number, defaults to 1.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "limit",
+                      "value": "25",
+                      "description": "Optional. Page size, defaults to 25, hard max 100 (a request above 100 is a 400, not a silent clamp).",
+                      "disabled": true
+                    },
+                    {
+                      "key": "search",
+                      "value": "08031234567",
+                      "description": "Finds loans by the client's name, phone (any format), email, IPPIS number or ID."
+                    }
+                  ]
+                },
+                "description": "Finds loans by the client's name, phone (any format), email, IPPIS number or ID."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));",
+                      "pm.test('is a paginated result', () => {",
+                      "  const body = pm.response.json();",
+                      "  pm.expect(body.data).to.be.an('array');",
+                      "  pm.expect(body.meta).to.have.all.keys('total', 'page', 'limit', 'totalPages');",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Success (200)",
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"data\": [\n    {\n      \"id\": \"5c74a7fd-0c53-414f-9370-792896b0cf1f\",\n      \"clientId\": \"0cd16c5f-f375-407e-b9aa-85043a03d6a5\",\n      \"amount\": \"200000\",\n      \"status\": \"CONFIRMED\",\n      \"confirmationSmsSentAt\": \"2026-09-21T10:00:00.000Z\",\n      \"confirmedAt\": \"2026-09-21T10:05:00.000Z\",\n      \"expiresAt\": \"2026-09-22T10:00:00.000Z\",\n      \"createdAt\": \"2026-09-21T10:00:00.000Z\",\n      \"updatedAt\": \"2026-09-21T10:05:00.000Z\",\n      \"tenorMonths\": 6,\n      \"interestRatePercent\": \"5\",\n      \"managementChargeType\": \"PERCENTAGE\",\n      \"managementChargeValue\": \"2\",\n      \"managementChargeApplication\": \"DEDUCT_FROM_DISBURSEMENT\",\n      \"managementChargeAmount\": \"4000\",\n      \"rejectionReason\": null,\n      \"approvedAt\": null,\n      \"disbursedAt\": null,\n      \"client\": {\n        \"id\": \"0cd16c5f-f375-407e-b9aa-85043a03d6a5\",\n        \"phone\": \"+2348020000001\",\n        \"email\": \"amaka.eze@example.com\",\n        \"status\": \"VERIFIED\",\n        \"onboarding\": {\n          \"employeeName\": \"Amaka Eze\",\n          \"agency\": \"NPF\",\n          \"onboardedByAgentId\": null,\n          \"ippisRecord\": {\n            \"agency\": \"NPF\",\n            \"staffId\": \"NPF0012345\",\n            \"employeeName\": \"Amaka Eze\",\n            \"employeeStatus\": \"ACTIVE\",\n            \"hireDate\": \"2012-04-01T00:00:00.000Z\",\n            \"department\": \"FINANCE\",\n            \"grade\": \"08\",\n            \"bankName\": \"Zenith Bank\",\n            \"accountNumber\": \"0123456789\"\n          }\n        }\n      },\n      \"topupTarget\": null,\n      \"availableActions\": [\n        \"approve\",\n        \"reject\"\n      ],\n      \"requestedByAgentId\": null,\n      \"requestedByAgent\": null\n    },\n    {\n      \"id\": \"76357fa6-f9bb-4ea6-a0bc-e11e710b1412\",\n      \"clientId\": \"0cd16c5f-f375-407e-b9aa-85043a03d6a5\",\n      \"amount\": \"200000\",\n      \"status\": \"DISBURSED\",\n      \"confirmationSmsSentAt\": \"2026-09-21T10:00:00.000Z\",\n      \"confirmedAt\": \"2026-09-21T10:05:00.000Z\",\n      \"expiresAt\": \"2026-09-22T10:00:00.000Z\",\n      \"createdAt\": \"2026-09-21T10:00:00.000Z\",\n      \"updatedAt\": \"2026-09-21T10:05:00.000Z\",\n      \"tenorMonths\": 6,\n      \"interestRatePercent\": \"5\",\n      \"managementChargeType\": \"PERCENTAGE\",\n      \"managementChargeValue\": \"2\",\n      \"managementChargeApplication\": \"DEDUCT_FROM_DISBURSEMENT\",\n      \"managementChargeAmount\": \"4000\",\n      \"rejectionReason\": null,\n      \"approvedAt\": \"2026-09-21T10:10:00.000Z\",\n      \"disbursedAt\": \"2026-09-21T10:15:00.000Z\",\n      \"client\": {\n        \"id\": \"0cd16c5f-f375-407e-b9aa-85043a03d6a5\",\n        \"phone\": \"+2348020000001\",\n        \"email\": \"amaka.eze@example.com\",\n        \"status\": \"VERIFIED\",\n        \"onboarding\": {\n          \"employeeName\": \"Amaka Eze\",\n          \"agency\": \"NPF\",\n          \"onboardedByAgentId\": null,\n          \"ippisRecord\": {\n            \"agency\": \"NPF\",\n            \"staffId\": \"NPF0012345\",\n            \"employeeName\": \"Amaka Eze\",\n            \"employeeStatus\": \"ACTIVE\",\n            \"hireDate\": \"2012-04-01T00:00:00.000Z\",\n            \"department\": \"FINANCE\",\n            \"grade\": \"08\",\n            \"bankName\": \"Zenith Bank\",\n            \"accountNumber\": \"0123456789\"\n          }\n        }\n      },\n      \"topupTarget\": null,\n      \"availableActions\": [],\n      \"requestedByAgentId\": null,\n      \"requestedByAgent\": null\n    }\n  ],\n  \"meta\": {\n    \"total\": 2,\n    \"page\": 1,\n    \"limit\": 25,\n    \"totalPages\": 1\n  }\n}",
+                  "originalRequest": {
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/loan-requests?clientId=&status=CONFIRMED&type=TOPUP&createdFrom=2026-01-01&createdTo=2026-12-31&disbursedFrom=2026-01-01&disbursedTo=2026-12-31&page=1&limit=25&search=08031234567",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "loan-requests"
+                      ],
+                      "query": [
+                        {
+                          "key": "clientId",
+                          "value": "",
+                          "description": "Optional. Scopes the list to one client's loan requests (requires loan-requests:read). For finding a client by name, phone or IPPIS number, use `search`.",
+                          "disabled": true
+                        },
+                        {
+                          "key": "status",
+                          "value": "CONFIRMED",
+                          "description": "Optional. Exact match on LoanRequestStatus.",
+                          "disabled": true
+                        },
+                        {
+                          "key": "type",
+                          "value": "TOPUP",
+                          "description": "Optional. ORIGINATION | TOPUP.",
+                          "disabled": true
+                        },
+                        {
+                          "key": "createdFrom",
+                          "value": "2026-01-01",
+                          "description": "Optional. ISO8601 date. Filters createdAt >= this value.",
+                          "disabled": true
+                        },
+                        {
+                          "key": "createdTo",
+                          "value": "2026-12-31",
+                          "description": "Optional. ISO8601 date. Filters createdAt <= this value.",
+                          "disabled": true
+                        },
+                        {
+                          "key": "disbursedFrom",
+                          "value": "2026-01-01",
+                          "description": "Optional. ISO8601 date. Filters disbursedAt >= this value.",
+                          "disabled": true
+                        },
+                        {
+                          "key": "disbursedTo",
+                          "value": "2026-12-31",
+                          "description": "Optional. ISO8601 date. Filters disbursedAt <= this value.",
+                          "disabled": true
+                        },
+                        {
+                          "key": "page",
+                          "value": "1",
+                          "description": "Optional. Page number, defaults to 1.",
+                          "disabled": true
+                        },
+                        {
+                          "key": "limit",
+                          "value": "25",
+                          "description": "Optional. Page size, defaults to 25, hard max 100 (a request above 100 is a 400, not a silent clamp).",
+                          "disabled": true
+                        },
+                        {
+                          "key": "search",
+                          "value": "08031234567",
+                          "description": "Finds loans by the client's name, phone (any format), email, IPPIS number or ID."
+                        }
+                      ]
+                    }
+                  }
+                }
+              ]
+            },
+            {
               "name": "GET /admin/loan-requests - Filtered by status=CONFIRMED",
               "request": {
                 "method": "GET",
@@ -17756,7 +18038,8 @@
                       "disabled": true
                     }
                   ]
-                }
+                },
+                "description": "Requires `loan-requests:read`. Admins without `clients:all-records` only see clients they onboarded or created; anything else is 404."
               },
               "response": [
                 {
@@ -17849,7 +18132,8 @@
                       "disabled": true
                     }
                   ]
-                }
+                },
+                "description": "Requires `loan-requests:read`. Admins without `clients:all-records` only see clients they onboarded or created; anything else is 404."
               },
               "response": [
                 {
@@ -17943,7 +18227,7 @@
                     }
                   ]
                 },
-                "description": "Scopes the loan-requests list to a single client. No new permission -- an addition to the already-gated loan-requests:review endpoint."
+                "description": "Requires `loan-requests:read`. Scopes the loan-requests list to a single client. No new permission -- an addition to the already-gated loan-requests:read endpoint. Admins without `clients:all-records` only see clients they onboarded or created; anything else is 404."
               },
               "event": [
                 {
@@ -18032,7 +18316,8 @@
                     "admin",
                     "loan-requests"
                   ]
-                }
+                },
+                "description": "Requires `loan-requests:read`. Admins without `clients:all-records` only see clients they onboarded or created; anything else is 404."
               },
               "response": [
                 {
@@ -18091,7 +18376,7 @@
                     "{{loan_request_id}}"
                   ]
                 },
-                "description": "Returns one loan request with the same enriched client/onboarding/ippisRecord shape as a GET /admin/loan-requests row, plus availableActions computed from its status. 404s if the id does not exist. `requestedByAgent` is set when an agent made the request (null when the client did). For those, the client sends the code to the loan approval phone and an admin enters it with confirm-code."
+                "description": "Requires `loan-requests:read`. Returns one loan request with the same enriched client/onboarding/ippisRecord shape as a GET /admin/loan-requests row, plus availableActions computed from its status. 404s if the id does not exist. `requestedByAgent` is set when an agent made the request (null when the client did). For those, the client sends the code to the loan approval phone and an admin enters it with confirm-code. Admins without `clients:all-records` only see clients they onboarded or created; anything else is 404."
               },
               "event": [
                 {
@@ -18176,6 +18461,110 @@
               ]
             },
             {
+              "name": "GET /admin/loan-requests/:id - Outside record scope (404)",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/loan-requests/{{loan_request_id}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "loan-requests",
+                    "{{loan_request_id}}"
+                  ]
+                },
+                "description": "Without `clients:all-records`, a loan for a client this admin didn't onboard or create is 404, as if it didn't exist."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 404', () => pm.response.to.have.status(404));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "404 Not Found",
+                  "status": "Not Found",
+                  "code": 404,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"statusCode\": 404,\n  \"message\": \"Client not found\",\n  \"error\": \"Not Found\"\n}",
+                  "originalRequest": {
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/loan-requests/{{loan_request_id}}",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "loan-requests",
+                        "{{loan_request_id}}"
+                      ]
+                    }
+                  }
+                },
+                {
+                  "name": "404 Not Found",
+                  "status": "Not Found",
+                  "code": 404,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"statusCode\": 404,\n  \"message\": \"Client not found\",\n  \"error\": \"Not Found\"\n}",
+                  "originalRequest": {
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/loan-requests/00000000-0000-0000-0000-000000000000",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "loan-requests",
+                        "00000000-0000-0000-0000-000000000000"
+                      ]
+                    }
+                  }
+                }
+              ]
+            },
+            {
               "name": "POST /admin/loan-requests/:id/approve - Success",
               "request": {
                 "method": "POST",
@@ -18205,7 +18594,7 @@
                   "mode": "raw",
                   "raw": "{\n  \"disbursedAt\": \"2026-01-15T00:00:00.000Z\"\n}"
                 },
-                "description": "disbursedAt is optional (ISO 8601 string); omit it to disburse as of now. Approve now goes straight from CONFIRMED to DISBURSED in one step (no resting APPROVED state) and creates the ClientLoan immediately, using disbursedAt (or now) for both LoanRequest.disbursedAt and the ClientLoan's disbursementDate/maturationDate. Goes through maker-checker: this creates an approval request; nothing happens until another admin approves it."
+                "description": "Requires `loan-requests:manage`. disbursedAt is optional (ISO 8601 string); omit it to disburse as of now. Approve now goes straight from CONFIRMED to DISBURSED in one step (no resting APPROVED state) and creates the ClientLoan immediately, using disbursedAt (or now) for both LoanRequest.disbursedAt and the ClientLoan's disbursementDate/maturationDate. Goes through maker-checker: this creates an approval request; nothing happens until another admin approves it. Admins without `clients:all-records` only see clients they onboarded or created; anything else is 404."
               },
               "event": [
                 {
@@ -18309,6 +18698,137 @@
               ]
             },
             {
+              "name": "POST /admin/loan-requests/:id/approve - Missing loan-requests:manage (403)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/loan-requests/{{loan_request_id}}/approve",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "loan-requests",
+                    "{{loan_request_id}}",
+                    "approve"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"disbursedAt\": \"2026-01-15T00:00:00.000Z\"\n}"
+                },
+                "description": "Each loan action has its own permission: approve needs `loan-requests:manage`, confirm-code `loan-requests:confirm-code`, reject `loan-requests:reject`, disburse `loan-requests:disburse`."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 403', () => pm.response.to.have.status(403));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "403 Forbidden",
+                  "status": "Forbidden",
+                  "code": 403,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"statusCode\": 403,\n  \"message\": \"Insufficient permissions\",\n  \"error\": \"Forbidden\"\n}",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      },
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/loan-requests/{{loan_request_id}}/approve",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "loan-requests",
+                        "{{loan_request_id}}",
+                        "approve"
+                      ]
+                    },
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"disbursedAt\": \"2026-01-15T00:00:00.000Z\"\n}"
+                    }
+                  }
+                },
+                {
+                  "name": "403 Forbidden",
+                  "status": "Forbidden",
+                  "code": 403,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"statusCode\": 403,\n  \"message\": \"Insufficient permissions\",\n  \"error\": \"Forbidden\"\n}",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      },
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"disbursedAt\": \"2099-01-01T00:00:00.000Z\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/admin/loan-requests/{{loan_request_id}}/approve",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "loan-requests",
+                        "{{loan_request_id}}",
+                        "approve"
+                      ]
+                    }
+                  }
+                }
+              ]
+            },
+            {
               "name": "POST /admin/loan-requests/:id/approve - Blocked, not CONFIRMED (409)",
               "request": {
                 "method": "POST",
@@ -18329,7 +18849,8 @@
                     "{{loan_request_id}}",
                     "approve"
                   ]
-                }
+                },
+                "description": "Requires `loan-requests:manage`. Admins without `clients:all-records` only see clients they onboarded or created; anything else is 404."
               },
               "response": [
                 {
@@ -18399,7 +18920,7 @@
                     "confirm-code"
                   ]
                 },
-                "description": "Lets admin confirm a PENDING request stuck without a client reply, using the same OTP code emailed/SMSed to the client -- no client-ownership check (unlike the client/agent confirm-code routes). Copy the real code from the server log (or EMAIL_CODE_DEV_ECHO's devCode, same manual step as other OTP requests in this collection) before running this. Goes through maker-checker: this creates an approval request; nothing happens until another admin approves it."
+                "description": "Requires `loan-requests:confirm-code`. Lets admin confirm a PENDING request stuck without a client reply, using the same OTP code emailed/SMSed to the client -- no client-ownership check (unlike the client/agent confirm-code routes). Copy the real code from the server log (or EMAIL_CODE_DEV_ECHO's devCode, same manual step as other OTP requests in this collection) before running this. Goes through maker-checker: this creates an approval request; nothing happens until another admin approves it. Admins without `clients:all-records` only see clients they onboarded or created; anything else is 404. On dev/test, with ENABLE_MOCK_LOAN_CODE=true, MOCK_LOAN_CODE is also accepted here (admin only)."
               },
               "event": [
                 {
@@ -18489,7 +19010,7 @@
                     "confirm-code"
                   ]
                 },
-                "description": "Wrong code (or a code submitted after its TTL has elapsed). Run this before the Success request above, while the loan request is still PENDING."
+                "description": "Requires `loan-requests:confirm-code`. Wrong code (or a code submitted after its TTL has elapsed). Run this before the Success request above, while the loan request is still PENDING. Admins without `clients:all-records` only see clients they onboarded or created; anything else is 404. On dev/test, with ENABLE_MOCK_LOAN_CODE=true, MOCK_LOAN_CODE is also accepted here (admin only)."
               },
               "event": [
                 {
@@ -18577,7 +19098,7 @@
                     "confirm-code"
                   ]
                 },
-                "description": "Run this after the Success request above has already moved the loan request off PENDING."
+                "description": "Requires `loan-requests:confirm-code`. Run this after the Success request above has already moved the loan request off PENDING. Admins without `clients:all-records` only see clients they onboarded or created; anything else is 404. On dev/test, with ENABLE_MOCK_LOAN_CODE=true, MOCK_LOAN_CODE is also accepted here (admin only)."
               },
               "event": [
                 {
@@ -18664,7 +19185,8 @@
                     "{{loan_request_id}}",
                     "reject"
                   ]
-                }
+                },
+                "description": "Requires `loan-requests:reject`. Admins without `clients:all-records` only see clients they onboarded or created; anything else is 404."
               },
               "event": [
                 {
@@ -18753,7 +19275,8 @@
                     "{{loan_request_id}}",
                     "reject"
                   ]
-                }
+                },
+                "description": "Requires `loan-requests:reject`. Admins without `clients:all-records` only see clients they onboarded or created; anything else is 404."
               },
               "response": [
                 {
@@ -18831,7 +19354,7 @@
                   "mode": "raw",
                   "raw": "{\n  \"disbursedAt\": \"2026-01-15T00:00:00.000Z\"\n}"
                 },
-                "description": "disbursedAt is optional (ISO 8601 string); omit it to disburse as of now. Only reachable if a LoanRequest is already APPROVED -- with Task 1's one-step approve+disburse, nothing currently puts a request into that resting state, so this endpoint stays for completeness/back-compat. Goes through maker-checker: this creates an approval request; nothing happens until another admin approves it."
+                "description": "Requires `loan-requests:disburse`. disbursedAt is optional (ISO 8601 string); omit it to disburse as of now. Only reachable if a LoanRequest is already APPROVED -- with Task 1's one-step approve+disburse, nothing currently puts a request into that resting state, so this endpoint stays for completeness/back-compat. Goes through maker-checker: this creates an approval request; nothing happens until another admin approves it. Admins without `clients:all-records` only see clients they onboarded or created; anything else is 404."
               },
               "event": [
                 {
@@ -18912,7 +19435,8 @@
                     "{{loan_request_id}}",
                     "disburse"
                   ]
-                }
+                },
+                "description": "Requires `loan-requests:disburse`. Admins without `clients:all-records` only see clients they onboarded or created; anything else is 404."
               },
               "response": [
                 {
@@ -19019,7 +19543,7 @@
                     }
                   ]
                 },
-                "description": "Lists a client's ClientLoan history (clients:read). clientId is required -- 400 if omitted, see the sibling request below. clientId is optional; leave it out to list every client loan."
+                "description": "Lists a client's ClientLoan history (clients:read). clientId is required -- 400 if omitted, see the sibling request below. clientId is optional; leave it out to list every client loan. Admins without `clients:all-records` only see clients they onboarded or created; anything else is 404."
               },
               "event": [
                 {
@@ -19115,6 +19639,173 @@
               ]
             },
             {
+              "name": "GET /admin/client-loans - Search by name, phone or IPPIS number",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/client-loans?clientId={{review_client_id}}&status=ACTIVE&agency=NPF&disbursedFrom=2026-01-01&disbursedTo=2026-12-31&page=1&limit=25&search=Ada",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "client-loans"
+                  ],
+                  "query": [
+                    {
+                      "key": "clientId",
+                      "value": "{{review_client_id}}"
+                    },
+                    {
+                      "key": "status",
+                      "value": "ACTIVE",
+                      "description": "Optional. Exact match on ClientLoanStatus.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "agency",
+                      "value": "NPF",
+                      "description": "Optional. Exact match on the loan's agency.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "disbursedFrom",
+                      "value": "2026-01-01",
+                      "description": "Optional. ISO8601 date. Filters disbursementDate >= this value.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "disbursedTo",
+                      "value": "2026-12-31",
+                      "description": "Optional. ISO8601 date. Filters disbursementDate <= this value.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "page",
+                      "value": "1",
+                      "description": "Optional. Page number, defaults to 1.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "limit",
+                      "value": "25",
+                      "description": "Optional. Page size, defaults to 25, hard max 100 (a request above 100 is a 400, not a silent clamp).",
+                      "disabled": true
+                    },
+                    {
+                      "key": "search",
+                      "value": "Ada",
+                      "description": "Finds loans by the client's name, phone, email, IPPIS number or ID, or the loan's own IPPIS number."
+                    }
+                  ]
+                },
+                "description": "Finds loans by the client's name, phone, email, IPPIS number or ID, or the loan's own IPPIS number."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));",
+                      "pm.test('is paginated envelope', () => {",
+                      "  const json = pm.response.json();",
+                      "  pm.expect(json.data).to.be.an('array');",
+                      "  pm.expect(json.meta).to.have.all.keys('total', 'page', 'limit', 'totalPages');",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Success (200)",
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"data\": [\n    {\n      \"id\": \"6d8abc8c-58a3-4430-b311-224413774ce9\",\n      \"clientId\": \"c1a2b3c4-d5e6-4f78-9a0b-1c2d3e4f5a6b\",\n      \"loanRequestId\": \"a1b2c3d4-5e6f-4708-8192-a3b4c5d6e7f8\",\n      \"agency\": \"NPF\",\n      \"staffId\": \"IPPIS-000123\",\n      \"principalAmount\": \"90000\",\n      \"disbursedAmount\": \"90000\",\n      \"principalBalance\": \"45000\",\n      \"tenorMonths\": 2,\n      \"interestRatePercent\": \"0\",\n      \"managementChargeType\": \"PERCENTAGE\",\n      \"managementChargeValue\": \"0\",\n      \"managementChargeApplication\": \"ADD_TO_REPAYMENT\",\n      \"managementChargeAmount\": \"0\",\n      \"disbursementDate\": \"2026-09-22T10:15:00.000Z\",\n      \"maturationDate\": \"2026-11-22T10:15:00.000Z\",\n      \"status\": \"ACTIVE\",\n      \"createdAt\": \"2026-09-22T10:15:00.000Z\",\n      \"updatedAt\": \"2026-09-22T10:15:00.000Z\",\n      \"loanRequest\": {\n        \"id\": \"a1b2c3d4-5e6f-4708-8192-a3b4c5d6e7f8\",\n        \"type\": \"ORIGINATION\",\n        \"status\": \"DISBURSED\"\n      },\n      \"client\": {\n        \"id\": \"c1a2b3c4-d5e6-4f78-9a0b-1c2d3e4f5a6b\",\n        \"phone\": \"+2348020000003\"\n      }\n    }\n  ],\n  \"meta\": {\n    \"total\": 1,\n    \"page\": 1,\n    \"limit\": 25,\n    \"totalPages\": 1\n  }\n}",
+                  "originalRequest": {
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/client-loans?clientId={{review_client_id}}&status=ACTIVE&agency=NPF&disbursedFrom=2026-01-01&disbursedTo=2026-12-31&page=1&limit=25&search=Ada",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "client-loans"
+                      ],
+                      "query": [
+                        {
+                          "key": "clientId",
+                          "value": "{{review_client_id}}"
+                        },
+                        {
+                          "key": "status",
+                          "value": "ACTIVE",
+                          "description": "Optional. Exact match on ClientLoanStatus.",
+                          "disabled": true
+                        },
+                        {
+                          "key": "agency",
+                          "value": "NPF",
+                          "description": "Optional. Exact match on the loan's agency.",
+                          "disabled": true
+                        },
+                        {
+                          "key": "disbursedFrom",
+                          "value": "2026-01-01",
+                          "description": "Optional. ISO8601 date. Filters disbursementDate >= this value.",
+                          "disabled": true
+                        },
+                        {
+                          "key": "disbursedTo",
+                          "value": "2026-12-31",
+                          "description": "Optional. ISO8601 date. Filters disbursementDate <= this value.",
+                          "disabled": true
+                        },
+                        {
+                          "key": "page",
+                          "value": "1",
+                          "description": "Optional. Page number, defaults to 1.",
+                          "disabled": true
+                        },
+                        {
+                          "key": "limit",
+                          "value": "25",
+                          "description": "Optional. Page size, defaults to 25, hard max 100 (a request above 100 is a 400, not a silent clamp).",
+                          "disabled": true
+                        },
+                        {
+                          "key": "search",
+                          "value": "Ada",
+                          "description": "Finds loans by the client's name, phone, email, IPPIS number or ID, or the loan's own IPPIS number."
+                        }
+                      ]
+                    }
+                  }
+                }
+              ]
+            },
+            {
               "name": "GET /admin/client-loans - All client loans",
               "request": {
                 "method": "GET",
@@ -19134,7 +19825,7 @@
                     "client-loans"
                   ]
                 },
-                "description": "clientId is optional. Without it, every client loan is listed."
+                "description": "clientId is optional. Without it, every client loan is listed. Admins without `clients:all-records` only see clients they onboarded or created; anything else is 404."
               },
               "event": [
                 {
@@ -19208,7 +19899,8 @@
                       "value": "2026-09"
                     }
                   ]
-                }
+                },
+                "description": "Admins without `clients:all-records` only see clients they onboarded or created; anything else is 404."
               },
               "event": [
                 {
@@ -19294,7 +19986,8 @@
                       "value": "not-a-month"
                     }
                   ]
-                }
+                },
+                "description": "Admins without `clients:all-records` only see clients they onboarded or created; anything else is 404."
               },
               "response": [
                 {
@@ -19365,7 +20058,8 @@
                       "value": "2026-09"
                     }
                   ]
-                }
+                },
+                "description": "Admins without `clients:all-records` only see clients they onboarded or created; anything else is 404."
               },
               "response": [
                 {
@@ -19432,7 +20126,7 @@
                     "repayment-plan"
                   ]
                 },
-                "description": "Mirrors GET /client/client-loans/me for any platform-native ClientLoan by id (client-loans:read). Returns the loan with its full period-by-period schedule (disbursementDate to maturationDate inclusive) from LoanRequestService.getRepaymentPlanById() -- each period is MATCHED/UNDER_PAID/OVER_PAID/NO_DEDUCTION_FOUND once a ClientLoanRepaymentVariance row exists for it (written by ClientLoanReconciliationService.reconcileAll(), which runs automatically after every disbursed-loans/repayment-schedule upload), or UPCOMING with null actualAmount/variance otherwise. clientId is optional; leave it out to list every client loan."
+                "description": "Mirrors GET /client/client-loans/me for any platform-native ClientLoan by id (client-loans:read). Returns the loan with its full period-by-period schedule (disbursementDate to maturationDate inclusive) from LoanRequestService.getRepaymentPlanById() -- each period is MATCHED/UNDER_PAID/OVER_PAID/NO_DEDUCTION_FOUND once a ClientLoanRepaymentVariance row exists for it (written by ClientLoanReconciliationService.reconcileAll(), which runs automatically after every disbursed-loans/repayment-schedule upload), or UPCOMING with null actualAmount/variance otherwise. clientId is optional; leave it out to list every client loan. Admins without `clients:all-records` only see clients they onboarded or created; anything else is 404."
               },
               "event": [
                 {

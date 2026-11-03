@@ -1,4 +1,5 @@
 import { ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { phoneDigits } from '../common/client-search.util';
 import { PrismaService } from '../prisma/prisma.service';
 import { AgentApplication, AgentApplicationStatus, AgentStatus, Prisma } from '../generated/prisma/client';
 import { buildPaginatedResult } from '../common/pagination/paginated-result';
@@ -49,6 +50,7 @@ export class AdminAgentRecruitmentReviewService {
         ? [
             { email: { contains: filters.q, mode: 'insensitive' } },
             { fullName: { contains: filters.q, mode: 'insensitive' } },
+            ...(phoneDigits(filters.q) ? [{ phone: { contains: phoneDigits(filters.q)! } }] : []),
           ]
         : undefined,
     };

@@ -15,7 +15,7 @@ describe('AdminLoanRequestController', () => {
     adminConfirmByCode: jest.Mock;
     requireStatus: jest.Mock;
     checkConfirmationCode: jest.Mock;
-    confirmAfterApproval: jest.Mock;
+    confirmAfterApproval: jest.Mock; assertInScope: jest.Mock;
   };
   let auditLogService: { record: jest.Mock };
   const adminReq = { user: { sub: 'admin-1', type: 'admin' } as JwtPayload };
@@ -34,6 +34,7 @@ describe('AdminLoanRequestController', () => {
       requireStatus: jest.fn(),
       checkConfirmationCode: jest.fn().mockResolvedValue(undefined),
       confirmAfterApproval: jest.fn().mockResolvedValue(undefined),
+      assertInScope: jest.fn().mockResolvedValue(undefined),
     };
     registered = {};
     approvalsService = {
@@ -108,17 +109,32 @@ describe('AdminLoanRequestController', () => {
   });
 
   describe('findOne', () => {
-    it('delegates to LoanRequestService.findById', async () => {
-      loanRequestService.findById.mockResolvedValue({ id: 'lr1' });
-      await controller.findOne('lr1');
+    it('checks the record scope, then delegates to LoanRequestService.findById', async () => {
+      loanRequestService.findById.mockResolvedValue({ id: 'lr1', availableActions: ['confirmCode'] });
+      await controller.findOne('lr1', adminReq);
+      expect(loanRequestService.assertInScope).toHaveBeenCalledWith('lr1', adminReq.user);
       expect(loanRequestService.findById).toHaveBeenCalledWith('lr1');
     });
 
-    it('says when the request is waiting for approval', async () => {
-      loanRequestService.findById.mockResolvedValue({ id: 'lr1' });
+    it('says when the request is waiting for approval, and offers no actions meanwhile', async () => {
+      loanRequestService.findById.mockResolvedValue({ id: 'lr1', availableActions: ['approve', 'reject'] });
       approvalsService.pendingFor.mockResolvedValue(new Map([['lr1', { id: 'ap1', title: 'Disburse loan' }]]));
-      await expect(controller.findOne('lr1')).resolves.toEqual({ id: 'lr1', pendingApproval: { id: 'ap1', title: 'Disburse loan' } });
+      await expect(controller.findOne('lr1', adminReq)).resolves.toEqual({
+        id: 'lr1',
+        availableActions: [],
+        pendingApproval: { id: 'ap1', title: 'Disburse loan' },
+      });
     });
+  });
+
+  it('checks the record scope before every action', async () => {
+    loanRequestService.requireStatus.mockResolvedValue({ id: 'lr1', amount: 5000, client: { phone: '+2348000000000', onboarding: null } });
+    loanRequestService.reject.mockResolvedValue({ id: 'lr1' });
+    await controller.approve('lr1', {}, adminReq);
+    await controller.disburse('lr1', {}, adminReq);
+    await controller.confirmCode('lr1', { code: '123456' }, adminReq);
+    await controller.reject('lr1', { reason: 'No' }, adminReq);
+    expect(loanRequestService.assertInScope).toHaveBeenCalledTimes(4);
   });
 
 });

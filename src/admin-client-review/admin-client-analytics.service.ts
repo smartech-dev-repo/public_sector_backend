@@ -5,6 +5,8 @@ import { ClientStatus, OnboardingStep, Prisma } from '../generated/prisma/client
 export interface ClientAnalyticsFilters {
   createdFrom?: Date;
   createdTo?: Date;
+  /** Which clients this admin may see; undefined for all. */
+  scope?: Prisma.ClientWhereInput;
 }
 
 export interface ClientAnalyticsSummary {
@@ -34,6 +36,7 @@ export class AdminClientAnalyticsService {
 
   async getSummary(filters: ClientAnalyticsFilters = {}): Promise<ClientAnalyticsSummary> {
     const clientWhere: Prisma.ClientWhereInput = {
+      ...(filters.scope ? { AND: [filters.scope] } : {}),
       createdAt:
         filters.createdFrom || filters.createdTo
           ? { gte: filters.createdFrom, lte: filters.createdTo }

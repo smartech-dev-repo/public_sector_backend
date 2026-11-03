@@ -8,6 +8,11 @@ export class ListClientLoansQueryDto extends PaginationDto {
   @IsNotEmpty()
   clientId?: string;
 
+  /** Client name, phone, email, IPPIS number or ID. */
+  @IsOptional()
+  @IsString()
+  search?: string;
+
   @IsOptional()
   @IsEnum(ClientLoanStatus)
   status?: ClientLoanStatus;

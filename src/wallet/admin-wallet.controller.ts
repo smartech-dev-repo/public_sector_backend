@@ -1,3 +1,4 @@
+import { ClientInScope } from '../auth/client-scope.guard';
 import { Body, Controller, Get, HttpCode, Param, Post, Query, Req, UseGuards, UseInterceptors, OnModuleInit } from '@nestjs/common';
 import { ApprovalsService } from '../approvals/approvals.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -15,6 +16,7 @@ const WALLET_CREDIT = 'wallet.credit';
 const WALLET_DEBIT = 'wallet.debit';
 
 @Controller('admin/clients/:clientId/wallet')
+@ClientInScope('clientId')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 @UseInterceptors(AuditInterceptor)
 export class AdminWalletController implements OnModuleInit {

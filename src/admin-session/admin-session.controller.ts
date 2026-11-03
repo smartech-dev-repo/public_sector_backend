@@ -1,3 +1,4 @@
+import { ClientInScope } from '../auth/client-scope.guard';
 import { Body, Controller, Get, HttpCode, Param, Post, Query, Req, UseGuards, UseInterceptors } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { PermissionsGuard } from '../auth/permissions.guard';
@@ -102,6 +103,7 @@ export class AdminSessionController {
   }
 
   @Post('clients/:id/sessions/revoke-all')
+  @ClientInScope('id')
   @HttpCode(200)
   @RequirePermissions('clients:sessions:revoke')
   async revokeClientSessions(@Param('id') id: string, @Req() req: { user: JwtPayload }) {
