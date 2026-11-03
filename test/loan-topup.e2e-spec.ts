@@ -3,11 +3,13 @@ import { INestApplication, ValidationPipe } from '@nestjs/common';
 import * as request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { PrismaService } from '../src/prisma/prisma.service';
+import { ensureDefaultCapacity, salaryPayments } from './fixtures/affordability';
 import { TokenService } from '../src/auth/token.service';
 
 describe('Loan topup/renewal (e2e)', () => {
   let app: INestApplication;
   let prisma: PrismaService;
+  let restoreCapacity: () => Promise<void> = async () => {};
   let adminAccessToken: string;
   const staffId = `E2E-TOPUP-${Date.now()}`;
   const agency = 'NPF';
@@ -22,6 +24,7 @@ describe('Loan topup/renewal (e2e)', () => {
     app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
     await app.init();
     prisma = moduleFixture.get(PrismaService);
+    restoreCapacity = await ensureDefaultCapacity(prisma);
 
     const loginRes = await request(app.getHttpServer())
       .post('/auth/admin/login')
@@ -63,6 +66,7 @@ describe('Loan topup/renewal (e2e)', () => {
     await prisma.ippisRecord.deleteMany({ where: { staffId: { startsWith: staffId } } });
     await prisma.client.deleteMany({ where: { id: { in: clientIds } } });
     await prisma.loanProduct.deleteMany({ where: { productCode } });
+    await restoreCapacity();
     await app.close();
   });
 
@@ -70,7 +74,7 @@ describe('Loan topup/renewal (e2e)', () => {
     const phone = `+234805${phoneSuffix}`;
     const client = await prisma.client.create({ data: { phone, status: 'VERIFIED' } });
     const ippisRecord = await prisma.ippisRecord.create({
-      data: { agency, staffId: `${staffId}-${staffIdSuffix}`, employeeName: 'E2E Topup Test', salary: 2000000 },
+      data: { agency, staffId: `${staffId}-${staffIdSuffix}`, employeeName: 'E2E Topup Test', salary: 2000000, ...salaryPayments(2000000) },
     });
     await prisma.clientOnboarding.create({
       data: {
@@ -111,30 +115,45 @@ describe('Loan topup/renewal (e2e)', () => {
 
   async function closeLoanBalance(clientId: string, accessToken: string, agencyStaffId: string) {
     const loan = await prisma.clientLoan.findFirst({ where: { agency, staffId: agencyStaffId } });
-    const balance = Number(loan!.principalBalance);
+    // The balance is principal; what is left to pay includes its interest, so credit plenty
+    // and let apply-wallet take only what is owed.
+    const owed = Number(loan!.principalBalance) * 3;
     await request(app.getHttpServer())
       .post(`/admin/clients/${clientId}/wallet/credit`)
       .set('Authorization', `Bearer ${adminAccessToken}`)
-      .send({ amount: balance, description: 'E2E test credit' })
+      .send({ amount: owed, description: 'E2E test credit' })
       .expect(200);
     await request(app.getHttpServer())
       .post('/client/client-loans/me/apply-wallet')
       .set('Authorization', `Bearer ${accessToken}`)
-      .send({ amount: balance })
+      .send({ amount: owed })
       .expect(200);
   }
 
   it(
-    'rejects a renewal while the existing loan still has an outstanding balance',
+    'accepts a renewal while the existing loan still has a balance, up to the salary maximum less that balance',
     async () => {
       const { accessToken } = await originateAndDisburseLoan('0000001', 'A');
+
+      const preview = await request(app.getHttpServer())
+        .get('/client/loan-requests/eligibility?tenorMonths=4')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .expect(200);
+      expect(preview.body.type).toBe('TOPUP');
+      expect(preview.body.currentLoan.outstandingBalance).toBeGreaterThan(0);
+
+      await request(app.getHttpServer())
+        .post('/client/loan-requests/topup')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({ amount: preview.body.maxAmount + 1000, tenorMonths: 4 })
+        .expect(422)
+        .expect((res) => expect(res.body.message).toMatch(/most you can top up/));
 
       await request(app.getHttpServer())
         .post('/client/loan-requests/topup')
         .set('Authorization', `Bearer ${accessToken}`)
         .send({ amount: 20000, tenorMonths: 4 })
-        .expect(422)
-        .expect((res) => expect(res.body.message).toMatch(/outstanding balance/));
+        .expect(201);
     },
     30000,
   );

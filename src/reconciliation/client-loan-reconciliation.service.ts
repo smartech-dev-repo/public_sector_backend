@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { WalletService } from '../wallet/wallet.service';
-import { computeExpectedInstallment } from './amortization.util';
+import { clientLoanInstallment, clientLoanPrincipalPaid } from './client-loan-terms.util';
 import { toPeriodKey } from './period.util';
 import { computeClientLoanStatus } from './client-loan-status.util';
 import { AuditActorType } from '../generated/prisma/client';
@@ -47,12 +47,7 @@ export class ClientLoanReconciliationService {
       const loanKey = `${clientLoan.agency}::${clientLoan.staffId}`;
       const periodMap = totalsByLoanKey.get(loanKey) ?? new Map<string, number>();
 
-      const expectedAmount = computeExpectedInstallment(
-        Number(clientLoan.principalAmount),
-        Number(clientLoan.interestRatePercent),
-        clientLoan.disbursementDate,
-        clientLoan.maturationDate,
-      );
+      const expectedAmount = clientLoanInstallment(clientLoan);
 
       let updatedBalance = Number(clientLoan.principalBalance);
       let processedAnyPeriod = false;
@@ -73,7 +68,8 @@ export class ClientLoanReconciliationService {
           data: { clientLoanId: clientLoan.id, period, expectedAmount, actualAmount, variance, status },
         });
 
-        updatedBalance -= Math.min(actualAmount, expectedAmount);
+        // The installment is principal plus interest; only the principal share reduces the balance.
+        updatedBalance -= clientLoanPrincipalPaid(clientLoan, Math.min(actualAmount, expectedAmount));
         processedAnyPeriod = true;
 
         if (actualAmount > expectedAmount) {
@@ -98,7 +94,7 @@ export class ClientLoanReconciliationService {
 
         await this.prisma.clientLoan.update({
           where: { id: clientLoan.id },
-          data: { principalBalance: updatedBalance, status: newStatus },
+          data: { principalBalance: Math.max(0, Math.round(updatedBalance * 100) / 100), status: newStatus },
         });
       }
     }

@@ -6,6 +6,7 @@ import { SmsWebhookController } from './sms-webhook.controller';
 import { AdminLoanRequestController } from './admin-loan-request.controller';
 import { AdminClientLoansController } from './admin-client-loans.controller';
 import { ClientLoanController } from './client-loan.controller';
+import { AdminLoanEligibilityController } from './admin-loan-eligibility.controller';
 import { LoanRequestService } from './loan-request.service';
 import { LoanRequestExpiryProcessor } from './loan-request-expiry.processor';
 import { LOAN_REQUEST_EXPIRY_QUEUE } from './loan-request-queue.constants';
@@ -16,6 +17,7 @@ import { HasActiveLoanRule } from './eligibility/has-active-loan.rule';
 import { NoTopupInProgressRule } from './eligibility/no-topup-in-progress.rule';
 import { TopupEligibilityService } from './eligibility/topup-eligibility.service';
 import { LoanProductResolverService } from './eligibility/loan-product-resolver.service';
+import { AffordabilityService } from './eligibility/affordability/affordability.service';
 import { SmsModule } from '../sms/sms.module';
 import { ClientLoansModule } from '../client-loans/client-loans.module';
 import { AuditModule } from '../audit/audit.module';
@@ -42,6 +44,7 @@ import { LoanSettingsModule } from '../loan-settings/loan-settings.module';
     AdminLoanRequestController,
     AdminClientLoansController,
     ClientLoanController,
+    AdminLoanEligibilityController,
   ],
   providers: [
     LoanRequestService,
@@ -53,7 +56,8 @@ import { LoanSettingsModule } from '../loan-settings/loan-settings.module';
     NoTopupInProgressRule,
     TopupEligibilityService,
     LoanProductResolverService,
+    AffordabilityService,
   ],
-  exports: [EligibilityService, TopupEligibilityService, LoanRequestService],
+  exports: [EligibilityService, TopupEligibilityService, LoanRequestService, AffordabilityService],
 })
 export class LoanRequestModule {}

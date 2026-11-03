@@ -3,11 +3,13 @@ import { INestApplication, ValidationPipe } from '@nestjs/common';
 import * as request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { PrismaService } from '../src/prisma/prisma.service';
+import { ensureDefaultCapacity, salaryPayments } from './fixtures/affordability';
 import { TokenService } from '../src/auth/token.service';
 
 describe('Loan request workflow (e2e)', () => {
   let app: INestApplication;
   let prisma: PrismaService;
+  let restoreCapacity: () => Promise<void> = async () => {};
   let clientId: string;
   let accessToken: string;
   const phone = `+234802${Date.now().toString().slice(-7)}`;
@@ -23,11 +25,12 @@ describe('Loan request workflow (e2e)', () => {
     app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
     await app.init();
     prisma = moduleFixture.get(PrismaService);
+    restoreCapacity = await ensureDefaultCapacity(prisma);
 
     const client = await prisma.client.create({ data: { phone, status: 'VERIFIED' } });
     clientId = client.id;
     const ippisRecord = await prisma.ippisRecord.create({
-      data: { agency: 'NPF', staffId, employeeName: 'E2E Loan Test', salary: 1000000 },
+      data: { agency: 'NPF', staffId, employeeName: 'E2E Loan Test', salary: 1000000, ...salaryPayments(1000000) },
     });
     await prisma.clientOnboarding.create({
       data: {
@@ -69,6 +72,7 @@ describe('Loan request workflow (e2e)', () => {
     await prisma.ippisRecord.deleteMany({ where: { staffId } });
     await prisma.client.deleteMany({ where: { id: clientId } });
     await prisma.loanProduct.deleteMany({ where: { productCode } });
+    await restoreCapacity();
     await app.close();
   });
 

@@ -1,4 +1,4 @@
-import { Body, Controller, HttpCode, NotFoundException, Param, Post, Req, UseGuards, UseInterceptors } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, NotFoundException, Param, Post, Query, Req, UseGuards, UseInterceptors } from '@nestjs/common';
 import { AuditEvent } from '../audit/audit-event.decorator';
 import { AuditEventInterceptor } from '../audit/audit-event.interceptor';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -9,6 +9,8 @@ import { PrismaService } from '../prisma/prisma.service';
 import { LoanRequestService } from './loan-request.service';
 import { CreateLoanRequestDto } from './dto/create-loan-request.dto';
 import { ConfirmLoanRequestCodeDto } from './dto/confirm-loan-request-code.dto';
+import { LoanEligibilityQueryDto } from './dto/loan-eligibility-query.dto';
+import { AffordabilityService } from './eligibility/affordability/affordability.service';
 
 @Controller('agent/clients/:clientId/loan-requests')
 @UseGuards(JwtAuthGuard, AgentOnlyGuard, AgentCanOnboardClientsGuard)
@@ -17,6 +19,7 @@ export class AgentLoanRequestController {
   constructor(
     private readonly prisma: PrismaService,
     private readonly loanRequestService: LoanRequestService,
+    private readonly affordabilityService?: AffordabilityService,
   ) {}
 
   private async assertOwnsClient(clientId: string, agentId: string): Promise<void> {
@@ -27,6 +30,13 @@ export class AgentLoanRequestController {
     if (!owned) {
       throw new NotFoundException('Client not found');
     }
+  }
+
+  /** The most this client can borrow or top up over the tenor picked. */
+  @Get('eligibility')
+  async eligibility(@Param('clientId') clientId: string, @Query() query: LoanEligibilityQueryDto, @Req() req: { user: JwtPayload }) {
+    await this.assertOwnsClient(clientId, req.user.sub);
+    return this.affordabilityService!.preview(clientId, query.tenorMonths, query.type);
   }
 
   @Post()

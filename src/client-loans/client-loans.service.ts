@@ -39,6 +39,7 @@ const LOAN_SELECT = {
   interestRatePercent: true,
   accountOfficer: true,
   hasPreviouslyTakenLoan: true,
+  settledAt: true,
   createdAt: true,
   updatedAt: true,
 } as const;

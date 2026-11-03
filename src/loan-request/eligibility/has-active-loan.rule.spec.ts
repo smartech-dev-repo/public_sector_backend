@@ -20,43 +20,19 @@ describe('HasActiveLoanRule', () => {
     rule = new HasActiveLoanRule(prisma as unknown as PrismaService, clientLoansService as unknown as ClientLoansService);
   });
 
-  it('fails when the latest ClientLoan still has an outstanding balance', async () => {
-    prisma.clientLoan.findFirst.mockResolvedValue({ id: 'cl-1', principalBalance: 5000 });
-    const result = await rule.check(client, ippisRecord, 1000);
-    expect(result.eligible).toBe(false);
-    expect(result.reason).toMatch(/outstanding balance/);
-    expect(prisma.clientLoan.findFirst).toHaveBeenCalledWith({
-      where: { clientId: 'client-1' },
-      orderBy: { disbursementDate: 'desc' },
-    });
+  it('passes while the latest app loan still has a balance: a top-up can happen at any time', async () => {
+    prisma.clientLoan.findFirst.mockResolvedValue({ id: 'cl-1' });
+    expect((await rule.check(client, ippisRecord, 1000)).eligible).toBe(true);
   });
 
-  it('passes when the latest ClientLoan balance is 0 (closed)', async () => {
-    prisma.clientLoan.findFirst.mockResolvedValue({ id: 'cl-1', principalBalance: 0 });
-    const result = await rule.check(client, ippisRecord, 1000);
-    expect(result.eligible).toBe(true);
-  });
-
-  it('fails when there is no ClientLoan row but a matched ingested loan is still outstanding', async () => {
+  it('passes with no app loan but an imported loan, open or closed', async () => {
     prisma.clientLoan.findFirst.mockResolvedValue(null);
-    clientLoansService.hasOutstandingMatchedLoan.mockResolvedValue(true);
-    const result = await rule.check(client, ippisRecord, 1000);
-    expect(result.eligible).toBe(false);
-    expect(result.reason).toMatch(/outstanding balance/);
-  });
-
-  it('passes when there is no ClientLoan row and the only matched ingested loan is closed', async () => {
-    prisma.clientLoan.findFirst.mockResolvedValue(null);
-    clientLoansService.hasOutstandingMatchedLoan.mockResolvedValue(false);
     clientLoansService.hasAnyMatchedLoan.mockResolvedValue(true);
-    const result = await rule.check(client, ippisRecord, 1000);
-    expect(result.eligible).toBe(true);
+    expect((await rule.check(client, ippisRecord, 1000)).eligible).toBe(true);
   });
 
-  it('fails when the client has no ClientLoan row and no matched ingested loan at all', async () => {
+  it('fails when the client has no loan at all', async () => {
     prisma.clientLoan.findFirst.mockResolvedValue(null);
-    clientLoansService.hasOutstandingMatchedLoan.mockResolvedValue(false);
-    clientLoansService.hasAnyMatchedLoan.mockResolvedValue(false);
     const result = await rule.check(client, ippisRecord, 1000);
     expect(result.eligible).toBe(false);
     expect(result.reason).toMatch(/no existing loan to renew/);

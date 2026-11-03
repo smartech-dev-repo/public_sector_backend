@@ -3,10 +3,11 @@ import { VarianceStatus } from '../generated/prisma/client';
 export type LoanStatus = 'ACTIVE' | 'DEFAULT' | 'CLOSED';
 
 export function computeLoanStatus(
-  loan: { principalBalance: unknown; maturationDate: Date },
+  loan: { principalBalance: unknown; maturationDate: Date; settledAt?: Date | null },
   latestVarianceStatus: VarianceStatus | null,
 ): LoanStatus {
-  if (Number(loan.principalBalance) <= 0) {
+  // A top-up in the app took over this loan's balance.
+  if (loan.settledAt || Number(loan.principalBalance) <= 0) {
     return 'CLOSED';
   }
 

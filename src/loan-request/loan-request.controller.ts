@@ -8,12 +8,23 @@ import { LoanRequestService } from './loan-request.service';
 import { CreateLoanRequestDto } from './dto/create-loan-request.dto';
 import { ConfirmLoanRequestCodeDto } from './dto/confirm-loan-request-code.dto';
 import { ListClientLoanRequestsQueryDto } from './dto/list-client-loan-requests-query.dto';
+import { LoanEligibilityQueryDto } from './dto/loan-eligibility-query.dto';
+import { AffordabilityService } from './eligibility/affordability/affordability.service';
 
 @Controller('client/loan-requests')
 @UseGuards(JwtAuthGuard, ClientOnlyGuard)
 @UseInterceptors(AuditEventInterceptor)
 export class LoanRequestController {
-  constructor(private readonly loanRequestService: LoanRequestService) {}
+  constructor(
+    private readonly loanRequestService: LoanRequestService,
+    private readonly affordabilityService: AffordabilityService,
+  ) {}
+
+  /** The most the client can borrow or top up over the tenor they picked. */
+  @Get('eligibility')
+  eligibility(@Query() query: LoanEligibilityQueryDto, @Req() req: { user: JwtPayload }) {
+    return this.affordabilityService.preview(req.user.sub, query.tenorMonths, query.type);
+  }
 
   @Post()
   @AuditEvent({ action: 'loan-request.created', targetType: 'LoanRequest', targetId: { result: 'id' }, result: ['amount', 'tenorMonths', 'status', 'type'] })

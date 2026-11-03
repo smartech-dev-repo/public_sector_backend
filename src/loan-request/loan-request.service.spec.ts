@@ -39,6 +39,8 @@ describe('LoanRequestService', () => {
       count: jest.Mock;
     };
     clientLoanRepaymentVariance: { findMany: jest.Mock; findUnique: jest.Mock; create: jest.Mock };
+    loan: { findUnique: jest.Mock; updateMany: jest.Mock };
+    $transaction: jest.Mock;
   };
   let eligibilityService: { check: jest.Mock };
   let topupEligibilityService: { check: jest.Mock };
@@ -72,7 +74,10 @@ describe('LoanRequestService', () => {
         count: jest.fn(),
       },
       clientLoanRepaymentVariance: { findMany: jest.fn(), findUnique: jest.fn(), create: jest.fn() },
+      loan: { findUnique: jest.fn(), updateMany: jest.fn() },
+      $transaction: jest.fn(),
     };
+    prisma.$transaction.mockImplementation((fn: (tx: unknown) => unknown) => fn(prisma));
     eligibilityService = { check: jest.fn() };
     topupEligibilityService = { check: jest.fn() };
     loanProductResolverService = { resolve: jest.fn() };
@@ -1318,15 +1323,17 @@ describe('LoanRequestService', () => {
         managementChargeAmount: 140,
         managementChargeApplication: 'DEDUCT_FROM_DISBURSEMENT',
       });
+      prisma.clientLoan.findUniqueOrThrow.mockResolvedValue({ id: 'cl1', principalBalance: 3000 });
       prisma.clientLoan.update.mockResolvedValue({ id: 'cl1' });
 
       await service.disburse('lr2');
 
+      // The 3,000 still owed carries into the renewed loan; only the 7,000 top-up is paid out.
       expect(prisma.clientLoan.update).toHaveBeenCalledWith({
         where: { id: 'cl1' },
         data: expect.objectContaining({
-          principalAmount: 7000,
-          principalBalance: 7000,
+          principalAmount: 10000,
+          principalBalance: 10000,
           disbursedAmount: 6860,
           tenorMonths: 6,
           interestRatePercent: 6,
@@ -1376,6 +1383,111 @@ describe('LoanRequestService', () => {
         }),
       });
       expect(prisma.clientLoan.update).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('disburse a TOPUP of an imported loan', () => {
+    it('carries the imported balance into the new app loan and marks that loan settled', async () => {
+      prisma.loanRequest.findUnique.mockResolvedValue({ id: 'lr3', status: 'APPROVED' });
+      prisma.loanRequest.update.mockResolvedValue({ id: 'lr3', status: 'DISBURSED' });
+      prisma.loanRequest.findUniqueOrThrow.mockResolvedValue({
+        id: 'lr3',
+        clientId: 'c1',
+        type: 'TOPUP',
+        topupTargetId: null,
+        topupImportedLoanId: 'loan-9',
+        amount: 7000,
+        tenorMonths: 6,
+        interestRatePercent: 6,
+        managementChargeType: 'PERCENTAGE',
+        managementChargeValue: 2,
+        managementChargeAmount: 140,
+        managementChargeApplication: 'DEDUCT_FROM_DISBURSEMENT',
+      });
+      prisma.clientOnboarding.findUniqueOrThrow.mockResolvedValue({ ippisRecord: { agency: 'NPF', staffId: 'NPF-001' } });
+      prisma.loan.findUnique.mockResolvedValue({ id: 'loan-9', principalBalance: 5000, settledAt: null });
+
+      await service.disburse('lr3');
+
+      expect(prisma.clientLoan.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({ principalAmount: 12000, principalBalance: 12000, disbursedAmount: 6860 }),
+      });
+      expect(prisma.loan.updateMany).toHaveBeenCalledWith({
+        where: { id: 'loan-9', settledAt: null },
+        data: expect.objectContaining({ settledByLoanRequestId: 'lr3' }),
+      });
+    });
+  });
+
+  describe('salary-based maximum', () => {
+    const assessment = (over: object = {}) => ({
+      type: 'LOAN',
+      tenorMonths: 12,
+      eligible: true,
+      maxAmount: 967000,
+      currentLoan: null,
+      ...over,
+    });
+    let affordabilityService: { assess: jest.Mock };
+
+    beforeEach(() => {
+      affordabilityService = { assess: jest.fn().mockResolvedValue(assessment()) };
+      service = new LoanRequestService(
+        prisma as unknown as PrismaService,
+        eligibilityService as unknown as EligibilityService,
+        smsService as unknown as SmsService,
+        expiryQueue as unknown as Queue,
+        topupEligibilityService as unknown as TopupEligibilityService,
+        walletService as unknown as WalletService,
+        loanProductResolverService as unknown as LoanProductResolverService,
+        undefined,
+        emailService as unknown as EmailService,
+        undefined,
+        affordabilityService as never,
+      );
+      prisma.client.findUniqueOrThrow.mockResolvedValue({ id: 'c1', phone: '+2348000000000', status: 'VERIFIED' });
+      prisma.clientOnboarding.findUnique.mockResolvedValue({ ippisRecord: { agency: 'NPF', phone: null } });
+      eligibilityService.check.mockResolvedValue({ eligible: true });
+      topupEligibilityService.check.mockResolvedValue({ eligible: true });
+      loanProductResolverService.resolve.mockResolvedValue({
+        product: { managementChargeType: 'PERCENTAGE', managementChargeValue: 2, managementChargeApplication: 'DEDUCT_FROM_DISBURSEMENT' },
+        tier: { minTenorMonths: 1, maxTenorMonths: 12, interestRatePercent: 2 },
+      });
+      prisma.loanRequest.create.mockResolvedValue({ id: 'lr9' });
+    });
+
+    it('refuses more than the maximum for the tenor, saying what the maximum is', async () => {
+      await expect(service.create('c1', 1000000, 12)).rejects.toThrow('For 12 months, the most you can borrow is ₦967,000');
+      expect(smsService.send).not.toHaveBeenCalled();
+    });
+
+    it('refuses with the reason when the client is not eligible at all', async () => {
+      affordabilityService.assess.mockResolvedValue(assessment({ eligible: false, maxAmount: 0, reason: 'Salary history incomplete' }));
+      await expect(service.create('c1', 1000, 12)).rejects.toThrow('Salary history incomplete');
+    });
+
+    it('accepts up to the maximum and saves the workings on the request', async () => {
+      await service.create('c1', 967000, 12);
+      expect(prisma.loanRequest.create).toHaveBeenCalledWith(
+        expect.objectContaining({ data: expect.objectContaining({ affordability: expect.objectContaining({ maxAmount: 967000 }) }) }),
+      );
+    });
+
+    it('top-up: resolves the product on balance + top-up and saves the balance', async () => {
+      affordabilityService.assess.mockResolvedValue(
+        assessment({ type: 'TOPUP', maxAmount: 567000, currentLoan: { source: 'APP', id: 'cl1', outstandingBalance: 400000, monthlyRepayment: 50000 } }),
+      );
+      prisma.clientLoan.findFirst.mockResolvedValue({ id: 'cl1' });
+      await service.createTopup('c1', 500000, 12);
+      expect(loanProductResolverService.resolve).toHaveBeenCalledWith(expect.anything(), 900000, 12);
+      expect(prisma.loanRequest.create).toHaveBeenCalledWith(
+        expect.objectContaining({ data: expect.objectContaining({ topupTargetId: 'cl1', topupOutstandingBalance: 400000 }) }),
+      );
+    });
+
+    it('top-up: the message says top up', async () => {
+      affordabilityService.assess.mockResolvedValue(assessment({ type: 'TOPUP', maxAmount: 567000, currentLoan: null }));
+      await expect(service.createTopup('c1', 600000, 12)).rejects.toThrow('the most you can top up is ₦567,000');
     });
   });
 

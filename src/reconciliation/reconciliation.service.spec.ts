@@ -35,6 +35,19 @@ describe('ReconciliationService', () => {
       maturationDate: new Date('2025-02-01'),
     };
 
+    it('stops reconciling an imported loan from the month an app top-up took it over', async () => {
+      prisma.loan.findMany.mockResolvedValue([{ ...baseLoan, maturationDate: new Date('2025-06-01'), settledAt: new Date('2025-03-15') }]);
+      prisma.loanRepaymentRecord.findMany.mockResolvedValue([
+        { agency: 'NPF', staffId: 'NPF-001', period: '2025-02', amount: 1000 },
+        { agency: 'NPF', staffId: 'NPF-001', period: '2025-03', amount: 1000 },
+      ]);
+
+      await service.reconcileAll();
+
+      const periods = prisma.repaymentVariance.upsert.mock.calls.map((call: [{ where: { loanId_period: { period: string } } }]) => call[0].where.loanId_period.period);
+      expect(periods).toEqual(['2025-02']);
+    });
+
     it('skips a loan with no agency', async () => {
       prisma.loan.findMany.mockResolvedValue([{ ...baseLoan, agency: null }]);
       prisma.loanRepaymentRecord.findMany.mockResolvedValue([]);
@@ -47,18 +60,19 @@ describe('ReconciliationService', () => {
     it('marks MATCHED when the actual amount is within the ₦1 tolerance of the expected installment', async () => {
       prisma.loan.findMany.mockResolvedValue([baseLoan]);
       prisma.loanRepaymentRecord.findMany.mockResolvedValue([
-        { agency: 'NPF', staffId: 'NPF-001', period: '2025-01', amount: 101000 },
+        { agency: 'NPF', staffId: 'NPF-001', period: '2025-01', amount: 112000 },
       ]);
 
       await service.reconcileAll();
 
+      // One month at a flat 12% a month: 100,000 × 1.12.
       expect(prisma.repaymentVariance.upsert).toHaveBeenCalledWith(
         expect.objectContaining({
           where: { loanId_period: { loanId: 'loan-1', period: '2025-01' } },
           create: expect.objectContaining({
             status: VarianceStatus.MATCHED,
-            expectedAmount: 101000,
-            actualAmount: 101000,
+            expectedAmount: 112000,
+            actualAmount: 112000,
             variance: 0,
           }),
         }),

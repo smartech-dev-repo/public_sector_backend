@@ -45,8 +45,11 @@ export class ReconciliationService {
 
       const disbursementPeriod = toPeriodKey(loan.disbursementDate);
       const maturationPeriod = toPeriodKey(loan.maturationDate);
+      // Once an app top-up has taken over this loan, its repayments belong to the app loan.
+      const settledPeriod = loan.settledAt ? toPeriodKey(loan.settledAt) : null;
       const applicablePeriods = allPeriods.filter(
-        (period) => period >= disbursementPeriod && period <= maturationPeriod,
+        (period) =>
+          period >= disbursementPeriod && period <= maturationPeriod && (!settledPeriod || period < settledPeriod),
       );
       if (applicablePeriods.length === 0) {
         continue;

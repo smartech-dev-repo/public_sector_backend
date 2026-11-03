@@ -20,7 +20,8 @@ import { SmsType } from '../sms/sms-type';
 import { LoanProductResolverService } from './eligibility/loan-product-resolver.service';
 import { LOAN_REQUEST_EXPIRY_QUEUE } from './loan-request-queue.constants';
 import { generatePeriodRange, toPeriodKey } from '../reconciliation/period.util';
-import { computeExpectedInstallment } from '../reconciliation/amortization.util';
+import { clientLoanInstallment, clientLoanPrincipalPaid, clientLoanRemainingRepayable } from '../reconciliation/client-loan-terms.util';
+import { AffordabilityAssessment, AffordabilityService, overMaximumMessage } from './eligibility/affordability/affordability.service';
 import { WalletService } from '../wallet/wallet.service';
 import { EmailService } from '../email/email.service';
 import { LoanSettingsService } from '../loan-settings/loan-settings.service';
@@ -84,7 +85,33 @@ export class LoanRequestService {
     private readonly configService?: ConfigService,
     private readonly emailService?: EmailService,
     private readonly loanSettingsService?: LoanSettingsService,
+    private readonly affordabilityService?: AffordabilityService,
   ) {}
+
+  /**
+   * Refuses an amount above what the client's salary allows for this tenor, and returns the
+   * workings to save on the request. Checked twice: first against the best product for the
+   * tenor (so the message gives their true maximum), then against the product the amount
+   * resolved to.
+   */
+  private async assertAffordable(
+    clientId: string,
+    ippisRecord: Parameters<AffordabilityService['assess']>[1],
+    amount: number,
+    tenorMonths: number,
+    type: 'LOAN' | 'TOPUP',
+    match?: Parameters<AffordabilityService['assess']>[4],
+  ): Promise<AffordabilityAssessment | null> {
+    if (!this.affordabilityService) return null;
+    const assessment = await this.affordabilityService.assess(clientId, ippisRecord, tenorMonths, type, match);
+    if (!assessment.eligible) {
+      throw new UnprocessableEntityException(assessment.reason ?? 'Not eligible for this tenor');
+    }
+    if (amount > assessment.maxAmount) {
+      throw new UnprocessableEntityException(overMaximumMessage(assessment));
+    }
+    return assessment;
+  }
 
   private resolveSmsPhone(client: { phone: string }, ippisRecord?: { phone: string | null } | null): string {
     return client.phone || ippisRecord?.phone || client.phone;
@@ -192,6 +219,11 @@ export class LoanRequestService {
     });
   }
 
+  /**
+   * A top-up renews the loan: the balance still owed carries into it, so the renewed loan is
+   * balance + top-up, repaid over the new tenor at the new rate. Only the top-up is paid out.
+   * The balance is read at disbursement, not request time, so repayments in between count.
+   */
   private async applyTopupToClientLoan(loanRequest: LoanRequest, disbursementDate: Date = new Date()): Promise<void> {
     const topupAmount = Number(loanRequest.amount);
     const managementChargeAmount = Number(loanRequest.managementChargeAmount);
@@ -203,23 +235,30 @@ export class LoanRequestService {
     const maturationDate = new Date(disbursementDate);
     maturationDate.setMonth(maturationDate.getMonth() + loanRequest.tenorMonths);
 
-    const fields = {
-      principalAmount: topupAmount,
-      disbursedAmount,
-      principalBalance: topupAmount,
-      tenorMonths: loanRequest.tenorMonths,
-      interestRatePercent: loanRequest.interestRatePercent,
-      managementChargeType: loanRequest.managementChargeType,
-      managementChargeValue: loanRequest.managementChargeValue,
-      managementChargeApplication: loanRequest.managementChargeApplication,
-      managementChargeAmount,
-      disbursementDate,
-      maturationDate,
-      status: ClientLoanStatus.ACTIVE,
+    const termsFor = (carriedBalance: number) => {
+      const principal = Math.round((Math.max(0, carriedBalance) + topupAmount) * 100) / 100;
+      return {
+        principalAmount: principal,
+        disbursedAmount,
+        principalBalance: principal,
+        tenorMonths: loanRequest.tenorMonths,
+        interestRatePercent: loanRequest.interestRatePercent,
+        managementChargeType: loanRequest.managementChargeType,
+        managementChargeValue: loanRequest.managementChargeValue,
+        managementChargeApplication: loanRequest.managementChargeApplication,
+        managementChargeAmount,
+        disbursementDate,
+        maturationDate,
+        status: ClientLoanStatus.ACTIVE,
+      };
     };
 
     if (loanRequest.topupTargetId) {
-      await this.prisma.clientLoan.update({ where: { id: loanRequest.topupTargetId }, data: fields });
+      const target = await this.prisma.clientLoan.findUniqueOrThrow({ where: { id: loanRequest.topupTargetId } });
+      await this.prisma.clientLoan.update({
+        where: { id: target.id },
+        data: termsFor(Number(target.principalBalance)),
+      });
       return;
     }
 
@@ -228,14 +267,30 @@ export class LoanRequestService {
       include: { ippisRecord: true },
     });
 
-    await this.prisma.clientLoan.create({
-      data: {
-        clientId: loanRequest.clientId,
-        loanRequestId: loanRequest.id,
-        agency: onboarding.ippisRecord.agency,
-        staffId: onboarding.ippisRecord.staffId,
-        ...fields,
-      },
+    // Renewing a loan from the disbursed-loans broadsheet: the new app loan takes over its
+    // balance, and that loan is marked settled so it isn't reconciled or owed twice.
+    let carried = 0;
+    if (loanRequest.topupImportedLoanId) {
+      const imported = await this.prisma.loan.findUnique({ where: { id: loanRequest.topupImportedLoanId } });
+      if (imported && !imported.settledAt) carried = Number(imported.principalBalance);
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.clientLoan.create({
+        data: {
+          clientId: loanRequest.clientId,
+          loanRequestId: loanRequest.id,
+          agency: onboarding.ippisRecord.agency,
+          staffId: onboarding.ippisRecord.staffId,
+          ...termsFor(carried),
+        },
+      });
+      if (loanRequest.topupImportedLoanId) {
+        await tx.loan.updateMany({
+          where: { id: loanRequest.topupImportedLoanId, settledAt: null },
+          data: { settledAt: disbursementDate, settledByLoanRequestId: loanRequest.id },
+        });
+      }
     });
   }
 
@@ -257,19 +312,15 @@ export class LoanRequestService {
     }
 
     const principalBalance = Number(clientLoan.principalBalance);
-    const appliedAmount = Math.min(amount, principalBalance);
+    // The balance is principal; the client can pay at most what is left including interest.
+    const appliedAmount = Math.min(amount, clientLoanRemainingRepayable(clientLoan));
 
     await this.walletService.debit(clientId, appliedAmount, `Applied toward loan #${clientLoan.id}`, {
       actorType: AuditActorType.CLIENT,
       actorId: clientId,
     });
 
-    const expectedAmount = computeExpectedInstallment(
-      Number(clientLoan.principalAmount),
-      Number(clientLoan.interestRatePercent),
-      clientLoan.disbursementDate,
-      clientLoan.maturationDate,
-    );
+    const expectedAmount = clientLoanInstallment(clientLoan);
     const variance = appliedAmount - expectedAmount;
     const status = classifyVariance(appliedAmount, variance);
 
@@ -285,7 +336,7 @@ export class LoanRequestService {
       },
     });
 
-    const remainingBalance = principalBalance - appliedAmount;
+    const remainingBalance = Math.max(0, Math.round((principalBalance - clientLoanPrincipalPaid(clientLoan, appliedAmount)) * 100) / 100);
     const newStatus = computeClientLoanStatus(
       { principalBalance: remainingBalance, maturationDate: clientLoan.maturationDate },
       status,
@@ -316,7 +367,9 @@ export class LoanRequestService {
       throw new UnprocessableEntityException(eligibility.reason);
     }
 
+    await this.assertAffordable(clientId, onboarding.ippisRecord, amount, tenorMonths, 'LOAN');
     const { product, tier } = await this.loanProductResolverService.resolve(onboarding.ippisRecord, amount, tenorMonths);
+    const affordability = await this.assertAffordable(clientId, onboarding.ippisRecord, amount, tenorMonths, 'LOAN', { product, tier });
 
     const managementChargeAmount =
       product.managementChargeType === ManagementChargeType.PERCENTAGE
@@ -339,6 +392,7 @@ export class LoanRequestService {
         requestedByAgentId: requestedByAgentId ?? null,
         amount,
         tenorMonths,
+        affordability: (affordability ?? undefined) as unknown as Prisma.InputJsonValue | undefined,
         interestRatePercent: tier.interestRatePercent,
         managementChargeType: product.managementChargeType,
         managementChargeValue: product.managementChargeValue,
@@ -378,7 +432,18 @@ export class LoanRequestService {
       orderBy: { disbursementDate: 'desc' },
     });
 
-    const { product, tier } = await this.loanProductResolverService.resolve(onboarding.ippisRecord, amount, tenorMonths);
+    // A top-up renews the loan: the balance carries into the new loan, so the product is
+    // the one for the renewed loan's size, balance plus top-up.
+    const firstCheck = await this.assertAffordable(clientId, onboarding.ippisRecord, amount, tenorMonths, 'TOPUP');
+    const outstandingBalance = firstCheck?.currentLoan?.outstandingBalance ?? 0;
+    const { product, tier } = await this.loanProductResolverService.resolve(
+      onboarding.ippisRecord,
+      outstandingBalance + amount,
+      tenorMonths,
+    );
+    const affordability = await this.assertAffordable(clientId, onboarding.ippisRecord, amount, tenorMonths, 'TOPUP', { product, tier });
+    const importedLoanId =
+      !existingClientLoan && affordability?.currentLoan?.source === 'INGESTED' ? affordability.currentLoan.id : null;
 
     const managementChargeAmount =
       product.managementChargeType === ManagementChargeType.PERCENTAGE
@@ -403,6 +468,9 @@ export class LoanRequestService {
         tenorMonths,
         type: LoanRequestType.TOPUP,
         topupTargetId: existingClientLoan?.id,
+        topupImportedLoanId: importedLoanId,
+        topupOutstandingBalance: affordability ? outstandingBalance : undefined,
+        affordability: (affordability ?? undefined) as unknown as Prisma.InputJsonValue | undefined,
         interestRatePercent: tier.interestRatePercent,
         managementChargeType: product.managementChargeType,
         managementChargeValue: product.managementChargeValue,
@@ -887,12 +955,7 @@ export class LoanRequestService {
 
   private async buildLoanWithSchedule(clientLoan: ClientLoan) {
     const periods = generatePeriodRange(clientLoan.disbursementDate, clientLoan.maturationDate);
-    const expectedAmount = computeExpectedInstallment(
-      Number(clientLoan.principalAmount),
-      Number(clientLoan.interestRatePercent),
-      clientLoan.disbursementDate,
-      clientLoan.maturationDate,
-    );
+    const expectedAmount = clientLoanInstallment(clientLoan);
 
     const varianceRows = await this.prisma.clientLoanRepaymentVariance.findMany({
       where: { clientLoanId: clientLoan.id },

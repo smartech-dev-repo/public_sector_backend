@@ -4,6 +4,7 @@ import { LoanRequestService } from '../loan-request/loan-request.service';
 import { ClientLoansService } from '../client-loans/client-loans.service';
 import { EligibilityService } from '../loan-request/eligibility/eligibility.service';
 import { TopupEligibilityService } from '../loan-request/eligibility/topup-eligibility.service';
+import { clientLoanInstallment } from '../reconciliation/client-loan-terms.util';
 import { computeExpectedInstallment, monthsBetween } from '../reconciliation/amortization.util';
 import { nextPeriodDate } from '../reconciliation/period.util';
 import { projectLoanRequestSchedule } from '../loan-request/projected-schedule.util';
@@ -122,12 +123,7 @@ export class ClientLoanSummaryService {
   private async buildAppSummary(clientLoan: ClientLoan): Promise<LoanSummary> {
     const principal = Number(clientLoan.principalAmount);
     const balance = Number(clientLoan.principalBalance);
-    const monthlyRepayment = computeExpectedInstallment(
-      principal,
-      Number(clientLoan.interestRatePercent),
-      clientLoan.disbursementDate,
-      clientLoan.maturationDate,
-    );
+    const monthlyRepayment = clientLoanInstallment(clientLoan);
 
     let nextPaymentDate: string | null = null;
     if (clientLoan.status !== 'CLOSED') {

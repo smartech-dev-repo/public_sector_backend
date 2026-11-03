@@ -18,6 +18,39 @@ export class LoanProductResolverService {
     private readonly loanSettingsService: LoanSettingsService,
   ) {}
 
+  /**
+   * Every product the client could take for this tenor, whatever the amount, each with its
+   * interest band for the tenor. Used to find the largest amount their salary allows.
+   */
+  async candidatesForTenor(ippisRecord: IppisRecord, tenorMonths: number): Promise<LoanProductMatch[]> {
+    const products = await this.prisma.loanProduct.findMany({
+      where: {
+        isActive: true,
+        sectors: { has: ippisRecord.agency },
+        minimumTenorMonths: { lte: tenorMonths },
+        maximumTenorMonths: { gte: tenorMonths },
+      },
+    });
+    if (products.length === 0) return [];
+
+    const settings = await this.loanSettingsService.get();
+    const { monthsLeft, monthsServed } = computeServiceWindow(
+      ippisRecord.dateOfBirth,
+      ippisRecord.hireDate,
+      settings.retirementAgeYears,
+      settings.maxServiceYears,
+    );
+
+    return products
+      .filter((p) => isServiceLengthEligible(p, monthsLeft, monthsServed))
+      .map((product) => {
+        const tiers = product.interestTiers as unknown as InterestTier[];
+        const tier = tiers.find((t) => tenorMonths >= t.minTenorMonths && tenorMonths <= t.maxTenorMonths);
+        return tier ? { product, tier } : null;
+      })
+      .filter((match): match is LoanProductMatch => match !== null);
+  }
+
   async resolve(ippisRecord: IppisRecord, amount: number, tenorMonths: number): Promise<LoanProductMatch> {
     const structuralMatches = await this.prisma.loanProduct.findMany({
       where: {

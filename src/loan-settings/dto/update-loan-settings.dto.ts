@@ -1,7 +1,9 @@
-import { IsInt, IsOptional, IsPositive } from 'class-validator';
+import { IsInt, IsObject, IsOptional, IsPositive } from 'class-validator';
+import { RepaymentCapacityDto } from './repayment-capacity.dto';
 import { IsNigerianPhone } from '../../common/is-nigerian-phone.decorator';
 
-export class UpdateLoanSettingsDto {
+/** The default repayment capacity comes from RepaymentCapacityDto. */
+export class UpdateLoanSettingsDto extends RepaymentCapacityDto {
   @IsOptional()
   @IsInt()
   @IsPositive()
@@ -16,4 +18,9 @@ export class UpdateLoanSettingsDto {
   @IsOptional()
   @IsNigerianPhone()
   loanApprovalPhone?: string;
+
+  /** Outcome per salary pattern, e.g. { "ABC": "B" }. Patterns left out keep their value. */
+  @IsOptional()
+  @IsObject()
+  salaryPatternOutcomes?: Record<string, string>;
 }

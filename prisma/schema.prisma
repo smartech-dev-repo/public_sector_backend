@@ -187,14 +187,18 @@ enum ClientStatus {
 }
 
 model Client {
-  id             String       @id @default(uuid())
-  phone          String       @unique
-  email          String?      @unique
-  status         ClientStatus @default(PHONE_VERIFIED)
-  createdById    String?
-  createdByAdmin AdminUser?   @relation("ClientCreatedByAdmin", fields: [createdById], references: [id])
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
+  id                  String               @id @default(uuid())
+  phone               String               @unique
+  email               String?              @unique
+  status              ClientStatus         @default(PHONE_VERIFIED)
+  createdById         String?
+  createdByAdmin      AdminUser?           @relation("ClientCreatedByAdmin", fields: [createdById], references: [id])
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  /// Repayment capacity override: BASE_PAY keeps basePayAmount, DTI allows dtiPercent of salary.
+  affordabilityMethod AffordabilityMethod?
+  basePayAmount       Decimal?
+  dtiPercent          Decimal?
 
   onboarding    ClientOnboarding?
   loanRequests  LoanRequest[]
@@ -334,11 +338,15 @@ model NotificationRead {
 }
 
 model Sector {
-  id        String   @id @default(uuid())
+  id                  String               @id @default(uuid())
   /// The agency value on records and loan products, and the sheet name in uploads.
-  code      String   @unique
-  name      String?
-  createdAt DateTime @default(now())
+  code                String               @unique
+  name                String?
+  /// Repayment capacity override: BASE_PAY keeps basePayAmount, DTI allows dtiPercent of salary.
+  affordabilityMethod AffordabilityMethod?
+  basePayAmount       Decimal?
+  dtiPercent          Decimal?
+  createdAt           DateTime             @default(now())
 }
 
 model AlertRecipient {
@@ -555,6 +563,9 @@ model Loan {
   interestRatePercent    Decimal
   accountOfficer         String?
   hasPreviouslyTakenLoan Boolean             @default(false)
+  /// Set when an app top-up took over this loan's balance; reconciliation stops from then on.
+  settledAt              DateTime?
+  settledByLoanRequestId String?
   rawFields              Json?
   createdAt              DateTime            @default(now())
   updatedAt              DateTime            @updatedAt
@@ -623,12 +634,23 @@ model LoanProduct {
 }
 
 model LoanSettings {
-  id                 String   @id @default(uuid())
-  retirementAgeYears Int      @default(60)
-  maxServiceYears    Int      @default(35)
+  id                    String               @id @default(uuid())
+  retirementAgeYears    Int                  @default(60)
+  maxServiceYears       Int                  @default(35)
   /// Admin number an agent-assisted client sends their loan code to. Stored as +234XXXXXXXXXX.
-  loanApprovalPhone  String?
-  updatedAt          DateTime @updatedAt
+  loanApprovalPhone     String?
+  /// Default repayment capacity, used when neither the client nor their sector has one.
+  affordabilityMethod   AffordabilityMethod?
+  basePayAmount         Decimal?
+  dtiPercent            Decimal?
+  /// Outcome per salary pattern (see salary-pattern.util.ts). Null uses the built-in defaults.
+  salaryPatternOutcomes Json?
+  updatedAt             DateTime             @updatedAt
+}
+
+enum AffordabilityMethod {
+  BASE_PAY
+  DTI
 }
 
 enum LoanRequestStatus {
@@ -671,6 +693,12 @@ model LoanRequest {
   clientLoan                  ClientLoan?                 @relation("OriginatingRequest")
   topupTargetId               String?
   topupTarget                 ClientLoan?                 @relation("TopupRequests", fields: [topupTargetId], references: [id])
+  /// Top-up of a loan from the disbursed-loans broadsheet; the new app loan takes over its balance.
+  topupImportedLoanId         String?
+  /// Balance owed on the loan being topped up when the request was made.
+  topupOutstandingBalance     Decimal?
+  /// How the maximum amount was worked out when the request was made (salary pick, capacity, ratio).
+  affordability               Json?
   /// Set when an agent made the request for the client. The code then goes to an admin, not back to the app.
   requestedByAgentId          String?
   requestedByAgent            Agent?                      @relation(fields: [requestedByAgentId], references: [id], onDelete: SetNull)

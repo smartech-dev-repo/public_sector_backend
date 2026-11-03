@@ -22,19 +22,33 @@ export class AdminLoanSettingsController {
 
   @Get()
   get() {
-    return this.loanSettingsService.get();
+    return this.loanSettingsService.getWithSalaryPatterns();
   }
 
   @Patch()
   @HttpCode(200)
   async update(@Body() dto: UpdateLoanSettingsDto, @Req() req: { user: JwtPayload }) {
-    const before = await this.loanSettingsService.get();
-    const settings = await this.loanSettingsService.update(dto);
+    const before = await this.loanSettingsService.getWithSalaryPatterns();
+    await this.loanSettingsService.update(dto);
+    const settings = await this.loanSettingsService.getWithSalaryPatterns();
+    const changes = auditChanges(before, settings, [
+      'retirementAgeYears',
+      'maxServiceYears',
+      'loanApprovalPhone',
+      'affordabilityMethod',
+      'basePayAmount',
+      'dtiPercent',
+    ]);
+    // One entry per salary pattern whose outcome changed, e.g. "salaryPattern.ABC".
+    for (const row of settings.salaryPatterns) {
+      const from = before.salaryPatternOutcomes[row.pattern];
+      if (from !== row.outcome) changes[`salaryPattern.${row.pattern}`] = { from, to: row.outcome };
+    }
     await this.auditLogService.record({
       actorType: AuditActorType.ADMIN,
       actorId: req.user.sub,
       action: 'loan-settings.updated',
-      metadata: { changes: auditChanges(before, settings, ['retirementAgeYears', 'maxServiceYears', 'loanApprovalPhone']) } as Prisma.InputJsonObject,
+      metadata: { changes } as Prisma.InputJsonObject,
     });
     return settings;
   }

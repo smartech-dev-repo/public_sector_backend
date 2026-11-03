@@ -11,26 +11,15 @@ export class HasActiveLoanRule implements EligibilityRule {
     private readonly clientLoansService: ClientLoansService,
   ) {}
 
+  /**
+   * A top-up renews an existing loan, and can happen at any time: the balance still owed
+   * carries into the renewed loan, and the salary check decides how much extra is allowed.
+   * Only a client with no loan at all is refused (they take a new loan instead).
+   */
   async check(client: Client, _ippisRecord: IppisRecord, _amount: number): Promise<EligibilityCheckResult> {
-    const latestClientLoan = await this.prisma.clientLoan.findFirst({
-      where: { clientId: client.id },
-      orderBy: { disbursementDate: 'desc' },
-    });
-
-    if (latestClientLoan) {
-      if (Number(latestClientLoan.principalBalance) > 0) {
-        return { eligible: false, reason: 'Existing loan still has an outstanding balance' };
-      }
-      return { eligible: true };
-    }
-
-    if (await this.clientLoansService.hasOutstandingMatchedLoan(client.id)) {
-      return { eligible: false, reason: 'Existing loan still has an outstanding balance' };
-    }
-    if (!(await this.clientLoansService.hasAnyMatchedLoan(client.id))) {
-      return { eligible: false, reason: 'Client has no existing loan to renew' };
-    }
-
-    return { eligible: true };
+    const appLoan = await this.prisma.clientLoan.findFirst({ where: { clientId: client.id }, select: { id: true } });
+    if (appLoan) return { eligible: true };
+    if (await this.clientLoansService.hasAnyMatchedLoan(client.id)) return { eligible: true };
+    return { eligible: false, reason: 'Client has no existing loan to renew' };
   }
 }

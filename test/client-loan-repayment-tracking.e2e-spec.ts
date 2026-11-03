@@ -3,12 +3,14 @@ import { INestApplication, ValidationPipe } from '@nestjs/common';
 import * as request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { PrismaService } from '../src/prisma/prisma.service';
+import { ensureDefaultCapacity, salaryPayments } from './fixtures/affordability';
 import { TokenService } from '../src/auth/token.service';
 import { ClientLoanReconciliationService } from '../src/reconciliation/client-loan-reconciliation.service';
 
 describe('Client loan repayment tracking (e2e)', () => {
   let app: INestApplication;
   let prisma: PrismaService;
+  let restoreCapacity: () => Promise<void> = async () => {};
   let adminAccessToken: string;
   const staffId = `E2E-REPAY-${Date.now()}`;
   const agency = 'NPF-REPAY';
@@ -23,6 +25,7 @@ describe('Client loan repayment tracking (e2e)', () => {
     app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
     await app.init();
     prisma = moduleFixture.get(PrismaService);
+    restoreCapacity = await ensureDefaultCapacity(prisma);
 
     const loginRes = await request(app.getHttpServer())
       .post('/auth/admin/login')
@@ -74,6 +77,7 @@ describe('Client loan repayment tracking (e2e)', () => {
     await prisma.ippisRecord.deleteMany({ where: { staffId: { startsWith: staffId } } });
     await prisma.client.deleteMany({ where: { id: { in: clientIds } } });
     await prisma.loanProduct.deleteMany({ where: { productCode } });
+    await restoreCapacity();
     await app.close();
   });
 
@@ -81,7 +85,7 @@ describe('Client loan repayment tracking (e2e)', () => {
     const phone = `+234806${phoneSuffix}`;
     const client = await prisma.client.create({ data: { phone, status: 'VERIFIED' } });
     const ippisRecord = await prisma.ippisRecord.create({
-      data: { agency, staffId: `${staffId}-${staffIdSuffix}`, employeeName: 'E2E Repay Test', salary: 5000000 },
+      data: { agency, staffId: `${staffId}-${staffIdSuffix}`, employeeName: 'E2E Repay Test', salary: 5000000, ...salaryPayments(5000000) },
     });
     await prisma.clientOnboarding.create({
       data: {

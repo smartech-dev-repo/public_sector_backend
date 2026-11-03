@@ -3,11 +3,13 @@ import { INestApplication, ValidationPipe } from '@nestjs/common';
 import * as request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { PrismaService } from '../src/prisma/prisma.service';
+import { ensureDefaultCapacity, salaryPayments } from './fixtures/affordability';
 import { TokenService } from '../src/auth/token.service';
 
 describe('Loan origination (e2e)', () => {
   let app: INestApplication;
   let prisma: PrismaService;
+  let restoreCapacity: () => Promise<void> = async () => {};
   let adminAccessToken: string;
   const staffId = `E2E-ORIGIN-${Date.now()}`;
   const agency = 'NPF';
@@ -22,6 +24,7 @@ describe('Loan origination (e2e)', () => {
     app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
     await app.init();
     prisma = moduleFixture.get(PrismaService);
+    restoreCapacity = await ensureDefaultCapacity(prisma);
 
     const loginRes = await request(app.getHttpServer())
       .post('/auth/admin/login')
@@ -71,6 +74,7 @@ describe('Loan origination (e2e)', () => {
     await prisma.ippisRecord.deleteMany({ where: { staffId: { startsWith: staffId } } });
     await prisma.client.deleteMany({ where: { id: { in: clientIds } } });
     await prisma.loanProduct.deleteMany({ where: { productCode } });
+    await restoreCapacity();
     await app.close();
   });
 
@@ -78,7 +82,7 @@ describe('Loan origination (e2e)', () => {
     const phone = `+234804${phoneSuffix}`;
     const client = await prisma.client.create({ data: { phone, status: 'VERIFIED' } });
     const ippisRecord = await prisma.ippisRecord.create({
-      data: { agency, staffId: `${staffId}-${staffIdSuffix}`, employeeName: 'E2E Origination Test', salary: 1000000 },
+      data: { agency, staffId: `${staffId}-${staffIdSuffix}`, employeeName: 'E2E Origination Test', salary: 1000000, ...salaryPayments(1000000) },
     });
     await prisma.clientOnboarding.create({
       data: {
@@ -299,6 +303,7 @@ describe('Loan origination (e2e)', () => {
 describe('Agent-assisted loan origination with email-OTP confirmation (e2e)', () => {
   let app: INestApplication;
   let prisma: PrismaService;
+  let restoreCapacity2: () => Promise<void> = async () => {};
   let adminAccessToken: string;
   const staffIdPrefix = `E2E-AGENT-ORIGIN-${Date.now()}`;
   const agency = 'NPF';
@@ -321,6 +326,7 @@ describe('Agent-assisted loan origination with email-OTP confirmation (e2e)', ()
     app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
     await app.init();
     prisma = moduleFixture.get(PrismaService);
+    restoreCapacity2 = await ensureDefaultCapacity(prisma);
 
     const loginRes = await request(app.getHttpServer())
       .post('/auth/admin/login')
@@ -366,6 +372,7 @@ describe('Agent-assisted loan origination with email-OTP confirmation (e2e)', ()
     await prisma.client.deleteMany({ where: { id: { in: clientIds } } });
     await prisma.agent.deleteMany({ where: { id: { in: createdAgentIds } } });
     await prisma.loanProduct.deleteMany({ where: { productCode } });
+    await restoreCapacity2();
     await app.close();
   });
 
@@ -406,6 +413,7 @@ describe('Agent-assisted loan origination with email-OTP confirmation (e2e)', ()
         staffId: `${staffIdPrefix}-${staffIdSuffix}`,
         employeeName: 'E2E Agent-Assisted Origination Client',
         salary: 1000000,
+        ...salaryPayments(1000000),
       },
     });
     await prisma.clientOnboarding.create({
