@@ -8,6 +8,9 @@ import { LoggerModule } from 'nestjs-pino';
 import { AppController } from './app.controller';
 import { RequestIdInterceptor } from './observability/request-id.interceptor';
 import { PrismaModule } from './prisma/prisma.module';
+import { PushModule } from './push/push.module';
+import { DevicesModule } from './devices/devices.module';
+import { ClientAssignmentModule } from './client-assignment/client-assignment.module';
 import { AuthModule } from './auth/auth.module';
 import { AdminModule } from './admin/admin.module';
 import { AdminInviteModule } from './admin-invite/admin-invite.module';
@@ -94,6 +97,9 @@ import { HealthModule } from './health/health.module';
       inject: [ConfigService],
     }),
     PrismaModule,
+    PushModule,
+    DevicesModule,
+    ClientAssignmentModule,
     AuthModule,
     AdminModule,
     AdminInviteModule,

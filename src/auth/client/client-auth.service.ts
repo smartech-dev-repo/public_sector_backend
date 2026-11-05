@@ -7,6 +7,8 @@ import { AuditLogService } from '../../audit/audit-log.service';
 import { AuditActorType, SessionPrincipalType } from '../../generated/prisma/client';
 import { isUniqueConstraintError } from '../../common/is-unique-constraint-error.util';
 import { ippisPhoneFilter } from '../../common/normalize-nigerian-phone.util';
+import { DeviceBindingService } from '../../devices/device-binding.service';
+import { SignInMetadata } from '../../common/request-metadata.util';
 
 @Injectable()
 export class ClientAuthService {
@@ -16,6 +18,7 @@ export class ClientAuthService {
     private readonly tokenService: TokenService,
     private readonly sessionService: SessionService,
     private readonly auditLogService: AuditLogService,
+    private readonly deviceBinding?: DeviceBindingService,
   ) {}
 
   async requestOtp(phone: string, email?: string): Promise<{ mockCode?: string; emailSent: boolean }> {
@@ -46,7 +49,7 @@ export class ClientAuthService {
     return { mockCode, emailSent: Boolean(effectiveEmail) };
   }
 
-  async verifyOtp(phone: string, code: string, meta?: { userAgent?: string; ip?: string }) {
+  async verifyOtp(phone: string, code: string, meta?: SignInMetadata) {
     const result = await this.otpService.verify(phone, code);
     if (!result.valid) {
       await this.auditLogService.recordSafely({
@@ -76,6 +79,9 @@ export class ClientAuthService {
       }
     }
 
+    // The code is right; the phone must be the one linked to this account.
+    const device = await this.deviceBinding?.assertSignInDevice('CLIENT', client.id, meta?.device);
+
     await this.auditLogService.recordSafely({
       actorType: AuditActorType.CLIENT,
       actorId: client.id,
@@ -91,6 +97,7 @@ export class ClientAuthService {
       principalId: client.id,
       userAgent: meta?.userAgent,
       ip: meta?.ip,
+      deviceId: device?.id,
     });
 
     return {

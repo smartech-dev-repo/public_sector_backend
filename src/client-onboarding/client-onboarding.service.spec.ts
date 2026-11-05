@@ -10,7 +10,7 @@ describe('ClientOnboardingService', () => {
   let prisma: {
     clientOnboarding: { findUnique: jest.Mock; create: jest.Mock; update: jest.Mock };
     ippisRecord: { findFirst: jest.Mock };
-    client: { findUniqueOrThrow: jest.Mock; update: jest.Mock; upsert: jest.Mock };
+    client: { findUniqueOrThrow: jest.Mock; findUnique: jest.Mock; update: jest.Mock; upsert: jest.Mock };
     clientDocument: { count: jest.Mock; upsert: jest.Mock; findUnique: jest.Mock };
   };
   let identityVerificationService: { lookupBvn: jest.Mock; lookupNin: jest.Mock };
@@ -23,6 +23,7 @@ describe('ClientOnboardingService', () => {
       ippisRecord: { findFirst: jest.fn() },
       client: {
         findUniqueOrThrow: jest.fn().mockResolvedValue({ id: 'client-1', phone: '+2348000000000' }),
+        findUnique: jest.fn().mockResolvedValue({ assignedAgentId: null, assignedAdminId: null }),
         update: jest.fn(),
         upsert: jest.fn(),
       },
@@ -171,7 +172,7 @@ describe('ClientOnboardingService', () => {
       expect(prisma.client.upsert).toHaveBeenCalledWith({
         where: { phone: '+2348000000000' },
         update: {},
-        create: { phone: '+2348000000000', createdById: 'admin-1' },
+        create: { phone: '+2348000000000', createdById: 'admin-1', assignedAdminId: 'admin-1' },
       });
       expect(prisma.clientOnboarding.create).toHaveBeenCalledWith({
         data: expect.objectContaining({
@@ -198,7 +199,7 @@ describe('ClientOnboardingService', () => {
       expect(prisma.client.upsert).toHaveBeenCalledWith({
         where: { phone: '+2348038847641' },
         update: {},
-        create: { phone: '+2348038847641', createdById: 'admin-1' },
+        create: { phone: '+2348038847641', createdById: 'admin-1', assignedAdminId: 'admin-1' },
       });
     });
   });

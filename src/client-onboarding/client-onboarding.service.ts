@@ -79,9 +79,18 @@ export class ClientOnboardingService {
         throw error;
       });
 
+    // Whoever onboards becomes the owner, unless the client already has one.
+    const owner = await this.prisma.client.findUnique({
+      where: { id: clientId },
+      select: { assignedAgentId: true, assignedAdminId: true },
+    });
     await this.prisma.client.update({
       where: { id: clientId },
-      data: { status: ClientStatus.PENDING_IPPIS },
+      data: {
+        status: ClientStatus.PENDING_IPPIS,
+        ...(onboardedByAgentId && !owner?.assignedAgentId ? { assignedAgentId: onboardedByAgentId } : {}),
+        ...(onboardedById && !owner?.assignedAdminId ? { assignedAdminId: onboardedById } : {}),
+      },
     });
 
     return onboarding;
@@ -155,7 +164,7 @@ export class ClientOnboardingService {
     const client = await this.prisma.client.upsert({
       where: { phone: normalizedPhone },
       update: {},
-      create: { phone: normalizedPhone, createdById: adminId },
+      create: { phone: normalizedPhone, createdById: adminId, assignedAdminId: adminId },
     });
 
     return this.narrowOnboarding(await this.createOnboardingRecord(client.id, ippisRecord, adminId));
@@ -175,7 +184,8 @@ export class ClientOnboardingService {
       where: { ippisRecordId: ippisRecord.id },
     });
     if (existing) {
-      if (existing.onboardedByAgentId === agentId) {
+      const owner = await this.prisma.client.findUnique({ where: { id: existing.clientId }, select: { assignedAgentId: true } });
+      if (existing.onboardedByAgentId === agentId || owner?.assignedAgentId === agentId) {
         return this.narrowOnboarding(existing);
       }
       throw new ConflictException('This client has already been onboarded');

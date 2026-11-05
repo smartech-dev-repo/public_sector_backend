@@ -62,6 +62,7 @@ model AdminUser {
   isActive                    Boolean               @default(true)
   roleId                      String
   role                        Role                  @relation(fields: [roleId], references: [id])
+  assignedClients             Client[]              @relation("ClientAssignedAdmin")
   departmentId                String?
   department                  Department?           @relation(fields: [departmentId], references: [id])
   sentInvites                 AdminInvite[]
@@ -99,15 +100,15 @@ enum AgentStatus {
 }
 
 model Agent {
-  id                          String             @id @default(uuid())
-  email                       String             @unique
+  id                          String              @id @default(uuid())
+  email                       String              @unique
   phone                       String
   fullName                    String
   address                     String
   passwordHash                String?
-  status                      AgentStatus        @default(PENDING_REVIEW)
+  status                      AgentStatus         @default(PENDING_REVIEW)
   cvKey                       String
-  supportingDocumentKeys      String[]           @default([])
+  supportingDocumentKeys      String[]            @default([])
   gender                      String?
   city                        String?
   state                       String?
@@ -118,22 +119,24 @@ model Agent {
   coverLetter                 String?
   passportPhotoKey            String?
   identityDocumentKey         String?
-  mustChangePassword          Boolean            @default(true)
-  hasLoggedIn                 Boolean            @default(false)
-  canOnboardClients           Boolean            @default(false)
+  mustChangePassword          Boolean             @default(true)
+  hasLoggedIn                 Boolean             @default(false)
+  canOnboardClients           Boolean             @default(false)
   reviewedBy                  String?
-  reviewedByAdmin             AdminUser?         @relation(fields: [reviewedBy], references: [id])
+  reviewedByAdmin             AdminUser?          @relation(fields: [reviewedBy], references: [id])
   reviewedAt                  DateTime?
   rejectionReason             String?
-  createdAt                   DateTime           @default(now())
-  updatedAt                   DateTime           @updatedAt
+  createdAt                   DateTime            @default(now())
+  updatedAt                   DateTime            @updatedAt
   onboardedClients            ClientOnboarding[]
+  assignedClients             Client[]            @relation("ClientAssignedAgent")
+  clientLinkRequests          ClientLinkRequest[]
   loanRequests                LoanRequest[]
   agentApplication            AgentApplication?
   passwordResetTokenHash      String?
   passwordResetTokenExpiresAt DateTime?
   twoFactorMethod             TwoFactorMethod?
-  twoFactorEnabled            Boolean            @default(false)
+  twoFactorEnabled            Boolean             @default(false)
   twoFactorSecret             String?
   twoFactorPendingSecret      String?
   twoFactorPendingMethod      TwoFactorMethod?
@@ -199,8 +202,16 @@ model Client {
   affordabilityMethod AffordabilityMethod?
   basePayAmount       Decimal?
   dtiPercent          Decimal?
+  /// The agent who looks after this client now. Starts as the onboarding agent; admins can reassign.
+  assignedAgentId     String?
+  assignedAgent       Agent?               @relation("ClientAssignedAgent", fields: [assignedAgentId], references: [id])
+  /// The admin who owns this client's records now (record scope). Starts as the onboarding/creating admin.
+  assignedAdminId     String?
+  assignedAdmin       AdminUser?           @relation("ClientAssignedAdmin", fields: [assignedAdminId], references: [id])
 
   onboarding    ClientOnboarding?
+  assignments   ClientAssignment[]
+  linkRequests  ClientLinkRequest[]
   loanRequests  LoanRequest[]
   walletEntries WalletEntry[]
   clientLoans   ClientLoan[]
@@ -242,7 +253,117 @@ model Session {
   expiresAt        DateTime
   revokedAt        DateTime?
   revokedReason    String?
+  /// The bound device this session was opened on (agents and clients).
+  deviceId         String?
 
+  @@index([principalType, principalId])
+}
+
+enum ClientAssignmentKind {
+  AGENT
+  ADMIN
+}
+
+/// Every change of a client's assigned agent or admin, with who did it and why.
+model ClientAssignment {
+  id        String               @id @default(uuid())
+  clientId  String
+  client    Client               @relation(fields: [clientId], references: [id])
+  kind      ClientAssignmentKind
+  fromId    String?
+  toId      String?
+  reason    String
+  /// ADMIN, AGENT (an agent linking a client by the client's code) or SYSTEM.
+  actorType String
+  actorId   String?
+  createdAt DateTime             @default(now())
+
+  @@index([clientId, createdAt])
+}
+
+/// An agent asking to link an unassigned client; the client consents by giving the agent the code.
+model ClientLinkRequest {
+  id         String    @id @default(uuid())
+  clientId   String
+  client     Client    @relation(fields: [clientId], references: [id])
+  agentId    String
+  agent      Agent     @relation(fields: [agentId], references: [id])
+  codeHash   String
+  expiresAt  DateTime
+  attempts   Int       @default(0)
+  consumedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([agentId, createdAt])
+}
+
+enum DeviceStatus {
+  ACTIVE
+  RELEASED
+}
+
+/// A phone an agent or client signs in on. Each account has at most one ACTIVE device
+/// (enforced by a partial unique index in the migration); another device is refused until
+/// an admin releases this one.
+model Device {
+  id                String               @id @default(uuid())
+  principalType     SessionPrincipalType
+  principalId       String
+  /// Stable per-install identifier from the app (Android ID / iOS identifierForVendor, or one the app stores).
+  fingerprint       String
+  /// Only where the OS allows apps to read it (not iOS, not Android 10+ without device-owner rights).
+  imei              String?
+  deviceName        String?
+  brand             String?
+  model             String?
+  platform          String?
+  osVersion         String?
+  appVersion        String?
+  pushToken         String?
+  status            DeviceStatus         @default(ACTIVE)
+  boundAt           DateTime             @default(now())
+  lastSeenAt        DateTime             @default(now())
+  releasedAt        DateTime?
+  releasedByAdminId String?
+  releaseReason     String?
+  releaseProofKey   String?
+  createdAt         DateTime             @default(now())
+
+  @@index([principalType, principalId, status])
+  @@index([fingerprint])
+}
+
+enum DeviceReleaseStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+/// An agent or client asking for their bound device to be released, usually from the new
+/// device they were refused on (which is then bound when an admin approves).
+model DeviceReleaseRequest {
+  id                   String               @id @default(uuid())
+  principalType        SessionPrincipalType
+  principalId          String
+  /// The ACTIVE device to release.
+  deviceId             String?
+  /// The device asked for, when filed from a refused sign-in.
+  requestedFingerprint String?
+  requestedDeviceName  String?
+  requestedBrand       String?
+  requestedModel       String?
+  requestedPlatform    String?
+  requestedImei        String?
+  reason               String?
+  status               DeviceReleaseStatus  @default(PENDING)
+  decidedByAdminId     String?
+  decidedAt            DateTime?
+  decisionReason       String?
+  proofKey             String?
+  createdAt            DateTime             @default(now())
+
+  @@index([status, createdAt])
   @@index([principalType, principalId])
 }
 

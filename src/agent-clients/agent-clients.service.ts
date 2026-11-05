@@ -28,7 +28,7 @@ export class AgentClientsService {
   ) {
     const { page, limit } = pagination;
     const where: Prisma.ClientWhereInput = {
-      onboarding: { onboardedByAgentId: agentId },
+      assignedAgentId: agentId,
       status: filters.status,
       phone: filters.q ? { contains: filters.q, mode: 'insensitive' } : undefined,
       createdAt:
@@ -110,7 +110,7 @@ export class AgentClientsService {
 
   async getOneForAgent(agentId: string, clientId: string) {
     const client = await this.prisma.client.findFirst({
-      where: { id: clientId, onboarding: { onboardedByAgentId: agentId } },
+      where: { id: clientId, assignedAgentId: agentId },
       include: {
         onboarding: {
           include: {

@@ -2,13 +2,14 @@ import { NotFoundException } from '@nestjs/common';
 import { Prisma } from '../generated/prisma/client';
 import { JwtPayload } from '../auth/jwt-payload.interface';
 
-/** Holders see every client. Without it an admin sees only the clients they onboarded or created. */
+/** Holders see every client. Without it an admin sees only the clients assigned to them. */
 export const ALL_CLIENT_RECORDS = 'clients:all-records';
 
 /** The clients this admin may see, or undefined for all of them. */
 export function clientScope(user?: Pick<JwtPayload, 'sub' | 'permissions'>): Prisma.ClientWhereInput | undefined {
   if (!user || user.permissions?.includes(ALL_CLIENT_RECORDS)) return undefined;
-  return { OR: [{ createdById: user.sub }, { onboarding: { onboardedById: user.sub } }] };
+  // Assigned starts as whoever onboarded or created the client, and moves when an admin reassigns it.
+  return { assignedAdminId: user.sub };
 }
 
 /** Prisma's minimal surface for the check, so any service can call it. */

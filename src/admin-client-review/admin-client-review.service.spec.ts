@@ -52,9 +52,11 @@ describe('AdminClientReviewService', () => {
 
       expect(prisma.client.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: { AND: [], status: undefined, createdAt: undefined, onboarding: undefined },
+          where: { AND: [], status: undefined, createdAt: undefined, assignedAgentId: undefined, onboarding: undefined },
           include: {
             createdByAdmin: { select: { id: true, fullName: true, email: true } },
+            assignedAgent: { select: { id: true, fullName: true, email: true, phone: true } },
+            assignedAdmin: { select: { id: true, fullName: true, email: true } },
             onboarding: {
               include: {
                 ippisRecord: true,
@@ -204,7 +206,7 @@ describe('AdminClientReviewService', () => {
       );
     });
 
-    it('filters by agentId', async () => {
+    it('filters by the agent the client is assigned to now', async () => {
       prisma.client.findMany.mockResolvedValue([]);
       prisma.client.count.mockResolvedValue(0);
 
@@ -212,12 +214,12 @@ describe('AdminClientReviewService', () => {
 
       expect(prisma.client.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: expect.objectContaining({ onboarding: { onboardedByAgentId: 'agent-1' } }),
+          where: expect.objectContaining({ assignedAgentId: 'agent-1', onboarding: undefined }),
         }),
       );
     });
 
-    it('overrides onboardingSource with the exact agentId when both are given', async () => {
+    it('keeps the onboarding source filter alongside the assigned agent', async () => {
       prisma.client.findMany.mockResolvedValue([]);
       prisma.client.count.mockResolvedValue(0);
 
@@ -225,7 +227,7 @@ describe('AdminClientReviewService', () => {
 
       expect(prisma.client.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: expect.objectContaining({ onboarding: { onboardedByAgentId: 'agent-1' } }),
+          where: expect.objectContaining({ assignedAgentId: 'agent-1', onboarding: { onboardedByAgentId: { not: null } } }),
         }),
       );
     });
@@ -328,6 +330,8 @@ describe('AdminClientReviewService', () => {
         where: { id: 'c1' },
         include: {
           createdByAdmin: { select: { id: true, fullName: true, email: true } },
+            assignedAgent: { select: { id: true, fullName: true, email: true, phone: true } },
+            assignedAdmin: { select: { id: true, fullName: true, email: true } },
           onboarding: {
             include: {
               documents: true,

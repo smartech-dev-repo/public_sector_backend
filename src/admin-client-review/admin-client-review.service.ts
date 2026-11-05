@@ -51,7 +51,8 @@ export class AdminClientReviewService {
     const { page, limit } = pagination;
     const agent = agentSearchWhere(filters.agent);
     const where: Prisma.ClientWhereInput = {
-      AND: [filters.scope, clientSearchWhere(filters.q), agent ? { onboarding: { onboardedByAgent: agent } } : undefined].filter(
+      // The agent filter (name, phone, email) and agentId match the agent the client is assigned to now.
+      AND: [filters.scope, clientSearchWhere(filters.q), agent ? { assignedAgent: agent } : undefined].filter(
         (part): part is Prisma.ClientWhereInput => !!part,
       ),
       status: filters.status,
@@ -59,7 +60,8 @@ export class AdminClientReviewService {
         filters.createdFrom || filters.createdTo
           ? { gte: filters.createdFrom, lte: filters.createdTo }
           : undefined,
-      onboarding: this.buildOnboardingWhere(filters.onboardingSource, filters.agentId),
+      assignedAgentId: filters.agentId,
+      onboarding: this.buildOnboardingWhere(filters.onboardingSource),
     };
 
     const [data, total] = await Promise.all([
@@ -67,6 +69,8 @@ export class AdminClientReviewService {
         where,
         include: {
           createdByAdmin: { select: { id: true, fullName: true, email: true } },
+          assignedAgent: { select: { id: true, fullName: true, email: true, phone: true } },
+          assignedAdmin: { select: { id: true, fullName: true, email: true } },
           onboarding: {
             include: {
               ippisRecord: true,
@@ -139,15 +143,8 @@ export class AdminClientReviewService {
     return { onboardedById: null, onboardedByAgentId: null }; // SELF
   }
 
-  private buildOnboardingWhere(
-    onboardingSource?: OnboardingSource,
-    agentId?: string,
-  ): Prisma.ClientOnboardingWhereInput | undefined {
-    const sourceWhere = this.buildOnboardingSourceWhere(onboardingSource);
-    if (agentId) {
-      return { ...sourceWhere, onboardedByAgentId: agentId };
-    }
-    return sourceWhere;
+  private buildOnboardingWhere(onboardingSource?: OnboardingSource): Prisma.ClientOnboardingWhereInput | undefined {
+    return this.buildOnboardingSourceWhere(onboardingSource);
   }
 
   async findById(id: string) {
@@ -155,6 +152,8 @@ export class AdminClientReviewService {
       where: { id },
       include: {
         createdByAdmin: { select: { id: true, fullName: true, email: true } },
+        assignedAgent: { select: { id: true, fullName: true, email: true, phone: true } },
+        assignedAdmin: { select: { id: true, fullName: true, email: true } },
         onboarding: {
           include: {
             documents: true,

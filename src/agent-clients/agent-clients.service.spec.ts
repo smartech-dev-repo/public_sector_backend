@@ -34,7 +34,7 @@ describe('AgentClientsService', () => {
   });
 
   describe('listMyClients', () => {
-    it('scopes the query to onboardedByAgentId for this agent only', async () => {
+    it('scopes the query to the clients assigned to this agent', async () => {
       prisma.client.findMany.mockResolvedValue([]);
       prisma.client.count.mockResolvedValue(0);
 
@@ -42,7 +42,7 @@ describe('AgentClientsService', () => {
 
       expect(prisma.client.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: expect.objectContaining({ onboarding: { onboardedByAgentId: 'agent-1' } }),
+          where: expect.objectContaining({ assignedAgentId: 'agent-1' }),
         }),
       );
     });
@@ -58,7 +58,7 @@ describe('AgentClientsService', () => {
       expect(prisma.client.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({
-            onboarding: { onboardedByAgentId: 'agent-1' },
+            assignedAgentId: 'agent-1',
             status: 'VERIFIED',
             phone: { contains: '0801', mode: 'insensitive' },
             createdAt: { gte: createdFrom, lte: createdTo },
@@ -176,7 +176,7 @@ describe('AgentClientsService', () => {
       const result = await service.getOneForAgent('agent-1', 'client-1');
 
       expect(prisma.client.findFirst).toHaveBeenCalledWith(
-        expect.objectContaining({ where: { id: 'client-1', onboarding: { onboardedByAgentId: 'agent-1' } } }),
+        expect.objectContaining({ where: { id: 'client-1', assignedAgentId: 'agent-1' } }),
       );
       expect(result.id).toBe('client-1');
       expect(result.loanSchedule).toEqual([{ period: '2026-01' }]);

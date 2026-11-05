@@ -5,7 +5,7 @@ import { Request } from 'express';
 import { ClientAuthService } from './client-auth.service';
 import { RequestOtpDto } from './dto/request-otp.dto';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
-import { getRequestMetadata } from '../../common/request-metadata.util';
+import { getRequestMetadata, getSignInMetadata } from '../../common/request-metadata.util';
 
 @Controller('auth/client')
 @UseInterceptors(AuditContextInterceptor)
@@ -24,6 +24,6 @@ export class ClientAuthController {
   @Post('otp/verify')
   @HttpCode(200)
   verifyOtp(@Body() dto: VerifyOtpDto, @Req() req: Request) {
-    return this.clientAuthService.verifyOtp(dto.phone, dto.code, getRequestMetadata(req));
+    return this.clientAuthService.verifyOtp(dto.phone, dto.code, getSignInMetadata(req));
   }
 }

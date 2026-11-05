@@ -32,6 +32,8 @@ export interface ActionAlerts {
   clients: number;
   /** Submitted agent applications waiting for review. */
   agentRecruitment: number;
+  /** Agents and clients waiting for their bound device to be released. */
+  deviceReleases: number;
 }
 
 export interface NewNotification {
@@ -244,7 +246,7 @@ export class NotificationService {
     });
     const awaitingApproval = (type: string) => inApproval.filter((row) => row.targetType === type).map((row) => row.targetId);
 
-    const [loanRequests, loanProducts, broadsheet, clients, agentRecruitment] = await Promise.all([
+    const [loanRequests, loanProducts, broadsheet, clients, agentRecruitment, deviceReleases] = await Promise.all([
       loanStatuses.length
         ? this.prisma.loanRequest.count({
             where: {
@@ -268,8 +270,9 @@ export class NotificationService {
             where: { status: AgentStatus.PENDING_REVIEW, id: { notIn: awaitingApproval('Agent') } },
           })
         : 0,
+      holds('devices:manage') ? this.prisma.deviceReleaseRequest.count({ where: { status: 'PENDING' } }) : 0,
     ]);
-    return { loanRequests, loanProducts, broadsheet, clients, agentRecruitment };
+    return { loanRequests, loanProducts, broadsheet, clients, agentRecruitment, deviceReleases };
   }
 
   private async uncoveredSectorCount(): Promise<number> {

@@ -24,7 +24,7 @@ export class AgentLoanRequestController {
 
   private async assertOwnsClient(clientId: string, agentId: string): Promise<void> {
     const owned = await this.prisma.client.findFirst({
-      where: { id: clientId, onboarding: { onboardedByAgentId: agentId } },
+      where: { id: clientId, assignedAgentId: agentId },
       select: { id: true },
     });
     if (!owned) {

@@ -34,7 +34,7 @@ describe('AgentOwnsClientGuard', () => {
     await expect(guard.canActivate(context())).resolves.toBe(true);
 
     expect(prisma.client.findFirst).toHaveBeenCalledWith({
-      where: { id: 'client-1', onboarding: { onboardedByAgentId: 'agent-1' } },
+      where: { id: 'client-1', assignedAgentId: 'agent-1' },
       select: { id: true },
     });
     expect(auditLogService.recordSafely).not.toHaveBeenCalled();

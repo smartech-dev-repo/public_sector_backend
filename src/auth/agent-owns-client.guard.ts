@@ -20,7 +20,7 @@ export class AgentOwnsClientGuard implements CanActivate {
     const agentId = request.user?.sub;
 
     const owned = await this.prisma.client.findFirst({
-      where: { id: clientId, onboarding: { onboardedByAgentId: agentId } },
+      where: { id: clientId, assignedAgentId: agentId },
       select: { id: true },
     });
     if (owned) {

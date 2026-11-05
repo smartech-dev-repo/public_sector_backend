@@ -75,6 +75,7 @@ describe('NotificationService', () => {
         documentUploadBatch: { count: jest.fn().mockResolvedValue(2) },
         client: { count: jest.fn().mockResolvedValue(4) },
         agent: { count: jest.fn().mockResolvedValue(5) },
+        deviceReleaseRequest: { count: jest.fn().mockResolvedValue(6) },
         sector: { findMany: jest.fn().mockResolvedValue([{ code: 'NPF' }, { code: 'CUSTOMS' }, { code: 'LASG' }]) },
         loanProduct: { findMany: jest.fn().mockResolvedValue([{ sectors: ['NPF'] }, { sectors: ['CUSTOMS'] }]) },
       });
@@ -82,16 +83,16 @@ describe('NotificationService', () => {
 
     it('counts only what each permission can act on', async () => {
       await expect(service.actionAlerts(['loan-requests:manage'])).resolves.toEqual({
-        loanRequests: 3, loanProducts: 0, broadsheet: 0, clients: 0, agentRecruitment: 0,
+        loanRequests: 3, loanProducts: 0, broadsheet: 0, clients: 0, agentRecruitment: 0, deviceReleases: 0,
       });
       expect(prisma.client.count).not.toHaveBeenCalled();
       expect(prisma.agent.count).not.toHaveBeenCalled();
     });
 
     it('counts every area for an admin who holds everything', async () => {
-      const all = ['loan-requests:manage', 'loan-requests:disburse', 'loan-products:manage', 'ippis:upload', 'loans:upload', 'repayments:upload', 'clients:review', 'agents:review'];
+      const all = ['loan-requests:manage', 'loan-requests:disburse', 'loan-products:manage', 'ippis:upload', 'loans:upload', 'repayments:upload', 'clients:review', 'agents:review', 'devices:manage'];
       await expect(service.actionAlerts(all)).resolves.toEqual({
-        loanRequests: 3, loanProducts: 1, broadsheet: 2, clients: 4, agentRecruitment: 5,
+        loanRequests: 3, loanProducts: 1, broadsheet: 2, clients: 4, agentRecruitment: 5, deviceReleases: 6,
       });
     });
 
@@ -122,7 +123,7 @@ describe('NotificationService', () => {
 
     it('counts only clients in the admin\'s record scope unless they hold all records', async () => {
       await service.actionAlerts(['loan-requests:manage', 'clients:review'], 'admin-1');
-      const own = { OR: [{ createdById: 'admin-1' }, { onboarding: { onboardedById: 'admin-1' } }] };
+      const own = { assignedAdminId: 'admin-1' };
       expect(prisma.loanRequest.count.mock.calls[0][0].where.client).toEqual(own);
       expect(prisma.client.count.mock.calls[0][0].where.AND).toEqual([own]);
       await service.actionAlerts(['loan-requests:manage', 'clients:all-records'], 'admin-1');

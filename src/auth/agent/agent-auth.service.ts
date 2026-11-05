@@ -19,6 +19,8 @@ import {
 } from '../../email/templates/verification-code-emails';
 import { devCodeEcho } from '../../common/dev-code-echo.util';
 import { JwtPayload } from '../jwt-payload.interface';
+import { DeviceBindingService } from '../../devices/device-binding.service';
+import { SignInMetadata } from '../../common/request-metadata.util';
 
 const PASSWORD_RESET_TTL_MS = 60 * 60 * 1000;
 const TWO_FACTOR_EMAIL_CODE_TTL_MS = 10 * 60 * 1000;
@@ -33,6 +35,7 @@ export class AgentAuthService {
     private readonly emailService: EmailService,
     private readonly auditLogService: AuditLogService,
     private readonly configService?: ConfigService,
+    private readonly deviceBinding?: DeviceBindingService,
   ) {}
 
   private recordLoginFailure(reason: string, email?: string, agentId?: string) {
@@ -46,7 +49,7 @@ export class AgentAuthService {
     });
   }
 
-  async login(email: string, password: string, meta?: { userAgent?: string; ip?: string }) {
+  async login(email: string, password: string, meta?: SignInMetadata) {
     const agent = await this.prisma.agent.findUnique({ where: { email } });
 
     if (!agent || agent.status !== 'APPROVED' || !agent.passwordHash) {
@@ -59,6 +62,10 @@ export class AgentAuthService {
       await this.recordLoginFailure('wrong_password', email, agent.id);
       throw new UnauthorizedException('Invalid credentials');
     }
+
+    // The password is right; the phone must be the one linked to this account. Checked
+    // before any two-factor code goes out, so a refused device never gets one.
+    await this.deviceBinding?.assertSignInDevice('AGENT', agent.id, meta?.device);
 
     await this.prisma.agent.update({ where: { id: agent.id }, data: { hasLoggedIn: true } });
 
@@ -434,7 +441,7 @@ export class AgentAuthService {
     return { twoFactorRequired: true, method: agent.twoFactorMethod, pendingToken, devCode };
   }
 
-  async verifyTwoFactorLogin(pendingToken: string, code: string, meta?: { userAgent?: string; ip?: string }) {
+  async verifyTwoFactorLogin(pendingToken: string, code: string, meta?: SignInMetadata) {
     let payload: { sub: string };
     try {
       payload = this.tokenService.verifyTwoFactorPendingToken(pendingToken);
@@ -479,8 +486,10 @@ export class AgentAuthService {
 
   private async issueTokens(
     agent: { id: string; mustChangePassword: boolean; canOnboardClients: boolean },
-    meta?: { userAgent?: string; ip?: string },
+    meta?: SignInMetadata,
   ) {
+    // Binds the device on first sign-in, refuses another one.
+    const device = await this.deviceBinding?.assertSignInDevice('AGENT', agent.id, meta?.device);
     const payload = {
       sub: agent.id,
       type: 'agent' as const,
@@ -493,6 +502,7 @@ export class AgentAuthService {
       principalId: agent.id,
       userAgent: meta?.userAgent,
       ip: meta?.ip,
+      deviceId: device?.id,
     });
 
     return {

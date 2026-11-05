@@ -13,7 +13,7 @@ import { SetupTwoFactorDto } from './dto/setup-two-factor.dto';
 import { ConfirmTwoFactorDto } from './dto/confirm-two-factor.dto';
 import { DisableTwoFactorDto } from './dto/disable-two-factor.dto';
 import { TwoFactorLoginVerifyDto } from './dto/two-factor-login-verify.dto';
-import { getRequestMetadata } from '../../common/request-metadata.util';
+import { getRequestMetadata, getSignInMetadata } from '../../common/request-metadata.util';
 import { JwtAuthGuard } from '../jwt-auth.guard';
 import { AgentOnlyGuard } from '../agent-only.guard';
 import { JwtPayload } from '../jwt-payload.interface';
@@ -27,7 +27,7 @@ export class AgentAuthController {
   @Post('login')
   @HttpCode(200)
   login(@Body() dto: AgentLoginDto, @Req() req: Request) {
-    return this.agentAuthService.login(dto.email, dto.password, getRequestMetadata(req));
+    return this.agentAuthService.login(dto.email, dto.password, getSignInMetadata(req));
   }
 
   @Throttle({ default: { limit: 5, ttl: 900000 } })
@@ -105,6 +105,6 @@ export class AgentAuthController {
   @Post('2fa/login-verify')
   @HttpCode(200)
   verifyTwoFactorLogin(@Body() dto: TwoFactorLoginVerifyDto, @Req() req: Request) {
-    return this.agentAuthService.verifyTwoFactorLogin(dto.pendingToken, dto.code, getRequestMetadata(req));
+    return this.agentAuthService.verifyTwoFactorLogin(dto.pendingToken, dto.code, getSignInMetadata(req));
   }
 }

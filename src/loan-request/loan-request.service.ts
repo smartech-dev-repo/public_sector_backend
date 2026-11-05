@@ -22,6 +22,7 @@ import { LOAN_REQUEST_EXPIRY_QUEUE } from './loan-request-queue.constants';
 import { generatePeriodRange, toPeriodKey } from '../reconciliation/period.util';
 import { clientLoanInstallment, clientLoanPrincipalPaid, clientLoanRemainingRepayable } from '../reconciliation/client-loan-terms.util';
 import { AffordabilityAssessment, AffordabilityService, overMaximumMessage } from './eligibility/affordability/affordability.service';
+import { PushService } from '../push/push.service';
 import { WalletService } from '../wallet/wallet.service';
 import { EmailService } from '../email/email.service';
 import { LoanSettingsService } from '../loan-settings/loan-settings.service';
@@ -86,7 +87,32 @@ export class LoanRequestService {
     private readonly emailService?: EmailService,
     private readonly loanSettingsService?: LoanSettingsService,
     private readonly affordabilityService?: AffordabilityService,
+    private readonly pushService?: PushService,
   ) {}
+
+  /** Tells the client's phone (and the agent who asked, for an agent-made request) what happened. */
+  private async pushLoanUpdate(
+    loan: { id: string; clientId: string; amount: unknown; type: LoanRequestType; requestedByAgentId: string | null },
+    event: 'CONFIRMED' | 'DISBURSED' | 'REJECTED',
+  ) {
+    if (!this.pushService) return;
+    const what = loan.type === LoanRequestType.TOPUP ? 'top-up' : 'loan';
+    const amount = `NGN ${Number(loan.amount).toLocaleString('en-NG')}`;
+    const text = {
+      CONFIRMED: { title: `Your ${what} request is confirmed`, body: `Your ${amount} ${what} request is with us for review.` },
+      DISBURSED: { title: `Your ${what} has been paid`, body: `${amount} has been sent to your salary account.` },
+      REJECTED: { title: `Your ${what} request was declined`, body: `Your ${amount} ${what} request was not approved. Open the app for details.` },
+    }[event];
+    const data = { type: `LOAN_${event}`, loanRequestId: loan.id };
+    await this.pushService.sendToPrincipal('CLIENT', loan.clientId, { ...text, data });
+    if (loan.requestedByAgentId) {
+      await this.pushService.sendToPrincipal('AGENT', loan.requestedByAgentId, {
+        title: `Client ${what} ${event.toLowerCase()}`,
+        body: `A ${amount} ${what} you requested for a client was ${event === 'DISBURSED' ? 'paid out' : event.toLowerCase()}.`,
+        data,
+      });
+    }
+  }
 
   /**
    * Refuses an amount above what the client's salary allows for this tenor, and returns the
@@ -643,6 +669,9 @@ export class LoanRequestService {
         data: { status: LoanRequestStatus.DISBURSED, approvedAt: new Date(), disbursedAt: new Date() },
       });
       await this.createClientLoanFromRequest(confirmed.id);
+      await this.pushLoanUpdate(confirmed, 'DISBURSED');
+    } else {
+      await this.pushLoanUpdate(confirmed, 'CONFIRMED');
     }
   }
 
@@ -701,6 +730,7 @@ export class LoanRequestService {
       omit: { confirmationCodeHash: true, confirmationCodeExpiresAt: true },
     });
     await this.createClientLoanFromRequest(id, disbursementTimestamp);
+    await this.pushLoanUpdate(disbursed, 'DISBURSED');
     return disbursed;
   }
 
@@ -709,12 +739,14 @@ export class LoanRequestService {
     if (!loanRequest || loanRequest.status !== LoanRequestStatus.CONFIRMED) {
       throw new ConflictException('Loan request must be CONFIRMED to reject');
     }
-    return this.prisma.loanRequest.update({
+    const rejected = await this.prisma.loanRequest.update({
       where: { id },
       data: { status: LoanRequestStatus.REJECTED, rejectionReason: reason },
       include: LoanRequestService.LOAN_REQUEST_RELATIONS_INCLUDE,
       omit: { confirmationCodeHash: true, confirmationCodeExpiresAt: true },
     });
+    await this.pushLoanUpdate(rejected, 'REJECTED');
+    return rejected;
   }
 
   async disburse(id: string, disbursedAt?: Date) {
@@ -733,6 +765,7 @@ export class LoanRequestService {
       omit: { confirmationCodeHash: true, confirmationCodeExpiresAt: true },
     });
     await this.createClientLoanFromRequest(id, disbursementTimestamp);
+    await this.pushLoanUpdate(updated, 'DISBURSED');
     return updated;
   }
 

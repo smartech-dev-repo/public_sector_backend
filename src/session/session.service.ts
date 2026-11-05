@@ -12,6 +12,8 @@ export interface CreateSessionParams {
   principalId: string;
   userAgent?: string;
   ip?: string;
+  /** The bound device the session was opened on (agents and clients). */
+  deviceId?: string;
 }
 
 export interface RotateResult {
@@ -52,6 +54,7 @@ export class SessionService {
         refreshTokenHash: hashToken(token),
         userAgent: params.userAgent,
         ip: params.ip,
+        deviceId: params.deviceId,
         expiresAt: new Date(Date.now() + SESSION_TTL_MS),
       },
     });

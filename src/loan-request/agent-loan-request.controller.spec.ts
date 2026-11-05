@@ -45,7 +45,7 @@ describe('AgentLoanRequestController', () => {
       await controller.create('client-1', { amount: 5000, tenorMonths: 6 }, agentReq);
 
       expect(prisma.client.findFirst).toHaveBeenCalledWith({
-        where: { id: 'client-1', onboarding: { onboardedByAgentId: 'agent-1' } },
+        where: { id: 'client-1', assignedAgentId: 'agent-1' },
         select: { id: true },
       });
       expect(loanRequestService.create).toHaveBeenCalledWith('client-1', 5000, 6, 'agent-1');

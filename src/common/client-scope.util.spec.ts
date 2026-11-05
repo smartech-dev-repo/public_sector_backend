@@ -7,10 +7,8 @@ describe('client record scope', () => {
     expect(clientScope({ sub: 'a1', permissions: [ALL_CLIENT_RECORDS] })).toBeUndefined();
   });
 
-  it('limits everyone else to clients they created or onboarded', () => {
-    expect(clientScope({ sub: 'a1', permissions: ['clients:review'] })).toEqual({
-      OR: [{ createdById: 'a1' }, { onboarding: { onboardedById: 'a1' } }],
-    });
+  it('limits everyone else to clients assigned to them', () => {
+    expect(clientScope({ sub: 'a1', permissions: ['clients:review'] })).toEqual({ assignedAdminId: 'a1' });
   });
 
   it('404s for a client outside the scope, and skips the lookup for all-records holders', async () => {

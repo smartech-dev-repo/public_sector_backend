@@ -21,7 +21,7 @@ export class AgentLoanProductsController {
     @Req() req: { user: JwtPayload },
   ) {
     const owned = await this.prisma.client.findFirst({
-      where: { id: clientId, onboarding: { onboardedByAgentId: req.user.sub } },
+      where: { id: clientId, assignedAgentId: req.user.sub },
       select: { id: true },
     });
     if (!owned) {
