@@ -1,6 +1,6 @@
 import { paybackRatio } from '../../../reconciliation/amortization.util';
 
-export type RepaymentCapacityMethod = 'BASE_PAY' | 'DTI';
+export type RepaymentCapacityMethod = 'BASE_PAY' | 'DTI' | 'BASE_PAY_DTI';
 
 export interface RepaymentCapacityPolicy {
   method: RepaymentCapacityMethod;
@@ -14,16 +14,40 @@ export interface RepaymentCapacityPolicy {
 
 const round2 = (value: number) => Math.round(value * 100) / 100;
 
-/** The most the client can repay each month. Never negative. */
+/** Which limit set the usable pay: the DTI share, or what is left above base pay. */
+export type UsablePayLimit = 'BASE_PAY' | 'DTI';
+
+/**
+ * The most the client can repay each month, never negative, and which limit set it.
+ *
+ *   BASE_PAY      salary − base pay
+ *   DTI           salary × DTI %
+ *   BASE_PAY_DTI  the lower of the two: the DTI share, cut back so the client
+ *                 still keeps their base pay
+ */
+export function usablePayDetail(
+  salary: number,
+  policy: RepaymentCapacityPolicy,
+): { usablePay: number; limitedBy: UsablePayLimit } {
+  const aboveBasePay = salary - (policy.basePayAmount ?? 0);
+  const dtiShare = (salary * (policy.dtiPercent ?? 0)) / 100;
+  if (policy.method === 'BASE_PAY')
+    return {
+      usablePay: Math.max(0, round2(aboveBasePay)),
+      limitedBy: 'BASE_PAY',
+    };
+  if (policy.method === 'DTI')
+    return { usablePay: Math.max(0, round2(dtiShare)), limitedBy: 'DTI' };
+  return aboveBasePay < dtiShare
+    ? { usablePay: Math.max(0, round2(aboveBasePay)), limitedBy: 'BASE_PAY' }
+    : { usablePay: Math.max(0, round2(dtiShare)), limitedBy: 'DTI' };
+}
+
 export function usablePay(
   salary: number,
   policy: RepaymentCapacityPolicy,
 ): number {
-  const usable =
-    policy.method === 'BASE_PAY'
-      ? salary - (policy.basePayAmount ?? 0)
-      : (salary * (policy.dtiPercent ?? 0)) / 100;
-  return Math.max(0, round2(usable));
+  return usablePayDetail(salary, policy).usablePay;
 }
 
 export interface MaxLoanInput {

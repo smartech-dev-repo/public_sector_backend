@@ -9,23 +9,24 @@ import {
 
 /**
  * How much of a client's salary can go to repayment. BASE_PAY keeps basePayAmount for the
- * client each month; DTI allows dtiPercent of salary. Send affordabilityMethod: null to clear
+ * client each month; DTI allows dtiPercent of salary; BASE_PAY_DTI allows dtiPercent but never
+ * leaves the client less than basePayAmount (the lower of the two). Send affordabilityMethod: null to clear
  * the setting, so the level below applies (client → sector → default).
  */
 export class RepaymentCapacityDto {
   @IsOptional()
   @ValidateIf((_, value) => value !== null)
-  @IsIn(['BASE_PAY', 'DTI'])
-  affordabilityMethod?: 'BASE_PAY' | 'DTI' | null;
+  @IsIn(['BASE_PAY', 'DTI', 'BASE_PAY_DTI'])
+  affordabilityMethod?: 'BASE_PAY' | 'DTI' | 'BASE_PAY_DTI' | null;
 
-  /** Naira the client keeps each month. Required with BASE_PAY. */
+  /** Naira the client keeps each month. Required with BASE_PAY and BASE_PAY_DTI. */
   @IsOptional()
   @ValidateIf((_, value) => value !== null)
   @IsNumber({ maxDecimalPlaces: 2 })
   @Min(0)
   basePayAmount?: number | null;
 
-  /** Share of salary for repayment, e.g. 33.33. Required with DTI. */
+  /** Share of salary for repayment, e.g. 33.33. Required with DTI and BASE_PAY_DTI. */
   @IsOptional()
   @ValidateIf((_, value) => value !== null)
   @IsNumber({ maxDecimalPlaces: 2 })

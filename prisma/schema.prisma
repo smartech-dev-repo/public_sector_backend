@@ -772,6 +772,8 @@ model LoanSettings {
 enum AffordabilityMethod {
   BASE_PAY
   DTI
+  /// DTI share of salary, but never leaving the client less than base pay.
+  BASE_PAY_DTI
 }
 
 enum LoanRequestStatus {

@@ -15,7 +15,8 @@ import { pickSalary, resolveOutcomes, SalaryPick } from './salary-pattern.util';
 import {
   computeMaxLoan,
   RepaymentCapacityPolicy,
-  usablePay,
+  usablePayDetail,
+  UsablePayLimit,
 } from './max-loan.util';
 
 export type AffordabilityType = 'LOAN' | 'TOPUP';
@@ -45,7 +46,8 @@ export interface AffordabilityAssessment {
   };
   /** Top-up: our current repayment, added back because the IPPIS pay is net of it. */
   repaymentAddedBack: number;
-  capacity: (RepaymentCapacityPolicy & { usablePay: number }) | null;
+  /** limitedBy: for BASE_PAY_DTI, whether the DTI share or keeping base pay set the amount. */
+  capacity: (RepaymentCapacityPolicy & { usablePay: number; limitedBy: UsablePayLimit }) | null;
   product: {
     id: string;
     name: string;
@@ -126,7 +128,9 @@ export class AffordabilityService {
       const usable =
         level.affordabilityMethod === 'BASE_PAY'
           ? basePayAmount !== null
-          : dtiPercent !== null;
+          : level.affordabilityMethod === 'DTI'
+            ? dtiPercent !== null
+            : basePayAmount !== null && dtiPercent !== null;
       if (usable)
         return {
           method: level.affordabilityMethod,
@@ -255,8 +259,8 @@ export class AffordabilityService {
       };
     }
 
-    const usable = usablePay(pick.salary + repaymentAddedBack, policy);
-    result.capacity = { ...policy, usablePay: usable };
+    const { usablePay: usable, limitedBy } = usablePayDetail(pick.salary + repaymentAddedBack, policy);
+    result.capacity = { ...policy, usablePay: usable, limitedBy };
 
     const matches = forProduct
       ? [forProduct]

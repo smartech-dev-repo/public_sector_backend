@@ -6,7 +6,7 @@ import {
   SALARY_PATTERN_ALIASES,
   SALARY_PATTERNS,
 } from './salary-pattern.util';
-import { computeMaxLoan, usablePay } from './max-loan.util';
+import { computeMaxLoan, usablePay, usablePayDetail } from './max-loan.util';
 
 const L = { A: 100000, B: 120000, C: 150000 };
 const months = (p: string) =>
@@ -95,6 +95,29 @@ describe('outcome rules', () => {
     expect(resolved.AAA).toBe('A');
     expect(resolved.ABB).toBe('AVG_AB');
     expect(resolved.ABC).toBe('B');
+  });
+});
+
+describe('usablePay with base pay + DTI', () => {
+  const policy = { method: 'BASE_PAY_DTI' as const, basePayAmount: 50000, dtiPercent: 40, source: 'DEFAULT' as const };
+
+  it('uses the DTI share when the client still keeps their base pay', () => {
+    // 150,000 × 40% = 60,000; leaves 90,000, above the 50,000 base pay.
+    expect(usablePayDetail(150000, policy)).toEqual({ usablePay: 60000, limitedBy: 'DTI' });
+  });
+
+  it('cuts the DTI share back so the client keeps their base pay', () => {
+    // 80,000 × 40% = 32,000 would leave 48,000; base pay 50,000 allows only 30,000.
+    expect(usablePayDetail(80000, policy)).toEqual({ usablePay: 30000, limitedBy: 'BASE_PAY' });
+  });
+
+  it('is zero when the salary is at or below base pay', () => {
+    expect(usablePay(45000, policy)).toBe(0);
+  });
+
+  it('the two single methods report their own limit', () => {
+    expect(usablePayDetail(150000, { ...policy, method: 'DTI' }).limitedBy).toBe('DTI');
+    expect(usablePayDetail(150000, { ...policy, method: 'BASE_PAY' })).toEqual({ usablePay: 100000, limitedBy: 'BASE_PAY' });
   });
 });
 

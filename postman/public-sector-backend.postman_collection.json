@@ -15444,7 +15444,7 @@
                   "mode": "raw",
                   "raw": "{\n  \"affordabilityMethod\": \"DTI\",\n  \"dtiPercent\": 40,\n  \"salaryPatternOutcomes\": {\n    \"ABC\": \"B\"\n  }\n}"
                 },
-                "description": "Sets the default repayment capacity, used for any client whose own profile and sector have none, and changes salary table outcomes (patterns left out keep theirs). Send `affordabilityMethod: null` to clear the default. Each changed outcome is audited as `salaryPattern.<PATTERN>`. Needs loan-settings:manage."
+                "description": "Sets the default repayment capacity, used for any client whose own profile and sector have none, and changes salary table outcomes (patterns left out keep theirs). Send `affordabilityMethod: null` to clear the default. Each changed outcome is audited as `salaryPattern.<PATTERN>`. Needs loan-settings:manage. Methods: BASE_PAY (usable pay = salary − basePayAmount), DTI (salary × dtiPercent), or BASE_PAY_DTI (the lower of the two: the DTI share, cut back so the client still keeps basePayAmount; needs both values). The eligibility preview reports capacity.limitedBy (BASE_PAY or DTI)."
               },
               "event": [
                 {
@@ -25434,7 +25434,7 @@
                   "mode": "raw",
                   "raw": "{\n  \"affordabilityMethod\": \"BASE_PAY\",\n  \"basePayAmount\": 50000\n}"
                 },
-                "description": "Sets the repayment capacity for every client in this sector who has no setting of their own. Send `affordabilityMethod: null` to go back to the default. Needs loan-settings:manage."
+                "description": "Sets the repayment capacity for every client in this sector who has no setting of their own. Send `affordabilityMethod: null` to go back to the default. Needs loan-settings:manage. Methods: BASE_PAY (usable pay = salary − basePayAmount), DTI (salary × dtiPercent), or BASE_PAY_DTI (the lower of the two: the DTI share, cut back so the client still keeps basePayAmount; needs both values). The eligibility preview reports capacity.limitedBy (BASE_PAY or DTI)."
               },
               "event": [
                 {
@@ -25667,6 +25667,185 @@
                   "body": "{\n  \"statusCode\": 403,\n  \"message\": \"Insufficient permissions\",\n  \"error\": \"Forbidden\"\n}"
                 }
               ]
+            },
+            {
+              "name": "PATCH /admin/sectors/:id/repayment-capacity - Base pay + DTI",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/sectors/{{sector_id}}/repayment-capacity",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "sectors",
+                    "{{sector_id}}",
+                    "repayment-capacity"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"affordabilityMethod\": \"BASE_PAY_DTI\",\n  \"basePayAmount\": 50000,\n  \"dtiPercent\": 40\n}"
+                },
+                "description": "Sets the repayment capacity for every client in this sector who has no setting of their own. Send `affordabilityMethod: null` to go back to the default. Needs loan-settings:manage. Methods: BASE_PAY (usable pay = salary − basePayAmount), DTI (salary × dtiPercent), or BASE_PAY_DTI (the lower of the two: the DTI share, cut back so the client still keeps basePayAmount; needs both values). The eligibility preview reports capacity.limitedBy (BASE_PAY or DTI)."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));",
+                      "pm.test('combined method saved', () => pm.expect(pm.response.json().affordabilityMethod).to.eql('BASE_PAY_DTI'));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Base pay + DTI",
+                  "originalRequest": {
+                    "method": "PATCH",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      },
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/sectors/{{sector_id}}/repayment-capacity",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "sectors",
+                        "{{sector_id}}",
+                        "repayment-capacity"
+                      ]
+                    },
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"affordabilityMethod\": \"BASE_PAY_DTI\",\n  \"basePayAmount\": 50000,\n  \"dtiPercent\": 40\n}"
+                    },
+                    "description": "Sets the repayment capacity for every client in this sector who has no setting of their own. Send `affordabilityMethod: null` to go back to the default. Needs loan-settings:manage. Methods: BASE_PAY (usable pay = salary − basePayAmount), DTI (salary × dtiPercent), or BASE_PAY_DTI (the lower of the two: the DTI share, cut back so the client still keeps basePayAmount; needs both values). The eligibility preview reports capacity.limitedBy (BASE_PAY or DTI)."
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"id\": \"7a1c2e3f-4b5d-4c6e-8f90-1a2b3c4d5e6f\",\n  \"affordabilityMethod\": \"BASE_PAY_DTI\",\n  \"basePayAmount\": \"50000\",\n  \"dtiPercent\": \"40\",\n  \"code\": \"NPF\",\n  \"name\": \"Nigerian Police Force\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "PATCH /admin/sectors/:id/repayment-capacity - Base pay + DTI without DTI (400)",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/sectors/{{sector_id}}/repayment-capacity",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "sectors",
+                    "{{sector_id}}",
+                    "repayment-capacity"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"affordabilityMethod\": \"BASE_PAY_DTI\",\n  \"basePayAmount\": 50000\n}"
+                },
+                "description": "Sets the repayment capacity for every client in this sector who has no setting of their own. Send `affordabilityMethod: null` to go back to the default. Needs loan-settings:manage. Methods: BASE_PAY (usable pay = salary − basePayAmount), DTI (salary × dtiPercent), or BASE_PAY_DTI (the lower of the two: the DTI share, cut back so the client still keeps basePayAmount; needs both values). The eligibility preview reports capacity.limitedBy (BASE_PAY or DTI)."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 400', () => pm.response.to.have.status(400));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Base pay + DTI without DTI (400)",
+                  "originalRequest": {
+                    "method": "PATCH",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      },
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/sectors/{{sector_id}}/repayment-capacity",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "sectors",
+                        "{{sector_id}}",
+                        "repayment-capacity"
+                      ]
+                    },
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"affordabilityMethod\": \"BASE_PAY_DTI\",\n  \"basePayAmount\": 50000\n}"
+                    },
+                    "description": "Sets the repayment capacity for every client in this sector who has no setting of their own. Send `affordabilityMethod: null` to go back to the default. Needs loan-settings:manage. Methods: BASE_PAY (usable pay = salary − basePayAmount), DTI (salary × dtiPercent), or BASE_PAY_DTI (the lower of the two: the DTI share, cut back so the client still keeps basePayAmount; needs both values). The eligibility preview reports capacity.limitedBy (BASE_PAY or DTI)."
+                  },
+                  "status": "Bad Request",
+                  "code": 400,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"statusCode\": 400,\n  \"message\": \"DTI needs a percentage of salary\",\n  \"error\": \"Bad Request\"\n}"
+                }
+              ]
             }
           ]
         },
@@ -25756,7 +25935,7 @@
                     }
                   ],
                   "cookie": [],
-                  "body": "{\n  \"type\": \"LOAN\",\n  \"tenorMonths\": 12,\n  \"eligible\": true,\n  \"maxAmount\": 967000,\n  \"salary\": {\n    \"paymentThreeMonthsAgo\": 100000,\n    \"paymentTwoMonthsAgo\": 150000.4,\n    \"paymentLastMonth\": 150000,\n    \"pattern\": \"ABB\",\n    \"outcome\": \"B\",\n    \"salaryUsed\": 150000\n  },\n  \"repaymentAddedBack\": 0,\n  \"capacity\": {\n    \"method\": \"BASE_PAY\",\n    \"basePayAmount\": 50000,\n    \"dtiPercent\": null,\n    \"source\": \"SECTOR\",\n    \"usablePay\": 100000\n  },\n  \"product\": {\n    \"id\": \"3f2a1b0c-9d8e-4f7a-8b6c-5d4e3f2a1b0c\",\n    \"name\": \"Salary Loan\",\n    \"code\": \"SAL01\",\n    \"monthlyRatePercent\": 2,\n    \"minimumAmount\": 50000,\n    \"maximumAmount\": 5000000,\n    \"managementChargeType\": \"PERCENTAGE\",\n    \"managementChargeValue\": 2,\n    \"managementChargeApplication\": \"DEDUCT_FROM_DISBURSEMENT\"\n  },\n  \"paybackRatio\": 1.24,\n  \"currentLoan\": null,\n  \"newLoanTotal\": 967000,\n  \"monthlyRepayment\": 99923.33,\n  \"assessedAt\": \"2026-11-03T10:05:00.000Z\",\n  \"tenorRange\": {\n    \"min\": 1,\n    \"max\": 24\n  }\n}"
+                  "body": "{\n  \"type\": \"LOAN\",\n  \"tenorMonths\": 12,\n  \"eligible\": true,\n  \"maxAmount\": 967000,\n  \"salary\": {\n    \"paymentThreeMonthsAgo\": 100000,\n    \"paymentTwoMonthsAgo\": 150000.4,\n    \"paymentLastMonth\": 150000,\n    \"pattern\": \"ABB\",\n    \"outcome\": \"B\",\n    \"salaryUsed\": 150000\n  },\n  \"repaymentAddedBack\": 0,\n  \"capacity\": {\n    \"method\": \"BASE_PAY\",\n    \"basePayAmount\": 50000,\n    \"dtiPercent\": null,\n    \"source\": \"SECTOR\",\n    \"usablePay\": 100000,\n    \"limitedBy\": \"BASE_PAY\"\n  },\n  \"product\": {\n    \"id\": \"3f2a1b0c-9d8e-4f7a-8b6c-5d4e3f2a1b0c\",\n    \"name\": \"Salary Loan\",\n    \"code\": \"SAL01\",\n    \"monthlyRatePercent\": 2,\n    \"minimumAmount\": 50000,\n    \"maximumAmount\": 5000000,\n    \"managementChargeType\": \"PERCENTAGE\",\n    \"managementChargeValue\": 2,\n    \"managementChargeApplication\": \"DEDUCT_FROM_DISBURSEMENT\"\n  },\n  \"paybackRatio\": 1.24,\n  \"currentLoan\": null,\n  \"newLoanTotal\": 967000,\n  \"monthlyRepayment\": 99923.33,\n  \"assessedAt\": \"2026-11-03T10:05:00.000Z\",\n  \"tenorRange\": {\n    \"min\": 1,\n    \"max\": 24\n  }\n}"
                 }
               ]
             },
@@ -26102,7 +26281,7 @@
                   "mode": "raw",
                   "raw": "{\n  \"affordabilityMethod\": \"DTI\",\n  \"dtiPercent\": 50\n}"
                 },
-                "description": "Overrides the sector and default for this client only. Send `affordabilityMethod: null` to clear. Audited as repayment-capacity.updated. Needs loan-settings:manage."
+                "description": "Overrides the sector and default for this client only. Send `affordabilityMethod: null` to clear. Audited as repayment-capacity.updated. Needs loan-settings:manage. Methods: BASE_PAY (usable pay = salary − basePayAmount), DTI (salary × dtiPercent), or BASE_PAY_DTI (the lower of the two: the DTI share, cut back so the client still keeps basePayAmount; needs both values). The eligibility preview reports capacity.limitedBy (BASE_PAY or DTI)."
               },
               "event": [
                 {
@@ -35768,7 +35947,7 @@
                     }
                   ],
                   "cookie": [],
-                  "body": "{\n  \"type\": \"LOAN\",\n  \"tenorMonths\": 12,\n  \"eligible\": true,\n  \"maxAmount\": 967000,\n  \"salary\": {\n    \"paymentThreeMonthsAgo\": 100000,\n    \"paymentTwoMonthsAgo\": 150000.4,\n    \"paymentLastMonth\": 150000,\n    \"pattern\": \"ABB\",\n    \"outcome\": \"B\",\n    \"salaryUsed\": 150000\n  },\n  \"repaymentAddedBack\": 0,\n  \"capacity\": {\n    \"method\": \"BASE_PAY\",\n    \"basePayAmount\": 50000,\n    \"dtiPercent\": null,\n    \"source\": \"SECTOR\",\n    \"usablePay\": 100000\n  },\n  \"product\": {\n    \"id\": \"3f2a1b0c-9d8e-4f7a-8b6c-5d4e3f2a1b0c\",\n    \"name\": \"Salary Loan\",\n    \"code\": \"SAL01\",\n    \"monthlyRatePercent\": 2,\n    \"minimumAmount\": 50000,\n    \"maximumAmount\": 5000000,\n    \"managementChargeType\": \"PERCENTAGE\",\n    \"managementChargeValue\": 2,\n    \"managementChargeApplication\": \"DEDUCT_FROM_DISBURSEMENT\"\n  },\n  \"paybackRatio\": 1.24,\n  \"currentLoan\": null,\n  \"newLoanTotal\": 967000,\n  \"monthlyRepayment\": 99923.33,\n  \"assessedAt\": \"2026-11-03T10:05:00.000Z\",\n  \"tenorRange\": {\n    \"min\": 1,\n    \"max\": 24\n  }\n}"
+                  "body": "{\n  \"type\": \"LOAN\",\n  \"tenorMonths\": 12,\n  \"eligible\": true,\n  \"maxAmount\": 967000,\n  \"salary\": {\n    \"paymentThreeMonthsAgo\": 100000,\n    \"paymentTwoMonthsAgo\": 150000.4,\n    \"paymentLastMonth\": 150000,\n    \"pattern\": \"ABB\",\n    \"outcome\": \"B\",\n    \"salaryUsed\": 150000\n  },\n  \"repaymentAddedBack\": 0,\n  \"capacity\": {\n    \"method\": \"BASE_PAY\",\n    \"basePayAmount\": 50000,\n    \"dtiPercent\": null,\n    \"source\": \"SECTOR\",\n    \"usablePay\": 100000,\n    \"limitedBy\": \"BASE_PAY\"\n  },\n  \"product\": {\n    \"id\": \"3f2a1b0c-9d8e-4f7a-8b6c-5d4e3f2a1b0c\",\n    \"name\": \"Salary Loan\",\n    \"code\": \"SAL01\",\n    \"monthlyRatePercent\": 2,\n    \"minimumAmount\": 50000,\n    \"maximumAmount\": 5000000,\n    \"managementChargeType\": \"PERCENTAGE\",\n    \"managementChargeValue\": 2,\n    \"managementChargeApplication\": \"DEDUCT_FROM_DISBURSEMENT\"\n  },\n  \"paybackRatio\": 1.24,\n  \"currentLoan\": null,\n  \"newLoanTotal\": 967000,\n  \"monthlyRepayment\": 99923.33,\n  \"assessedAt\": \"2026-11-03T10:05:00.000Z\",\n  \"tenorRange\": {\n    \"min\": 1,\n    \"max\": 24\n  }\n}"
                 }
               ]
             },
@@ -41829,7 +42008,7 @@
                     }
                   ],
                   "cookie": [],
-                  "body": "{\n  \"type\": \"LOAN\",\n  \"tenorMonths\": 12,\n  \"eligible\": true,\n  \"maxAmount\": 967000,\n  \"salary\": {\n    \"paymentThreeMonthsAgo\": 100000,\n    \"paymentTwoMonthsAgo\": 150000.4,\n    \"paymentLastMonth\": 150000,\n    \"pattern\": \"ABB\",\n    \"outcome\": \"B\",\n    \"salaryUsed\": 150000\n  },\n  \"repaymentAddedBack\": 0,\n  \"capacity\": {\n    \"method\": \"BASE_PAY\",\n    \"basePayAmount\": 50000,\n    \"dtiPercent\": null,\n    \"source\": \"SECTOR\",\n    \"usablePay\": 100000\n  },\n  \"product\": {\n    \"id\": \"3f2a1b0c-9d8e-4f7a-8b6c-5d4e3f2a1b0c\",\n    \"name\": \"Salary Loan\",\n    \"code\": \"SAL01\",\n    \"monthlyRatePercent\": 2,\n    \"minimumAmount\": 50000,\n    \"maximumAmount\": 5000000,\n    \"managementChargeType\": \"PERCENTAGE\",\n    \"managementChargeValue\": 2,\n    \"managementChargeApplication\": \"DEDUCT_FROM_DISBURSEMENT\"\n  },\n  \"paybackRatio\": 1.24,\n  \"currentLoan\": null,\n  \"newLoanTotal\": 967000,\n  \"monthlyRepayment\": 99923.33,\n  \"assessedAt\": \"2026-11-03T10:05:00.000Z\",\n  \"tenorRange\": {\n    \"min\": 1,\n    \"max\": 24\n  }\n}"
+                  "body": "{\n  \"type\": \"LOAN\",\n  \"tenorMonths\": 12,\n  \"eligible\": true,\n  \"maxAmount\": 967000,\n  \"salary\": {\n    \"paymentThreeMonthsAgo\": 100000,\n    \"paymentTwoMonthsAgo\": 150000.4,\n    \"paymentLastMonth\": 150000,\n    \"pattern\": \"ABB\",\n    \"outcome\": \"B\",\n    \"salaryUsed\": 150000\n  },\n  \"repaymentAddedBack\": 0,\n  \"capacity\": {\n    \"method\": \"BASE_PAY\",\n    \"basePayAmount\": 50000,\n    \"dtiPercent\": null,\n    \"source\": \"SECTOR\",\n    \"usablePay\": 100000,\n    \"limitedBy\": \"BASE_PAY\"\n  },\n  \"product\": {\n    \"id\": \"3f2a1b0c-9d8e-4f7a-8b6c-5d4e3f2a1b0c\",\n    \"name\": \"Salary Loan\",\n    \"code\": \"SAL01\",\n    \"monthlyRatePercent\": 2,\n    \"minimumAmount\": 50000,\n    \"maximumAmount\": 5000000,\n    \"managementChargeType\": \"PERCENTAGE\",\n    \"managementChargeValue\": 2,\n    \"managementChargeApplication\": \"DEDUCT_FROM_DISBURSEMENT\"\n  },\n  \"paybackRatio\": 1.24,\n  \"currentLoan\": null,\n  \"newLoanTotal\": 967000,\n  \"monthlyRepayment\": 99923.33,\n  \"assessedAt\": \"2026-11-03T10:05:00.000Z\",\n  \"tenorRange\": {\n    \"min\": 1,\n    \"max\": 24\n  }\n}"
                 }
               ]
             },
@@ -41920,7 +42099,7 @@
                     }
                   ],
                   "cookie": [],
-                  "body": "{\n  \"type\": \"TOPUP\",\n  \"tenorMonths\": 12,\n  \"eligible\": true,\n  \"maxAmount\": 567000,\n  \"salary\": {\n    \"paymentThreeMonthsAgo\": 100000,\n    \"paymentTwoMonthsAgo\": 150000.4,\n    \"paymentLastMonth\": 150000,\n    \"pattern\": \"ABB\",\n    \"outcome\": \"B\",\n    \"salaryUsed\": 150000\n  },\n  \"repaymentAddedBack\": 0,\n  \"capacity\": {\n    \"method\": \"BASE_PAY\",\n    \"basePayAmount\": 50000,\n    \"dtiPercent\": null,\n    \"source\": \"SECTOR\",\n    \"usablePay\": 100000\n  },\n  \"product\": {\n    \"id\": \"3f2a1b0c-9d8e-4f7a-8b6c-5d4e3f2a1b0c\",\n    \"name\": \"Salary Loan\",\n    \"code\": \"SAL01\",\n    \"monthlyRatePercent\": 2,\n    \"minimumAmount\": 50000,\n    \"maximumAmount\": 5000000,\n    \"managementChargeType\": \"PERCENTAGE\",\n    \"managementChargeValue\": 2,\n    \"managementChargeApplication\": \"DEDUCT_FROM_DISBURSEMENT\"\n  },\n  \"paybackRatio\": 1.24,\n  \"currentLoan\": {\n    \"source\": \"APP\",\n    \"id\": \"9a8b7c6d-5e4f-4a3b-8c2d-1e0f9a8b7c6d\",\n    \"outstandingBalance\": 400000,\n    \"monthlyRepayment\": 93000\n  },\n  \"newLoanTotal\": 967000,\n  \"monthlyRepayment\": 99923.33,\n  \"assessedAt\": \"2026-11-03T10:05:00.000Z\",\n  \"tenorRange\": {\n    \"min\": 1,\n    \"max\": 24\n  }\n}"
+                  "body": "{\n  \"type\": \"TOPUP\",\n  \"tenorMonths\": 12,\n  \"eligible\": true,\n  \"maxAmount\": 567000,\n  \"salary\": {\n    \"paymentThreeMonthsAgo\": 100000,\n    \"paymentTwoMonthsAgo\": 150000.4,\n    \"paymentLastMonth\": 150000,\n    \"pattern\": \"ABB\",\n    \"outcome\": \"B\",\n    \"salaryUsed\": 150000\n  },\n  \"repaymentAddedBack\": 0,\n  \"capacity\": {\n    \"method\": \"BASE_PAY\",\n    \"basePayAmount\": 50000,\n    \"dtiPercent\": null,\n    \"source\": \"SECTOR\",\n    \"usablePay\": 100000,\n    \"limitedBy\": \"BASE_PAY\"\n  },\n  \"product\": {\n    \"id\": \"3f2a1b0c-9d8e-4f7a-8b6c-5d4e3f2a1b0c\",\n    \"name\": \"Salary Loan\",\n    \"code\": \"SAL01\",\n    \"monthlyRatePercent\": 2,\n    \"minimumAmount\": 50000,\n    \"maximumAmount\": 5000000,\n    \"managementChargeType\": \"PERCENTAGE\",\n    \"managementChargeValue\": 2,\n    \"managementChargeApplication\": \"DEDUCT_FROM_DISBURSEMENT\"\n  },\n  \"paybackRatio\": 1.24,\n  \"currentLoan\": {\n    \"source\": \"APP\",\n    \"id\": \"9a8b7c6d-5e4f-4a3b-8c2d-1e0f9a8b7c6d\",\n    \"outstandingBalance\": 400000,\n    \"monthlyRepayment\": 93000\n  },\n  \"newLoanTotal\": 967000,\n  \"monthlyRepayment\": 99923.33,\n  \"assessedAt\": \"2026-11-03T10:05:00.000Z\",\n  \"tenorRange\": {\n    \"min\": 1,\n    \"max\": 24\n  }\n}"
                 }
               ]
             },
