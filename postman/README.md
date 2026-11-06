@@ -49,23 +49,56 @@ standalone Health check:
   /agents/recruitment/submit` yet, otherwise invisible anywhere else;
   gated by `agents:recruitment:read`/`:analytics:read`/`:manage`; mounted
   at a path disjoint from `admin/agents/:id` on purpose, so it never
-  competes with that route for match order).
+  competes with that route for match order), **Loan Eligibility**
+  (`GET /admin/clients/:clientId/loan-eligibility` — the salary-based
+  maximum for a tenor with its workings — and a client's own repayment
+  capacity, `GET/PATCH /admin/clients/:clientId/repayment-capacity`; the
+  default capacity and salary table are under **Loan Settings** and a
+  sector's under **Sectors**; methods are BASE_PAY, DTI and BASE_PAY_DTI),
+  **Client Assignment** (a client's current agent and admin, reassignment
+  with a required reason and history, moving all of an agent's clients,
+  and the assignable-agents/admins pickers; gated by `clients:assign`),
+  and **Devices** (the phones agents and clients are locked to, release
+  requests, approve/reject/release with a reason and optional proof
+  file, proof links and a test push; gated by `devices:read`/
+  `devices:manage`).
 - **Agent** — Auth, this agent's own Session (agent tokens), Profile
   (`GET /agent/me`, read-only), and **Recruitment** (the public,
   multi-step `agents/recruitment/*` flow — email verification by code,
   NIN self-check, resumable status, and final submission, each gated by
   a short-lived application token issued after email confirmation — plus
   the `POST /auth/agent/change-password` an agent uses to clear a
-  `mustChangePassword: true` JWT after being approved).
+  `mustChangePassword: true` JWT after being approved), **Devices**
+  (`/agent/devices/me`: the linked phone, asking for a release, updating
+  the push token), **Client Link** (`/agent/clients/link/request` and
+  `/confirm`: linking an unassigned client with the code texted to them),
+  and **Loan Requests** (including the `.../loan-requests/eligibility`
+  preview).
 - **Client** — Auth (phone + OTP), this client's own Session (client
   tokens), Profile (`GET /client/me`, read-only), **Onboarding** (IPPIS
   number linking, BVN/NIN identity submission, and selfie face-match,
   walking the client from `PHONE_VERIFIED` to `Client.status =
   VERIFIED`/`MANUAL_REVIEW`), and **Loan Requests** (a `VERIFIED` client
   requesting a loan, confirming via the inbound SMS webhook, resend, and
-  listing their own requests). In this
+  listing their own requests, plus the `eligibility` preview), and
+  **Devices** (`/client/devices/me`). In this
   codebase an IPPIS civil servant is onboarded and logs in *as* a Client —
   see `docs/specs/2026-09-09-public-sector-backend-spec.md`.
+
+## Device headers
+
+Agents and clients are locked to one phone. Sign-in requests (agent login,
+agent 2FA verify, client OTP verify) carry the phone as headers:
+`X-Device-Id` (`{{device_id}}`, the one that matters for binding),
+`X-Device-Brand`, `X-Device-Model`, `X-Device-Platform`,
+`X-Device-Os-Version`, `X-Device-Name`, `X-App-Version`, and optionally
+`X-Device-Imei` and `X-Push-Token`. The first `device_id` an account signs
+in with is linked; change it to see the `403 DEVICE_NOT_RECOGNISED`
+refusal, whose `releaseToken` is saved to `{{device_release_token}}` for
+`POST /auth/devices/release-request`. On a shared database, use your own
+`device_id` value so you don't collide with someone else's linked phone.
+Other variables these folders set: `device_release_request_id`,
+`admin_device_id`, `client_link_request_id`, `client_link_code`.
 
 ## Setup
 

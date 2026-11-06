@@ -1,5 +1,5 @@
 import { Type } from 'class-transformer';
-import { IsIn, IsInt, IsOptional, Max, Min } from 'class-validator';
+import { IsIn, IsInt, IsNumber, IsOptional, IsPositive, Max, Min } from 'class-validator';
 
 export class LoanEligibilityQueryDto {
   /** The tenor the client picked, in months. */
@@ -13,4 +13,14 @@ export class LoanEligibilityQueryDto {
   @IsOptional()
   @IsIn(['LOAN', 'TOPUP'])
   type?: 'LOAN' | 'TOPUP';
+
+  /**
+   * Optional: an amount to check. The answer then also says whether this amount would be
+   * accepted, and its monthly repayment, charge and payout. For a top-up, the extra cash.
+   */
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @IsPositive()
+  amount?: number;
 }

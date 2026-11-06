@@ -23,6 +23,7 @@ export class AdminLoanEligibilityController {
       clientId,
       query.tenorMonths,
       query.type,
+      query.amount,
     );
   }
 }

@@ -1,4 +1,4 @@
-import { ConflictException, Injectable } from '@nestjs/common';
+import { ConflictException, HttpException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { LoanSettingsService } from '../../../loan-settings/loan-settings.service';
 import { ClientLoansService } from '../../../client-loans/client-loans.service';
@@ -13,8 +13,12 @@ import {
 } from '../loan-product-resolver.service';
 import { pickSalary, resolveOutcomes, SalaryPick } from './salary-pattern.util';
 import {
+  ChargeTerms,
   computeMaxLoan,
+  managementChargeFor,
+  repaymentFor,
   RepaymentCapacityPolicy,
+  totalRepaymentFor,
   usablePayDetail,
   UsablePayLimit,
 } from './max-loan.util';
@@ -65,6 +69,28 @@ export interface AffordabilityAssessment {
   monthlyRepayment: number | null;
   assessedAt: string;
 }
+
+/** The check of one amount the client typed, next to their maximum. */
+export interface RequestedAmountCheck {
+  amount: number;
+  /** True when this exact amount would be accepted as a loan request for the tenor. */
+  eligible: boolean;
+  reason?: string;
+  /** The product this amount falls under (it can differ from the one giving the maximum). */
+  product: { id: string; name: string; code: string; monthlyRatePercent: number } | null;
+  managementCharge: { amount: number; application: ChargeTerms['application'] } | null;
+  /** The cash the client receives: the amount, less the charge when it is deducted. */
+  disbursedAmount: number | null;
+  /** The loan's size after this amount: the amount, or balance + top-up. */
+  newLoanTotal: number;
+  monthlyRepayment: number | null;
+  /** Everything repaid over the tenor: (balance + amount) × payback ratio, plus any charge added to repayment. */
+  totalRepayment: number | null;
+  /** Usable pay minus this repayment; negative means the repayment is more than the salary allows. */
+  repaymentHeadroom: number | null;
+}
+
+const round2 = (value: number) => Math.round(value * 100) / 100;
 
 const num = (value: unknown): number | null =>
   value === null || value === undefined ? null : Number(value);
@@ -326,6 +352,7 @@ export class AffordabilityService {
     clientId: string,
     tenorMonths: number,
     type?: AffordabilityType,
+    amount?: number,
   ) {
     const onboarding = await this.prisma.clientOnboarding.findUnique({
       where: { clientId },
@@ -347,12 +374,88 @@ export class AffordabilityService {
         _max: { maximumTenorMonths: true },
       }),
     ]);
+    const requested =
+      amount === undefined
+        ? null
+        : await this.checkAmount(clientId, onboarding.ippisRecord, amount, assessment);
     return {
       ...assessment,
       tenorRange: {
         min: tenorRange._min.minimumTenorMonths,
         max: tenorRange._max.maximumTenorMonths,
       },
+      requested,
     };
+  }
+
+  /**
+   * Checks one amount the way a loan request would: the product is resolved from the loan's
+   * size (for a top-up, balance + top-up), and the amount must be within both the client's
+   * best maximum and the maximum under that product. The repayment is worked out at the amount.
+   */
+  async checkAmount(
+    clientId: string,
+    ippisRecord: IppisRecord,
+    amount: number,
+    best: AffordabilityAssessment,
+  ): Promise<RequestedAmountCheck> {
+    const outstanding = best.type === 'TOPUP' ? (best.currentLoan?.outstandingBalance ?? 0) : 0;
+    const result: RequestedAmountCheck = {
+      amount,
+      eligible: false,
+      product: null,
+      managementCharge: null,
+      disbursedAmount: null,
+      newLoanTotal: round2(outstanding + amount),
+      monthlyRepayment: null,
+      totalRepayment: null,
+      repaymentHeadroom: null,
+    };
+
+    let match: LoanProductMatch;
+    try {
+      match = await this.loanProductResolverService.resolve(ippisRecord, outstanding + amount, best.tenorMonths);
+    } catch (error) {
+      if (!(error instanceof HttpException)) throw error;
+      return { ...result, reason: best.eligible ? error.message : (best.reason ?? error.message) };
+    }
+
+    const { product, tier } = match;
+    const charge: ChargeTerms = {
+      type: product.managementChargeType,
+      value: Number(product.managementChargeValue),
+      application: product.managementChargeApplication,
+    };
+    const chargeAmount = managementChargeFor(amount, charge);
+    const terms = {
+      amount,
+      outstandingBalance: outstanding,
+      tenorMonths: best.tenorMonths,
+      monthlyRatePercent: Number(tier.interestRatePercent),
+      charge,
+    };
+    const monthlyRepayment = repaymentFor(terms);
+    const priced: RequestedAmountCheck = {
+      ...result,
+      product: {
+        id: product.id,
+        name: product.productName,
+        code: product.productCode,
+        monthlyRatePercent: Number(tier.interestRatePercent),
+      },
+      managementCharge: { amount: chargeAmount, application: charge.application },
+      disbursedAmount: round2(charge.application === 'DEDUCT_FROM_DISBURSEMENT' ? amount - chargeAmount : amount),
+      monthlyRepayment,
+      totalRepayment: totalRepaymentFor(terms),
+      repaymentHeadroom: best.capacity ? round2(best.capacity.usablePay - monthlyRepayment) : null,
+    };
+
+    // The same two checks, in the same order, as creating the request.
+    if (!best.eligible) return { ...priced, reason: best.reason ?? 'Not eligible for this tenor' };
+    if (amount > best.maxAmount) return { ...priced, reason: overMaximumMessage(best) };
+    const underProduct = await this.assess(clientId, ippisRecord, best.tenorMonths, best.type, match);
+    if (!underProduct.eligible) return { ...priced, reason: underProduct.reason ?? 'Not eligible for this tenor' };
+    if (amount > underProduct.maxAmount) return { ...priced, reason: overMaximumMessage(underProduct) };
+    return { ...priced, eligible: true };
   }
 }

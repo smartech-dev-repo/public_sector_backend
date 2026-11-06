@@ -36,7 +36,7 @@ export class AgentLoanRequestController {
   @Get('eligibility')
   async eligibility(@Param('clientId') clientId: string, @Query() query: LoanEligibilityQueryDto, @Req() req: { user: JwtPayload }) {
     await this.assertOwnsClient(clientId, req.user.sub);
-    return this.affordabilityService!.preview(clientId, query.tenorMonths, query.type);
+    return this.affordabilityService!.preview(clientId, query.tenorMonths, query.type, query.amount);
   }
 
   @Post()

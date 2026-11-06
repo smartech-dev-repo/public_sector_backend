@@ -25881,7 +25881,7 @@
                     }
                   ]
                 },
-                "description": "The most this client can borrow (or top up) over `tenorMonths`, with the workings: salary picked from the last three payments by the salary table, usable pay from the repayment capacity (client → sector → default), payback ratio 1 + monthly rate × tenor ÷ 100 from the product band for the tenor, and maximum = usable pay × tenor ÷ ratio, rounded down to ₦1,000 and kept within the product limits. For a top-up, the current repayment is added back to pay and the outstanding balance comes off. Without `type`, it is a top-up when the client already has a loan. Needs clients:read and the client in the admin's record scope."
+                "description": "The most this client can borrow (or top up) over `tenorMonths`, with the workings: salary picked from the last three payments by the salary table, usable pay from the repayment capacity (client → sector → default), payback ratio 1 + monthly rate × tenor ÷ 100 from the product band for the tenor, and maximum = usable pay × tenor ÷ ratio, rounded down to ₦1,000 and kept within the product limits. For a top-up, the current repayment is added back to pay and the outstanding balance comes off. Without `type`, it is a top-up when the client already has a loan. Needs clients:read and the client in the admin's record scope. Add `amount` to check one amount as well: the answer then has a `requested` block saying whether that amount would be accepted (`eligible`, `reason` with the same message a loan request would get), the product it falls under, its `monthlyRepayment`, `totalRepayment`, `managementCharge`, `disbursedAmount` (cash paid out), `newLoanTotal` and `repaymentHeadroom` (usable pay left after the repayment; negative when it is too much). For a top-up, `amount` is the extra cash. Without `amount`, `requested` is null and the rest of the answer is unchanged."
               },
               "event": [
                 {
@@ -25923,7 +25923,7 @@
                         }
                       ]
                     },
-                    "description": "The most this client can borrow (or top up) over `tenorMonths`, with the workings: salary picked from the last three payments by the salary table, usable pay from the repayment capacity (client → sector → default), payback ratio 1 + monthly rate × tenor ÷ 100 from the product band for the tenor, and maximum = usable pay × tenor ÷ ratio, rounded down to ₦1,000 and kept within the product limits. For a top-up, the current repayment is added back to pay and the outstanding balance comes off. Without `type`, it is a top-up when the client already has a loan. Needs clients:read and the client in the admin's record scope."
+                    "description": "The most this client can borrow (or top up) over `tenorMonths`, with the workings: salary picked from the last three payments by the salary table, usable pay from the repayment capacity (client → sector → default), payback ratio 1 + monthly rate × tenor ÷ 100 from the product band for the tenor, and maximum = usable pay × tenor ÷ ratio, rounded down to ₦1,000 and kept within the product limits. For a top-up, the current repayment is added back to pay and the outstanding balance comes off. Without `type`, it is a top-up when the client already has a loan. Needs clients:read and the client in the admin's record scope. Add `amount` to check one amount as well: the answer then has a `requested` block saying whether that amount would be accepted (`eligible`, `reason` with the same message a loan request would get), the product it falls under, its `monthlyRepayment`, `totalRepayment`, `managementCharge`, `disbursedAmount` (cash paid out), `newLoanTotal` and `repaymentHeadroom` (usable pay left after the repayment; negative when it is too much). For a top-up, `amount` is the extra cash. Without `amount`, `requested` is null and the rest of the answer is unchanged."
                   },
                   "status": "OK",
                   "code": 200,
@@ -25935,7 +25935,107 @@
                     }
                   ],
                   "cookie": [],
-                  "body": "{\n  \"type\": \"LOAN\",\n  \"tenorMonths\": 12,\n  \"eligible\": true,\n  \"maxAmount\": 967000,\n  \"salary\": {\n    \"paymentThreeMonthsAgo\": 100000,\n    \"paymentTwoMonthsAgo\": 150000.4,\n    \"paymentLastMonth\": 150000,\n    \"pattern\": \"ABB\",\n    \"outcome\": \"B\",\n    \"salaryUsed\": 150000\n  },\n  \"repaymentAddedBack\": 0,\n  \"capacity\": {\n    \"method\": \"BASE_PAY\",\n    \"basePayAmount\": 50000,\n    \"dtiPercent\": null,\n    \"source\": \"SECTOR\",\n    \"usablePay\": 100000,\n    \"limitedBy\": \"BASE_PAY\"\n  },\n  \"product\": {\n    \"id\": \"3f2a1b0c-9d8e-4f7a-8b6c-5d4e3f2a1b0c\",\n    \"name\": \"Salary Loan\",\n    \"code\": \"SAL01\",\n    \"monthlyRatePercent\": 2,\n    \"minimumAmount\": 50000,\n    \"maximumAmount\": 5000000,\n    \"managementChargeType\": \"PERCENTAGE\",\n    \"managementChargeValue\": 2,\n    \"managementChargeApplication\": \"DEDUCT_FROM_DISBURSEMENT\"\n  },\n  \"paybackRatio\": 1.24,\n  \"currentLoan\": null,\n  \"newLoanTotal\": 967000,\n  \"monthlyRepayment\": 99923.33,\n  \"assessedAt\": \"2026-11-03T10:05:00.000Z\",\n  \"tenorRange\": {\n    \"min\": 1,\n    \"max\": 24\n  }\n}"
+                  "body": "{\n  \"type\": \"LOAN\",\n  \"tenorMonths\": 12,\n  \"eligible\": true,\n  \"maxAmount\": 967000,\n  \"salary\": {\n    \"paymentThreeMonthsAgo\": 100000,\n    \"paymentTwoMonthsAgo\": 150000.4,\n    \"paymentLastMonth\": 150000,\n    \"pattern\": \"ABB\",\n    \"outcome\": \"B\",\n    \"salaryUsed\": 150000\n  },\n  \"repaymentAddedBack\": 0,\n  \"capacity\": {\n    \"method\": \"BASE_PAY\",\n    \"basePayAmount\": 50000,\n    \"dtiPercent\": null,\n    \"source\": \"SECTOR\",\n    \"usablePay\": 100000,\n    \"limitedBy\": \"BASE_PAY\"\n  },\n  \"product\": {\n    \"id\": \"3f2a1b0c-9d8e-4f7a-8b6c-5d4e3f2a1b0c\",\n    \"name\": \"Salary Loan\",\n    \"code\": \"SAL01\",\n    \"monthlyRatePercent\": 2,\n    \"minimumAmount\": 50000,\n    \"maximumAmount\": 5000000,\n    \"managementChargeType\": \"PERCENTAGE\",\n    \"managementChargeValue\": 2,\n    \"managementChargeApplication\": \"DEDUCT_FROM_DISBURSEMENT\"\n  },\n  \"paybackRatio\": 1.24,\n  \"currentLoan\": null,\n  \"newLoanTotal\": 967000,\n  \"monthlyRepayment\": 99923.33,\n  \"assessedAt\": \"2026-11-03T10:05:00.000Z\",\n  \"tenorRange\": {\n    \"min\": 1,\n    \"max\": 24\n  },\n  \"requested\": null\n}"
+                }
+              ]
+            },
+            {
+              "name": "GET /admin/clients/:clientId/loan-eligibility - With amount (accepted)",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/clients/{{review_client_id}}/loan-eligibility?tenorMonths=12&amount=500000",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "clients",
+                    "{{review_client_id}}",
+                    "loan-eligibility"
+                  ],
+                  "query": [
+                    {
+                      "key": "tenorMonths",
+                      "value": "12"
+                    },
+                    {
+                      "key": "amount",
+                      "value": "500000"
+                    }
+                  ]
+                },
+                "description": "The most this client can borrow (or top up) over `tenorMonths`, with the workings: salary picked from the last three payments by the salary table, usable pay from the repayment capacity (client → sector → default), payback ratio 1 + monthly rate × tenor ÷ 100 from the product band for the tenor, and maximum = usable pay × tenor ÷ ratio, rounded down to ₦1,000 and kept within the product limits. For a top-up, the current repayment is added back to pay and the outstanding balance comes off. Without `type`, it is a top-up when the client already has a loan. Needs clients:read and the client in the admin's record scope. Add `amount` to check one amount as well: the answer then has a `requested` block saying whether that amount would be accepted (`eligible`, `reason` with the same message a loan request would get), the product it falls under, its `monthlyRepayment`, `totalRepayment`, `managementCharge`, `disbursedAmount` (cash paid out), `newLoanTotal` and `repaymentHeadroom` (usable pay left after the repayment; negative when it is too much). For a top-up, `amount` is the extra cash. Without `amount`, `requested` is null and the rest of the answer is unchanged."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));",
+                      "const r = pm.response.json().requested;",
+                      "pm.test('amount is accepted and priced', () => {",
+                      "  pm.expect(r.amount).to.eql(500000);",
+                      "  pm.expect(r.eligible).to.eql(true);",
+                      "  pm.expect(r.monthlyRepayment).to.be.a('number');",
+                      "  pm.expect(r.disbursedAmount).to.be.a('number');",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "With amount (accepted)",
+                  "originalRequest": {
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/clients/{{review_client_id}}/loan-eligibility?tenorMonths=12&amount=500000",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "clients",
+                        "{{review_client_id}}",
+                        "loan-eligibility"
+                      ],
+                      "query": [
+                        {
+                          "key": "tenorMonths",
+                          "value": "12"
+                        },
+                        {
+                          "key": "amount",
+                          "value": "500000"
+                        }
+                      ]
+                    },
+                    "description": "The most this client can borrow (or top up) over `tenorMonths`, with the workings: salary picked from the last three payments by the salary table, usable pay from the repayment capacity (client → sector → default), payback ratio 1 + monthly rate × tenor ÷ 100 from the product band for the tenor, and maximum = usable pay × tenor ÷ ratio, rounded down to ₦1,000 and kept within the product limits. For a top-up, the current repayment is added back to pay and the outstanding balance comes off. Without `type`, it is a top-up when the client already has a loan. Needs clients:read and the client in the admin's record scope. Add `amount` to check one amount as well: the answer then has a `requested` block saying whether that amount would be accepted (`eligible`, `reason` with the same message a loan request would get), the product it falls under, its `monthlyRepayment`, `totalRepayment`, `managementCharge`, `disbursedAmount` (cash paid out), `newLoanTotal` and `repaymentHeadroom` (usable pay left after the repayment; negative when it is too much). For a top-up, `amount` is the extra cash. Without `amount`, `requested` is null and the rest of the answer is unchanged."
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"type\": \"LOAN\",\n  \"tenorMonths\": 12,\n  \"eligible\": true,\n  \"maxAmount\": 967000,\n  \"salary\": {\n    \"paymentThreeMonthsAgo\": 100000,\n    \"paymentTwoMonthsAgo\": 150000.4,\n    \"paymentLastMonth\": 150000,\n    \"pattern\": \"ABB\",\n    \"outcome\": \"B\",\n    \"salaryUsed\": 150000\n  },\n  \"repaymentAddedBack\": 0,\n  \"capacity\": {\n    \"method\": \"BASE_PAY\",\n    \"basePayAmount\": 50000,\n    \"dtiPercent\": null,\n    \"source\": \"SECTOR\",\n    \"usablePay\": 100000,\n    \"limitedBy\": \"BASE_PAY\"\n  },\n  \"product\": {\n    \"id\": \"3f2a1b0c-9d8e-4f7a-8b6c-5d4e3f2a1b0c\",\n    \"name\": \"Salary Loan\",\n    \"code\": \"SAL01\",\n    \"monthlyRatePercent\": 2,\n    \"minimumAmount\": 50000,\n    \"maximumAmount\": 5000000,\n    \"managementChargeType\": \"PERCENTAGE\",\n    \"managementChargeValue\": 2,\n    \"managementChargeApplication\": \"DEDUCT_FROM_DISBURSEMENT\"\n  },\n  \"paybackRatio\": 1.24,\n  \"currentLoan\": null,\n  \"newLoanTotal\": 967000,\n  \"monthlyRepayment\": 99923.33,\n  \"assessedAt\": \"2026-11-03T10:05:00.000Z\",\n  \"tenorRange\": {\n    \"min\": 1,\n    \"max\": 24\n  },\n  \"requested\": {\n    \"amount\": 500000,\n    \"eligible\": true,\n    \"product\": {\n      \"id\": \"3f2a1b0c-9d8e-4f7a-8b6c-5d4e3f2a1b0c\",\n      \"name\": \"Salary Loan\",\n      \"code\": \"SAL01\",\n      \"monthlyRatePercent\": 2\n    },\n    \"managementCharge\": {\n      \"amount\": 10000,\n      \"application\": \"DEDUCT_FROM_DISBURSEMENT\"\n    },\n    \"disbursedAmount\": 490000,\n    \"newLoanTotal\": 500000,\n    \"monthlyRepayment\": 51666.67,\n    \"totalRepayment\": 620000,\n    \"repaymentHeadroom\": 48333.33\n  }\n}"
                 }
               ]
             },
@@ -26020,7 +26120,7 @@
                     }
                   ],
                   "cookie": [],
-                  "body": "{\n  \"type\": \"LOAN\",\n  \"tenorMonths\": 12,\n  \"eligible\": false,\n  \"maxAmount\": 0,\n  \"salary\": {\n    \"paymentThreeMonthsAgo\": 100000,\n    \"paymentTwoMonthsAgo\": 150000.4,\n    \"paymentLastMonth\": 150000,\n    \"pattern\": \"ABB\",\n    \"outcome\": \"B\",\n    \"salaryUsed\": 150000\n  },\n  \"repaymentAddedBack\": 0,\n  \"capacity\": null,\n  \"product\": null,\n  \"paybackRatio\": null,\n  \"currentLoan\": null,\n  \"newLoanTotal\": null,\n  \"monthlyRepayment\": null,\n  \"assessedAt\": \"2026-11-03T10:05:00.000Z\",\n  \"tenorRange\": {\n    \"min\": 1,\n    \"max\": 24\n  },\n  \"reason\": \"Repayment capacity is not set up for this client or their sector. Contact an admin.\"\n}"
+                  "body": "{\n  \"type\": \"LOAN\",\n  \"tenorMonths\": 12,\n  \"eligible\": false,\n  \"maxAmount\": 0,\n  \"salary\": {\n    \"paymentThreeMonthsAgo\": 100000,\n    \"paymentTwoMonthsAgo\": 150000.4,\n    \"paymentLastMonth\": 150000,\n    \"pattern\": \"ABB\",\n    \"outcome\": \"B\",\n    \"salaryUsed\": 150000\n  },\n  \"repaymentAddedBack\": 0,\n  \"capacity\": null,\n  \"product\": null,\n  \"paybackRatio\": null,\n  \"currentLoan\": null,\n  \"newLoanTotal\": null,\n  \"monthlyRepayment\": null,\n  \"assessedAt\": \"2026-11-03T10:05:00.000Z\",\n  \"tenorRange\": {\n    \"min\": 1,\n    \"max\": 24\n  },\n  \"reason\": \"Repayment capacity is not set up for this client or their sector. Contact an admin.\",\n  \"requested\": null\n}"
                 }
               ]
             },
@@ -35893,7 +35993,7 @@
                     }
                   ]
                 },
-                "description": "The most this client (one the agent onboarded) can borrow or top up over the tenor, with the workings. 404 for a client the agent did not onboard."
+                "description": "The most this client (one the agent onboarded) can borrow or top up over the tenor, with the workings. 404 for a client the agent did not onboard. Add `amount` to check one amount as well: the answer then has a `requested` block saying whether that amount would be accepted (`eligible`, `reason` with the same message a loan request would get), the product it falls under, its `monthlyRepayment`, `totalRepayment`, `managementCharge`, `disbursedAmount` (cash paid out), `newLoanTotal` and `repaymentHeadroom` (usable pay left after the repayment; negative when it is too much). For a top-up, `amount` is the extra cash. Without `amount`, `requested` is null and the rest of the answer is unchanged."
               },
               "event": [
                 {
@@ -35935,7 +36035,7 @@
                         }
                       ]
                     },
-                    "description": "The most this client (one the agent onboarded) can borrow or top up over the tenor, with the workings. 404 for a client the agent did not onboard."
+                    "description": "The most this client (one the agent onboarded) can borrow or top up over the tenor, with the workings. 404 for a client the agent did not onboard. Add `amount` to check one amount as well: the answer then has a `requested` block saying whether that amount would be accepted (`eligible`, `reason` with the same message a loan request would get), the product it falls under, its `monthlyRepayment`, `totalRepayment`, `managementCharge`, `disbursedAmount` (cash paid out), `newLoanTotal` and `repaymentHeadroom` (usable pay left after the repayment; negative when it is too much). For a top-up, `amount` is the extra cash. Without `amount`, `requested` is null and the rest of the answer is unchanged."
                   },
                   "status": "OK",
                   "code": 200,
@@ -35947,7 +36047,306 @@
                     }
                   ],
                   "cookie": [],
-                  "body": "{\n  \"type\": \"LOAN\",\n  \"tenorMonths\": 12,\n  \"eligible\": true,\n  \"maxAmount\": 967000,\n  \"salary\": {\n    \"paymentThreeMonthsAgo\": 100000,\n    \"paymentTwoMonthsAgo\": 150000.4,\n    \"paymentLastMonth\": 150000,\n    \"pattern\": \"ABB\",\n    \"outcome\": \"B\",\n    \"salaryUsed\": 150000\n  },\n  \"repaymentAddedBack\": 0,\n  \"capacity\": {\n    \"method\": \"BASE_PAY\",\n    \"basePayAmount\": 50000,\n    \"dtiPercent\": null,\n    \"source\": \"SECTOR\",\n    \"usablePay\": 100000,\n    \"limitedBy\": \"BASE_PAY\"\n  },\n  \"product\": {\n    \"id\": \"3f2a1b0c-9d8e-4f7a-8b6c-5d4e3f2a1b0c\",\n    \"name\": \"Salary Loan\",\n    \"code\": \"SAL01\",\n    \"monthlyRatePercent\": 2,\n    \"minimumAmount\": 50000,\n    \"maximumAmount\": 5000000,\n    \"managementChargeType\": \"PERCENTAGE\",\n    \"managementChargeValue\": 2,\n    \"managementChargeApplication\": \"DEDUCT_FROM_DISBURSEMENT\"\n  },\n  \"paybackRatio\": 1.24,\n  \"currentLoan\": null,\n  \"newLoanTotal\": 967000,\n  \"monthlyRepayment\": 99923.33,\n  \"assessedAt\": \"2026-11-03T10:05:00.000Z\",\n  \"tenorRange\": {\n    \"min\": 1,\n    \"max\": 24\n  }\n}"
+                  "body": "{\n  \"type\": \"LOAN\",\n  \"tenorMonths\": 12,\n  \"eligible\": true,\n  \"maxAmount\": 967000,\n  \"salary\": {\n    \"paymentThreeMonthsAgo\": 100000,\n    \"paymentTwoMonthsAgo\": 150000.4,\n    \"paymentLastMonth\": 150000,\n    \"pattern\": \"ABB\",\n    \"outcome\": \"B\",\n    \"salaryUsed\": 150000\n  },\n  \"repaymentAddedBack\": 0,\n  \"capacity\": {\n    \"method\": \"BASE_PAY\",\n    \"basePayAmount\": 50000,\n    \"dtiPercent\": null,\n    \"source\": \"SECTOR\",\n    \"usablePay\": 100000,\n    \"limitedBy\": \"BASE_PAY\"\n  },\n  \"product\": {\n    \"id\": \"3f2a1b0c-9d8e-4f7a-8b6c-5d4e3f2a1b0c\",\n    \"name\": \"Salary Loan\",\n    \"code\": \"SAL01\",\n    \"monthlyRatePercent\": 2,\n    \"minimumAmount\": 50000,\n    \"maximumAmount\": 5000000,\n    \"managementChargeType\": \"PERCENTAGE\",\n    \"managementChargeValue\": 2,\n    \"managementChargeApplication\": \"DEDUCT_FROM_DISBURSEMENT\"\n  },\n  \"paybackRatio\": 1.24,\n  \"currentLoan\": null,\n  \"newLoanTotal\": 967000,\n  \"monthlyRepayment\": 99923.33,\n  \"assessedAt\": \"2026-11-03T10:05:00.000Z\",\n  \"tenorRange\": {\n    \"min\": 1,\n    \"max\": 24\n  },\n  \"requested\": null\n}"
+                }
+              ]
+            },
+            {
+              "name": "GET /agent/clients/:clientId/loan-requests/eligibility - With amount (accepted)",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{agent_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/agent/clients/{{agent_onboarding_client_id}}/loan-requests/eligibility?tenorMonths=12&amount=500000",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "agent",
+                    "clients",
+                    "{{agent_onboarding_client_id}}",
+                    "loan-requests",
+                    "eligibility"
+                  ],
+                  "query": [
+                    {
+                      "key": "tenorMonths",
+                      "value": "12"
+                    },
+                    {
+                      "key": "amount",
+                      "value": "500000"
+                    }
+                  ]
+                },
+                "description": "The most this client (one the agent onboarded) can borrow or top up over the tenor, with the workings. 404 for a client the agent did not onboard. Add `amount` to check one amount as well: the answer then has a `requested` block saying whether that amount would be accepted (`eligible`, `reason` with the same message a loan request would get), the product it falls under, its `monthlyRepayment`, `totalRepayment`, `managementCharge`, `disbursedAmount` (cash paid out), `newLoanTotal` and `repaymentHeadroom` (usable pay left after the repayment; negative when it is too much). For a top-up, `amount` is the extra cash. Without `amount`, `requested` is null and the rest of the answer is unchanged."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));",
+                      "const r = pm.response.json().requested;",
+                      "pm.test('amount is accepted and priced', () => {",
+                      "  pm.expect(r.amount).to.eql(500000);",
+                      "  pm.expect(r.eligible).to.eql(true);",
+                      "  pm.expect(r.monthlyRepayment).to.be.a('number');",
+                      "  pm.expect(r.disbursedAmount).to.be.a('number');",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "With amount (accepted)",
+                  "originalRequest": {
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{agent_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/agent/clients/{{agent_onboarding_client_id}}/loan-requests/eligibility?tenorMonths=12&amount=500000",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "agent",
+                        "clients",
+                        "{{agent_onboarding_client_id}}",
+                        "loan-requests",
+                        "eligibility"
+                      ],
+                      "query": [
+                        {
+                          "key": "tenorMonths",
+                          "value": "12"
+                        },
+                        {
+                          "key": "amount",
+                          "value": "500000"
+                        }
+                      ]
+                    },
+                    "description": "The most this client (one the agent onboarded) can borrow or top up over the tenor, with the workings. 404 for a client the agent did not onboard. Add `amount` to check one amount as well: the answer then has a `requested` block saying whether that amount would be accepted (`eligible`, `reason` with the same message a loan request would get), the product it falls under, its `monthlyRepayment`, `totalRepayment`, `managementCharge`, `disbursedAmount` (cash paid out), `newLoanTotal` and `repaymentHeadroom` (usable pay left after the repayment; negative when it is too much). For a top-up, `amount` is the extra cash. Without `amount`, `requested` is null and the rest of the answer is unchanged."
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"type\": \"LOAN\",\n  \"tenorMonths\": 12,\n  \"eligible\": true,\n  \"maxAmount\": 967000,\n  \"salary\": {\n    \"paymentThreeMonthsAgo\": 100000,\n    \"paymentTwoMonthsAgo\": 150000.4,\n    \"paymentLastMonth\": 150000,\n    \"pattern\": \"ABB\",\n    \"outcome\": \"B\",\n    \"salaryUsed\": 150000\n  },\n  \"repaymentAddedBack\": 0,\n  \"capacity\": {\n    \"method\": \"BASE_PAY\",\n    \"basePayAmount\": 50000,\n    \"dtiPercent\": null,\n    \"source\": \"SECTOR\",\n    \"usablePay\": 100000,\n    \"limitedBy\": \"BASE_PAY\"\n  },\n  \"product\": {\n    \"id\": \"3f2a1b0c-9d8e-4f7a-8b6c-5d4e3f2a1b0c\",\n    \"name\": \"Salary Loan\",\n    \"code\": \"SAL01\",\n    \"monthlyRatePercent\": 2,\n    \"minimumAmount\": 50000,\n    \"maximumAmount\": 5000000,\n    \"managementChargeType\": \"PERCENTAGE\",\n    \"managementChargeValue\": 2,\n    \"managementChargeApplication\": \"DEDUCT_FROM_DISBURSEMENT\"\n  },\n  \"paybackRatio\": 1.24,\n  \"currentLoan\": null,\n  \"newLoanTotal\": 967000,\n  \"monthlyRepayment\": 99923.33,\n  \"assessedAt\": \"2026-11-03T10:05:00.000Z\",\n  \"tenorRange\": {\n    \"min\": 1,\n    \"max\": 24\n  },\n  \"requested\": {\n    \"amount\": 500000,\n    \"eligible\": true,\n    \"product\": {\n      \"id\": \"3f2a1b0c-9d8e-4f7a-8b6c-5d4e3f2a1b0c\",\n      \"name\": \"Salary Loan\",\n      \"code\": \"SAL01\",\n      \"monthlyRatePercent\": 2\n    },\n    \"managementCharge\": {\n      \"amount\": 10000,\n      \"application\": \"DEDUCT_FROM_DISBURSEMENT\"\n    },\n    \"disbursedAmount\": 490000,\n    \"newLoanTotal\": 500000,\n    \"monthlyRepayment\": 51666.67,\n    \"totalRepayment\": 620000,\n    \"repaymentHeadroom\": 48333.33\n  }\n}"
+                }
+              ]
+            },
+            {
+              "name": "GET /agent/clients/:clientId/loan-requests/eligibility - With amount (over maximum)",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{agent_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/agent/clients/{{agent_onboarding_client_id}}/loan-requests/eligibility?tenorMonths=12&amount=1200000",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "agent",
+                    "clients",
+                    "{{agent_onboarding_client_id}}",
+                    "loan-requests",
+                    "eligibility"
+                  ],
+                  "query": [
+                    {
+                      "key": "tenorMonths",
+                      "value": "12"
+                    },
+                    {
+                      "key": "amount",
+                      "value": "1200000"
+                    }
+                  ]
+                },
+                "description": "The most this client (one the agent onboarded) can borrow or top up over the tenor, with the workings. 404 for a client the agent did not onboard. Add `amount` to check one amount as well: the answer then has a `requested` block saying whether that amount would be accepted (`eligible`, `reason` with the same message a loan request would get), the product it falls under, its `monthlyRepayment`, `totalRepayment`, `managementCharge`, `disbursedAmount` (cash paid out), `newLoanTotal` and `repaymentHeadroom` (usable pay left after the repayment; negative when it is too much). For a top-up, `amount` is the extra cash. Without `amount`, `requested` is null and the rest of the answer is unchanged."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));",
+                      "const body = pm.response.json();",
+                      "pm.test('refused with the maximum, still priced', () => {",
+                      "  pm.expect(body.requested.eligible).to.eql(false);",
+                      "  pm.expect(body.requested.reason).to.include('the most you can');",
+                      "  pm.expect(body.requested.monthlyRepayment).to.be.a('number');",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "With amount (over maximum)",
+                  "originalRequest": {
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{agent_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/agent/clients/{{agent_onboarding_client_id}}/loan-requests/eligibility?tenorMonths=12&amount=1200000",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "agent",
+                        "clients",
+                        "{{agent_onboarding_client_id}}",
+                        "loan-requests",
+                        "eligibility"
+                      ],
+                      "query": [
+                        {
+                          "key": "tenorMonths",
+                          "value": "12"
+                        },
+                        {
+                          "key": "amount",
+                          "value": "1200000"
+                        }
+                      ]
+                    },
+                    "description": "The most this client (one the agent onboarded) can borrow or top up over the tenor, with the workings. 404 for a client the agent did not onboard. Add `amount` to check one amount as well: the answer then has a `requested` block saying whether that amount would be accepted (`eligible`, `reason` with the same message a loan request would get), the product it falls under, its `monthlyRepayment`, `totalRepayment`, `managementCharge`, `disbursedAmount` (cash paid out), `newLoanTotal` and `repaymentHeadroom` (usable pay left after the repayment; negative when it is too much). For a top-up, `amount` is the extra cash. Without `amount`, `requested` is null and the rest of the answer is unchanged."
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"type\": \"LOAN\",\n  \"tenorMonths\": 12,\n  \"eligible\": true,\n  \"maxAmount\": 967000,\n  \"salary\": {\n    \"paymentThreeMonthsAgo\": 100000,\n    \"paymentTwoMonthsAgo\": 150000.4,\n    \"paymentLastMonth\": 150000,\n    \"pattern\": \"ABB\",\n    \"outcome\": \"B\",\n    \"salaryUsed\": 150000\n  },\n  \"repaymentAddedBack\": 0,\n  \"capacity\": {\n    \"method\": \"BASE_PAY\",\n    \"basePayAmount\": 50000,\n    \"dtiPercent\": null,\n    \"source\": \"SECTOR\",\n    \"usablePay\": 100000,\n    \"limitedBy\": \"BASE_PAY\"\n  },\n  \"product\": {\n    \"id\": \"3f2a1b0c-9d8e-4f7a-8b6c-5d4e3f2a1b0c\",\n    \"name\": \"Salary Loan\",\n    \"code\": \"SAL01\",\n    \"monthlyRatePercent\": 2,\n    \"minimumAmount\": 50000,\n    \"maximumAmount\": 5000000,\n    \"managementChargeType\": \"PERCENTAGE\",\n    \"managementChargeValue\": 2,\n    \"managementChargeApplication\": \"DEDUCT_FROM_DISBURSEMENT\"\n  },\n  \"paybackRatio\": 1.24,\n  \"currentLoan\": null,\n  \"newLoanTotal\": 967000,\n  \"monthlyRepayment\": 99923.33,\n  \"assessedAt\": \"2026-11-03T10:05:00.000Z\",\n  \"tenorRange\": {\n    \"min\": 1,\n    \"max\": 24\n  },\n  \"requested\": {\n    \"amount\": 1200000,\n    \"eligible\": false,\n    \"product\": {\n      \"id\": \"3f2a1b0c-9d8e-4f7a-8b6c-5d4e3f2a1b0c\",\n      \"name\": \"Salary Loan\",\n      \"code\": \"SAL01\",\n      \"monthlyRatePercent\": 2\n    },\n    \"managementCharge\": {\n      \"amount\": 24000,\n      \"application\": \"DEDUCT_FROM_DISBURSEMENT\"\n    },\n    \"disbursedAmount\": 1176000,\n    \"newLoanTotal\": 1200000,\n    \"monthlyRepayment\": 124000,\n    \"totalRepayment\": 1488000,\n    \"repaymentHeadroom\": -24000,\n    \"reason\": \"For 12 months, the most you can borrow is ₦967,000\"\n  }\n}"
+                }
+              ]
+            },
+            {
+              "name": "GET /agent/clients/:clientId/loan-requests/eligibility - Invalid amount (400)",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{agent_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/agent/clients/{{agent_onboarding_client_id}}/loan-requests/eligibility?tenorMonths=12&amount=-5",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "agent",
+                    "clients",
+                    "{{agent_onboarding_client_id}}",
+                    "loan-requests",
+                    "eligibility"
+                  ],
+                  "query": [
+                    {
+                      "key": "tenorMonths",
+                      "value": "12"
+                    },
+                    {
+                      "key": "amount",
+                      "value": "-5"
+                    }
+                  ]
+                },
+                "description": "The most this client (one the agent onboarded) can borrow or top up over the tenor, with the workings. 404 for a client the agent did not onboard. Add `amount` to check one amount as well: the answer then has a `requested` block saying whether that amount would be accepted (`eligible`, `reason` with the same message a loan request would get), the product it falls under, its `monthlyRepayment`, `totalRepayment`, `managementCharge`, `disbursedAmount` (cash paid out), `newLoanTotal` and `repaymentHeadroom` (usable pay left after the repayment; negative when it is too much). For a top-up, `amount` is the extra cash. Without `amount`, `requested` is null and the rest of the answer is unchanged."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 400', () => pm.response.to.have.status(400));",
+                      "pm.test('names the amount', () => pm.expect(pm.response.json().message).to.include('amount must be a positive number'));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Invalid amount (400)",
+                  "originalRequest": {
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{agent_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/agent/clients/{{agent_onboarding_client_id}}/loan-requests/eligibility?tenorMonths=12&amount=-5",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "agent",
+                        "clients",
+                        "{{agent_onboarding_client_id}}",
+                        "loan-requests",
+                        "eligibility"
+                      ],
+                      "query": [
+                        {
+                          "key": "tenorMonths",
+                          "value": "12"
+                        },
+                        {
+                          "key": "amount",
+                          "value": "-5"
+                        }
+                      ]
+                    },
+                    "description": "The most this client (one the agent onboarded) can borrow or top up over the tenor, with the workings. 404 for a client the agent did not onboard. Add `amount` to check one amount as well: the answer then has a `requested` block saying whether that amount would be accepted (`eligible`, `reason` with the same message a loan request would get), the product it falls under, its `monthlyRepayment`, `totalRepayment`, `managementCharge`, `disbursedAmount` (cash paid out), `newLoanTotal` and `repaymentHeadroom` (usable pay left after the repayment; negative when it is too much). For a top-up, `amount` is the extra cash. Without `amount`, `requested` is null and the rest of the answer is unchanged."
+                  },
+                  "status": "Bad Request",
+                  "code": 400,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"message\": [\n    \"amount must be a positive number\"\n  ],\n  \"error\": \"Bad Request\",\n  \"statusCode\": 400\n}"
                 }
               ]
             },
@@ -41955,7 +42354,7 @@
                     }
                   ]
                 },
-                "description": "What the client sees before asking: the most they can borrow or top up over the tenor they picked, and how it was worked out. Call again when the tenor changes. `type` (LOAN or TOPUP) is optional."
+                "description": "What the client sees before asking: the most they can borrow or top up over the tenor they picked, and how it was worked out. Call again when the tenor changes. `type` (LOAN or TOPUP) is optional. Add `amount` to check one amount as well: the answer then has a `requested` block saying whether that amount would be accepted (`eligible`, `reason` with the same message a loan request would get), the product it falls under, its `monthlyRepayment`, `totalRepayment`, `managementCharge`, `disbursedAmount` (cash paid out), `newLoanTotal` and `repaymentHeadroom` (usable pay left after the repayment; negative when it is too much). For a top-up, `amount` is the extra cash. Without `amount`, `requested` is null and the rest of the answer is unchanged."
               },
               "event": [
                 {
@@ -41996,7 +42395,7 @@
                         }
                       ]
                     },
-                    "description": "What the client sees before asking: the most they can borrow or top up over the tenor they picked, and how it was worked out. Call again when the tenor changes. `type` (LOAN or TOPUP) is optional."
+                    "description": "What the client sees before asking: the most they can borrow or top up over the tenor they picked, and how it was worked out. Call again when the tenor changes. `type` (LOAN or TOPUP) is optional. Add `amount` to check one amount as well: the answer then has a `requested` block saying whether that amount would be accepted (`eligible`, `reason` with the same message a loan request would get), the product it falls under, its `monthlyRepayment`, `totalRepayment`, `managementCharge`, `disbursedAmount` (cash paid out), `newLoanTotal` and `repaymentHeadroom` (usable pay left after the repayment; negative when it is too much). For a top-up, `amount` is the extra cash. Without `amount`, `requested` is null and the rest of the answer is unchanged."
                   },
                   "status": "OK",
                   "code": 200,
@@ -42008,7 +42407,105 @@
                     }
                   ],
                   "cookie": [],
-                  "body": "{\n  \"type\": \"LOAN\",\n  \"tenorMonths\": 12,\n  \"eligible\": true,\n  \"maxAmount\": 967000,\n  \"salary\": {\n    \"paymentThreeMonthsAgo\": 100000,\n    \"paymentTwoMonthsAgo\": 150000.4,\n    \"paymentLastMonth\": 150000,\n    \"pattern\": \"ABB\",\n    \"outcome\": \"B\",\n    \"salaryUsed\": 150000\n  },\n  \"repaymentAddedBack\": 0,\n  \"capacity\": {\n    \"method\": \"BASE_PAY\",\n    \"basePayAmount\": 50000,\n    \"dtiPercent\": null,\n    \"source\": \"SECTOR\",\n    \"usablePay\": 100000,\n    \"limitedBy\": \"BASE_PAY\"\n  },\n  \"product\": {\n    \"id\": \"3f2a1b0c-9d8e-4f7a-8b6c-5d4e3f2a1b0c\",\n    \"name\": \"Salary Loan\",\n    \"code\": \"SAL01\",\n    \"monthlyRatePercent\": 2,\n    \"minimumAmount\": 50000,\n    \"maximumAmount\": 5000000,\n    \"managementChargeType\": \"PERCENTAGE\",\n    \"managementChargeValue\": 2,\n    \"managementChargeApplication\": \"DEDUCT_FROM_DISBURSEMENT\"\n  },\n  \"paybackRatio\": 1.24,\n  \"currentLoan\": null,\n  \"newLoanTotal\": 967000,\n  \"monthlyRepayment\": 99923.33,\n  \"assessedAt\": \"2026-11-03T10:05:00.000Z\",\n  \"tenorRange\": {\n    \"min\": 1,\n    \"max\": 24\n  }\n}"
+                  "body": "{\n  \"type\": \"LOAN\",\n  \"tenorMonths\": 12,\n  \"eligible\": true,\n  \"maxAmount\": 967000,\n  \"salary\": {\n    \"paymentThreeMonthsAgo\": 100000,\n    \"paymentTwoMonthsAgo\": 150000.4,\n    \"paymentLastMonth\": 150000,\n    \"pattern\": \"ABB\",\n    \"outcome\": \"B\",\n    \"salaryUsed\": 150000\n  },\n  \"repaymentAddedBack\": 0,\n  \"capacity\": {\n    \"method\": \"BASE_PAY\",\n    \"basePayAmount\": 50000,\n    \"dtiPercent\": null,\n    \"source\": \"SECTOR\",\n    \"usablePay\": 100000,\n    \"limitedBy\": \"BASE_PAY\"\n  },\n  \"product\": {\n    \"id\": \"3f2a1b0c-9d8e-4f7a-8b6c-5d4e3f2a1b0c\",\n    \"name\": \"Salary Loan\",\n    \"code\": \"SAL01\",\n    \"monthlyRatePercent\": 2,\n    \"minimumAmount\": 50000,\n    \"maximumAmount\": 5000000,\n    \"managementChargeType\": \"PERCENTAGE\",\n    \"managementChargeValue\": 2,\n    \"managementChargeApplication\": \"DEDUCT_FROM_DISBURSEMENT\"\n  },\n  \"paybackRatio\": 1.24,\n  \"currentLoan\": null,\n  \"newLoanTotal\": 967000,\n  \"monthlyRepayment\": 99923.33,\n  \"assessedAt\": \"2026-11-03T10:05:00.000Z\",\n  \"tenorRange\": {\n    \"min\": 1,\n    \"max\": 24\n  },\n  \"requested\": null\n}"
+                }
+              ]
+            },
+            {
+              "name": "GET /client/loan-requests/eligibility - With amount (accepted)",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{client_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/client/loan-requests/eligibility?tenorMonths=12&amount=500000",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "client",
+                    "loan-requests",
+                    "eligibility"
+                  ],
+                  "query": [
+                    {
+                      "key": "tenorMonths",
+                      "value": "12"
+                    },
+                    {
+                      "key": "amount",
+                      "value": "500000"
+                    }
+                  ]
+                },
+                "description": "What the client sees before asking: the most they can borrow or top up over the tenor they picked, and how it was worked out. Call again when the tenor changes. `type` (LOAN or TOPUP) is optional. Add `amount` to check one amount as well: the answer then has a `requested` block saying whether that amount would be accepted (`eligible`, `reason` with the same message a loan request would get), the product it falls under, its `monthlyRepayment`, `totalRepayment`, `managementCharge`, `disbursedAmount` (cash paid out), `newLoanTotal` and `repaymentHeadroom` (usable pay left after the repayment; negative when it is too much). For a top-up, `amount` is the extra cash. Without `amount`, `requested` is null and the rest of the answer is unchanged."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));",
+                      "const r = pm.response.json().requested;",
+                      "pm.test('amount is accepted and priced', () => {",
+                      "  pm.expect(r.amount).to.eql(500000);",
+                      "  pm.expect(r.eligible).to.eql(true);",
+                      "  pm.expect(r.monthlyRepayment).to.be.a('number');",
+                      "  pm.expect(r.disbursedAmount).to.be.a('number');",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "With amount (accepted)",
+                  "originalRequest": {
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{client_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/client/loan-requests/eligibility?tenorMonths=12&amount=500000",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "client",
+                        "loan-requests",
+                        "eligibility"
+                      ],
+                      "query": [
+                        {
+                          "key": "tenorMonths",
+                          "value": "12"
+                        },
+                        {
+                          "key": "amount",
+                          "value": "500000"
+                        }
+                      ]
+                    },
+                    "description": "What the client sees before asking: the most they can borrow or top up over the tenor they picked, and how it was worked out. Call again when the tenor changes. `type` (LOAN or TOPUP) is optional. Add `amount` to check one amount as well: the answer then has a `requested` block saying whether that amount would be accepted (`eligible`, `reason` with the same message a loan request would get), the product it falls under, its `monthlyRepayment`, `totalRepayment`, `managementCharge`, `disbursedAmount` (cash paid out), `newLoanTotal` and `repaymentHeadroom` (usable pay left after the repayment; negative when it is too much). For a top-up, `amount` is the extra cash. Without `amount`, `requested` is null and the rest of the answer is unchanged."
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"type\": \"LOAN\",\n  \"tenorMonths\": 12,\n  \"eligible\": true,\n  \"maxAmount\": 967000,\n  \"salary\": {\n    \"paymentThreeMonthsAgo\": 100000,\n    \"paymentTwoMonthsAgo\": 150000.4,\n    \"paymentLastMonth\": 150000,\n    \"pattern\": \"ABB\",\n    \"outcome\": \"B\",\n    \"salaryUsed\": 150000\n  },\n  \"repaymentAddedBack\": 0,\n  \"capacity\": {\n    \"method\": \"BASE_PAY\",\n    \"basePayAmount\": 50000,\n    \"dtiPercent\": null,\n    \"source\": \"SECTOR\",\n    \"usablePay\": 100000,\n    \"limitedBy\": \"BASE_PAY\"\n  },\n  \"product\": {\n    \"id\": \"3f2a1b0c-9d8e-4f7a-8b6c-5d4e3f2a1b0c\",\n    \"name\": \"Salary Loan\",\n    \"code\": \"SAL01\",\n    \"monthlyRatePercent\": 2,\n    \"minimumAmount\": 50000,\n    \"maximumAmount\": 5000000,\n    \"managementChargeType\": \"PERCENTAGE\",\n    \"managementChargeValue\": 2,\n    \"managementChargeApplication\": \"DEDUCT_FROM_DISBURSEMENT\"\n  },\n  \"paybackRatio\": 1.24,\n  \"currentLoan\": null,\n  \"newLoanTotal\": 967000,\n  \"monthlyRepayment\": 99923.33,\n  \"assessedAt\": \"2026-11-03T10:05:00.000Z\",\n  \"tenorRange\": {\n    \"min\": 1,\n    \"max\": 24\n  },\n  \"requested\": {\n    \"amount\": 500000,\n    \"eligible\": true,\n    \"product\": {\n      \"id\": \"3f2a1b0c-9d8e-4f7a-8b6c-5d4e3f2a1b0c\",\n      \"name\": \"Salary Loan\",\n      \"code\": \"SAL01\",\n      \"monthlyRatePercent\": 2\n    },\n    \"managementCharge\": {\n      \"amount\": 10000,\n      \"application\": \"DEDUCT_FROM_DISBURSEMENT\"\n    },\n    \"disbursedAmount\": 490000,\n    \"newLoanTotal\": 500000,\n    \"monthlyRepayment\": 51666.67,\n    \"totalRepayment\": 620000,\n    \"repaymentHeadroom\": 48333.33\n  }\n}"
                 }
               ]
             },
@@ -42099,7 +42596,7 @@
                     }
                   ],
                   "cookie": [],
-                  "body": "{\n  \"type\": \"TOPUP\",\n  \"tenorMonths\": 12,\n  \"eligible\": true,\n  \"maxAmount\": 567000,\n  \"salary\": {\n    \"paymentThreeMonthsAgo\": 100000,\n    \"paymentTwoMonthsAgo\": 150000.4,\n    \"paymentLastMonth\": 150000,\n    \"pattern\": \"ABB\",\n    \"outcome\": \"B\",\n    \"salaryUsed\": 150000\n  },\n  \"repaymentAddedBack\": 0,\n  \"capacity\": {\n    \"method\": \"BASE_PAY\",\n    \"basePayAmount\": 50000,\n    \"dtiPercent\": null,\n    \"source\": \"SECTOR\",\n    \"usablePay\": 100000,\n    \"limitedBy\": \"BASE_PAY\"\n  },\n  \"product\": {\n    \"id\": \"3f2a1b0c-9d8e-4f7a-8b6c-5d4e3f2a1b0c\",\n    \"name\": \"Salary Loan\",\n    \"code\": \"SAL01\",\n    \"monthlyRatePercent\": 2,\n    \"minimumAmount\": 50000,\n    \"maximumAmount\": 5000000,\n    \"managementChargeType\": \"PERCENTAGE\",\n    \"managementChargeValue\": 2,\n    \"managementChargeApplication\": \"DEDUCT_FROM_DISBURSEMENT\"\n  },\n  \"paybackRatio\": 1.24,\n  \"currentLoan\": {\n    \"source\": \"APP\",\n    \"id\": \"9a8b7c6d-5e4f-4a3b-8c2d-1e0f9a8b7c6d\",\n    \"outstandingBalance\": 400000,\n    \"monthlyRepayment\": 93000\n  },\n  \"newLoanTotal\": 967000,\n  \"monthlyRepayment\": 99923.33,\n  \"assessedAt\": \"2026-11-03T10:05:00.000Z\",\n  \"tenorRange\": {\n    \"min\": 1,\n    \"max\": 24\n  }\n}"
+                  "body": "{\n  \"type\": \"TOPUP\",\n  \"tenorMonths\": 12,\n  \"eligible\": true,\n  \"maxAmount\": 567000,\n  \"salary\": {\n    \"paymentThreeMonthsAgo\": 100000,\n    \"paymentTwoMonthsAgo\": 150000.4,\n    \"paymentLastMonth\": 150000,\n    \"pattern\": \"ABB\",\n    \"outcome\": \"B\",\n    \"salaryUsed\": 150000\n  },\n  \"repaymentAddedBack\": 0,\n  \"capacity\": {\n    \"method\": \"BASE_PAY\",\n    \"basePayAmount\": 50000,\n    \"dtiPercent\": null,\n    \"source\": \"SECTOR\",\n    \"usablePay\": 100000,\n    \"limitedBy\": \"BASE_PAY\"\n  },\n  \"product\": {\n    \"id\": \"3f2a1b0c-9d8e-4f7a-8b6c-5d4e3f2a1b0c\",\n    \"name\": \"Salary Loan\",\n    \"code\": \"SAL01\",\n    \"monthlyRatePercent\": 2,\n    \"minimumAmount\": 50000,\n    \"maximumAmount\": 5000000,\n    \"managementChargeType\": \"PERCENTAGE\",\n    \"managementChargeValue\": 2,\n    \"managementChargeApplication\": \"DEDUCT_FROM_DISBURSEMENT\"\n  },\n  \"paybackRatio\": 1.24,\n  \"currentLoan\": {\n    \"source\": \"APP\",\n    \"id\": \"9a8b7c6d-5e4f-4a3b-8c2d-1e0f9a8b7c6d\",\n    \"outstandingBalance\": 400000,\n    \"monthlyRepayment\": 93000\n  },\n  \"newLoanTotal\": 967000,\n  \"monthlyRepayment\": 99923.33,\n  \"assessedAt\": \"2026-11-03T10:05:00.000Z\",\n  \"tenorRange\": {\n    \"min\": 1,\n    \"max\": 24\n  },\n  \"requested\": null\n}"
                 }
               ]
             },

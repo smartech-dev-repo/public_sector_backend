@@ -50,15 +50,53 @@ export function usablePay(
   return usablePayDetail(salary, policy).usablePay;
 }
 
+export interface ChargeTerms {
+  type: 'PERCENTAGE' | 'FLAT';
+  value: number;
+  application: 'DEDUCT_FROM_DISBURSEMENT' | 'ADD_TO_REPAYMENT';
+}
+
+/** The management charge on an amount: a percentage of it, or the flat value. */
+export function managementChargeFor(amount: number, charge: ChargeTerms): number {
+  return round2(charge.type === 'PERCENTAGE' ? (amount * charge.value) / 100 : charge.value);
+}
+
+export interface RepaymentInput {
+  /** The new cash: the loan amount, or the top-up on top of the balance. */
+  amount: number;
+  /** Top-up only: the balance carried into the renewed loan. */
+  outstandingBalance?: number;
+  tenorMonths: number;
+  monthlyRatePercent: number;
+  charge: ChargeTerms;
+}
+
+/**
+ * The monthly repayment, flat rate: (balance + amount) × payback ratio ÷ tenor, plus the
+ * charge spread over the tenor when it is added to repayment. The charge is on the new cash.
+ */
+export function repaymentFor(input: RepaymentInput): number {
+  return round2(totalRepaymentExact(input) / input.tenorMonths);
+}
+
+/** Everything repaid over the tenor, worked out before the monthly figure is rounded. */
+export function totalRepaymentFor(input: RepaymentInput): number {
+  return round2(totalRepaymentExact(input));
+}
+
+function totalRepaymentExact(input: RepaymentInput): number {
+  const outstanding = Math.max(0, input.outstandingBalance ?? 0);
+  const ratio = paybackRatio(input.monthlyRatePercent, input.tenorMonths);
+  const chargeAmount =
+    input.charge.application === 'ADD_TO_REPAYMENT' ? managementChargeFor(input.amount, input.charge) : 0;
+  return (outstanding + input.amount) * ratio + chargeAmount;
+}
+
 export interface MaxLoanInput {
   usablePay: number;
   tenorMonths: number;
   monthlyRatePercent: number;
-  charge: {
-    type: 'PERCENTAGE' | 'FLAT';
-    value: number;
-    application: 'DEDUCT_FROM_DISBURSEMENT' | 'ADD_TO_REPAYMENT';
-  };
+  charge: ChargeTerms;
   /** Top-up only: what the client still owes on the loan being renewed. */
   outstandingBalance?: number;
   productMinimum: number;
@@ -113,16 +151,8 @@ export function computeMaxLoan(input: MaxLoanInput): MaxLoanResult {
   const capped = Math.min(raw, productMaximum - outstanding);
   const maxAmount = Math.max(0, Math.floor(capped / roundTo) * roundTo);
 
-  const repaymentAt = (amount: number) => {
-    const chargeAmount = added
-      ? charge.type === 'PERCENTAGE'
-        ? (amount * charge.value) / 100
-        : charge.value
-      : 0;
-    return round2(
-      ((outstanding + amount) * ratio + chargeAmount) / tenorMonths,
-    );
-  };
+  const repaymentAt = (amount: number) =>
+    repaymentFor({ amount, outstandingBalance: outstanding, tenorMonths, monthlyRatePercent, charge });
 
   const fail = (reason: string): MaxLoanResult => ({
     paybackRatio: ratio,

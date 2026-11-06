@@ -23,7 +23,7 @@ export class LoanRequestController {
   /** The most the client can borrow or top up over the tenor they picked. */
   @Get('eligibility')
   eligibility(@Query() query: LoanEligibilityQueryDto, @Req() req: { user: JwtPayload }) {
-    return this.affordabilityService.preview(req.user.sub, query.tenorMonths, query.type);
+    return this.affordabilityService.preview(req.user.sub, query.tenorMonths, query.type, query.amount);
   }
 
   @Post()

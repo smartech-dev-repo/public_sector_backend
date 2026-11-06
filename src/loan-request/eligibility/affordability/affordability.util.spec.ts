@@ -6,7 +6,7 @@ import {
   SALARY_PATTERN_ALIASES,
   SALARY_PATTERNS,
 } from './salary-pattern.util';
-import { computeMaxLoan, usablePay, usablePayDetail } from './max-loan.util';
+import { computeMaxLoan, managementChargeFor, repaymentFor, usablePay, usablePayDetail } from './max-loan.util';
 
 const L = { A: 100000, B: 120000, C: 150000 };
 const months = (p: string) =>
@@ -257,5 +257,39 @@ describe('computeMaxLoan', () => {
     }).maxAmount;
     const twelve = computeMaxLoan({ ...base, usablePay: 100000 }).maxAmount;
     expect(twelve).toBeGreaterThan(six);
+  });
+});
+
+describe('repaymentFor', () => {
+  const noCharge = { type: 'FLAT' as const, value: 0, application: 'DEDUCT_FROM_DISBURSEMENT' as const };
+
+  it('a loan: amount × payback ratio ÷ tenor, flat monthly rate', () => {
+    // 290,000 at 2% a month over 12 months: ratio 1.24, 290,000 × 1.24 / 12 = 29,966.67.
+    expect(repaymentFor({ amount: 290000, tenorMonths: 12, monthlyRatePercent: 2, charge: noCharge })).toBe(29966.67);
+  });
+
+  it('a top-up: the balance is repaid over the new tenor too', () => {
+    // (100,000 + 50,000) × 1.24 / 12 = 15,500.
+    expect(repaymentFor({ amount: 50000, outstandingBalance: 100000, tenorMonths: 12, monthlyRatePercent: 2, charge: noCharge })).toBe(15500);
+  });
+
+  it('a charge added to repayment is spread over the tenor; a deducted one is not', () => {
+    const added = { type: 'PERCENTAGE' as const, value: 2, application: 'ADD_TO_REPAYMENT' as const };
+    // 100,000 × 1.24 = 124,000, plus the 2,000 charge, over 12 = 10,500.
+    expect(repaymentFor({ amount: 100000, tenorMonths: 12, monthlyRatePercent: 2, charge: added })).toBe(10500);
+    expect(repaymentFor({ amount: 100000, tenorMonths: 12, monthlyRatePercent: 2, charge: { ...added, application: 'DEDUCT_FROM_DISBURSEMENT' } })).toBe(10333.33);
+  });
+
+  it('matches the repayment computeMaxLoan reports at the maximum', () => {
+    const charge = { type: 'FLAT' as const, value: 1200, application: 'ADD_TO_REPAYMENT' as const };
+    const max = computeMaxLoan({ usablePay: 30000, tenorMonths: 12, monthlyRatePercent: 2, charge, productMinimum: 50000, productMaximum: 5000000 });
+    expect(repaymentFor({ amount: max.maxAmount, tenorMonths: 12, monthlyRatePercent: 2, charge })).toBe(max.monthlyRepayment);
+  });
+});
+
+describe('managementChargeFor', () => {
+  it('a percentage of the amount, or the flat value', () => {
+    expect(managementChargeFor(150000, { type: 'PERCENTAGE', value: 2.5, application: 'DEDUCT_FROM_DISBURSEMENT' })).toBe(3750);
+    expect(managementChargeFor(150000, { type: 'FLAT', value: 5000, application: 'ADD_TO_REPAYMENT' })).toBe(5000);
   });
 });
