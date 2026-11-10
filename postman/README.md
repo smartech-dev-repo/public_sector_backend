@@ -31,7 +31,14 @@ standalone Health check:
   principal type in the JWT system), **Reconciliation & Catalog**
   (`GET /admin/reconciliation` listing expected-vs-actual repayment
   variances produced after every disbursed-loans/repayment-schedule
-  upload, plus `GET /admin/loans` and `GET /admin/ippis-records` basic
+  upload; `/admin/reconciliation/deductions` listing payroll deductions
+  that match no loan running in their month, with the reason, and
+  resolving them — `:id/candidates` lists the staff number's loans,
+  `:id/assign` counts a deduction toward one (optionally in another month),
+  `:id/refund` sends a wallet refund for `approvals:wallets` approval and
+  `:id/dismiss` closes it with a required note, all three gated by
+  `reconciliation:resolve` and chained through `deduction_id` /
+  `client_loan_id`; plus `GET /admin/loans` and `GET /admin/ippis-records` basic
   agency-filterable listings over the underlying ingested tables — closely
   related to Documents but its own controllers), **Client Review** (list/inspect
   clients stuck at `Client.status = MANUAL_REVIEW` and approve or retry

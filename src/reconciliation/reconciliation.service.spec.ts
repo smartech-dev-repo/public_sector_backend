@@ -38,14 +38,35 @@ describe('ReconciliationService', () => {
     it('stops reconciling an imported loan from the month an app top-up took it over', async () => {
       prisma.loan.findMany.mockResolvedValue([{ ...baseLoan, maturationDate: new Date('2025-06-01'), settledAt: new Date('2025-03-15') }]);
       prisma.loanRepaymentRecord.findMany.mockResolvedValue([
-        { agency: 'NPF', staffId: 'NPF-001', period: '2025-02', amount: 1000 },
-        { agency: 'NPF', staffId: 'NPF-001', period: '2025-03', amount: 1000 },
+        { agency: 'NPF', staffId: 'NPF-001', loanId: 'loan-1', period: '2025-02', amount: 1000 },
+        { agency: 'NPF', staffId: 'NPF-001', loanId: 'loan-1', period: '2025-03', amount: 1000 },
       ]);
 
       await service.reconcileAll();
 
       const periods = prisma.repaymentVariance.upsert.mock.calls.map((call: [{ where: { loanId_period: { period: string } } }]) => call[0].where.loanId_period.period);
       expect(periods).toEqual(['2025-02']);
+    });
+
+    it('counts only deductions matched or assigned to the loan, an assigned one in its assigned month', async () => {
+      prisma.loan.findMany.mockResolvedValue([{ ...baseLoan, maturationDate: new Date('2025-06-01') }]);
+      prisma.loanRepaymentRecord.findMany.mockResolvedValue([
+        // Same staff number, but matched to no loan: it counts toward nothing.
+        { agency: 'NPF', staffId: 'NPF-001', loanId: null, period: '2025-02', amount: 999 },
+        { agency: 'NPF', staffId: 'NPF-001', loanId: 'loan-1', period: '2025-02', amount: 1000 },
+        { agency: 'NPF', staffId: 'NPF-001', loanId: 'loan-1', period: '2024-11', appliedPeriod: '2025-03', amount: 500, resolution: 'ASSIGNED' },
+        { agency: 'NPF', staffId: 'NPF-001', loanId: 'loan-1', period: '2025-02', amount: 7000, resolution: 'DISMISSED' },
+      ]);
+
+      await service.reconcileAll();
+
+      const actual = Object.fromEntries(
+        prisma.repaymentVariance.upsert.mock.calls.map((call: [{ where: { loanId_period: { period: string } }; create: { actualAmount: number } }]) => [
+          call[0].where.loanId_period.period,
+          call[0].create.actualAmount,
+        ]),
+      );
+      expect(actual).toEqual({ '2025-02': 1000, '2025-03': 500 });
     });
 
     it('skips a loan with no agency', async () => {
@@ -60,7 +81,7 @@ describe('ReconciliationService', () => {
     it('marks MATCHED when the actual amount is within the ₦1 tolerance of the expected installment', async () => {
       prisma.loan.findMany.mockResolvedValue([baseLoan]);
       prisma.loanRepaymentRecord.findMany.mockResolvedValue([
-        { agency: 'NPF', staffId: 'NPF-001', period: '2025-01', amount: 112000 },
+        { agency: 'NPF', staffId: 'NPF-001', loanId: 'loan-1', period: '2025-01', amount: 112000 },
       ]);
 
       await service.reconcileAll();
@@ -82,7 +103,7 @@ describe('ReconciliationService', () => {
     it('marks UNDER_PAID when the actual amount falls short beyond tolerance', async () => {
       prisma.loan.findMany.mockResolvedValue([baseLoan]);
       prisma.loanRepaymentRecord.findMany.mockResolvedValue([
-        { agency: 'NPF', staffId: 'NPF-001', period: '2025-01', amount: 50000 },
+        { agency: 'NPF', staffId: 'NPF-001', loanId: 'loan-1', period: '2025-01', amount: 50000 },
       ]);
 
       await service.reconcileAll();
@@ -95,7 +116,7 @@ describe('ReconciliationService', () => {
     it('marks OVER_PAID when the actual amount exceeds the expected installment beyond tolerance', async () => {
       prisma.loan.findMany.mockResolvedValue([baseLoan]);
       prisma.loanRepaymentRecord.findMany.mockResolvedValue([
-        { agency: 'NPF', staffId: 'NPF-001', period: '2025-01', amount: 150000 },
+        { agency: 'NPF', staffId: 'NPF-001', loanId: 'loan-1', period: '2025-01', amount: 150000 },
       ]);
 
       await service.reconcileAll();
@@ -124,7 +145,7 @@ describe('ReconciliationService', () => {
     it("excludes periods outside the loan's disbursement-to-maturation range", async () => {
       prisma.loan.findMany.mockResolvedValue([baseLoan]);
       prisma.loanRepaymentRecord.findMany.mockResolvedValue([
-        { agency: 'NPF', staffId: 'NPF-001', period: '2024-06', amount: 101000 },
+        { agency: 'NPF', staffId: 'NPF-001', loanId: 'loan-1', period: '2024-06', amount: 101000 },
       ]);
 
       await service.reconcileAll();

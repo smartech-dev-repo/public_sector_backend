@@ -2,7 +2,8 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { computeExpectedInstallment } from './amortization.util';
 import { VarianceStatus } from '../generated/prisma/client';
-import { toPeriodKey } from './period.util';
+import { isWithinLoanPeriod } from './deduction-match.util';
+import { loadDeductionTotals } from './deduction-totals.util';
 import { classifyVariance } from './variance-classification.util';
 import { buildPaginatedResult } from '../common/pagination/paginated-result';
 
@@ -20,36 +21,17 @@ export class ReconciliationService {
 
   async reconcileAll(): Promise<void> {
     const loans = await this.prisma.loan.findMany();
-    const repayments = await this.prisma.loanRepaymentRecord.findMany();
-
-    const periodsSeen = new Set<string>();
-    const totalsByLoanKey = new Map<string, Map<string, number>>();
-
-    for (const repayment of repayments) {
-      if (!repayment.period) {
-        continue;
-      }
-      periodsSeen.add(repayment.period);
-      const loanKey = `${repayment.agency}::${repayment.staffId}`;
-      const periodMap = totalsByLoanKey.get(loanKey) ?? new Map<string, number>();
-      periodMap.set(repayment.period, (periodMap.get(repayment.period) ?? 0) + Number(repayment.amount));
-      totalsByLoanKey.set(loanKey, periodMap);
-    }
-
-    const allPeriods = Array.from(periodsSeen);
+    const { periods, totals } = await loadDeductionTotals(this.prisma, 'loanId');
 
     for (const loan of loans) {
       if (!loan.agency) {
         continue;
       }
 
-      const disbursementPeriod = toPeriodKey(loan.disbursementDate);
-      const maturationPeriod = toPeriodKey(loan.maturationDate);
-      // Once an app top-up has taken over this loan, its repayments belong to the app loan.
-      const settledPeriod = loan.settledAt ? toPeriodKey(loan.settledAt) : null;
-      const applicablePeriods = allPeriods.filter(
-        (period) =>
-          period >= disbursementPeriod && period <= maturationPeriod && (!settledPeriod || period < settledPeriod),
+      const periodMap = totals.get(loan.id) ?? new Map<string, number>();
+      // Every month payroll was uploaded for, plus any month a deduction was assigned to.
+      const applicablePeriods = [...new Set([...periods, ...periodMap.keys()])].filter((period) =>
+        isWithinLoanPeriod(period, loan),
       );
       if (applicablePeriods.length === 0) {
         continue;
@@ -61,9 +43,6 @@ export class ReconciliationService {
         loan.disbursementDate,
         loan.maturationDate,
       );
-
-      const loanKey = `${loan.agency}::${loan.ippisNumber}`;
-      const periodMap = totalsByLoanKey.get(loanKey) ?? new Map<string, number>();
 
       for (const period of applicablePeriods) {
         const actualAmount = periodMap.get(period) ?? 0;

@@ -15,6 +15,8 @@ import { findRepaymentHeaderRowNumber, isRepaymentDataSheet } from '../parsers/r
 import { isRepaymentRowMappingFailure, mapRepaymentRow } from '../parsers/repayment-row-mapper';
 import { AnalysisBuilder, DocumentAnalysis } from './analysis-builder';
 import { PHONE_ALREADY_USED, buildIppisPhoneRegister, ippisKey } from '../ippis-phone-register';
+import { RepaymentMatchingService } from '../../reconciliation/repayment-matching.service';
+import { MATCH_STATUS_MESSAGES, staffKey } from '../../reconciliation/deduction-match.util';
 
 
 function headerSet(headerValues: unknown[]): Set<string> {
@@ -35,6 +37,7 @@ export class DocumentAnalysisService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly sectorService: SectorService,
+    private readonly repaymentMatchingService: RepaymentMatchingService,
   ) {}
 
   async analyze(batch: DocumentUploadBatch, fileBuffer: Buffer): Promise<DocumentAnalysis> {
@@ -147,12 +150,22 @@ export class DocumentAnalysisService {
     period: string | null,
     builder: AnalysisBuilder,
   ): Promise<void> {
-    const [existing, staff] = await Promise.all([
+    const [existing, staff, loans] = await Promise.all([
       this.prisma.loanRepaymentRecord.findMany({
-        select: { agency: true, staffId: true, period: true, elementName: true },
+        select: { agency: true, staffId: true, period: true, elementName: true, amount: true },
       }),
       this.prisma.ippisRecord.findMany({ select: { agency: true, staffId: true } }),
+      this.repaymentMatchingService.buildContext(),
     ]);
+    // Each month already uploaded, as its set of deductions, to spot the same file sent for another month.
+    const uploadedMonths = new Map<string, Set<string>>();
+    for (const r of existing) {
+      if (!r.period) continue;
+      const set = uploadedMonths.get(r.period) ?? new Set<string>();
+      set.add(deductionFingerprint(r.agency, r.staffId, r.elementName, Number(r.amount)));
+      uploadedMonths.set(r.period, set);
+    }
+    const fileMonths = new Map<string, Set<string>>();
     const existingKeys = new Set(existing.map((r) => `${r.agency}::${r.staffId}::${r.period}::${r.elementName}`));
     const knownStaff = new Set(staff.map((r) => `${r.agency}::${r.staffId}`));
     const agenciesOnPayroll = new Set(staff.map((r) => r.agency));
@@ -205,6 +218,18 @@ export class DocumentAnalysisService {
           builder.addIssue('WARNING', 'Staff number is not on the IPPIS record', location);
         }
 
+        if (rowPeriod) {
+          const match = loans.match({ agency, staffId: mapped.record.staffId, period: rowPeriod });
+          if (match.status !== 'MATCHED') {
+            builder.addIssue('WARNING', `${MATCH_STATUS_MESSAGES[match.status]}. It will be kept as unmatched for reconciliation`, location);
+          }
+          const set = fileMonths.get(rowPeriod) ?? new Set<string>();
+          set.add(deductionFingerprint(agency, mapped.record.staffId, mapped.record.elementName, mapped.record.amount));
+          fileMonths.set(rowPeriod, set);
+        } else {
+          builder.addIssue('WARNING', 'Deduction has no month. Choose the month at upload or fill the Period column', location);
+        }
+
         const key = `${agency}::${mapped.record.staffId}::${rowPeriod}::${mapped.record.elementName}`;
         if (seenKeys.has(key)) {
           builder.addIssue('WARNING', 'Duplicate deduction in this file; the last row wins', location);
@@ -212,6 +237,19 @@ export class DocumentAnalysisService {
         seenKeys.add(key);
 
         builder.countValidRow(sheet, existingKeys.has(key));
+      }
+    }
+
+    for (const [month, deductions] of fileMonths) {
+      if (deductions.size < 2) continue;
+      for (const [uploaded, previous] of uploadedMonths) {
+        if (uploaded === month || previous.size !== deductions.size) continue;
+        if ([...deductions].every((d) => previous.has(d))) {
+          builder.addIssue(
+            'WARNING',
+            `Every deduction for ${month} is the same as the upload for ${uploaded}. Check that this is the right file and month`,
+          );
+        }
       }
     }
 
@@ -272,4 +310,8 @@ export class DocumentAnalysisService {
       builder.countValidRow(sheet, existingCustomerIds.has(mapped.record.customerId));
     }
   }
+}
+
+function deductionFingerprint(agency: string, staffId: string, elementName: string, amount: number): string {
+  return `${staffKey(agency, staffId)}::${elementName}::${amount.toFixed(2)}`;
 }

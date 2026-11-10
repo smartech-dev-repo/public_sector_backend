@@ -7,6 +7,7 @@ import { DOCUMENT_PARSERS, DocumentParser } from './document-parser.interface';
 import { FILE_STORAGE_PROVIDER, FileStorageProvider } from '../file-storage/file-storage-provider.interface';
 import { ReconciliationService } from '../reconciliation/reconciliation.service';
 import { ClientLoanReconciliationService } from '../reconciliation/client-loan-reconciliation.service';
+import { RepaymentMatchingService } from '../reconciliation/repayment-matching.service';
 import { DocumentAnalysisService } from './analysis/document-analysis.service';
 import { AuditActorType, DocumentType, DocumentUploadBatch, Prisma } from '../generated/prisma/client';
 import { AuditLogService } from '../audit/audit-log.service';
@@ -30,6 +31,7 @@ export class DocumentIngestionProcessor extends WorkerHost {
     @Inject(DOCUMENT_PARSERS) private readonly parsers: Record<DocumentType, DocumentParser>,
     private readonly reconciliationService: ReconciliationService,
     private readonly clientLoanReconciliationService: ClientLoanReconciliationService,
+    private readonly repaymentMatchingService: RepaymentMatchingService,
     private readonly documentAnalysisService: DocumentAnalysisService,
     private readonly auditLogService: AuditLogService,
   ) {
@@ -58,6 +60,8 @@ export class DocumentIngestionProcessor extends WorkerHost {
       const result = await parser.parse(batch, fileBuffer);
 
       if (RECONCILIATION_TRIGGER_TYPES.includes(batch.documentType)) {
+        // New deductions, or new loans, change which loan each deduction belongs to.
+        await this.repaymentMatchingService.rematchAll();
         await this.reconciliationService.reconcileAll();
         await this.clientLoanReconciliationService.reconcileAll();
       }

@@ -8,7 +8,7 @@ describe('ClientLoanReconciliationService', () => {
   let prisma: {
     clientLoan: { findMany: jest.Mock; update: jest.Mock };
     loanRepaymentRecord: { findMany: jest.Mock };
-    clientLoanRepaymentVariance: { findUnique: jest.Mock; findFirst: jest.Mock; create: jest.Mock };
+    clientLoanRepaymentVariance: { findUnique: jest.Mock; findFirst: jest.Mock; create: jest.Mock; update: jest.Mock };
   };
   let walletService: { credit: jest.Mock };
 
@@ -30,6 +30,7 @@ describe('ClientLoanReconciliationService', () => {
     principalBalance: 90000,
     disbursementDate,
     maturationDate,
+    repaymentVariances: [] as unknown[],
   };
 
   beforeEach(() => {
@@ -40,6 +41,7 @@ describe('ClientLoanReconciliationService', () => {
         findUnique: jest.fn().mockResolvedValue(null),
         findFirst: jest.fn().mockResolvedValue(null),
         create: jest.fn(),
+        update: jest.fn(),
       },
     };
     walletService = { credit: jest.fn().mockResolvedValue(undefined) };
@@ -59,18 +61,67 @@ describe('ClientLoanReconciliationService', () => {
     expect(prisma.clientLoan.update).not.toHaveBeenCalled();
   });
 
-  it('skips a period that already has a ClientLoanRepaymentVariance row (write-once)', async () => {
-    prisma.clientLoan.findMany.mockResolvedValue([baseLoan]);
+  const applied = (actualAmount: number, source = 'PAYROLL_RECONCILIATION') => ({
+    id: 'existing-row', period, expectedAmount: 45000, actualAmount, source,
+  });
+
+  it('leaves a month alone when its deductions have not changed since they were applied', async () => {
+    prisma.clientLoan.findMany.mockResolvedValue([{ ...baseLoan, repaymentVariances: [applied(30000)] }]);
     prisma.loanRepaymentRecord.findMany.mockResolvedValue([
-      { agency: 'NPF', staffId: 'NPF-001', period, amount: 30000 },
+      { agency: 'NPF', staffId: 'NPF-001', clientLoanId: 'cl-1', period, amount: 30000 },
     ]);
-    prisma.clientLoanRepaymentVariance.findUnique.mockResolvedValue({ id: 'existing-row' });
 
     await service.reconcileAll();
 
     expect(prisma.clientLoanRepaymentVariance.create).not.toHaveBeenCalled();
+    expect(prisma.clientLoanRepaymentVariance.update).not.toHaveBeenCalled();
     expect(walletService.credit).not.toHaveBeenCalled();
     expect(prisma.clientLoan.update).not.toHaveBeenCalled();
+  });
+
+  it('applies only the difference when a deduction is assigned to a month already applied', async () => {
+    // 30,000 was applied (balance already reduced by it); an assigned 20,000 makes it 50,000.
+    prisma.clientLoan.findMany.mockResolvedValue([{ ...baseLoan, principalBalance: 60000, repaymentVariances: [applied(30000)] }]);
+    prisma.loanRepaymentRecord.findMany.mockResolvedValue([
+      { agency: 'NPF', staffId: 'NPF-001', clientLoanId: 'cl-1', period, amount: 30000 },
+      { agency: 'NPF', staffId: 'NPF-001', clientLoanId: 'cl-1', period: '2026-01', appliedPeriod: period, amount: 20000, resolution: 'ASSIGNED' },
+    ]);
+    prisma.clientLoanRepaymentVariance.findFirst.mockResolvedValue({ status: VarianceStatus.OVER_PAID });
+
+    await service.reconcileAll();
+
+    expect(prisma.clientLoanRepaymentVariance.update).toHaveBeenCalledWith({
+      where: { id: 'existing-row' },
+      data: { actualAmount: 50000, variance: 5000, status: VarianceStatus.OVER_PAID },
+    });
+    // Principal: 15,000 more (up to the 45,000 installment); the 5,000 above it goes to the wallet.
+    expect(walletService.credit).toHaveBeenCalledWith('client-1', 5000, expect.any(String), { actorType: AuditActorType.SYSTEM });
+    expect(prisma.clientLoan.update).toHaveBeenCalledWith({ where: { id: 'cl-1' }, data: { principalBalance: 45000, status: 'ACTIVE' } });
+  });
+
+  it('never overwrites a month the client paid from their wallet', async () => {
+    prisma.clientLoan.findMany.mockResolvedValue([{ ...baseLoan, repaymentVariances: [applied(45000, 'WALLET_APPLICATION')] }]);
+    prisma.loanRepaymentRecord.findMany.mockResolvedValue([
+      { agency: 'NPF', staffId: 'NPF-001', clientLoanId: 'cl-1', period, amount: 45000 },
+    ]);
+
+    await service.reconcileAll();
+
+    expect(prisma.clientLoanRepaymentVariance.update).not.toHaveBeenCalled();
+    expect(prisma.clientLoan.update).not.toHaveBeenCalled();
+  });
+
+  it('ignores a deduction with the same staff number that matched no loan', async () => {
+    prisma.clientLoan.findMany.mockResolvedValue([baseLoan]);
+    prisma.loanRepaymentRecord.findMany.mockResolvedValue([
+      { agency: 'NPF', staffId: 'NPF-001', clientLoanId: null, period, amount: 45000 },
+    ]);
+
+    await service.reconcileAll();
+
+    expect(prisma.clientLoanRepaymentVariance.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ actualAmount: 0, status: VarianceStatus.NO_DEDUCTION_FOUND }),
+    });
   });
 
   it('reduces the balance by the actual amount and does not credit the wallet on a MATCHED period', async () => {
@@ -80,7 +131,7 @@ describe('ClientLoanReconciliationService', () => {
     // a true MATCHED case.
     prisma.clientLoan.findMany.mockResolvedValue([baseLoan]);
     prisma.loanRepaymentRecord.findMany.mockResolvedValue([
-      { agency: 'NPF', staffId: 'NPF-001', period, amount: 45000 },
+      { agency: 'NPF', staffId: 'NPF-001', clientLoanId: 'cl-1', period, amount: 45000 },
     ]);
     prisma.clientLoanRepaymentVariance.findFirst.mockResolvedValue({ status: VarianceStatus.MATCHED });
 
@@ -106,7 +157,7 @@ describe('ClientLoanReconciliationService', () => {
   it('reduces the balance by only the partial amount received on an UNDER_PAID period, with no wallet credit', async () => {
     prisma.clientLoan.findMany.mockResolvedValue([baseLoan]);
     prisma.loanRepaymentRecord.findMany.mockResolvedValue([
-      { agency: 'NPF', staffId: 'NPF-001', period, amount: 10000 },
+      { agency: 'NPF', staffId: 'NPF-001', clientLoanId: 'cl-1', period, amount: 10000 },
     ]);
     prisma.clientLoanRepaymentVariance.findFirst.mockResolvedValue({ status: VarianceStatus.UNDER_PAID });
 
@@ -126,7 +177,7 @@ describe('ClientLoanReconciliationService', () => {
     // Expected installment is 45000 (see the MATCHED test above) — 50000 actual gives a 5000 excess.
     prisma.clientLoan.findMany.mockResolvedValue([baseLoan]);
     prisma.loanRepaymentRecord.findMany.mockResolvedValue([
-      { agency: 'NPF', staffId: 'NPF-001', period, amount: 50000 },
+      { agency: 'NPF', staffId: 'NPF-001', clientLoanId: 'cl-1', period, amount: 50000 },
     ]);
     prisma.clientLoanRepaymentVariance.findFirst.mockResolvedValue({ status: VarianceStatus.OVER_PAID });
 
@@ -152,7 +203,7 @@ describe('ClientLoanReconciliationService', () => {
     // ever considers periods that appear in loanRepaymentRecord — so exercise it via a period that does
     // appear, with amount 0 (a real-world "deduction attempted, zero collected" row).
     prisma.loanRepaymentRecord.findMany.mockResolvedValue([
-      { agency: 'NPF', staffId: 'NPF-001', period, amount: 0 },
+      { agency: 'NPF', staffId: 'NPF-001', clientLoanId: 'cl-1', period, amount: 0 },
     ]);
     prisma.clientLoanRepaymentVariance.findFirst.mockResolvedValue({ status: VarianceStatus.NO_DEDUCTION_FOUND });
 
@@ -172,7 +223,7 @@ describe('ClientLoanReconciliationService', () => {
     // reconciled (and is UNDER_PAID) in a prior run.
     prisma.clientLoan.findMany.mockResolvedValue([baseLoan]);
     prisma.loanRepaymentRecord.findMany.mockResolvedValue([
-      { agency: 'NPF', staffId: 'NPF-001', period, amount: 30000 },
+      { agency: 'NPF', staffId: 'NPF-001', clientLoanId: 'cl-1', period, amount: 30000 },
     ]);
     prisma.clientLoanRepaymentVariance.findFirst.mockResolvedValue({ status: VarianceStatus.UNDER_PAID });
 

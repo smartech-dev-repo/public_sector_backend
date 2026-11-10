@@ -22,6 +22,7 @@ const BOOTSTRAP_PERMISSIONS: Array<{ key: string; description: string }> = [
   { key: 'documents:read', description: 'View document upload batches and snapshot exports' },
   { key: 'permissions:manage', description: 'Create, edit, and delete permission definitions' },
   { key: 'reconciliation:read', description: 'View loan repayment reconciliation variances' },
+  { key: 'reconciliation:resolve', description: 'Assign, refund or dismiss payroll deductions that match no running loan' },
   { key: 'wallets:read', description: "View a client's wallet balance and entries" },
   { key: 'approvals:loans', description: 'Decide loan approvals, disbursements and code confirmations sent for approval' },
   { key: 'approvals:agents', description: 'Decide agent approvals and credential resends sent for approval' },

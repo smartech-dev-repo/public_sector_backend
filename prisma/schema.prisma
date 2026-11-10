@@ -74,6 +74,7 @@ model AdminUser {
   requestedApprovals          ApprovalRequest[]     @relation("ApprovalRequestedBy")
   decidedApprovals            ApprovalRequest[]     @relation("ApprovalDecidedBy")
   assignedApprovals           ApprovalRequest[]     @relation("ApprovalAssignedTo")
+  resolvedDeductions          LoanRepaymentRecord[]
   profileImageKey             String?
   createdAt                   DateTime              @default(now())
   updatedAt                   DateTime              @updatedAt
@@ -662,8 +663,8 @@ model ClientDocument {
 }
 
 model Loan {
-  id                     String              @id @default(uuid())
-  customerId             String              @unique
+  id                     String                @id @default(uuid())
+  customerId             String                @unique
   customerName           String
   accountNumber          String
   address                String?
@@ -683,30 +684,67 @@ model Loan {
   bvn                    String?
   interestRatePercent    Decimal
   accountOfficer         String?
-  hasPreviouslyTakenLoan Boolean             @default(false)
+  hasPreviouslyTakenLoan Boolean               @default(false)
   /// Set when an app top-up took over this loan's balance; reconciliation stops from then on.
   settledAt              DateTime?
   settledByLoanRequestId String?
   rawFields              Json?
-  createdAt              DateTime            @default(now())
-  updatedAt              DateTime            @updatedAt
+  createdAt              DateTime              @default(now())
+  updatedAt              DateTime              @updatedAt
   repaymentVariances     RepaymentVariance[]
+  repaymentRecords       LoanRepaymentRecord[]
 
   @@index([ippisNumber])
 }
 
+/// Whether a payroll deduction belongs to a loan running in its month, and if not, why.
+enum RepaymentMatchStatus {
+  MATCHED
+  NO_LOAN
+  REQUEST_NOT_DISBURSED
+  BEFORE_DISBURSEMENT
+  AFTER_MATURITY
+  AFTER_SETTLEMENT
+  NO_PERIOD
+}
+
+/// What an admin did with a deduction that matched no loan.
+enum RepaymentResolution {
+  ASSIGNED
+  REFUNDED
+  DISMISSED
+}
+
 model LoanRepaymentRecord {
-  id            String   @id @default(uuid())
-  agency        String
-  staffId       String
-  period        String?
-  elementName   String
-  elementDetail String?
-  amount        Decimal
-  rawFields     Json?
-  createdAt     DateTime @default(now())
+  id                  String               @id @default(uuid())
+  agency              String
+  staffId             String
+  period              String?
+  elementName         String
+  elementDetail       String?
+  amount              Decimal
+  rawFields           Json?
+  createdAt           DateTime             @default(now())
+  matchStatus         RepaymentMatchStatus @default(NO_LOAN)
+  /// The loan the deduction counts toward: matched automatically, or assigned by an admin.
+  loanId              String?
+  loan                Loan?                @relation(fields: [loanId], references: [id])
+  clientLoanId        String?
+  clientLoan          ClientLoan?          @relation(fields: [clientLoanId], references: [id])
+  /// Set on assignment when the deduction counts toward a different month than it was uploaded for.
+  appliedPeriod       String?
+  resolution          RepaymentResolution?
+  resolutionNote      String?
+  resolvedById        String?
+  resolvedBy          AdminUser?           @relation(fields: [resolvedById], references: [id])
+  resolvedAt          DateTime?
+  /// The wallet credit made by a refund.
+  refundWalletEntryId String?
 
   @@unique([agency, staffId, period, elementName])
+  @@index([matchStatus, resolution])
+  @@index([loanId])
+  @@index([clientLoanId])
 }
 
 enum ManagementChargeType {
@@ -859,6 +897,7 @@ model ClientLoan {
   createdAt                   DateTime                      @default(now())
   updatedAt                   DateTime                      @updatedAt
   repaymentVariances          ClientLoanRepaymentVariance[]
+  repaymentRecords            LoanRepaymentRecord[]
 }
 
 enum VarianceStatus {

@@ -281,6 +281,10 @@
     {
       "key": "client_link_code",
       "value": ""
+    },
+    {
+      "key": "deduction_id",
+      "value": ""
     }
   ],
   "item": [
@@ -12971,6 +12975,1504 @@
                   ],
                   "cookie": [],
                   "body": "{\n  \"statusCode\": 403,\n  \"message\": \"Insufficient permissions\",\n  \"error\": \"Forbidden\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "GET /admin/reconciliation/deductions - Success",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/reconciliation/deductions?view=UNRESOLVED",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "reconciliation",
+                    "deductions"
+                  ],
+                  "query": [
+                    {
+                      "key": "view",
+                      "value": "UNRESOLVED",
+                      "description": "UNRESOLVED (default): matched no loan, not yet dealt with | RESOLVED: assigned, refunded or dismissed | ALL"
+                    },
+                    {
+                      "key": "matchStatus",
+                      "value": "NO_LOAN",
+                      "description": "MATCHED | NO_LOAN | REQUEST_NOT_DISBURSED | BEFORE_DISBURSEMENT | AFTER_MATURITY | AFTER_SETTLEMENT | NO_PERIOD",
+                      "disabled": true
+                    },
+                    {
+                      "key": "resolution",
+                      "value": "ASSIGNED",
+                      "description": "ASSIGNED | REFUNDED | DISMISSED",
+                      "disabled": true
+                    },
+                    {
+                      "key": "agency",
+                      "value": "NPF",
+                      "description": "Optional. Sector code",
+                      "disabled": true
+                    },
+                    {
+                      "key": "period",
+                      "value": "2026-08",
+                      "description": "Optional. YYYY-MM, the month the deduction was uploaded for",
+                      "disabled": true
+                    },
+                    {
+                      "key": "search",
+                      "value": "PF",
+                      "description": "Optional. Part of the staff ID, ignoring case",
+                      "disabled": true
+                    },
+                    {
+                      "key": "page",
+                      "value": "1",
+                      "disabled": true
+                    },
+                    {
+                      "key": "limit",
+                      "value": "25",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "description": "Payroll deductions from the repayment schedule. By default, those that match no loan running in their month and have not been dealt with, each with the reason, the IPPIS name, the client's app account (clientId, null without one) and any refund waiting for approval. The summary covers every row matching agency/period/search, not just this page. Requires reconciliation:read."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));",
+                      "const body = pm.response.json();",
+                      "pm.test('has summary', () => pm.expect(body.summary.unresolved).to.have.property('count'));",
+                      "if (body.data.length) pm.collectionVariables.set('deduction_id', body.data[0].id);"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Success - unmatched deductions with reasons (200)",
+                  "originalRequest": {
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/reconciliation/deductions?view=UNRESOLVED",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "reconciliation",
+                        "deductions"
+                      ],
+                      "query": [
+                        {
+                          "key": "view",
+                          "value": "UNRESOLVED",
+                          "description": "UNRESOLVED (default): matched no loan, not yet dealt with | RESOLVED: assigned, refunded or dismissed | ALL"
+                        },
+                        {
+                          "key": "matchStatus",
+                          "value": "NO_LOAN",
+                          "description": "MATCHED | NO_LOAN | REQUEST_NOT_DISBURSED | BEFORE_DISBURSEMENT | AFTER_MATURITY | AFTER_SETTLEMENT | NO_PERIOD",
+                          "disabled": true
+                        },
+                        {
+                          "key": "resolution",
+                          "value": "ASSIGNED",
+                          "description": "ASSIGNED | REFUNDED | DISMISSED",
+                          "disabled": true
+                        },
+                        {
+                          "key": "agency",
+                          "value": "NPF",
+                          "description": "Optional. Sector code",
+                          "disabled": true
+                        },
+                        {
+                          "key": "period",
+                          "value": "2026-08",
+                          "description": "Optional. YYYY-MM, the month the deduction was uploaded for",
+                          "disabled": true
+                        },
+                        {
+                          "key": "search",
+                          "value": "PF",
+                          "description": "Optional. Part of the staff ID, ignoring case",
+                          "disabled": true
+                        },
+                        {
+                          "key": "page",
+                          "value": "1",
+                          "disabled": true
+                        },
+                        {
+                          "key": "limit",
+                          "value": "25",
+                          "disabled": true
+                        }
+                      ]
+                    }
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"data\": [\n    {\n      \"id\": \"6f0c2b9e-3a51-4c7d-9a0e-1b2c3d4e5f60\",\n      \"agency\": \"NPF\",\n      \"staffId\": \"PF0000001\",\n      \"period\": \"2026-08\",\n      \"elementName\": \"LOAN REPAYMENT\",\n      \"elementDetail\": \"SALARY LOAN\",\n      \"amount\": \"15000\",\n      \"rawFields\": {\n        \"employee name\": \"SAMPLE EMPLOYEE\"\n      },\n      \"createdAt\": \"2026-11-09T10:00:00.000Z\",\n      \"matchStatus\": \"REQUEST_NOT_DISBURSED\",\n      \"loanId\": null,\n      \"clientLoanId\": null,\n      \"appliedPeriod\": null,\n      \"resolution\": null,\n      \"resolutionNote\": null,\n      \"resolvedById\": null,\n      \"resolvedAt\": null,\n      \"refundWalletEntryId\": null,\n      \"loan\": null,\n      \"clientLoan\": null,\n      \"resolvedBy\": null,\n      \"reason\": \"This staff member has a loan request, but it has not been disbursed\",\n      \"employeeName\": \"SAMPLE EMPLOYEE\",\n      \"clientId\": \"0b7e1c9a-2f4d-4e8b-9c1a-5d6e7f8a9b0c\",\n      \"pendingRefund\": null\n    }\n  ],\n  \"meta\": {\n    \"total\": 75,\n    \"page\": 1,\n    \"limit\": 25,\n    \"totalPages\": 3\n  },\n  \"summary\": {\n    \"unresolved\": {\n      \"count\": 75,\n      \"amount\": 3627818.34,\n      \"byReason\": {\n        \"NO_LOAN\": {\n          \"count\": 63,\n          \"amount\": 3058410.12\n        },\n        \"REQUEST_NOT_DISBURSED\": {\n          \"count\": 12,\n          \"amount\": 569408.22\n        }\n      }\n    },\n    \"resolved\": {}\n  }\n}"
+                }
+              ]
+            },
+            {
+              "name": "GET /admin/reconciliation/deductions - Invalid filter (400)",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/reconciliation/deductions?view=NOPE&period=2026-1",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "reconciliation",
+                    "deductions"
+                  ],
+                  "query": [
+                    {
+                      "key": "view",
+                      "value": "NOPE"
+                    },
+                    {
+                      "key": "period",
+                      "value": "2026-1"
+                    }
+                  ]
+                },
+                "description": "An unknown view or a malformed period is rejected."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 400', () => pm.response.to.have.status(400));"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Bad Request - validation (400)",
+                  "originalRequest": {
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/reconciliation/deductions?view=NOPE&period=2026-1",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "reconciliation",
+                        "deductions"
+                      ],
+                      "query": [
+                        {
+                          "key": "view",
+                          "value": "NOPE"
+                        },
+                        {
+                          "key": "period",
+                          "value": "2026-1"
+                        }
+                      ]
+                    }
+                  },
+                  "status": "Bad Request",
+                  "code": 400,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"statusCode\": 400,\n  \"message\": [\n    \"view must be one of the following values: UNRESOLVED, RESOLVED, ALL\",\n    \"period must be in YYYY-MM format\"\n  ],\n  \"error\": \"Bad Request\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "GET /admin/reconciliation/deductions - Missing permission (403)",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{agent_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/reconciliation/deductions",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "reconciliation",
+                    "deductions"
+                  ]
+                },
+                "description": "Needs reconciliation:read."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 401 or 403', () => pm.expect([401,403]).to.include(pm.response.code));"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Forbidden - missing reconciliation:read (403)",
+                  "originalRequest": {
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{agent_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/reconciliation/deductions",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "reconciliation",
+                        "deductions"
+                      ]
+                    }
+                  },
+                  "status": "Forbidden",
+                  "code": 403,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"statusCode\": 403,\n  \"message\": \"Insufficient permissions\",\n  \"error\": \"Forbidden\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "GET /admin/reconciliation/deductions/:id/candidates - Success",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/reconciliation/deductions/{{deduction_id}}/candidates",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "reconciliation",
+                    "deductions",
+                    "{{deduction_id}}",
+                    "candidates"
+                  ]
+                },
+                "description": "The loans of the deduction's staff number, app and imported, in any sector, and whether each runs in the deduction's month (coversPeriod). Pick one to assign to. Requires reconciliation:read."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));",
+                      "const body = pm.response.json();",
+                      "const loan = body.loans.find((l) => l.clientLoanId);",
+                      "if (loan) pm.collectionVariables.set('client_loan_id', loan.clientLoanId);"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Success - candidate loans (200)",
+                  "originalRequest": {
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/reconciliation/deductions/{{deduction_id}}/candidates",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "reconciliation",
+                        "deductions",
+                        "{{deduction_id}}",
+                        "candidates"
+                      ]
+                    }
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"deduction\": {\n    \"id\": \"6f0c2b9e-3a51-4c7d-9a0e-1b2c3d4e5f60\",\n    \"agency\": \"NPF\",\n    \"staffId\": \"PF0000001\",\n    \"period\": \"2026-08\",\n    \"amount\": 15000\n  },\n  \"loans\": [\n    {\n      \"source\": \"APP\",\n      \"clientLoanId\": \"a7e0c068-1679-4101-8e33-a0612105c2da\",\n      \"loanId\": null,\n      \"agency\": \"NPF\",\n      \"principalAmount\": 111000,\n      \"principalBalance\": 111000,\n      \"status\": \"ACTIVE\",\n      \"disbursementDate\": \"2026-09-03T00:00:00.000Z\",\n      \"maturationDate\": \"2027-03-03T00:00:00.000Z\",\n      \"settledAt\": null,\n      \"sameSector\": true,\n      \"coversPeriod\": false\n    }\n  ]\n}"
+                }
+              ]
+            },
+            {
+              "name": "GET /admin/reconciliation/deductions/:id/candidates - Not found (404)",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/reconciliation/deductions/00000000-0000-4000-8000-000000000000/candidates",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "reconciliation",
+                    "deductions",
+                    "00000000-0000-4000-8000-000000000000",
+                    "candidates"
+                  ]
+                },
+                "description": "An unknown deduction ID."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 404', () => pm.response.to.have.status(404));"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Not Found (404)",
+                  "originalRequest": {
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/reconciliation/deductions/00000000-0000-4000-8000-000000000000/candidates",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "reconciliation",
+                        "deductions",
+                        "00000000-0000-4000-8000-000000000000",
+                        "candidates"
+                      ]
+                    }
+                  },
+                  "status": "Not Found",
+                  "code": 404,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"statusCode\": 404,\n  \"message\": \"Deduction not found\",\n  \"error\": \"Not Found\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "POST /admin/reconciliation/deductions/:id/assign - Success",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/reconciliation/deductions/{{deduction_id}}/assign",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "reconciliation",
+                    "deductions",
+                    "{{deduction_id}}",
+                    "assign"
+                  ]
+                },
+                "description": "Counts an unmatched deduction toward a loan: clientLoanId (app loan) or loanId (imported loan), exactly one. period is the month it counts toward, defaulting to the month it was uploaded for, and must fall inside the loan's repayment months. That loan is reconciled again at once; for an app loan, only the difference is applied to a month already reconciled, and any new excess over the installment goes to the wallet. Requires reconciliation:resolve.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"clientLoanId\": \"{{client_loan_id}}\",\n  \"period\": \"2026-09\",\n  \"note\": \"Loan was disbursed after payroll deducted\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));",
+                      "pm.test('assigned', () => pm.expect(pm.response.json().resolution).to.eql('ASSIGNED'));"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Success - assigned (200)",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/reconciliation/deductions/{{deduction_id}}/assign",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "reconciliation",
+                        "deductions",
+                        "{{deduction_id}}",
+                        "assign"
+                      ]
+                    },
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"clientLoanId\": \"{{client_loan_id}}\",\n  \"period\": \"2026-09\",\n  \"note\": \"Loan was disbursed after payroll deducted\"\n}",
+                      "options": {
+                        "raw": {
+                          "language": "json"
+                        }
+                      }
+                    }
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"id\": \"6f0c2b9e-3a51-4c7d-9a0e-1b2c3d4e5f60\",\n  \"agency\": \"NPF\",\n  \"staffId\": \"PF0000001\",\n  \"period\": \"2026-08\",\n  \"elementName\": \"LOAN REPAYMENT\",\n  \"elementDetail\": \"SALARY LOAN\",\n  \"amount\": \"15000\",\n  \"rawFields\": {\n    \"employee name\": \"SAMPLE EMPLOYEE\"\n  },\n  \"createdAt\": \"2026-11-09T10:00:00.000Z\",\n  \"matchStatus\": \"REQUEST_NOT_DISBURSED\",\n  \"loanId\": null,\n  \"clientLoanId\": \"a7e0c068-1679-4101-8e33-a0612105c2da\",\n  \"appliedPeriod\": \"2026-09\",\n  \"resolution\": \"ASSIGNED\",\n  \"resolutionNote\": \"Loan was disbursed after payroll deducted\",\n  \"resolvedById\": \"3c1d2e4f-5a6b-4c7d-8e9f-0a1b2c3d4e5f\",\n  \"resolvedAt\": \"2026-11-10T12:00:00.000Z\",\n  \"refundWalletEntryId\": null,\n  \"loan\": null,\n  \"clientLoan\": {\n    \"id\": \"a7e0c068-1679-4101-8e33-a0612105c2da\",\n    \"agency\": \"NPF\"\n  },\n  \"resolvedBy\": {\n    \"id\": \"3c1d2e4f-5a6b-4c7d-8e9f-0a1b2c3d4e5f\",\n    \"fullName\": \"Sample Admin\"\n  }\n}"
+                }
+              ]
+            },
+            {
+              "name": "POST /admin/reconciliation/deductions/:id/assign - No loan given (400)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/reconciliation/deductions/{{deduction_id}}/assign",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "reconciliation",
+                    "deductions",
+                    "{{deduction_id}}",
+                    "assign"
+                  ]
+                },
+                "description": "Neither or both of clientLoanId and loanId.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 400', () => pm.response.to.have.status(400));"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Bad Request (400)",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/reconciliation/deductions/{{deduction_id}}/assign",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "reconciliation",
+                        "deductions",
+                        "{{deduction_id}}",
+                        "assign"
+                      ]
+                    },
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{}",
+                      "options": {
+                        "raw": {
+                          "language": "json"
+                        }
+                      }
+                    }
+                  },
+                  "status": "Bad Request",
+                  "code": 400,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"statusCode\": 400,\n  \"message\": \"Give either clientLoanId or loanId\",\n  \"error\": \"Bad Request\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "POST /admin/reconciliation/deductions/:id/assign - Month outside the loan (422)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/reconciliation/deductions/{{deduction_id}}/assign",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "reconciliation",
+                    "deductions",
+                    "{{deduction_id}}",
+                    "assign"
+                  ]
+                },
+                "description": "The month must fall within the loan's disbursement and maturity months (and, for an imported loan, before a top-up took it over).",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"clientLoanId\": \"{{client_loan_id}}\",\n  \"period\": \"2026-08\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 422', () => pm.response.to.have.status(422));"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Unprocessable Entity (422)",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/reconciliation/deductions/{{deduction_id}}/assign",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "reconciliation",
+                        "deductions",
+                        "{{deduction_id}}",
+                        "assign"
+                      ]
+                    },
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"clientLoanId\": \"{{client_loan_id}}\",\n  \"period\": \"2026-08\"\n}",
+                      "options": {
+                        "raw": {
+                          "language": "json"
+                        }
+                      }
+                    }
+                  },
+                  "status": "Unprocessable Entity",
+                  "code": 422,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"statusCode\": 422,\n  \"message\": \"2026-08 is outside this loan's repayment months\",\n  \"error\": \"Unprocessable Entity\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "POST /admin/reconciliation/deductions/:id/assign - Already dealt with (409)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/reconciliation/deductions/{{deduction_id}}/assign",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "reconciliation",
+                    "deductions",
+                    "{{deduction_id}}",
+                    "assign"
+                  ]
+                },
+                "description": "The deduction was already assigned, refunded or dismissed, already matches a running loan, or has a refund waiting for approval.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"clientLoanId\": \"{{client_loan_id}}\",\n  \"period\": \"2026-09\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 409', () => pm.response.to.have.status(409));"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Conflict (409)",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/reconciliation/deductions/{{deduction_id}}/assign",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "reconciliation",
+                        "deductions",
+                        "{{deduction_id}}",
+                        "assign"
+                      ]
+                    },
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"clientLoanId\": \"{{client_loan_id}}\",\n  \"period\": \"2026-09\"\n}",
+                      "options": {
+                        "raw": {
+                          "language": "json"
+                        }
+                      }
+                    }
+                  },
+                  "status": "Conflict",
+                  "code": 409,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"statusCode\": 409,\n  \"message\": \"This deduction has already been assigned\",\n  \"error\": \"Conflict\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "POST /admin/reconciliation/deductions/:id/assign - Missing permission (403)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{agent_access_token}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/reconciliation/deductions/{{deduction_id}}/assign",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "reconciliation",
+                    "deductions",
+                    "{{deduction_id}}",
+                    "assign"
+                  ]
+                },
+                "description": "Needs reconciliation:resolve.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"clientLoanId\": \"{{client_loan_id}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 401 or 403', () => pm.expect([401,403]).to.include(pm.response.code));"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Forbidden - missing reconciliation:resolve (403)",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{agent_access_token}}"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/reconciliation/deductions/{{deduction_id}}/assign",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "reconciliation",
+                        "deductions",
+                        "{{deduction_id}}",
+                        "assign"
+                      ]
+                    },
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"clientLoanId\": \"{{client_loan_id}}\"\n}",
+                      "options": {
+                        "raw": {
+                          "language": "json"
+                        }
+                      }
+                    }
+                  },
+                  "status": "Forbidden",
+                  "code": 403,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"statusCode\": 403,\n  \"message\": \"Insufficient permissions\",\n  \"error\": \"Forbidden\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "POST /admin/reconciliation/deductions/:id/refund - Success (sent for approval)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/reconciliation/deductions/{{deduction_id}}/refund",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "reconciliation",
+                    "deductions",
+                    "{{deduction_id}}",
+                    "refund"
+                  ]
+                },
+                "description": "Sends a refund of the deduction to the client's wallet for approval (approvals:wallets, by someone other than the requester). Nothing is paid until it is approved; on approval the deduction is rechecked, marked REFUNDED and the wallet credited once. Needs the staff number to have an app account. Requires reconciliation:resolve.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"note\": \"No loan was disbursed; return the deduction\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));",
+                      "const body = pm.response.json();",
+                      "pm.test('pending approval', () => pm.expect(body.pendingApproval).to.eql(true));",
+                      "pm.collectionVariables.set('approval_id', body.approvalId);"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Success - waiting for approval (200)",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/reconciliation/deductions/{{deduction_id}}/refund",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "reconciliation",
+                        "deductions",
+                        "{{deduction_id}}",
+                        "refund"
+                      ]
+                    },
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"note\": \"No loan was disbursed; return the deduction\"\n}",
+                      "options": {
+                        "raw": {
+                          "language": "json"
+                        }
+                      }
+                    }
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"pendingApproval\": true,\n  \"approvalId\": \"9d8c7b6a-5f4e-4d3c-8b2a-1f0e9d8c7b6a\",\n  \"status\": \"PENDING\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "POST /admin/reconciliation/deductions/:id/refund - No app account (422)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/reconciliation/deductions/{{deduction_id}}/refund",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "reconciliation",
+                    "deductions",
+                    "{{deduction_id}}",
+                    "refund"
+                  ]
+                },
+                "description": "The staff number has no app account, so there is no wallet. Dismiss it, or refund outside the app, instead.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 422', () => pm.response.to.have.status(422));"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Unprocessable Entity (422)",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/reconciliation/deductions/{{deduction_id}}/refund",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "reconciliation",
+                        "deductions",
+                        "{{deduction_id}}",
+                        "refund"
+                      ]
+                    },
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{}",
+                      "options": {
+                        "raw": {
+                          "language": "json"
+                        }
+                      }
+                    }
+                  },
+                  "status": "Unprocessable Entity",
+                  "code": 422,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"statusCode\": 422,\n  \"message\": \"This staff number has no app account, so there is no wallet to refund to\",\n  \"error\": \"Unprocessable Entity\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "POST /admin/reconciliation/deductions/:id/refund - Already waiting (409)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/reconciliation/deductions/{{deduction_id}}/refund",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "reconciliation",
+                    "deductions",
+                    "{{deduction_id}}",
+                    "refund"
+                  ]
+                },
+                "description": "A refund of this deduction is already waiting for approval.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 409', () => pm.response.to.have.status(409));"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Conflict (409)",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/reconciliation/deductions/{{deduction_id}}/refund",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "reconciliation",
+                        "deductions",
+                        "{{deduction_id}}",
+                        "refund"
+                      ]
+                    },
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{}",
+                      "options": {
+                        "raw": {
+                          "language": "json"
+                        }
+                      }
+                    }
+                  },
+                  "status": "Conflict",
+                  "code": 409,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"statusCode\": 409,\n  \"message\": \"A refund of this deduction is waiting for approval\",\n  \"error\": \"Conflict\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "POST /admin/reconciliation/deductions/:id/dismiss - Success",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/reconciliation/deductions/{{deduction_id}}/dismiss",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "reconciliation",
+                    "deductions",
+                    "{{deduction_id}}",
+                    "dismiss"
+                  ]
+                },
+                "description": "Marks the deduction reviewed without counting it toward any loan or refunding it, for example an agency payroll error. The note is required. Requires reconciliation:resolve.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"note\": \"Agency confirmed a payroll error and reversed it\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));",
+                      "pm.test('dismissed', () => pm.expect(pm.response.json().resolution).to.eql('DISMISSED'));"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Success - dismissed (200)",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/reconciliation/deductions/{{deduction_id}}/dismiss",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "reconciliation",
+                        "deductions",
+                        "{{deduction_id}}",
+                        "dismiss"
+                      ]
+                    },
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"note\": \"Agency confirmed a payroll error and reversed it\"\n}",
+                      "options": {
+                        "raw": {
+                          "language": "json"
+                        }
+                      }
+                    }
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"id\": \"6f0c2b9e-3a51-4c7d-9a0e-1b2c3d4e5f60\",\n  \"agency\": \"NPF\",\n  \"staffId\": \"PF0000001\",\n  \"period\": \"2026-08\",\n  \"elementName\": \"LOAN REPAYMENT\",\n  \"elementDetail\": \"SALARY LOAN\",\n  \"amount\": \"15000\",\n  \"rawFields\": {\n    \"employee name\": \"SAMPLE EMPLOYEE\"\n  },\n  \"createdAt\": \"2026-11-09T10:00:00.000Z\",\n  \"matchStatus\": \"REQUEST_NOT_DISBURSED\",\n  \"loanId\": null,\n  \"clientLoanId\": null,\n  \"appliedPeriod\": null,\n  \"resolution\": \"DISMISSED\",\n  \"resolutionNote\": \"Agency confirmed a payroll error and reversed it\",\n  \"resolvedById\": \"3c1d2e4f-5a6b-4c7d-8e9f-0a1b2c3d4e5f\",\n  \"resolvedAt\": \"2026-11-10T12:00:00.000Z\",\n  \"refundWalletEntryId\": null,\n  \"loan\": null,\n  \"clientLoan\": null,\n  \"resolvedBy\": {\n    \"id\": \"3c1d2e4f-5a6b-4c7d-8e9f-0a1b2c3d4e5f\",\n    \"fullName\": \"Sample Admin\"\n  }\n}"
+                }
+              ]
+            },
+            {
+              "name": "POST /admin/reconciliation/deductions/:id/dismiss - Missing note (400)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/reconciliation/deductions/{{deduction_id}}/dismiss",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "reconciliation",
+                    "deductions",
+                    "{{deduction_id}}",
+                    "dismiss"
+                  ]
+                },
+                "description": "A blank or missing note is rejected.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"note\": \"  \"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('status 400', () => pm.response.to.have.status(400));"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Bad Request - validation (400)",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/reconciliation/deductions/{{deduction_id}}/dismiss",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "reconciliation",
+                        "deductions",
+                        "{{deduction_id}}",
+                        "dismiss"
+                      ]
+                    },
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"note\": \"  \"\n}",
+                      "options": {
+                        "raw": {
+                          "language": "json"
+                        }
+                      }
+                    }
+                  },
+                  "status": "Bad Request",
+                  "code": 400,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "cookie": [],
+                  "body": "{\n  \"statusCode\": 400,\n  \"message\": [\n    \"note is required to dismiss a deduction\"\n  ],\n  \"error\": \"Bad Request\"\n}"
                 }
               ]
             },

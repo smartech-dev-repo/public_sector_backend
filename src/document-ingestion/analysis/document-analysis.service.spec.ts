@@ -6,6 +6,8 @@ import { DocumentType, DocumentUploadBatch } from '../../generated/prisma/client
 import { buildTemplateWorkbook } from '../document-templates';
 import { loadUploadedWorkbook } from '../parsers/load-uploaded-workbook';
 import { IPPIS_KNOWN_HEADERS } from '../parsers/ippis-row-mapper';
+import { RepaymentMatchingService } from '../../reconciliation/repayment-matching.service';
+import { DeductionMatchContext } from '../../reconciliation/deduction-match.util';
 
 const HEADERS = ['Staff ID', 'Employee Name', ...Object.keys(IPPIS_KNOWN_HEADERS).slice(2)];
 
@@ -31,6 +33,13 @@ describe('DocumentAnalysisService', () => {
     loan: { findMany: jest.Mock };
   };
   let service: DocumentAnalysisService;
+  let matching: { buildContext: jest.Mock };
+  // An app loan running through 2026 for each staff number the repayment tests use.
+  const appLoan = (agency: string, staffId: string) => ({
+    id: `loan-${staffId}`, agency, staffId, disbursementDate: new Date(2026, 0, 1), maturationDate: new Date(2026, 11, 1),
+  });
+  const runningLoans = () =>
+    new DeductionMatchContext([appLoan('NPF', 'PF1'), appLoan('NSCDC', 'CD1'), appLoan('LASG', 'L1')], [], []);
   const batch = (documentType: DocumentType, period: string | null = null) =>
     ({ documentType, period }) as DocumentUploadBatch;
 
@@ -41,9 +50,11 @@ describe('DocumentAnalysisService', () => {
       loanRepaymentRecord: { findMany: jest.fn().mockResolvedValue([]) },
       loan: { findMany: jest.fn().mockResolvedValue([]) },
     };
+    matching = { buildContext: jest.fn().mockImplementation(async () => runningLoans()) };
     service = new DocumentAnalysisService(
       prisma as unknown as PrismaService,
       { codes: jest.fn().mockResolvedValue(['NPF', 'NSCDC', 'IMMIGRATION', 'CORRECTIONAL', 'CUSTOMS', 'LASG']) } as unknown as SectorService,
+      matching as unknown as RepaymentMatchingService,
     );
   });
 
@@ -224,6 +235,40 @@ describe('DocumentAnalysisService', () => {
     );
     expect(result.verdict).toBe('READY');
     expect(result.validRows).toBe(3);
+  });
+
+  it('warns, with the reason, about deductions that match no running loan', async () => {
+    matching.buildContext.mockResolvedValue(
+      new DeductionMatchContext([appLoan('NPF', 'PF1')], [], ['NPF::PF2']),
+    );
+    const result = await service.analyze(
+      batch(DocumentType.REPAYMENT_SCHEDULE, '2026-10'),
+      await workbookBuffer({ NPF: [['Staff ID', 'Amount'], ['PF1', 100], ['PF2', 100], ['PF3', 100]] }),
+    );
+    expect(result.validRows).toBe(3);
+    expect(result.verdict).toBe('MERGE_WITH_CORRECTIONS');
+    const titles = result.issueGroups.map((g) => [g.title, g.locations]);
+    expect(titles).toEqual(
+      expect.arrayContaining([
+        ['No loan for this staff number. It will be kept as unmatched for reconciliation', ['NPF row 4']],
+        ['This staff member has a loan request, but it has not been disbursed. It will be kept as unmatched for reconciliation', ['NPF row 3']],
+      ]),
+    );
+  });
+
+  it('warns when every deduction is the same as an upload for another month', async () => {
+    prisma.loanRepaymentRecord.findMany.mockResolvedValue([
+      { agency: 'NPF', staffId: 'PF1', period: '2026-08', elementName: 'LOAN_REPAYMENT', amount: 100 },
+      { agency: 'NSCDC', staffId: 'CD1', period: '2026-08', elementName: 'LOAN_REPAYMENT', amount: 200 },
+    ]);
+    const file = { NPF: [['Staff ID', 'Amount'], ['PF1', 100]], NSCDC: [['Staff ID', 'Amount'], ['CD1', 200]] };
+    const repeat = await service.analyze(batch(DocumentType.REPAYMENT_SCHEDULE, '2026-09'), await workbookBuffer(file));
+    expect(repeat.issueGroups.map((g) => g.title)).toContain(
+      'Every deduction for 2026-09 is the same as the upload for 2026-08. Check that this is the right file and month',
+    );
+
+    const sameMonth = await service.analyze(batch(DocumentType.REPAYMENT_SCHEDULE, '2026-08'), await workbookBuffer(file));
+    expect(sameMonth.verdict).toBe('READY');
   });
 
   it('requires a reupload when a repayment sheet has no staff or amount column', async () => {

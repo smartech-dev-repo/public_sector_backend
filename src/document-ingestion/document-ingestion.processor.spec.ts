@@ -7,6 +7,7 @@ import { FileStorageProvider } from '../file-storage/file-storage-provider.inter
 import { DocumentParser } from './document-parser.interface';
 import { ReconciliationService } from '../reconciliation/reconciliation.service';
 import { ClientLoanReconciliationService } from '../reconciliation/client-loan-reconciliation.service';
+import { RepaymentMatchingService } from '../reconciliation/repayment-matching.service';
 import { DocumentType } from '../generated/prisma/client';
 
 describe('DocumentIngestionProcessor', () => {
@@ -23,6 +24,7 @@ describe('DocumentIngestionProcessor', () => {
   let parsers: Record<string, { parse: jest.Mock }>;
   let reconciliationService: { reconcileAll: jest.Mock };
   let clientLoanReconciliationService: { reconcileAll: jest.Mock };
+  let repaymentMatchingService: { rematchAll: jest.Mock };
 
   let auditLogService: { recordSafely: jest.Mock };
 
@@ -43,6 +45,7 @@ describe('DocumentIngestionProcessor', () => {
     };
     reconciliationService = { reconcileAll: jest.fn().mockResolvedValue(undefined) };
     clientLoanReconciliationService = { reconcileAll: jest.fn().mockResolvedValue(undefined) };
+    repaymentMatchingService = { rematchAll: jest.fn().mockResolvedValue(0) };
     auditLogService = { recordSafely: jest.fn().mockResolvedValue(undefined) };
     processor = new DocumentIngestionProcessor(
       documentBatchService as unknown as DocumentBatchService,
@@ -50,6 +53,7 @@ describe('DocumentIngestionProcessor', () => {
       parsers as unknown as Record<DocumentType, DocumentParser>,
       reconciliationService as unknown as ReconciliationService,
       clientLoanReconciliationService as unknown as ClientLoanReconciliationService,
+      repaymentMatchingService as unknown as RepaymentMatchingService,
       documentAnalysisService as unknown as DocumentAnalysisService,
       auditLogService as unknown as AuditLogService,
     );
@@ -116,6 +120,7 @@ describe('DocumentIngestionProcessor', () => {
     );
     expect(reconciliationService.reconcileAll).not.toHaveBeenCalled();
     expect(clientLoanReconciliationService.reconcileAll).not.toHaveBeenCalled();
+    expect(repaymentMatchingService.rematchAll).not.toHaveBeenCalled();
     expect(documentBatchService.markCompleted).toHaveBeenCalledWith('batch-1', {
       rowsProcessed: 0,
       rowsCreated: 0,
@@ -144,6 +149,7 @@ describe('DocumentIngestionProcessor', () => {
 
     expect(reconciliationService.reconcileAll).toHaveBeenCalledTimes(1);
     expect(clientLoanReconciliationService.reconcileAll).toHaveBeenCalledTimes(1);
+    expect(repaymentMatchingService.rematchAll).toHaveBeenCalledTimes(1);
     expect(documentBatchService.markCompleted).toHaveBeenCalled();
   });
 
@@ -166,6 +172,7 @@ describe('DocumentIngestionProcessor', () => {
 
     expect(reconciliationService.reconcileAll).toHaveBeenCalledTimes(1);
     expect(clientLoanReconciliationService.reconcileAll).toHaveBeenCalledTimes(1);
+    expect(repaymentMatchingService.rematchAll).toHaveBeenCalledTimes(1);
   });
 
   it('marks failed with the error message when the parser throws, without running reconciliation', async () => {
@@ -182,5 +189,6 @@ describe('DocumentIngestionProcessor', () => {
     expect(documentBatchService.markFailed).toHaveBeenCalledWith('batch-1', 'bad file');
     expect(reconciliationService.reconcileAll).not.toHaveBeenCalled();
     expect(clientLoanReconciliationService.reconcileAll).not.toHaveBeenCalled();
+    expect(repaymentMatchingService.rematchAll).not.toHaveBeenCalled();
   });
 });
