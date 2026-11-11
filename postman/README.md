@@ -140,6 +140,12 @@ each has a `description` on the request explaining why:
   stdout (no real SMS/email vendor is wired in yet). Copy the value from
   the server log into `client_otp_code` / `invite_token` before running
   those requests.
+- **SMS could not be sent (503)** requests: these only reproduce when the
+  server's SMS provider is Termii and the send fails (for example, a route
+  not configured for the workspace). Every endpoint that texts a code
+  returns `503` with "We couldn't send the confirmation code. Please try
+  again shortly" and creates nothing, so the caller can retry; the
+  provider's own error is only in the server log.
 - **Agent login**: Agent self-registration isn't built yet (deferred —
   see `docs/specs/2026-09-09-public-sector-backend-spec.md`). You need an
   `Agent` row with `status = APPROVED` and a real bcrypt `passwordHash`
