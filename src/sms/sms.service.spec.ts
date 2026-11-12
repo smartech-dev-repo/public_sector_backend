@@ -1,4 +1,4 @@
-import { Logger, ServiceUnavailableException } from '@nestjs/common';
+import { HttpException, Logger } from '@nestjs/common';
 import { SmsService } from './sms.service';
 import { SmsProvider } from './sms-provider.interface';
 import { SmsType } from './sms-type';
@@ -30,7 +30,7 @@ describe('SmsService', () => {
     expect(otpSend).not.toHaveBeenCalled();
   });
 
-  it('logs the real cause and fails with a 503 the user can act on, without calling any other provider', async () => {
+  it('logs the real cause and fails with a 424 the user can act on, without calling any other provider', async () => {
     const logSpy = jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
     const failingSend = jest.fn().mockRejectedValue(new Error('vendor down'));
     const otherSend = jest.fn().mockResolvedValue(undefined);
@@ -48,8 +48,8 @@ describe('SmsService', () => {
     );
 
     const error = await service.send({ type: SmsType.OTP, phone: '+2348000000000', message: '1234' }).catch((e) => e);
-    expect(error).toBeInstanceOf(ServiceUnavailableException);
-    expect(error.getStatus()).toBe(503);
+    expect(error).toBeInstanceOf(HttpException);
+    expect(error.getStatus()).toBe(424);
     expect(error.message).toBe("We couldn't send the confirmation code. Please try again shortly");
     expect(error.cause).toEqual(new Error('vendor down'));
 

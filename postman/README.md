@@ -40,7 +40,15 @@ standalone Health check:
   `reconciliation:resolve` and chained through `deduction_id` /
   `client_loan_id`; plus `GET /admin/loans` and `GET /admin/ippis-records` basic
   agency-filterable listings over the underlying ingested tables — closely
-  related to Documents but its own controllers), **Client Review** (list/inspect
+  related to Documents but its own controllers), **Wallet** (one client's
+  wallet: balance, lifetime totals, open credit/debit requests with a
+  projected balance, and the statement with `source`, `reference` and
+  `balanceAfter` on each entry; credit/debit go through `approvals:wallets`
+  approval, and a debit above the balance is refused when requested),
+  **Wallets** (`GET /admin/wallets` lists every client wallet with a
+  summary of money held and moved by source; `GET /admin/wallets/entries`
+  lists movements across wallets; both need `wallets:read` and are scoped
+  to the admin's clients), **Client Review** (list/inspect
   clients stuck at `Client.status = MANUAL_REVIEW` and approve or retry
   them, gated by `clients:review`; the list also takes an `agentId` filter
   to see one agent's onboarded clients, plus a `GET /admin/clients/analytics`
@@ -140,10 +148,10 @@ each has a `description` on the request explaining why:
   stdout (no real SMS/email vendor is wired in yet). Copy the value from
   the server log into `client_otp_code` / `invite_token` before running
   those requests.
-- **SMS could not be sent (503)** requests: these only reproduce when the
+- **SMS could not be sent (424)** requests: these only reproduce when the
   server's SMS provider is Termii and the send fails (for example, a route
   not configured for the workspace). Every endpoint that texts a code
-  returns `503` with "We couldn't send the confirmation code. Please try
+  returns `424 Failed Dependency` with "We couldn't send the confirmation code. Please try
   again shortly" and creates nothing, so the caller can retry; the
   provider's own error is only in the server log.
 - **Agent login**: Agent self-registration isn't built yet (deferred —

@@ -1,4 +1,4 @@
-import { Inject, Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
+import { HttpException, HttpStatus, Inject, Injectable, Logger } from '@nestjs/common';
 import { SMS_CHANNELS_BY_TYPE, SMS_PROVIDERS_BY_TYPE, SmsChannel, SmsProvider } from './sms-provider.interface';
 import { SmsType } from './sms-type';
 
@@ -19,8 +19,9 @@ export class SmsService {
   ) {}
 
   /**
-   * Sends one text. A provider failure is logged with its real cause and surfaces as a 503,
-   * so the request it was part of fails with a message the user can act on, not a 500.
+   * Sends one text. A provider failure is logged with its real cause and surfaces as a
+   * 424 Failed Dependency (the request was fine; the SMS provider it depends on failed), so
+   * the request it was part of fails with a message the user can act on, not a 500.
    */
   async send(args: { type: SmsType; phone: string; message: string }): Promise<void> {
     const provider = this.providers[args.type];
@@ -30,10 +31,11 @@ export class SmsService {
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
       this.logger.error(`SMS provider "${provider.name}" failed for type ${args.type}: ${msg}`);
-      throw new ServiceUnavailableException(SMS_FAILED_MESSAGES[args.type], {
-        cause: error,
-        description: 'Service Unavailable',
-      });
+      throw new HttpException(
+        { message: SMS_FAILED_MESSAGES[args.type], error: 'Failed Dependency', statusCode: HttpStatus.FAILED_DEPENDENCY },
+        HttpStatus.FAILED_DEPENDENCY,
+        { cause: error },
+      );
     }
   }
 }

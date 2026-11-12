@@ -47,6 +47,7 @@ import {
   ManagementChargeType,
   Prisma,
   VarianceSource,
+  WalletEntrySource,
 } from '../generated/prisma/client';
 
 const EXPIRY_MS = 24 * 60 * 60 * 1000;
@@ -341,10 +342,13 @@ export class LoanRequestService {
     // The balance is principal; the client can pay at most what is left including interest.
     const appliedAmount = Math.min(amount, clientLoanRemainingRepayable(clientLoan));
 
-    await this.walletService.debit(clientId, appliedAmount, `Applied toward loan #${clientLoan.id}`, {
-      actorType: AuditActorType.CLIENT,
-      actorId: clientId,
-    });
+    await this.walletService.debit(
+      clientId,
+      appliedAmount,
+      `Applied toward loan #${clientLoan.id}`,
+      { actorType: AuditActorType.CLIENT, actorId: clientId },
+      { source: WalletEntrySource.LOAN_REPAYMENT, reference: clientLoan.id },
+    );
 
     const expectedAmount = clientLoanInstallment(clientLoan);
     const variance = appliedAmount - expectedAmount;

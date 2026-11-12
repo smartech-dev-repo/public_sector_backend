@@ -19151,6 +19151,12 @@
                       "disabled": true
                     },
                     {
+                      "key": "source",
+                      "value": "LOAN_OVERPAYMENT",
+                      "description": "Optional. MANUAL | LOAN_OVERPAYMENT | DEDUCTION_REFUND | LOAN_REPAYMENT.",
+                      "disabled": true
+                    },
+                    {
                       "key": "createdFrom",
                       "value": "2026-01-01",
                       "description": "Optional. ISO8601 date. Filters createdAt >= this value.",
@@ -19176,7 +19182,7 @@
                     }
                   ]
                 },
-                "description": "Set client_id to a real Client row's id first (e.g. captured after a successful OTP verify, or from the database). Admins without `clients:all-records` only see clients they onboarded or created; anything else is 404."
+                "description": "Set client_id to a real Client row's id first (e.g. captured after a successful OTP verify, or from the database). Admins without `clients:all-records` only see clients they onboarded or created; anything else is 404. Each entry carries `source` (where the money came from) and `reference` (the approval, client loan or repayment record behind it) and `balanceAfter` (the wallet balance right after it, independent of filters). `totals` are lifetime credited/debited. `pending` lists the open credit/debit requests with amount, description and requester; `projectedBalance` is the balance if all are approved."
               },
               "event": [
                 {
@@ -19189,14 +19195,15 @@
                       "  pm.expect(body.balance).to.be.a('number');",
                       "  pm.expect(body.entries.data).to.be.an('array');",
                       "  pm.expect(body.entries.meta).to.have.all.keys('total', 'page', 'limit', 'totalPages');",
-                      "});"
+                      "});",
+                      "pm.test('totals, pending and balanceAfter present', () => { const b = pm.response.json(); pm.expect(b.totals).to.have.all.keys('credited','debited','entries'); pm.expect(b.pending).to.be.an('array'); pm.expect(b.projectedBalance).to.be.a('number'); (b.entries.data || []).forEach((e) => pm.expect(e).to.have.property('balanceAfter')); });"
                     ]
                   }
                 }
               ],
               "response": [
                 {
-                  "name": "Success - balance and entries (200)",
+                  "name": "Success - balance, totals, pending and entries (200)",
                   "originalRequest": {
                     "method": "GET",
                     "header": [
@@ -19230,6 +19237,12 @@
                           "disabled": true
                         },
                         {
+                          "key": "source",
+                          "value": "LOAN_OVERPAYMENT",
+                          "description": "Optional. MANUAL | LOAN_OVERPAYMENT | DEDUCTION_REFUND | LOAN_REPAYMENT.",
+                          "disabled": true
+                        },
+                        {
                           "key": "createdFrom",
                           "value": "2026-01-01",
                           "description": "Optional. ISO8601 date. Filters createdAt >= this value.",
@@ -19255,7 +19268,7 @@
                         }
                       ]
                     },
-                    "description": "Set client_id to a real Client row's id first (e.g. captured after a successful OTP verify, or from the database)."
+                    "description": "Set client_id to a real Client row's id first (e.g. captured after a successful OTP verify, or from the database). Admins without `clients:all-records` only see clients they onboarded or created; anything else is 404. Each entry carries `source` (where the money came from) and `reference` (the approval, client loan or repayment record behind it) and `balanceAfter` (the wallet balance right after it, independent of filters). `totals` are lifetime credited/debited. `pending` lists the open credit/debit requests with amount, description and requester; `projectedBalance` is the balance if all are approved."
                   },
                   "status": "OK",
                   "code": 200,
@@ -19263,11 +19276,10 @@
                   "header": [
                     {
                       "key": "Content-Type",
-                      "value": "application/json"
+                      "value": "application/json; charset=utf-8"
                     }
                   ],
-                  "cookie": [],
-                  "body": "{\n  \"balance\": 3000,\n  \"entries\": {\n    \"data\": [\n      {\n        \"id\": \"b2c3d4e5-f6a7-4b8c-9d0e-1f2a3b4c5d6e\",\n        \"clientId\": \"f4a1b2c3-d4e5-4f67-8a9b-0c1d2e3f4a5b\",\n        \"amount\": \"2000\",\n        \"direction\": \"DEBIT\",\n        \"description\": \"Manual correction\",\n        \"actorType\": \"ADMIN\",\n        \"actorId\": \"9d8c7b6a-5e4f-4a3b-9c2d-1e0f9a8b7c6d\",\n        \"createdAt\": \"2026-09-21T10:30:00.000Z\",\n        \"actor\": {\n          \"id\": \"9d8c7b6a-5e4f-4a3b-9c2d-1e0f9a8b7c6d\",\n          \"fullName\": \"Chinedu Okafor\",\n          \"email\": \"superadmin@example.com\"\n        }\n      },\n      {\n        \"id\": \"a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d\",\n        \"clientId\": \"f4a1b2c3-d4e5-4f67-8a9b-0c1d2e3f4a5b\",\n        \"amount\": \"5000\",\n        \"direction\": \"CREDIT\",\n        \"description\": \"Overpayment excess\",\n        \"actorType\": \"ADMIN\",\n        \"actorId\": \"9d8c7b6a-5e4f-4a3b-9c2d-1e0f9a8b7c6d\",\n        \"createdAt\": \"2026-09-20T09:15:00.000Z\",\n        \"actor\": {\n          \"id\": \"9d8c7b6a-5e4f-4a3b-9c2d-1e0f9a8b7c6d\",\n          \"fullName\": \"Chinedu Okafor\",\n          \"email\": \"superadmin@example.com\"\n        }\n      }\n    ],\n    \"meta\": {\n      \"total\": 2,\n      \"page\": 1,\n      \"limit\": 25,\n      \"totalPages\": 1\n    }\n  }\n}"
+                  "body": "{\n  \"balance\": 3000,\n  \"totals\": {\n    \"credited\": 5000,\n    \"debited\": 2000,\n    \"entries\": 2\n  },\n  \"entries\": {\n    \"data\": [\n      {\n        \"id\": \"b2c3d4e5-f6a7-4b8c-9d0e-1f2a3b4c5d6e\",\n        \"clientId\": \"f4a1b2c3-d4e5-4f67-8a9b-0c1d2e3f4a5b\",\n        \"amount\": \"2000\",\n        \"direction\": \"DEBIT\",\n        \"description\": \"Paid out to the client’s bank account\",\n        \"source\": \"MANUAL\",\n        \"reference\": \"55555555-5555-4555-8555-555555555555\",\n        \"actorType\": \"ADMIN\",\n        \"actorId\": \"9d8c7b6a-5e4f-4a3b-9c2d-1e0f9a8b7c6d\",\n        \"createdAt\": \"2026-11-12T10:30:00.000Z\",\n        \"actor\": {\n          \"id\": \"9d8c7b6a-5e4f-4a3b-9c2d-1e0f9a8b7c6d\",\n          \"fullName\": \"Chinedu Okafor\",\n          \"email\": \"superadmin@example.com\",\n          \"role\": {\n            \"name\": \"SUPER_ADMIN\"\n          }\n        },\n        \"balanceAfter\": 3000\n      },\n      {\n        \"id\": \"a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d\",\n        \"clientId\": \"f4a1b2c3-d4e5-4f67-8a9b-0c1d2e3f4a5b\",\n        \"amount\": \"5000\",\n        \"direction\": \"CREDIT\",\n        \"description\": \"Loan overpayment excess — NPF 2026-10\",\n        \"source\": \"LOAN_OVERPAYMENT\",\n        \"reference\": \"7c1e2d3f-4a5b-4c6d-8e7f-9a0b1c2d3e4f\",\n        \"actorType\": \"SYSTEM\",\n        \"actorId\": null,\n        \"createdAt\": \"2026-10-31T08:00:00.000Z\",\n        \"actor\": null,\n        \"balanceAfter\": 5000\n      }\n    ],\n    \"meta\": {\n      \"total\": 2,\n      \"page\": 1,\n      \"limit\": 25,\n      \"totalPages\": 1\n    }\n  },\n  \"pendingRequests\": 1,\n  \"pending\": [\n    {\n      \"id\": \"66666666-6666-4666-8666-666666666666\",\n      \"action\": \"wallet.credit\",\n      \"createdAt\": \"2026-11-12T11:00:00.000Z\",\n      \"requestedBy\": {\n        \"id\": \"9d8c7b6a-5e4f-4a3b-9c2d-1e0f9a8b7c6d\",\n        \"fullName\": \"Chinedu Okafor\"\n      },\n      \"assignedTo\": null,\n      \"amount\": 1000.5,\n      \"description\": \"Goodwill credit\",\n      \"direction\": \"CREDIT\"\n    }\n  ],\n  \"projectedBalance\": 4000.5\n}"
                 }
               ]
             },
@@ -19365,6 +19377,97 @@
               ]
             },
             {
+              "name": "POST /admin/clients/:clientId/wallet/credit - Validation error (400)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"amount\": 10.123,\n  \"description\": \"   \"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/admin/clients/{{client_id}}/wallet/credit",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "clients",
+                    "{{client_id}}",
+                    "wallet",
+                    "credit"
+                  ]
+                },
+                "description": "Requires the wallets:manage permission. Set client_id to a real Client row's id first. Goes through maker-checker: this creates an approval request; nothing happens until another admin approves it. Admins without `clients:all-records` only see clients they onboarded or created; anything else is 404."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('400', () => pm.response.to.have.status(400));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Validation error (400)",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      },
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"amount\": 10.123,\n  \"description\": \"   \"\n}"
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/admin/clients/{{client_id}}/wallet/credit",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "clients",
+                        "{{client_id}}",
+                        "wallet",
+                        "credit"
+                      ]
+                    },
+                    "description": "Requires the wallets:manage permission. Set client_id to a real Client row's id first. Goes through maker-checker: this creates an approval request; nothing happens until another admin approves it. Admins without `clients:all-records` only see clients they onboarded or created; anything else is 404."
+                  },
+                  "status": "Bad Request",
+                  "code": 400,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json; charset=utf-8"
+                    }
+                  ],
+                  "body": "{\n  \"message\": [\n    \"amount must be a number with at most 2 decimal places\",\n    \"description is required\"\n  ],\n  \"error\": \"Bad Request\",\n  \"statusCode\": 400\n}"
+                }
+              ]
+            },
+            {
               "name": "POST /admin/clients/:clientId/wallet/debit - Sent for approval",
               "request": {
                 "method": "POST",
@@ -19453,6 +19556,648 @@
                   ],
                   "cookie": [],
                   "body": "{\n  \"pendingApproval\": true,\n  \"approvalId\": \"55555555-5555-4555-8555-555555555555\",\n  \"status\": \"PENDING\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "POST /admin/clients/:clientId/wallet/debit - Insufficient balance (422)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"amount\": 999999999,\n  \"description\": \"Paid out to the client’s bank account\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/admin/clients/{{client_id}}/wallet/debit",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "clients",
+                    "{{client_id}}",
+                    "wallet",
+                    "debit"
+                  ]
+                },
+                "description": "A debit larger than the wallet balance is refused when it is requested, not only when approved. Approval re-checks the balance under a lock, so two debits approved at once can never take it below zero."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('422', () => pm.response.to.have.status(422));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Insufficient balance (422)",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      },
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"amount\": 999999999,\n  \"description\": \"Paid out to the client’s bank account\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{base_url}}/admin/clients/{{client_id}}/wallet/debit",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "clients",
+                        "{{client_id}}",
+                        "wallet",
+                        "debit"
+                      ]
+                    },
+                    "description": "A debit larger than the wallet balance is refused when it is requested, not only when approved. Approval re-checks the balance under a lock, so two debits approved at once can never take it below zero."
+                  },
+                  "status": "Unprocessable Entity",
+                  "code": 422,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json; charset=utf-8"
+                    }
+                  ],
+                  "body": "{\n  \"message\": \"Insufficient wallet balance: the wallet holds ₦3,000\",\n  \"error\": \"Unprocessable Entity\",\n  \"statusCode\": 422\n}"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Wallets",
+          "description": "Wallets across clients (AdminWalletsController). Requires wallets:read. Scoped: admins without clients:all-records only see wallets of clients assigned to them.",
+          "item": [
+            {
+              "name": "GET /admin/wallets - Success",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/wallets",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "wallets"
+                  ],
+                  "query": [
+                    {
+                      "key": "search",
+                      "value": "PF0225",
+                      "description": "Optional. Client name, phone or staff ID.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "balance",
+                      "value": "POSITIVE",
+                      "description": "Optional. POSITIVE (holds money) | ZERO (empty).",
+                      "disabled": true
+                    },
+                    {
+                      "key": "sort",
+                      "value": "balance",
+                      "description": "Optional. balance (default, highest first) | recent | credited | debited.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "periodFrom",
+                      "value": "2026-11-01T00:00:00.000Z",
+                      "description": "Optional. ISO8601. Start of the period the summary credited/debited figures cover; defaults to the start of this month.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "periodTo",
+                      "value": "2026-11-30T23:59:59.999Z",
+                      "description": "Optional. ISO8601. End of that period; defaults to now.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "page",
+                      "value": "1",
+                      "disabled": true
+                    },
+                    {
+                      "key": "limit",
+                      "value": "25",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "description": "Every client wallet that has had a movement, with balance, lifetime credited/debited, movement count and last movement, plus `summary`: money held now (`totalHeld`, sum of positive balances), how many wallets hold money, what was credited/debited in the period by source, and open credit/debit approval requests."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));",
+                      "pm.test('list + summary', () => { const b = pm.response.json(); pm.expect(b.data).to.be.an('array'); pm.expect(b.summary).to.include.keys('totalHeld','walletsWithBalance','wallets','period','pendingRequests'); });"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Success (200)",
+                  "originalRequest": {
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/wallets",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "wallets"
+                      ],
+                      "query": [
+                        {
+                          "key": "search",
+                          "value": "PF0225",
+                          "description": "Optional. Client name, phone or staff ID.",
+                          "disabled": true
+                        },
+                        {
+                          "key": "balance",
+                          "value": "POSITIVE",
+                          "description": "Optional. POSITIVE (holds money) | ZERO (empty).",
+                          "disabled": true
+                        },
+                        {
+                          "key": "sort",
+                          "value": "balance",
+                          "description": "Optional. balance (default, highest first) | recent | credited | debited.",
+                          "disabled": true
+                        },
+                        {
+                          "key": "periodFrom",
+                          "value": "2026-11-01T00:00:00.000Z",
+                          "description": "Optional. ISO8601. Start of the period the summary credited/debited figures cover; defaults to the start of this month.",
+                          "disabled": true
+                        },
+                        {
+                          "key": "periodTo",
+                          "value": "2026-11-30T23:59:59.999Z",
+                          "description": "Optional. ISO8601. End of that period; defaults to now.",
+                          "disabled": true
+                        },
+                        {
+                          "key": "page",
+                          "value": "1",
+                          "disabled": true
+                        },
+                        {
+                          "key": "limit",
+                          "value": "25",
+                          "disabled": true
+                        }
+                      ]
+                    },
+                    "description": "Every client wallet that has had a movement, with balance, lifetime credited/debited, movement count and last movement, plus `summary`: money held now (`totalHeld`, sum of positive balances), how many wallets hold money, what was credited/debited in the period by source, and open credit/debit approval requests."
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json; charset=utf-8"
+                    }
+                  ],
+                  "body": "{\n  \"data\": [\n    {\n      \"client\": {\n        \"id\": \"f4a1b2c3-d4e5-4f67-8a9b-0c1d2e3f4a5b\",\n        \"name\": \"Adaeze Okonkwo\",\n        \"phone\": \"+2348031234567\",\n        \"status\": \"APPROVED\",\n        \"agency\": \"NPF\",\n        \"staffId\": \"PF02254698\"\n      },\n      \"clientId\": \"f4a1b2c3-d4e5-4f67-8a9b-0c1d2e3f4a5b\",\n      \"balance\": 3000,\n      \"credited\": 5000,\n      \"debited\": 2000,\n      \"entries\": 2,\n      \"lastEntryAt\": \"2026-11-12T10:30:00.000Z\"\n    }\n  ],\n  \"meta\": {\n    \"total\": 1,\n    \"page\": 1,\n    \"limit\": 25,\n    \"totalPages\": 1\n  },\n  \"summary\": {\n    \"totalHeld\": 137001,\n    \"walletsWithBalance\": 15,\n    \"wallets\": 15,\n    \"period\": {\n      \"from\": \"2026-11-01T00:00:00.000Z\",\n      \"to\": \"2026-11-12T18:00:00.000Z\",\n      \"credited\": 200002.5,\n      \"debited\": 63001.5,\n      \"net\": 137001,\n      \"bySource\": {\n        \"MANUAL\": {\n          \"credited\": 130002.5,\n          \"debited\": 63001.5,\n          \"count\": 12\n        },\n        \"LOAN_OVERPAYMENT\": {\n          \"credited\": 40000,\n          \"debited\": 0,\n          \"count\": 2\n        },\n        \"DEDUCTION_REFUND\": {\n          \"credited\": 30000,\n          \"debited\": 0,\n          \"count\": 2\n        },\n        \"LOAN_REPAYMENT\": {\n          \"credited\": 0,\n          \"debited\": 0,\n          \"count\": 0\n        }\n      }\n    },\n    \"pendingRequests\": 1\n  }\n}"
+                }
+              ]
+            },
+            {
+              "name": "GET /admin/wallets - Validation error (400)",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/wallets",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "wallets"
+                  ],
+                  "query": [
+                    {
+                      "key": "balance",
+                      "value": "NEGATIVE"
+                    },
+                    {
+                      "key": "sort",
+                      "value": "oldest"
+                    }
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('400', () => pm.response.to.have.status(400));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Validation error (400)",
+                  "originalRequest": {
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/wallets",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "wallets"
+                      ],
+                      "query": [
+                        {
+                          "key": "balance",
+                          "value": "NEGATIVE"
+                        },
+                        {
+                          "key": "sort",
+                          "value": "oldest"
+                        }
+                      ]
+                    }
+                  },
+                  "status": "Bad Request",
+                  "code": 400,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json; charset=utf-8"
+                    }
+                  ],
+                  "body": "{\n  \"message\": [\n    \"balance must be one of the following values: POSITIVE, ZERO\",\n    \"sort must be one of the following values: balance, recent, credited, debited\"\n  ],\n  \"error\": \"Bad Request\",\n  \"statusCode\": 400\n}"
+                }
+              ]
+            },
+            {
+              "name": "GET /admin/wallets - Missing wallets:read (403)",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/wallets",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "wallets"
+                  ]
+                },
+                "description": "Signed in as an admin without wallets:read."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('403', () => pm.response.to.have.status(403));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Missing wallets:read (403)",
+                  "originalRequest": {
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/wallets",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "wallets"
+                      ]
+                    },
+                    "description": "Signed in as an admin without wallets:read."
+                  },
+                  "status": "Forbidden",
+                  "code": 403,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json; charset=utf-8"
+                    }
+                  ],
+                  "body": "{\n  \"message\": \"Insufficient permissions\",\n  \"error\": \"Forbidden\",\n  \"statusCode\": 403\n}"
+                }
+              ]
+            },
+            {
+              "name": "GET /admin/wallets/entries - Success",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/wallets/entries",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "wallets",
+                    "entries"
+                  ],
+                  "query": [
+                    {
+                      "key": "search",
+                      "value": "PF0225",
+                      "description": "Optional. Client name, phone or staff ID.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "direction",
+                      "value": "CREDIT",
+                      "description": "Optional. CREDIT | DEBIT.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "source",
+                      "value": "LOAN_OVERPAYMENT",
+                      "description": "Optional. MANUAL | LOAN_OVERPAYMENT | DEDUCTION_REFUND | LOAN_REPAYMENT.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "actorType",
+                      "value": "ADMIN",
+                      "description": "Optional. ADMIN | AGENT | CLIENT | SYSTEM.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "createdFrom",
+                      "value": "2026-11-01T00:00:00.000Z",
+                      "disabled": true
+                    },
+                    {
+                      "key": "createdTo",
+                      "value": "2026-11-30T23:59:59.999Z",
+                      "disabled": true
+                    },
+                    {
+                      "key": "page",
+                      "value": "1",
+                      "disabled": true
+                    },
+                    {
+                      "key": "limit",
+                      "value": "25",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "description": "Every wallet movement across clients, newest first, with the client, who made it (`actor`), `source` and `reference`. `totals` are credited/debited across everything matching the filter, not just this page."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('status 200', () => pm.response.to.have.status(200));",
+                      "pm.test('entries with client and totals', () => { const b = pm.response.json(); pm.expect(b.totals).to.have.all.keys('credited','debited'); (b.data || []).forEach((e) => pm.expect(e.client).to.include.keys('id','name','staffId')); });"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Success (200)",
+                  "originalRequest": {
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/wallets/entries",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "wallets",
+                        "entries"
+                      ],
+                      "query": [
+                        {
+                          "key": "search",
+                          "value": "PF0225",
+                          "description": "Optional. Client name, phone or staff ID.",
+                          "disabled": true
+                        },
+                        {
+                          "key": "direction",
+                          "value": "CREDIT",
+                          "description": "Optional. CREDIT | DEBIT.",
+                          "disabled": true
+                        },
+                        {
+                          "key": "source",
+                          "value": "LOAN_OVERPAYMENT",
+                          "description": "Optional. MANUAL | LOAN_OVERPAYMENT | DEDUCTION_REFUND | LOAN_REPAYMENT.",
+                          "disabled": true
+                        },
+                        {
+                          "key": "actorType",
+                          "value": "ADMIN",
+                          "description": "Optional. ADMIN | AGENT | CLIENT | SYSTEM.",
+                          "disabled": true
+                        },
+                        {
+                          "key": "createdFrom",
+                          "value": "2026-11-01T00:00:00.000Z",
+                          "disabled": true
+                        },
+                        {
+                          "key": "createdTo",
+                          "value": "2026-11-30T23:59:59.999Z",
+                          "disabled": true
+                        },
+                        {
+                          "key": "page",
+                          "value": "1",
+                          "disabled": true
+                        },
+                        {
+                          "key": "limit",
+                          "value": "25",
+                          "disabled": true
+                        }
+                      ]
+                    },
+                    "description": "Every wallet movement across clients, newest first, with the client, who made it (`actor`), `source` and `reference`. `totals` are credited/debited across everything matching the filter, not just this page."
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json; charset=utf-8"
+                    }
+                  ],
+                  "body": "{\n  \"data\": [\n    {\n      \"id\": \"b2c3d4e5-f6a7-4b8c-9d0e-1f2a3b4c5d6e\",\n      \"clientId\": \"f4a1b2c3-d4e5-4f67-8a9b-0c1d2e3f4a5b\",\n      \"amount\": \"2000\",\n      \"direction\": \"DEBIT\",\n      \"description\": \"Paid out to the client’s bank account\",\n      \"source\": \"MANUAL\",\n      \"reference\": \"55555555-5555-4555-8555-555555555555\",\n      \"actorType\": \"ADMIN\",\n      \"actorId\": \"9d8c7b6a-5e4f-4a3b-9c2d-1e0f9a8b7c6d\",\n      \"createdAt\": \"2026-11-12T10:30:00.000Z\",\n      \"actor\": {\n        \"id\": \"9d8c7b6a-5e4f-4a3b-9c2d-1e0f9a8b7c6d\",\n        \"fullName\": \"Chinedu Okafor\",\n        \"email\": \"superadmin@example.com\",\n        \"role\": {\n          \"name\": \"SUPER_ADMIN\"\n        }\n      },\n      \"client\": {\n        \"id\": \"f4a1b2c3-d4e5-4f67-8a9b-0c1d2e3f4a5b\",\n        \"name\": \"Adaeze Okonkwo\",\n        \"phone\": \"+2348031234567\",\n        \"status\": \"APPROVED\",\n        \"agency\": \"NPF\",\n        \"staffId\": \"PF02254698\"\n      }\n    },\n    {\n      \"id\": \"a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d\",\n      \"clientId\": \"f4a1b2c3-d4e5-4f67-8a9b-0c1d2e3f4a5b\",\n      \"amount\": \"5000\",\n      \"direction\": \"CREDIT\",\n      \"description\": \"Loan overpayment excess — NPF 2026-10\",\n      \"source\": \"LOAN_OVERPAYMENT\",\n      \"reference\": \"7c1e2d3f-4a5b-4c6d-8e7f-9a0b1c2d3e4f\",\n      \"actorType\": \"SYSTEM\",\n      \"actorId\": null,\n      \"createdAt\": \"2026-10-31T08:00:00.000Z\",\n      \"actor\": null,\n      \"client\": {\n        \"id\": \"f4a1b2c3-d4e5-4f67-8a9b-0c1d2e3f4a5b\",\n        \"name\": \"Adaeze Okonkwo\",\n        \"phone\": \"+2348031234567\",\n        \"status\": \"APPROVED\",\n        \"agency\": \"NPF\",\n        \"staffId\": \"PF02254698\"\n      }\n    }\n  ],\n  \"meta\": {\n    \"total\": 2,\n    \"page\": 1,\n    \"limit\": 25,\n    \"totalPages\": 1\n  },\n  \"totals\": {\n    \"credited\": 5000,\n    \"debited\": 2000\n  }\n}"
+                }
+              ]
+            },
+            {
+              "name": "GET /admin/wallets/entries - Missing wallets:read (403)",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/admin/wallets/entries",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "wallets",
+                    "entries"
+                  ]
+                },
+                "description": "Signed in as an admin without wallets:read."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('403', () => pm.response.to.have.status(403));"
+                    ]
+                  }
+                }
+              ],
+              "response": [
+                {
+                  "name": "Missing wallets:read (403)",
+                  "originalRequest": {
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_access_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{base_url}}/admin/wallets/entries",
+                      "host": [
+                        "{{base_url}}"
+                      ],
+                      "path": [
+                        "admin",
+                        "wallets",
+                        "entries"
+                      ]
+                    },
+                    "description": "Signed in as an admin without wallets:read."
+                  },
+                  "status": "Forbidden",
+                  "code": 403,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json; charset=utf-8"
+                    }
+                  ],
+                  "body": "{\n  \"message\": \"Insufficient permissions\",\n  \"error\": \"Forbidden\",\n  \"statusCode\": 403\n}"
                 }
               ]
             }
@@ -36758,7 +37503,7 @@
               ]
             },
             {
-              "name": "POST /agent/clients/:clientId/loan-requests - SMS could not be sent (503)",
+              "name": "POST /agent/clients/:clientId/loan-requests - SMS could not be sent (424)",
               "request": {
                 "method": "POST",
                 "header": [
@@ -36795,7 +37540,7 @@
                   "script": {
                     "type": "text/javascript",
                     "exec": [
-                      "pm.test('503 when the SMS provider fails', () => pm.response.to.have.status(503));",
+                      "pm.test('424 when the SMS provider fails', () => pm.response.to.have.status(424));",
                       "pm.test('says the code could not be sent', () => pm.expect(pm.response.json().message).to.match(/couldn't send/));"
                     ]
                   }
@@ -36803,7 +37548,7 @@
               ],
               "response": [
                 {
-                  "name": "SMS could not be sent (503)",
+                  "name": "SMS could not be sent (424)",
                   "originalRequest": {
                     "method": "POST",
                     "header": [
@@ -36833,8 +37578,8 @@
                       ]
                     }
                   },
-                  "status": "Service Unavailable",
-                  "code": 503,
+                  "status": "Failed Dependency",
+                  "code": 424,
                   "_postman_previewlanguage": "json",
                   "header": [
                     {
@@ -36843,7 +37588,7 @@
                     }
                   ],
                   "cookie": [],
-                  "body": "{\n  \"message\": \"We couldn't send the confirmation code. Please try again shortly\",\n  \"error\": \"Service Unavailable\",\n  \"statusCode\": 503\n}"
+                  "body": "{\n  \"message\": \"We couldn't send the confirmation code. Please try again shortly\",\n  \"error\": \"Failed Dependency\",\n  \"statusCode\": 424\n}"
                 }
               ]
             },
@@ -38952,7 +39697,7 @@
               ]
             },
             {
-              "name": "POST /agent/clients/link/request - SMS could not be sent (503)",
+              "name": "POST /agent/clients/link/request - SMS could not be sent (424)",
               "request": {
                 "method": "POST",
                 "header": [
@@ -39017,7 +39762,7 @@
                   "script": {
                     "type": "text/javascript",
                     "exec": [
-                      "pm.test('503 when the SMS provider fails', () => pm.response.to.have.status(503));",
+                      "pm.test('424 when the SMS provider fails', () => pm.response.to.have.status(424));",
                       "pm.test('says the code could not be sent', () => pm.expect(pm.response.json().message).to.match(/couldn't send/));"
                     ]
                   }
@@ -39025,7 +39770,7 @@
               ],
               "response": [
                 {
-                  "name": "SMS could not be sent (503)",
+                  "name": "SMS could not be sent (424)",
                   "originalRequest": {
                     "method": "POST",
                     "header": [
@@ -39084,8 +39829,8 @@
                     },
                     "description": "Identify the client by phone or ippisNumber. The client is texted a 6-digit code (valid 15 minutes). devCode is returned only in development."
                   },
-                  "status": "Service Unavailable",
-                  "code": 503,
+                  "status": "Failed Dependency",
+                  "code": 424,
                   "_postman_previewlanguage": "json",
                   "header": [
                     {
@@ -39094,7 +39839,7 @@
                     }
                   ],
                   "cookie": [],
-                  "body": "{\n  \"message\": \"We couldn't send the confirmation code. Please try again shortly\",\n  \"error\": \"Service Unavailable\",\n  \"statusCode\": 503\n}"
+                  "body": "{\n  \"message\": \"We couldn't send the confirmation code. Please try again shortly\",\n  \"error\": \"Failed Dependency\",\n  \"statusCode\": 424\n}"
                 }
               ]
             },
@@ -40077,7 +40822,7 @@
               ]
             },
             {
-              "name": "POST /auth/client/otp/request - SMS could not be sent (503)",
+              "name": "POST /auth/client/otp/request - SMS could not be sent (424)",
               "request": {
                 "method": "POST",
                 "header": [
@@ -40110,7 +40855,7 @@
                   "script": {
                     "type": "text/javascript",
                     "exec": [
-                      "pm.test('503 when the SMS provider fails', () => pm.response.to.have.status(503));",
+                      "pm.test('424 when the SMS provider fails', () => pm.response.to.have.status(424));",
                       "pm.test('says the code could not be sent', () => pm.expect(pm.response.json().message).to.match(/couldn't send/));"
                     ]
                   }
@@ -40118,7 +40863,7 @@
               ],
               "response": [
                 {
-                  "name": "SMS could not be sent (503)",
+                  "name": "SMS could not be sent (424)",
                   "originalRequest": {
                     "method": "POST",
                     "header": [
@@ -40145,8 +40890,8 @@
                     },
                     "description": "The mock ConsoleOtpProvider logs the 4-digit code (PHONE_OTP_LENGTH, default 4) to the running server's stdout (e.g. 'OTP for +234...: 1234') since there's no real SMS vendor wired in. Copy that code into client_otp_code before running the verify request. Response is normally just { sent: true }; when the server has ENABLE_MOCK_OTP=true, it additionally includes mockCode (the raw code, for local/dev/staging use only) — see the second saved example below."
                   },
-                  "status": "Service Unavailable",
-                  "code": 503,
+                  "status": "Failed Dependency",
+                  "code": 424,
                   "_postman_previewlanguage": "json",
                   "header": [
                     {
@@ -40155,7 +40900,7 @@
                     }
                   ],
                   "cookie": [],
-                  "body": "{\n  \"message\": \"We couldn't send the confirmation code. Please try again shortly\",\n  \"error\": \"Service Unavailable\",\n  \"statusCode\": 503\n}"
+                  "body": "{\n  \"message\": \"We couldn't send the confirmation code. Please try again shortly\",\n  \"error\": \"Failed Dependency\",\n  \"statusCode\": 424\n}"
                 }
               ]
             },
@@ -43347,7 +44092,7 @@
               ]
             },
             {
-              "name": "POST /client/loan-requests - SMS could not be sent (503)",
+              "name": "POST /client/loan-requests - SMS could not be sent (424)",
               "request": {
                 "method": "POST",
                 "header": [
@@ -43382,7 +44127,7 @@
                   "script": {
                     "type": "text/javascript",
                     "exec": [
-                      "pm.test('503 when the SMS provider fails', () => pm.response.to.have.status(503));",
+                      "pm.test('424 when the SMS provider fails', () => pm.response.to.have.status(424));",
                       "pm.test('says the code could not be sent', () => pm.expect(pm.response.json().message).to.match(/couldn't send/));"
                     ]
                   }
@@ -43390,7 +44135,7 @@
               ],
               "response": [
                 {
-                  "name": "SMS could not be sent (503)",
+                  "name": "SMS could not be sent (424)",
                   "originalRequest": {
                     "method": "POST",
                     "header": [
@@ -43418,8 +44163,8 @@
                       ]
                     }
                   },
-                  "status": "Service Unavailable",
-                  "code": 503,
+                  "status": "Failed Dependency",
+                  "code": 424,
                   "_postman_previewlanguage": "json",
                   "header": [
                     {
@@ -43428,7 +44173,7 @@
                     }
                   ],
                   "cookie": [],
-                  "body": "{\n  \"message\": \"We couldn't send the confirmation code. Please try again shortly\",\n  \"error\": \"Service Unavailable\",\n  \"statusCode\": 503\n}"
+                  "body": "{\n  \"message\": \"We couldn't send the confirmation code. Please try again shortly\",\n  \"error\": \"Failed Dependency\",\n  \"statusCode\": 424\n}"
                 }
               ]
             },
@@ -45390,6 +46135,12 @@
                       "disabled": true
                     },
                     {
+                      "key": "source",
+                      "value": "LOAN_OVERPAYMENT",
+                      "description": "Optional. MANUAL | LOAN_OVERPAYMENT | DEDUCTION_REFUND | LOAN_REPAYMENT.",
+                      "disabled": true
+                    },
+                    {
                       "key": "createdFrom",
                       "value": "2026-01-01",
                       "description": "Optional. ISO8601 date. Filters createdAt >= this value.",
@@ -45502,7 +46253,7 @@
                     }
                   ],
                   "cookie": [],
-                  "body": "{\n  \"balance\": 0,\n  \"entries\": {\n    \"data\": [],\n    \"meta\": {\n      \"total\": 0,\n      \"page\": 1,\n      \"limit\": 25,\n      \"totalPages\": 0\n    }\n  }\n}"
+                  "body": "{\n  \"balance\": 0,\n  \"totals\": {\n    \"credited\": 0,\n    \"debited\": 0,\n    \"entries\": 0\n  },\n  \"entries\": {\n    \"data\": [],\n    \"meta\": {\n      \"total\": 0,\n      \"page\": 1,\n      \"limit\": 25,\n      \"totalPages\": 0\n    }\n  }\n}"
                 }
               ]
             }

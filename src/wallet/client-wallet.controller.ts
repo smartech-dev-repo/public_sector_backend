@@ -17,6 +17,7 @@ export class ClientWalletController {
       {
         direction: query.direction,
         actorType: query.actorType,
+        source: query.source,
         createdFrom: query.createdFrom ? new Date(query.createdFrom) : undefined,
         createdTo: query.createdTo ? new Date(query.createdTo) : undefined,
       },

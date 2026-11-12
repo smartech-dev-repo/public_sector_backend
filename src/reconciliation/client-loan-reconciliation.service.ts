@@ -3,7 +3,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { WalletService } from '../wallet/wallet.service';
 import { clientLoanInstallment, clientLoanPrincipalPaid } from './client-loan-terms.util';
 import { computeClientLoanStatus } from './client-loan-status.util';
-import { AuditActorType, VarianceSource } from '../generated/prisma/client';
+import { AuditActorType, VarianceSource, WalletEntrySource } from '../generated/prisma/client';
 import { classifyVariance } from './variance-classification.util';
 import { isWithinLoanPeriod } from './deduction-match.util';
 import { loadDeductionTotals } from './deduction-totals.util';
@@ -78,6 +78,7 @@ export class ClientLoanReconciliationService {
             Math.round(excess * 100) / 100,
             `Loan overpayment excess — ${clientLoan.agency} ${period}`,
             { actorType: AuditActorType.SYSTEM },
+            { source: WalletEntrySource.LOAN_OVERPAYMENT, reference: clientLoan.id },
           );
         } else if (excess < 0) {
           // An excess already credited to the wallet isn't taken back automatically.

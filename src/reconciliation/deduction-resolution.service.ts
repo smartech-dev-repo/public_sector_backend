@@ -16,6 +16,7 @@ import {
   Prisma,
   RepaymentMatchStatus,
   RepaymentResolution,
+  WalletEntrySource,
 } from '../generated/prisma/client';
 import { buildPaginatedResult } from '../common/pagination/paginated-result';
 import { ReconciliationService } from './reconciliation.service';
@@ -279,6 +280,7 @@ export class DeductionResolutionService implements OnModuleInit {
         amount,
         `Refund of payroll deduction with no running loan — ${record.agency} ${record.period ?? ''}`.trim(),
         { actorType: AuditActorType.ADMIN, actorId: deciderId },
+        { source: WalletEntrySource.DEDUCTION_REFUND, reference: id },
       );
       entryId = entry.id;
     } catch (error) {

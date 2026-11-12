@@ -95,7 +95,7 @@ describe('ClientLoanReconciliationService', () => {
       data: { actualAmount: 50000, variance: 5000, status: VarianceStatus.OVER_PAID },
     });
     // Principal: 15,000 more (up to the 45,000 installment); the 5,000 above it goes to the wallet.
-    expect(walletService.credit).toHaveBeenCalledWith('client-1', 5000, expect.any(String), { actorType: AuditActorType.SYSTEM });
+    expect(walletService.credit).toHaveBeenCalledWith('client-1', 5000, expect.any(String), { actorType: AuditActorType.SYSTEM }, { source: 'LOAN_OVERPAYMENT', reference: 'cl-1' });
     expect(prisma.clientLoan.update).toHaveBeenCalledWith({ where: { id: 'cl-1' }, data: { principalBalance: 45000, status: 'ACTIVE' } });
   });
 
@@ -188,6 +188,7 @@ describe('ClientLoanReconciliationService', () => {
       5000,
       expect.stringContaining('NPF'),
       { actorType: AuditActorType.SYSTEM },
+      { source: 'LOAN_OVERPAYMENT', reference: 'cl-1' },
     );
     expect(prisma.clientLoan.update).toHaveBeenCalledWith({
       where: { id: 'cl-1' },

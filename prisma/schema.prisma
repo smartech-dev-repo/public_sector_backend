@@ -946,6 +946,18 @@ enum WalletEntryDirection {
   DEBIT
 }
 
+/// Where a wallet movement came from, so it can be grouped and traced back.
+enum WalletEntrySource {
+  /// An admin credit or debit, approved by a second admin. reference = the approval request.
+  MANUAL
+  /// Payroll deducted more than the month's installment. reference = the client loan.
+  LOAN_OVERPAYMENT
+  /// A payroll deduction with no running loan, refunded. reference = the repayment record.
+  DEDUCTION_REFUND
+  /// The client paid toward their loan from the wallet. reference = the client loan.
+  LOAN_REPAYMENT
+}
+
 model WalletEntry {
   id          String               @id @default(uuid())
   clientId    String
@@ -953,9 +965,14 @@ model WalletEntry {
   amount      Decimal
   direction   WalletEntryDirection
   description String
+  source      WalletEntrySource    @default(MANUAL)
+  /// The record behind the movement; what it points at depends on source.
+  reference   String?
   actorType   AuditActorType
   actorId     String?
   createdAt   DateTime             @default(now())
 
   @@index([clientId])
+  @@index([createdAt])
+  @@index([source])
 }

@@ -1785,6 +1785,7 @@ describe('LoanRequestService', () => {
         60000,
         expect.stringContaining('cl1'),
         { actorType: 'CLIENT', actorId: 'c1' },
+        { source: 'LOAN_REPAYMENT', reference: 'cl1' },
       );
       expect(prisma.clientLoanRepaymentVariance.create).toHaveBeenCalledWith({
         data: expect.objectContaining({
@@ -1818,10 +1819,13 @@ describe('LoanRequestService', () => {
 
       const result = await service.applyWalletToLoan('c1', 20000);
 
-      expect(walletService.debit).toHaveBeenCalledWith('c1', 20000, expect.any(String), {
-        actorType: 'CLIENT',
-        actorId: 'c1',
-      });
+      expect(walletService.debit).toHaveBeenCalledWith(
+        'c1',
+        20000,
+        expect.any(String),
+        { actorType: 'CLIENT', actorId: 'c1' },
+        { source: 'LOAN_REPAYMENT', reference: 'cl1' },
+      );
       expect(prisma.clientLoanRepaymentVariance.create).toHaveBeenCalledWith({
         data: expect.objectContaining({ actualAmount: 20000, status: 'UNDER_PAID' }),
       });

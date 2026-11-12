@@ -1,5 +1,18 @@
 import { ClientInScope } from '../auth/client-scope.guard';
-import { Body, Controller, Get, HttpCode, Param, Post, Query, Req, UseGuards, UseInterceptors, OnModuleInit } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  OnModuleInit,
+  Param,
+  Post,
+  Query,
+  Req,
+  UnprocessableEntityException,
+  UseGuards,
+  UseInterceptors,
+} from '@nestjs/common';
 import { ApprovalsService } from '../approvals/approvals.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { PermissionsGuard } from '../auth/permissions.guard';
@@ -7,13 +20,13 @@ import { RequirePermissions } from '../auth/permissions.decorator';
 import { AuditInterceptor } from '../audit/audit.interceptor';
 import { AuditLogService } from '../audit/audit-log.service';
 import { JwtPayload } from '../auth/jwt-payload.interface';
-import { AuditActorType } from '../generated/prisma/client';
+import { AuditActorType, WalletEntrySource } from '../generated/prisma/client';
 import { WalletService } from './wallet.service';
 import { WalletTransactionDto } from './dto/wallet-transaction.dto';
 import { ListWalletEntriesQueryDto } from './dto/list-wallet-entries-query.dto';
 
-const WALLET_CREDIT = 'wallet.credit';
-const WALLET_DEBIT = 'wallet.debit';
+export const WALLET_CREDIT = 'wallet.credit';
+export const WALLET_DEBIT = 'wallet.debit';
 
 @Controller('admin/clients/:clientId/wallet')
 @ClientInScope('clientId')
@@ -28,10 +41,10 @@ export class AdminWalletController implements OnModuleInit {
 
   onModuleInit() {
     this.approvalsService.register(WALLET_CREDIT, (payload, approval, deciderId) =>
-      this.runApproved('credit', payload, approval.targetId, deciderId, approval.requestedById),
+      this.runApproved('credit', payload, approval.targetId, deciderId, approval.requestedById, approval.id),
     );
     this.approvalsService.register(WALLET_DEBIT, (payload, approval, deciderId) =>
-      this.runApproved('debit', payload, approval.targetId, deciderId, approval.requestedById),
+      this.runApproved('debit', payload, approval.targetId, deciderId, approval.requestedById, approval.id),
     );
   }
 
@@ -43,13 +56,22 @@ export class AdminWalletController implements OnModuleInit {
       {
         direction: query.direction,
         actorType: query.actorType,
+        source: query.source,
         createdFrom: query.createdFrom ? new Date(query.createdFrom) : undefined,
         createdTo: query.createdTo ? new Date(query.createdTo) : undefined,
       },
       { page: query.page, limit: query.limit },
     );
-    const pendingRequests = await this.approvalsService.countPending(clientId, [WALLET_CREDIT, WALLET_DEBIT]);
-    return { ...wallet, pendingRequests };
+    const pending = await this.approvalsService.pendingDetails(clientId, [WALLET_CREDIT, WALLET_DEBIT]);
+    const pendingDebits = pending.filter((p) => p.action === WALLET_DEBIT).reduce((sum, p) => sum + p.amount, 0);
+    const pendingCredits = pending.filter((p) => p.action === WALLET_CREDIT).reduce((sum, p) => sum + p.amount, 0);
+    return {
+      ...wallet,
+      pendingRequests: pending.length,
+      pending: pending.map((p) => ({ ...p, direction: p.action === WALLET_DEBIT ? 'DEBIT' : 'CREDIT' })),
+      // What the balance becomes if every open request is approved.
+      projectedBalance: Math.round((wallet.balance + pendingCredits - pendingDebits) * 100) / 100,
+    };
   }
 
   @Post('credit')
@@ -68,7 +90,12 @@ export class AdminWalletController implements OnModuleInit {
 
   private async submit(action: string, title: string, clientId: string, dto: WalletTransactionDto, requestedById: string) {
     // Throws for an unknown client, so a maker can't send a request that could never run.
-    await this.walletService.getBalance(clientId);
+    const balance = await this.walletService.getBalance(clientId);
+    if (action === WALLET_DEBIT && dto.amount > balance + 0.005) {
+      throw new UnprocessableEntityException(
+        `Insufficient wallet balance: the wallet holds ₦${balance.toLocaleString('en-NG')}`,
+      );
+    }
     return this.approvalsService.submit({
       action,
       requiredPermission: 'approvals:wallets',
@@ -94,11 +121,18 @@ export class AdminWalletController implements OnModuleInit {
     clientId: string,
     deciderId: string,
     requestedById: string,
+    approvalId: string,
   ) {
     const amount = Number(payload.amount);
     const description = String(payload.description);
     const balanceBefore = await this.walletService.getBalance(clientId);
-    await this.walletService[action](clientId, amount, description, { actorType: AuditActorType.ADMIN, actorId: deciderId });
+    await this.walletService[action](
+      clientId,
+      amount,
+      description,
+      { actorType: AuditActorType.ADMIN, actorId: deciderId },
+      { source: WalletEntrySource.MANUAL, reference: approvalId },
+    );
     await this.auditLogService.record({
       actorType: AuditActorType.ADMIN,
       actorId: deciderId,

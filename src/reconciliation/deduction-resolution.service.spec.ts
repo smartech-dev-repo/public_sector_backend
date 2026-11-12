@@ -98,7 +98,7 @@ describe('DeductionResolutionService', () => {
         where: { id: 'ded-1', resolution: null },
         data: expect.objectContaining({ resolution: 'REFUNDED', resolvedById: 'checker' }),
       });
-      expect(wallet.credit).toHaveBeenCalledWith('client-1', 15000, expect.stringContaining('NPF 2026-08'), { actorType: 'ADMIN', actorId: 'checker' });
+      expect(wallet.credit).toHaveBeenCalledWith('client-1', 15000, expect.stringContaining('NPF 2026-08'), { actorType: 'ADMIN', actorId: 'checker' }, { source: 'DEDUCTION_REFUND', reference: 'ded-1' });
       expect(prisma.loanRepaymentRecord.update).toHaveBeenCalledWith({ where: { id: 'ded-1' }, data: { refundWalletEntryId: 'entry-1' } });
     });
 

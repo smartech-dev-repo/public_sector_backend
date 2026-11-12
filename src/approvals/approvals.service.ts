@@ -122,6 +122,36 @@ export class ApprovalsService {
     });
   }
 
+  /**
+   * The open requests on one record, with the amount and description from their payload, for
+   * actions whose payload is safe to show (wallet credits and debits).
+   */
+  async pendingDetails(targetId: string, actions: string[]) {
+    const rows = await this.prisma.approvalRequest.findMany({
+      where: { status: ApprovalStatus.PENDING, targetId, action: { in: actions } },
+      select: {
+        id: true,
+        action: true,
+        payload: true,
+        createdAt: true,
+        requestedBy: { select: { id: true, fullName: true } },
+        assignedTo: { select: { id: true, fullName: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+    return rows.map(({ payload, ...row }) => {
+      const data = (payload ?? {}) as Record<string, unknown>;
+      return { ...row, amount: Number(data.amount ?? 0), description: data.description ? String(data.description) : null };
+    });
+  }
+
+  /** How many requests are open for these actions, optionally only on these records. */
+  countPendingActions(actions: string[], targetIds?: string[]): Promise<number> {
+    return this.prisma.approvalRequest.count({
+      where: { status: ApprovalStatus.PENDING, action: { in: actions }, ...(targetIds ? { targetId: { in: targetIds } } : {}) },
+    });
+  }
+
   private accessWhere(user: JwtPayload): Prisma.ApprovalRequestWhereInput {
     return {
       OR: [{ requiredPermission: { in: user.permissions ?? [] } }, { requestedById: user.sub }, { assignedToId: user.sub }],
