@@ -6,6 +6,11 @@ import { Logger } from 'nestjs-pino';
 import { NextFunction, Request, Response } from 'express';
 import { AppModule } from './app.module';
 import { getPasswordHashRounds } from './common/password-hash.util';
+import {
+  clientIp,
+  resolveBackofficeProxySecret,
+  resolveClientIpHeader,
+} from './common/client-ip.middleware';
 
 export function resolveCorsOrigin(): boolean | string[] {
   const raw = process.env.CORS_ORIGINS?.trim();
@@ -38,12 +43,16 @@ async function bootstrap() {
   getPasswordHashRounds();
 
   const trustProxyHops = resolveTrustProxyHops();
+  const backofficeSecret = resolveBackofficeProxySecret();
+  const clientIpHeader = resolveClientIpHeader();
 
   const app = await NestFactory.create<NestExpressApplication>(AppModule, { bufferLogs: true });
   if (trustProxyHops > 0) {
     app.set('trust proxy', trustProxyHops);
   }
   app.useLogger(app.get(Logger));
+  // Before anything reads req.ip: the visitor's real address, from the back office or the edge.
+  app.use(clientIp({ backofficeSecret, clientIpHeader }));
   // Lists change constantly, so nothing between here and the browser may serve an old copy.
   app.set('etag', false);
   app.use((_req: Request, res: Response, next: NextFunction) => {

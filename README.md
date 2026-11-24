@@ -318,6 +318,9 @@ and no docker-compose (this is a one-service deployment).
    file's raw JSON contents, pasted as one env var) — `GCP_CREDENTIALS_FILE`
    won't work here since there's no file mount and the key file itself is
    gitignored, never part of the built image.
+   Also set the visitor-IP settings described in
+   [Visitor IP behind proxies](#visitor-ip-behind-proxies) below, and
+   `BACKOFFICE_PROXY_SECRET`, which must match the back office's.
 3. Set the app's internal port to `3000` (or override `PORT` and match
    it) so Dokploy's Traefik can route to it.
 4. Deploy. The container's start command
@@ -328,6 +331,46 @@ and no docker-compose (this is a one-service deployment).
    bootstrap admin; it's idempotent (`upsert`-based) so it's safe to rerun.
 5. Point Dokploy's health check at `GET /health` (also used by the
    image's own `HEALTHCHECK`).
+
+### Visitor IP behind proxies
+
+Login rate limits, sessions and the audit trail all use the visitor's IP.
+Behind proxies, the API has to be told where to find it, or it sees the
+proxy's address and treats every visitor as one caller. All of these are
+runtime environment variables, never build args.
+
+| Setting | What it does |
+|---|---|
+| `CLIENT_IP_HEADER` | Header the edge sets to the visitor's IP, e.g. `cf-connecting-ip` behind Cloudflare. Takes precedence over `TRUST_PROXY_HOPS`. |
+| `TRUST_PROXY_HOPS` | Otherwise, how many proxies in front of the API append to `X-Forwarded-For` (`1` for Traefik alone). Defaults to `0`. |
+| `BACKOFFICE_PROXY_SECRET` | At least 32 characters (`openssl rand -hex 32`), the same value as on the back office. The back office signs admins in through its own server and uses this to vouch for the admin's IP; without a match that IP is ignored. |
+
+Which to use depends on what sits in front of the apps:
+
+| Setup | API and back office |
+|---|---|
+| Cloudflare, then Traefik (current) | `CLIENT_IP_HEADER=cf-connecting-ip` |
+| Traefik only | no `CLIENT_IP_HEADER`, `TRUST_PROXY_HOPS=1` |
+
+`CLIENT_IP_HEADER` is only safe while the server can't be reached around
+the edge, since anyone reaching it directly could send that header
+themselves. Check that a direct request to the server's IP fails, and
+restrict ports 80 and 443 to Cloudflare's IP ranges if it doesn't:
+
+```sh
+curl -sk -o /dev/null --connect-timeout 5 -w "%{http_code}\n" \
+  --resolve <domain>:443:<server-public-ip> https://<domain>/health
+```
+
+`000` means the server is reachable only through the edge.
+
+**Revisit these whenever the proxy setup changes**, for example when
+Cloudflare is added or removed. A `CLIENT_IP_HEADER` left behind after
+its edge is gone stops working (every visitor falls back to the proxy's
+address) and lets callers fake their IP. If a request arrives without the
+configured header, both apps log a warning saying so, at most every ten
+minutes (health checks excepted). To confirm the setup, sign in and check
+that User Sessions shows your own public IP.
 
 ## Admin client review
 
