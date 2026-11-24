@@ -46,7 +46,7 @@ describe('DojahIdentityVerificationProvider', () => {
 
     expect(fetchMock).toHaveBeenCalledWith(
       'https://sandbox.dojah.io/api/v1/kyc/bvn/advance?bvn=12345678901',
-      { headers: { AppId: 'app-id', Authorization: 'secret' } },
+      expect.objectContaining({ headers: { AppId: 'app-id', Authorization: 'secret' }, redirect: 'manual', signal: expect.any(AbortSignal) }),
     );
     expect(result).toEqual({
       firstName: 'Jane',
@@ -86,7 +86,7 @@ describe('DojahIdentityVerificationProvider', () => {
 
     expect(fetchMock).toHaveBeenCalledWith(
       'https://sandbox.dojah.io/api/v1/kyc/nin/advance?nin=12345678901',
-      { headers: { AppId: 'app-id', Authorization: 'secret' } },
+      expect.objectContaining({ headers: { AppId: 'app-id', Authorization: 'secret' }, redirect: 'manual', signal: expect.any(AbortSignal) }),
     );
     expect(result.photoBase64).toBe('ZmFrZS1waG90bw==');
     expect(result.gender).toBe('Female');

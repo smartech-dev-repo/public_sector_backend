@@ -35,7 +35,7 @@ describe('TermiiSmsProvider', () => {
 
     await expect(provider.send('2347880234567', 'Hi there', 'dnd')).resolves.toBeUndefined();
 
-    expect(fetchMock).toHaveBeenCalledWith('https://api.ng.termii.com/api/sms/send', {
+    expect(fetchMock).toHaveBeenCalledWith('https://api.ng.termii.com/api/sms/send', expect.objectContaining({
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -46,7 +46,9 @@ describe('TermiiSmsProvider', () => {
         type: 'plain',
         channel: 'dnd',
       }),
-    });
+      redirect: 'manual',
+      signal: expect.any(AbortSignal),
+    }));
   });
 
   it('uses TERMII_BASE_URL when configured', async () => {

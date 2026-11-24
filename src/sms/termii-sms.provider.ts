@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { SmsChannel, SmsProvider } from './sms-provider.interface';
+import { outboundFetch } from '../common/outbound-fetch.util';
 
 @Injectable()
 export class TermiiSmsProvider implements SmsProvider {
@@ -10,7 +11,7 @@ export class TermiiSmsProvider implements SmsProvider {
 
   async send(phone: string, message: string, channel: SmsChannel): Promise<void> {
     const baseUrl = this.configService.get<string>('TERMII_BASE_URL', 'https://api.ng.termii.com');
-    const response = await fetch(`${baseUrl}/api/sms/send`, {
+    const response = await outboundFetch(`${baseUrl}/api/sms/send`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { outboundFetch } from '../common/outbound-fetch.util';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { SessionPrincipalType } from '../generated/prisma/client';
@@ -42,7 +43,7 @@ export class PushService {
   private async token(creds: FcmCredentials): Promise<string> {
     if (this.accessToken && this.accessToken.expiresAt > Date.now() + 60_000)
       return this.accessToken.value;
-    const res = await fetch('https://oauth2.googleapis.com/token', {
+    const res = await outboundFetch('https://oauth2.googleapis.com/token', {
       method: 'POST',
       headers: { 'content-type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({
@@ -93,7 +94,7 @@ export class PushService {
       return 'not-configured';
     }
     try {
-      const res = await fetch(
+      const res = await outboundFetch(
         `https://fcm.googleapis.com/v1/projects/${creds.projectId}/messages:send`,
         {
           method: 'POST',

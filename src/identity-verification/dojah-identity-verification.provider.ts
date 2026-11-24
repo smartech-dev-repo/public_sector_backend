@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { IdentityLookupResult, IdentityVerificationProvider } from './identity-verification-provider.interface';
+import { outboundFetch } from '../common/outbound-fetch.util';
 
 interface DojahBvnEntity {
   first_name: string;
@@ -50,7 +51,7 @@ export class DojahIdentityVerificationProvider implements IdentityVerificationPr
   }
 
   async lookupBvn(bvn: string): Promise<IdentityLookupResult> {
-    const response = await fetch(`${this.baseUrl()}/api/v1/kyc/bvn/advance?bvn=${encodeURIComponent(bvn)}`, {
+    const response = await outboundFetch(`${this.baseUrl()}/api/v1/kyc/bvn/advance?bvn=${encodeURIComponent(bvn)}`, {
       headers: this.headers(),
     });
     if (!response.ok) {
@@ -75,7 +76,7 @@ export class DojahIdentityVerificationProvider implements IdentityVerificationPr
   }
 
   async lookupNin(nin: string): Promise<IdentityLookupResult> {
-    const response = await fetch(`${this.baseUrl()}/api/v1/kyc/nin/advance?nin=${encodeURIComponent(nin)}`, {
+    const response = await outboundFetch(`${this.baseUrl()}/api/v1/kyc/nin/advance?nin=${encodeURIComponent(nin)}`, {
       headers: this.headers(),
     });
     if (!response.ok) {
