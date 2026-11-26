@@ -512,6 +512,7 @@ describe('AdminClientReviewService', () => {
           faceMatchBvnScore: null,
           faceMatchNinScore: null,
           faceMatchPassed: null,
+          faceMatchMinimumScore: null,
           failureReasons: null,
           reviewedBy: 'admin-1',
           reviewNote: 'bad bvn, please resubmit',
@@ -542,6 +543,7 @@ describe('AdminClientReviewService', () => {
           faceMatchBvnScore: null,
           faceMatchNinScore: null,
           faceMatchPassed: null,
+          faceMatchMinimumScore: null,
           failureReasons: null,
         }),
       });

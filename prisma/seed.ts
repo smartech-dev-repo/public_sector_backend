@@ -34,6 +34,7 @@ const BOOTSTRAP_PERMISSIONS: Array<{ key: string; description: string }> = [
   { key: 'loan-products:manage', description: 'Create/edit the loan product catalog (sectors, amount/tenor range, interest tiers, service-length eligibility)' },
   { key: 'management-fees:manage', description: 'Create, edit, and delete the management fees loan products pick from' },
   { key: 'loan-settings:manage', description: 'Configure the global retirement-age and max-service-years settings used for loan eligibility' },
+  { key: 'face-match:manage', description: 'Switch face comparison on or off and set the minimum score for client onboarding' },
   { key: 'loan-requests:read', description: 'View the loan request list and details' },
   { key: 'loan-requests:manage', description: 'Send a confirmed loan request for approval' },
   { key: 'loan-requests:confirm-code', description: "Enter the client's code to confirm a pending loan request" },

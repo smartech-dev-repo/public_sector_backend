@@ -44,8 +44,26 @@ export class ClientOnboardingController {
 
   @Post('face-match')
   @AuditEvent({ action: 'client.onboarding.face_match', targetType: 'Client', targetId: 'self', result: ['step', 'identityVerified', 'faceMatchPassed'] })
-  @UseInterceptors(FileInterceptor('selfie'))
+  @UseInterceptors(
+    FileInterceptor('selfie', {
+      limits: { fileSize: 5 * 1024 * 1024 },
+      fileFilter: (
+        _req: Express.Request,
+        file: Express.Multer.File,
+        callback: (error: Error | null, acceptFile: boolean) => void,
+      ) => {
+        if (!['image/jpeg', 'image/png'].includes(file.mimetype)) {
+          callback(new BadRequestException('The selfie must be a JPEG or PNG image'), false);
+          return;
+        }
+        callback(null, true);
+      },
+    }),
+  )
   submitFaceMatch(@UploadedFile() file: Express.Multer.File, @Req() req: { user: JwtPayload }) {
+    if (!file) {
+      throw new BadRequestException('selfie is required');
+    }
     return this.clientOnboardingService.submitFaceMatch(req.user.sub, file.buffer);
   }
 

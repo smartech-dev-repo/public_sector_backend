@@ -13,3 +13,8 @@ gcp-credentials.json
 # Real personal data (BVN, bank accounts, phone numbers, names) — reference
 # material for design work only, never committed.
 /docs/added
+
+# Face comparison: model files are downloaded by face-match/fetch_models.py; local Python env.
+/face-match/models
+/face-match/.venv
+__pycache__

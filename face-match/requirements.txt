@@ -1,0 +1,4 @@
+# Local development only. The Docker image installs Alpine's own py3-opencv and py3-numpy
+# (OpenCV publishes no wheels for Alpine), which on node:22.23.4-alpine (Alpine 3.24) is OpenCV 4.12 — pinned to match here.
+opencv-python-headless==4.12.0.88
+numpy>=1.26,<3

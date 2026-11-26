@@ -605,50 +605,53 @@ enum ClientDocumentType {
 }
 
 model ClientOnboarding {
-  id                  String           @id @default(uuid())
-  clientId            String           @unique
-  client              Client           @relation(fields: [clientId], references: [id])
-  ippisRecordId       String           @unique
-  ippisRecord         IppisRecord      @relation(fields: [ippisRecordId], references: [id])
-  employeeName        String
-  agency              String
-  bankName            String?
-  accountNumber       String?
-  employeeStatus      String?
-  legacyId            String?
-  identityDateOfBirth DateTime?
-  identityGender      String?
-  identityPhoneNumber String?
-  stateOfOrigin       String?
-  lgaOfOrigin         String?
-  stateOfResidence    String?
-  lgaOfResidence      String?
-  address             String?
-  city                String?
-  zipCode             String?
-  maritalStatus       String?
-  bvn                 String?
-  nin                 String?
-  bvnSelfie           String?
-  ninSelfie           String?
-  liveSelfieKey       String?
-  identityVerified    Boolean?
-  faceMatchBvnScore   Float?
-  faceMatchNinScore   Float?
-  faceMatchPassed     Boolean?
-  step                OnboardingStep   @default(PHONE_VERIFIED)
-  failureReasons      Json?
-  reviewedBy          String?
-  reviewedByAdmin     AdminUser?       @relation("ClientOnboardingReviewedBy", fields: [reviewedBy], references: [id])
-  onboardedById       String?
-  onboardedByAdmin    AdminUser?       @relation("ClientOnboardingByAdmin", fields: [onboardedById], references: [id])
-  onboardedByAgentId  String?
-  onboardedByAgent    Agent?           @relation(fields: [onboardedByAgentId], references: [id])
-  reviewedAt          DateTime?
-  reviewNote          String?
-  documents           ClientDocument[]
-  createdAt           DateTime         @default(now())
-  updatedAt           DateTime         @updatedAt
+  id                    String           @id @default(uuid())
+  clientId              String           @unique
+  client                Client           @relation(fields: [clientId], references: [id])
+  ippisRecordId         String           @unique
+  ippisRecord           IppisRecord      @relation(fields: [ippisRecordId], references: [id])
+  employeeName          String
+  agency                String
+  bankName              String?
+  accountNumber         String?
+  employeeStatus        String?
+  legacyId              String?
+  identityDateOfBirth   DateTime?
+  identityGender        String?
+  identityPhoneNumber   String?
+  stateOfOrigin         String?
+  lgaOfOrigin           String?
+  stateOfResidence      String?
+  lgaOfResidence        String?
+  address               String?
+  city                  String?
+  zipCode               String?
+  maritalStatus         String?
+  bvn                   String?
+  nin                   String?
+  bvnSelfie             String?
+  ninSelfie             String?
+  liveSelfieKey         String?
+  identityVerified      Boolean?
+  faceMatchBvnScore     Float?
+  faceMatchNinScore     Float?
+  faceMatchPassed       Boolean?
+  /// Minimum score (0-100) in force when the photos were compared. Null when face comparison
+  /// was switched off at the time, so the photo was kept but not compared.
+  faceMatchMinimumScore Int?
+  step                  OnboardingStep   @default(PHONE_VERIFIED)
+  failureReasons        Json?
+  reviewedBy            String?
+  reviewedByAdmin       AdminUser?       @relation("ClientOnboardingReviewedBy", fields: [reviewedBy], references: [id])
+  onboardedById         String?
+  onboardedByAdmin      AdminUser?       @relation("ClientOnboardingByAdmin", fields: [onboardedById], references: [id])
+  onboardedByAgentId    String?
+  onboardedByAgent      Agent?           @relation(fields: [onboardedByAgentId], references: [id])
+  reviewedAt            DateTime?
+  reviewNote            String?
+  documents             ClientDocument[]
+  createdAt             DateTime         @default(now())
+  updatedAt             DateTime         @updatedAt
 }
 
 model ClientDocument {
@@ -805,6 +808,18 @@ model LoanSettings {
   /// Outcome per salary pattern (see salary-pattern.util.ts). Null uses the built-in defaults.
   salaryPatternOutcomes Json?
   updatedAt             DateTime             @updatedAt
+}
+
+/// Face comparison during client onboarding: the client's selfie (or the passport photo an agent
+/// or admin uploads) against the BVN and NIN photos. One row, edited from the back office.
+model FaceMatchSettings {
+  id           String   @id @default(uuid())
+  /// Off: the photo is stored and onboarding completes on BVN/NIN verification alone.
+  enabled      Boolean  @default(false)
+  /// Each of the BVN and NIN photos must score at least this (0-100) to pass; below it, the
+  /// client goes to manual review.
+  minimumScore Int      @default(40)
+  updatedAt    DateTime @updatedAt
 }
 
 enum AffordabilityMethod {

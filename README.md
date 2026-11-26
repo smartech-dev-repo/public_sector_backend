@@ -704,10 +704,9 @@ default, `DojahIdentityVerificationProvider` when
 `IDENTITY_VERIFICATION_PROVIDER=dojah` and `DOJAH_APP_ID`/`DOJAH_SECRET_KEY`
 are set), then uploads four required documents (NIN Card, Work ID,
 Passport Photo, Signature), then submits a live selfie compared against
-both the BVN and NIN reference photos via a pluggable
-`FaceVerificationProvider` (mock only for now). Passing both auto-verifies
-the client; any failure routes to `MANUAL_REVIEW` (existing
-`clients:review` permission covers visibility).
+both the BVN and NIN reference photos (see [Face comparison](#face-comparison)).
+Passing both auto-verifies the client; any failure routes to
+`MANUAL_REVIEW` (existing `clients:review` permission covers visibility).
 
 The step order is `PHONE_VERIFIED` → `IPPIS_LINKED` → `IDENTITY_SUBMITTED`
 → `DOCUMENTS_SUBMITTED` → `FACE_MATCH_PENDING`/`COMPLETED`.
@@ -728,7 +727,7 @@ re-upload, if all 4 documents already exist.
 | `POST /client/onboarding/ippis-link` | Client JWT | `{ ippisNumber }` |
 | `POST /client/onboarding/identity` | Client JWT | `{ bvn, nin }` |
 | `POST /client/onboarding/documents/:type` | Client JWT | multipart, field `file`; JPEG/PNG/PDF only, 5MB cap; valid from `IDENTITY_SUBMITTED` or `DOCUMENTS_SUBMITTED` |
-| `POST /client/onboarding/face-match` | Client JWT | multipart, field `selfie`; valid from `IDENTITY_SUBMITTED` or `DOCUMENTS_SUBMITTED` |
+| `POST /client/onboarding/face-match` | Client JWT | multipart, field `selfie` (JPEG/PNG, 5MB cap); valid from `IDENTITY_SUBMITTED` or `DOCUMENTS_SUBMITTED` |
 | `GET /client/onboarding/status` | Client JWT | resumability — `step` says exactly where to continue; returns a curated `onboarding` shape, see below |
 | `PATCH /client/onboarding/marital-status` | Client JWT | `{ maritalStatus }`. Lets the client correct their IPPIS-sourced marital status; no onboarding-step precondition |
 
@@ -773,6 +772,53 @@ internal storage keys, internal review metadata
 and the raw nested `ippisRecord` entirely (already summarized via
 `lengthOfService`) — a pre-existing PII-exposure gap fixed alongside
 adding these new fields to the same response path.
+
+### Face comparison
+
+When an agent or admin onboards the client, `POST .../onboarding/face-match`
+takes no file: it compares the uploaded `PASSPORT_PHOTO` instead of a
+selfie. Either way the photo is compared with the BVN and NIN photos by
+`face-match/compare_faces.py`, a small Python script using OpenCV's YuNet
+face detector and SFace face recognizer. The API runs it once per
+comparison (`src/face-verification/python-face-verification.provider.ts`),
+passing the photos on stdin; it takes about 0.3 s.
+
+Back office **Configuration → Face Match** (`GET`/`PATCH
+/admin/face-match-settings`, permission `face-match:manage`) controls it:
+
+- **On/off.** Off by default. While off, the photo is still kept, scores
+  stay null and onboarding completes on BVN/NIN verification alone. It
+  can't be switched on while the server can't run the comparison (the
+  settings response's `engine` says why).
+- **Minimum score** (1-100, default 40). The score is the cosine
+  similarity of the two faces as a percentage. Each of the BVN and NIN
+  photos must reach it. SFace's published same-person cutoff is 36.3; on
+  public test portraits the same person scored 54-84 and different people
+  21 or less. Photos of one person taken decades apart can score near the
+  cutoff, so raise the minimum only after looking at real results.
+
+Results land on `ClientOnboarding`: `faceMatchBvnScore`/`faceMatchNinScore`
+(0-1), `faceMatchPassed`, `faceMatchMinimumScore` (the minimum in force,
+null when switched off) and, on failure, `failureReasons.faceMatch` with
+`BELOW_MINIMUM`, `NO_FACE` or `UNREADABLE_IMAGE` per ID photo; the client
+goes to `MANUAL_REVIEW`. A photo with no face, or with a second person in
+it, is refused with 422 and nothing is saved, so it can be retaken. If
+the comparison itself can't run, the request fails with 503 and the
+reason is logged as `[face-match]`.
+
+The Docker image installs Alpine's `py3-opencv` and downloads the two
+model files at build time (pinned commits, SHA-256 checked by
+`face-match/fetch_models.py`). Locally:
+
+```sh
+npm run face-match:setup   # .venv with OpenCV 4.12 + model files, in face-match/
+npm run face-match:test    # Python tests against public-domain portraits in face-match/fixtures
+```
+
+and set `FACE_MATCH_PYTHON=face-match/.venv/bin/python` in `.env`.
+Optional settings: `FACE_MATCH_PYTHON` (default `python3`),
+`FACE_MATCH_MODELS_DIR`, `FACE_MATCH_CONCURRENCY` (default 2),
+`FACE_MATCH_TIMEOUT_MS` (default 30000).
 
 ## Roadmap
 

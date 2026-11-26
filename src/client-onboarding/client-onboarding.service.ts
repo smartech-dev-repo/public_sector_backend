@@ -4,9 +4,9 @@ import { isUniqueConstraintError } from '../common/is-unique-constraint-error.ut
 import { PrismaService } from '../prisma/prisma.service';
 import { IdentityVerificationService } from '../identity-verification/identity-verification.service';
 import { IdentityLookupResult } from '../identity-verification/identity-verification-provider.interface';
-import { FACE_VERIFICATION_PROVIDER, FaceVerificationProvider } from '../face-verification/face-verification-provider.interface';
+import { FaceMatchService } from '../face-verification/face-match.service';
 import { FILE_STORAGE_PROVIDER, FileStorageProvider } from '../file-storage/file-storage-provider.interface';
-import { ClientDocumentType, ClientStatus, OnboardingStep } from '../generated/prisma/client';
+import { ClientDocumentType, ClientStatus, OnboardingStep, Prisma } from '../generated/prisma/client';
 import { computeLengthOfService } from './length-of-service.util';
 import { normalizeNigerianPhone, phonesTally, validNigerianPhone } from '../common/normalize-nigerian-phone.util';
 
@@ -15,7 +15,7 @@ export class ClientOnboardingService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly identityVerificationService: IdentityVerificationService,
-    @Inject(FACE_VERIFICATION_PROVIDER) private readonly faceVerificationProvider: FaceVerificationProvider,
+    private readonly faceMatchService: FaceMatchService,
     @Inject(FILE_STORAGE_PROVIDER) private readonly fileStorageProvider: FileStorageProvider,
   ) {}
 
@@ -311,30 +311,57 @@ export class ClientOnboardingService {
     return { documentType: document.documentType, uploadedAt: document.uploadedAt, url };
   }
 
+  /** The BVN and NIN photos saved at the identity step; an empty buffer if one is missing. */
+  private async loadIdPhotos(onboarding: { bvnSelfie: string | null; ninSelfie: string | null }) {
+    const load = (key: string | null) =>
+      key
+        ? this.fileStorageProvider.getObject(key).catch((error: unknown) => {
+            if (error instanceof NotFoundException) return Buffer.alloc(0);
+            throw error;
+          })
+        : Promise.resolve(Buffer.alloc(0));
+    const [bvn, nin] = await Promise.all([load(onboarding.bvnSelfie), load(onboarding.ninSelfie)]);
+    return { bvn, nin };
+  }
+
+  /**
+   * Compares the photo with the BVN and NIN photos (when face comparison is switched on in the
+   * back office), then completes onboarding or sends the client to manual review. An unusable
+   * photo (no face, several faces) is refused with 422 before anything is saved, so it can be
+   * retaken.
+   */
   private async completeFaceMatch(
     clientId: string,
     onboarding: { identityVerified: boolean | null; bvnSelfie: string | null; ninSelfie: string | null },
-    liveSelfieKey: string,
+    photo: Buffer,
+    photoKey: string,
+    { storePhoto }: { storePhoto: boolean },
   ) {
-    const [bvnMatch, ninMatch] = await Promise.all([
-      this.faceVerificationProvider.compare(onboarding.bvnSelfie!, liveSelfieKey),
-      this.faceVerificationProvider.compare(onboarding.ninSelfie!, liveSelfieKey),
-    ]);
+    const outcome = await this.faceMatchService.verify(photo, () => this.loadIdPhotos(onboarding));
+    if (storePhoto) {
+      await this.fileStorageProvider.putObject(photoKey, photo);
+    }
 
-    const faceMatchPassed = bvnMatch.passed && ninMatch.passed;
-    const completed = Boolean(onboarding.identityVerified) && faceMatchPassed;
+    // Null when comparison is switched off: onboarding then rests on BVN/NIN verification.
+    const faceMatchPassed = outcome.checked ? outcome.passed : null;
+    const completed = Boolean(onboarding.identityVerified) && faceMatchPassed !== false;
 
     const updated = await this.prisma.clientOnboarding.update({
       where: { clientId },
       data: {
-        liveSelfieKey,
-        faceMatchBvnScore: bvnMatch.score,
-        faceMatchNinScore: ninMatch.score,
+        liveSelfieKey: photoKey,
+        faceMatchBvnScore: outcome.checked ? outcome.scores.bvn : null,
+        faceMatchNinScore: outcome.checked ? outcome.scores.nin : null,
         faceMatchPassed,
+        faceMatchMinimumScore: outcome.checked ? outcome.minimumScore : null,
         step: completed ? OnboardingStep.COMPLETED : OnboardingStep.FACE_MATCH_PENDING,
         failureReasons: completed
-          ? null
-          : { identityVerified: onboarding.identityVerified, faceMatchPassed },
+          ? Prisma.DbNull
+          : {
+              identityVerified: onboarding.identityVerified,
+              faceMatchPassed,
+              ...(outcome.checked && !outcome.passed ? { faceMatch: outcome.problems } : {}),
+            },
       },
     });
 
@@ -359,9 +386,7 @@ export class ClientOnboardingService {
     }
 
     const liveSelfieKey = `client-onboarding/${clientId}/live-selfie.jpg`;
-    await this.fileStorageProvider.putObject(liveSelfieKey, selfieBuffer);
-
-    return this.completeFaceMatch(clientId, onboarding, liveSelfieKey);
+    return this.completeFaceMatch(clientId, onboarding, selfieBuffer, liveSelfieKey, { storePhoto: true });
   }
 
   async submitFaceMatchFromPassportPhoto(clientId: string) {
@@ -389,7 +414,8 @@ export class ClientOnboardingService {
       );
     }
 
-    return this.completeFaceMatch(clientId, onboarding, passportDoc.storageKey);
+    const passportPhoto = await this.fileStorageProvider.getObject(passportDoc.storageKey);
+    return this.completeFaceMatch(clientId, onboarding, passportPhoto, passportDoc.storageKey, { storePhoto: false });
   }
 
   async getStatus(clientId: string) {

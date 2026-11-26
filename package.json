@@ -17,7 +17,9 @@
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
-    "test:e2e": "jest --config ./test/jest-e2e.json"
+    "test:e2e": "jest --config ./test/jest-e2e.json",
+    "face-match:setup": "python3 -m venv face-match/.venv && face-match/.venv/bin/pip install -q -r face-match/requirements.txt && face-match/.venv/bin/python face-match/fetch_models.py",
+    "face-match:test": "face-match/.venv/bin/python -m unittest discover -s face-match -p 'test_*.py'"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1132.0",

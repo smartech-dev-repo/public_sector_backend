@@ -259,6 +259,7 @@ export class AdminClientReviewService {
           faceMatchBvnScore: null,
           faceMatchNinScore: null,
           faceMatchPassed: null,
+          faceMatchMinimumScore: null,
         }
       : {
           step: await this.clientOnboardingService.determineStepAfterIdentity(client.onboarding.id),
@@ -266,6 +267,7 @@ export class AdminClientReviewService {
           faceMatchBvnScore: null,
           faceMatchNinScore: null,
           faceMatchPassed: null,
+          faceMatchMinimumScore: null,
         };
 
     await this.prisma.clientOnboarding.update({

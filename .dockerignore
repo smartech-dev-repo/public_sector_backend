@@ -13,3 +13,6 @@ test
 .claude
 .windsurf
 skills-lock.json
+face-match/models
+face-match/.venv
+__pycache__

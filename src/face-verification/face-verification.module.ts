@@ -1,16 +1,22 @@
 import { Module } from '@nestjs/common';
-import { MockFaceVerificationProvider } from './mock-face-verification.provider';
+import { AuditModule } from '../audit/audit.module';
 import { FACE_VERIFICATION_PROVIDER } from './face-verification-provider.interface';
+import { PythonFaceVerificationProvider } from './python-face-verification.provider';
+import { FaceMatchSettingsService } from './face-match-settings.service';
+import { FaceMatchService } from './face-match.service';
+import { AdminFaceMatchSettingsController } from './admin-face-match-settings.controller';
 
 @Module({
+  imports: [AuditModule],
+  controllers: [AdminFaceMatchSettingsController],
   providers: [
-    MockFaceVerificationProvider,
-    // Single-provider for now (per the original spec — no second vendor
-    // exists yet), so this binds directly rather than through a
-    // config-driven factory. Swapping in a real implementation later is a
-    // one-line change here plus a new provider class, no other code changes.
-    { provide: FACE_VERIFICATION_PROVIDER, useExisting: MockFaceVerificationProvider },
+    {
+      provide: FACE_VERIFICATION_PROVIDER,
+      useClass: PythonFaceVerificationProvider,
+    },
+    FaceMatchSettingsService,
+    FaceMatchService,
   ],
-  exports: [FACE_VERIFICATION_PROVIDER],
+  exports: [FaceMatchService],
 })
 export class FaceVerificationModule {}
