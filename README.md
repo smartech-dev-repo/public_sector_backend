@@ -146,13 +146,20 @@ It accepts `page`/`limit` pagination (default `1`/`25`, `limit` capped at
 in place of the previous unpaged, `take: 100`-capped bare array.
 
 File storage picks its active provider via `STORAGE_PROVIDER` (`local` |
-`s3` | `gcs`, default `local`). Only the selected provider's env vars need
+`s3` | `gcs` | `nobus`, default `local`). Only the selected provider's env vars need
 real values — see `.env.example` for the full list. For GCS:
 `GCP_BUCKET_NAME` plus one of `GCP_CREDENTIALS_FILE` (a local
 service-account JSON key file path — local dev) or `GCP_CREDENTIALS_JSON`
 (that same file's raw contents as one env var — for platforms like
 Dokploy with no file mount; `FILE` wins if both are set), plus optional
-`GCP_SUB_PATH`. Automated tests always run against the local provider
+`GCP_SUB_PATH`. For Nobus Object Storage (through its S3-compatible API):
+`NOBUS_ACCESS_KEY_ID` and `NOBUS_SECRET_ACCESS_KEY` (the "EC2 credentials"
+under **Settings & help → API keys** in the Nobus dashboard, signed in with
+the admin/root account) and `NOBUS_BUCKET_NAME`, plus optional
+`NOBUS_S3_ENDPOINT` (default `https://fos-az1-store.nobus.io`) and
+`NOBUS_REGION` (default `RegionOne`). Nobus addresses buckets in the path
+rather than as a subdomain, and is sent checksums only when an operation
+requires them; the provider sets both. Automated tests always run against the local provider
 regardless of this setting. Background processing uses BullMQ against the
 `REDIS_URL`/`REDIS_KEY_PREFIX` already configured in your environment.
 
@@ -317,7 +324,11 @@ and no docker-compose (this is a one-service deployment).
    `GCP_BUCKET_NAME` and `GCP_CREDENTIALS_JSON` (the service-account key
    file's raw JSON contents, pasted as one env var) — `GCP_CREDENTIALS_FILE`
    won't work here since there's no file mount and the key file itself is
-   gitignored, never part of the built image.
+   gitignored, never part of the built image. If `STORAGE_PROVIDER=nobus`,
+   set `NOBUS_ACCESS_KEY_ID`, `NOBUS_SECRET_ACCESS_KEY` and
+   `NOBUS_BUCKET_NAME` (see the file storage notes above). After the first
+   deploy, upload a document in the back office and open it again to
+   confirm the bucket works.
    Also set the visitor-IP settings described in
    [Visitor IP behind proxies](#visitor-ip-behind-proxies) below, and
    `BACKOFFICE_PROXY_SECRET`, which must match the back office's.
