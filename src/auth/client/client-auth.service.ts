@@ -1,9 +1,14 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { ConflictException, Injectable, UnauthorizedException, UnprocessableEntityException } from '@nestjs/common';
 import { OtpService } from '../../otp/otp.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { TokenService } from '../token.service';
 import { SessionService } from '../../session/session.service';
-import { SessionPrincipalType } from '../../generated/prisma/client';
+import { AuditLogService } from '../../audit/audit-log.service';
+import { AuditActorType, SessionPrincipalType } from '../../generated/prisma/client';
+import { isUniqueConstraintError } from '../../common/is-unique-constraint-error.util';
+import { ippisPhoneFilter } from '../../common/normalize-nigerian-phone.util';
+import { DeviceBindingService } from '../../devices/device-binding.service';
+import { SignInMetadata } from '../../common/request-metadata.util';
 
 @Injectable()
 export class ClientAuthService {
@@ -12,22 +17,77 @@ export class ClientAuthService {
     private readonly prisma: PrismaService,
     private readonly tokenService: TokenService,
     private readonly sessionService: SessionService,
+    private readonly auditLogService: AuditLogService,
+    private readonly deviceBinding?: DeviceBindingService,
   ) {}
 
-  async requestOtp(phone: string): Promise<void> {
-    await this.otpService.request(phone);
+  async requestOtp(phone: string, email?: string): Promise<{ mockCode?: string; emailSent: boolean }> {
+    const existingClient = await this.prisma.client.findUnique({ where: { phone } });
+    if (!existingClient) {
+      const ippisRecord = await this.prisma.ippisRecord.findFirst({
+        where: { phone: ippisPhoneFilter(phone) },
+        select: { id: true },
+      });
+      if (!ippisRecord) {
+        throw new UnprocessableEntityException(
+          'This phone number is not on any IPPIS record. Use the phone number on your payroll record',
+        );
+      }
+    }
+
+    let effectiveEmail: string | undefined = existingClient?.email ?? undefined;
+
+    if (!effectiveEmail && email) {
+      const emailTaken = await this.prisma.client.findUnique({ where: { email } });
+      if (emailTaken) {
+        throw new ConflictException('This email is already in use');
+      }
+      effectiveEmail = email;
+    }
+
+    const { mockCode } = await this.otpService.request(phone, effectiveEmail);
+    return { mockCode, emailSent: Boolean(effectiveEmail) };
   }
 
-  async verifyOtp(phone: string, code: string, meta?: { userAgent?: string; ip?: string }) {
-    const isValid = await this.otpService.verify(phone, code);
-    if (!isValid) {
+  async verifyOtp(phone: string, code: string, meta?: SignInMetadata) {
+    const result = await this.otpService.verify(phone, code);
+    if (!result.valid) {
+      await this.auditLogService.recordSafely({
+        actorType: AuditActorType.CLIENT,
+        action: 'client.login.failed',
+        metadata: { phone, reason: 'wrong_code' },
+      });
       throw new UnauthorizedException('Invalid or expired code');
     }
 
-    const client = await this.prisma.client.upsert({
+    let client = await this.prisma.client.upsert({
       where: { phone },
       update: {},
       create: { phone },
+    });
+
+    if (result.email && !client.email) {
+      try {
+        client = await this.prisma.client.update({ where: { id: client.id }, data: { email: result.email } });
+      } catch (error) {
+        if (!isUniqueConstraintError(error)) {
+          throw error;
+        }
+        // Someone else claimed this email in the window between this
+        // client's request and verify calls -- login still succeeds, the
+        // email is just silently dropped this time.
+      }
+    }
+
+    // The code is right; the phone must be the one linked to this account.
+    const device = await this.deviceBinding?.assertSignInDevice('CLIENT', client.id, meta?.device);
+
+    await this.auditLogService.recordSafely({
+      actorType: AuditActorType.CLIENT,
+      actorId: client.id,
+      action: 'client.login.succeeded',
+      targetType: 'Client',
+      targetId: client.id,
     });
 
     const payload = { sub: client.id, type: 'client' as const };
@@ -37,6 +97,7 @@ export class ClientAuthService {
       principalId: client.id,
       userAgent: meta?.userAgent,
       ip: meta?.ip,
+      deviceId: device?.id,
     });
 
     return {

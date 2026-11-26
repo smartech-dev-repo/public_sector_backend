@@ -1,21 +1,26 @@
-import { Body, Controller, Delete, Get, HttpCode, Param, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, Param, Post, Query, Req, UseGuards, UseInterceptors } from '@nestjs/common';
+import { AuditContextInterceptor } from '../../audit/audit-context.interceptor';
 import { Request } from 'express';
 import { SessionService } from '../../session/session.service';
 import { TokenService } from '../token.service';
 import { AdminAuthService } from '../admin/admin-auth.service';
+import { AgentAuthService } from '../agent/agent-auth.service';
 import { JwtAuthGuard } from '../jwt-auth.guard';
 import { JwtPayload } from '../jwt-payload.interface';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
+import { ListSessionsQueryDto } from './dto/list-sessions-query.dto';
 import { toJwtPrincipalType, toSessionPrincipalType } from '../../session/session-principal-type.mapper';
 import { SessionPrincipalType } from '../../generated/prisma/client';
 import { getRequestMetadata } from '../../common/request-metadata.util';
 
 @Controller('auth')
+@UseInterceptors(AuditContextInterceptor)
 export class SessionAuthController {
   constructor(
     private readonly sessionService: SessionService,
     private readonly tokenService: TokenService,
     private readonly adminAuthService: AdminAuthService,
+    private readonly agentAuthService: AgentAuthService,
   ) {}
 
   @Post('refresh')
@@ -28,10 +33,22 @@ export class SessionAuthController {
         ? await this.adminAuthService.getPermissionsForAdmin(result.principalId)
         : undefined;
 
+    const mustChangePassword =
+      result.principalType === SessionPrincipalType.AGENT
+        ? await this.agentAuthService.getMustChangePasswordForAgent(result.principalId)
+        : undefined;
+
+    const canOnboardClients =
+      result.principalType === SessionPrincipalType.AGENT
+        ? await this.agentAuthService.getCanOnboardClientsForAgent(result.principalId)
+        : undefined;
+
     const payload: JwtPayload = {
       sub: result.principalId,
       type: toJwtPrincipalType(result.principalType),
       permissions,
+      mustChangePassword,
+      canOnboardClients,
     };
 
     return {
@@ -61,10 +78,16 @@ export class SessionAuthController {
 
   @Get('sessions')
   @UseGuards(JwtAuthGuard)
-  listSessions(@Req() req: { user: JwtPayload }) {
+  listSessions(@Query() query: ListSessionsQueryDto, @Req() req: { user: JwtPayload }) {
     return this.sessionService.listActiveSessions(
       toSessionPrincipalType(req.user.type),
       req.user.sub,
+      {
+        q: query.q,
+        createdFrom: query.createdFrom ? new Date(query.createdFrom) : undefined,
+        createdTo: query.createdTo ? new Date(query.createdTo) : undefined,
+      },
+      { page: query.page, limit: query.limit },
     );
   }
 

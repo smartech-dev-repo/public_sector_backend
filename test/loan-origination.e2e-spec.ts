@@ -1,0 +1,555 @@
+import { Test, TestingModule } from '@nestjs/testing';
+import { INestApplication, ValidationPipe } from '@nestjs/common';
+import * as request from 'supertest';
+import { AppModule } from '../src/app.module';
+import { PrismaService } from '../src/prisma/prisma.service';
+import { ensureDefaultCapacity, salaryPayments } from './fixtures/affordability';
+import { TokenService } from '../src/auth/token.service';
+
+describe('Loan origination (e2e)', () => {
+  let app: INestApplication;
+  let prisma: PrismaService;
+  let restoreCapacity: () => Promise<void> = async () => {};
+  let adminAccessToken: string;
+  const staffId = `E2E-ORIGIN-${Date.now()}`;
+  const agency = 'NPF';
+  const productCode = `E2E-ORIGIN-PRODUCT-${Date.now()}`;
+
+  beforeAll(async () => {
+    const moduleFixture: TestingModule = await Test.createTestingModule({
+      imports: [AppModule],
+    }).compile();
+
+    app = moduleFixture.createNestApplication();
+    app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
+    await app.init();
+    prisma = moduleFixture.get(PrismaService);
+    restoreCapacity = await ensureDefaultCapacity(prisma);
+
+    const loginRes = await request(app.getHttpServer())
+      .post('/auth/admin/login')
+      .send({
+        email: process.env.BOOTSTRAP_ADMIN_EMAIL,
+        password: process.env.BOOTSTRAP_ADMIN_PASSWORD,
+      });
+    adminAccessToken = loginRes.body.accessToken;
+
+    await prisma.loanProduct.create({
+      data: {
+        productName: 'E2E Origination Product',
+        productCode,
+        sectors: [agency],
+        minimumAmount: 1000,
+        maximumAmount: 1000000,
+        minimumTenorMonths: 3,
+        maximumTenorMonths: 3,
+        interestTiers: [{ minTenorMonths: 3, maxTenorMonths: 3, interestRatePercent: 5 }],
+        managementChargeType: 'PERCENTAGE',
+        managementChargeValue: 2,
+        managementChargeApplication: 'DEDUCT_FROM_DISBURSEMENT',
+      },
+    });
+  });
+
+  afterAll(async () => {
+    // Note: clientLoan/ippisRecord rows are created with `${staffId}-${suffix}`
+    // (see createVerifiedClient below), so an exact-match `staffId` filter here
+    // would delete nothing and leave the ClientLoan FK-referencing its
+    // LoanRequest when the next line runs — hence `startsWith`.
+    await prisma.clientLoan.deleteMany({ where: { agency, staffId: { startsWith: staffId } } });
+    await prisma.loanRequest.deleteMany({
+      where: { client: { onboarding: { ippisRecord: { staffId: { startsWith: staffId } } } } },
+    });
+    // Captured before clientOnboarding is deleted, since the client ->
+    // ippisRecord.staffId link disappears with it, and a shared phone
+    // prefix (like the other suites in this repo used to do) risks
+    // deleting another run's leftover client that happens to share it.
+    const clientIds = (
+      await prisma.clientOnboarding.findMany({
+        where: { ippisRecord: { staffId: { startsWith: staffId } } },
+        select: { clientId: true },
+      })
+    ).map((c) => c.clientId);
+    await prisma.clientOnboarding.deleteMany({ where: { clientId: { in: clientIds } } });
+    await prisma.ippisRecord.deleteMany({ where: { staffId: { startsWith: staffId } } });
+    await prisma.client.deleteMany({ where: { id: { in: clientIds } } });
+    await prisma.loanProduct.deleteMany({ where: { productCode } });
+    await restoreCapacity();
+    await app.close();
+  });
+
+  async function createVerifiedClient(phoneSuffix: string, staffIdSuffix: string) {
+    const phone = `+234804${phoneSuffix}`;
+    const client = await prisma.client.create({ data: { phone, status: 'VERIFIED' } });
+    const ippisRecord = await prisma.ippisRecord.create({
+      data: { agency, staffId: `${staffId}-${staffIdSuffix}`, employeeName: 'E2E Origination Test', salary: 1000000, ...salaryPayments(1000000) },
+    });
+    await prisma.clientOnboarding.create({
+      data: {
+        clientId: client.id,
+        ippisRecordId: ippisRecord.id,
+        employeeName: 'E2E Origination Test',
+        agency,
+        step: 'COMPLETED',
+      },
+    });
+    const tokenService = (app as unknown as { get: (t: unknown) => TokenService }).get(TokenService);
+    const accessToken = tokenService.signAccessToken({ sub: client.id, type: 'client' });
+    return { client, accessToken };
+  }
+
+  it('lists the active loan products for the client\'s own agency, in NEW_LOAN mode', async () => {
+    const { accessToken } = await createVerifiedClient('0000001', 'A');
+
+    const res = await request(app.getHttpServer())
+      .get('/client/loan-products')
+      .set('Authorization', `Bearer ${accessToken}`)
+      .expect(200);
+
+    expect(res.body.mode).toBe('NEW_LOAN');
+    expect(res.body.eligible).toBe(true);
+    // Not toHaveLength(1): other e2e suites running concurrently against this
+    // same shared DB also create active NPF loan products -- the endpoint
+    // correctly returns every eligible product for the agency, so this only
+    // asserts that *this* fixture's product is present.
+    expect(res.body.data).toEqual(expect.arrayContaining([expect.objectContaining({ productCode })]));
+  });
+
+  it(
+    'runs the full manual-review flow: request -> confirm -> admin approve (which disburses in one step) -> ClientLoan exists',
+    async () => {
+      const { client, accessToken } = await createVerifiedClient('0000002', 'B');
+
+      const createRes = await request(app.getHttpServer())
+        .post('/client/loan-requests')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({ amount: 200000, tenorMonths: 3 })
+        .expect(201);
+      const loanRequestId = createRes.body.id;
+
+      await request(app.getHttpServer())
+        .post('/webhooks/sms/inbound')
+        .send({ phone: client.phone, message: 'YES' })
+        .expect(200);
+
+      const listRes = await request(app.getHttpServer())
+        .get('/admin/loan-requests?status=CONFIRMED')
+        .set('Authorization', `Bearer ${adminAccessToken}`)
+        .expect(200);
+      expect(listRes.body.data.some((lr: { id: string }) => lr.id === loanRequestId)).toBe(true);
+
+      await request(app.getHttpServer())
+        .post(`/admin/loan-requests/${loanRequestId}/approve`)
+        .set('Authorization', `Bearer ${adminAccessToken}`)
+        .expect(200)
+        .expect((res) => expect(res.body.status).toBe('DISBURSED'));
+
+      const clientLoan = await prisma.clientLoan.findUnique({ where: { loanRequestId } });
+      expect(clientLoan).not.toBeNull();
+      expect(Number(clientLoan!.disbursedAmount)).toBe(196000);
+
+      await request(app.getHttpServer())
+        .post('/client/loan-requests')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({ amount: 10000, tenorMonths: 3 })
+        .expect(422);
+    },
+    30000,
+  );
+
+  it('rejects a CONFIRMED request with a reason', async () => {
+    const { client, accessToken } = await createVerifiedClient('0000003', 'C');
+
+    const createRes = await request(app.getHttpServer())
+      .post('/client/loan-requests')
+      .set('Authorization', `Bearer ${accessToken}`)
+      .send({ amount: 150000, tenorMonths: 3 })
+      .expect(201);
+    const loanRequestId = createRes.body.id;
+
+    await request(app.getHttpServer())
+      .post('/webhooks/sms/inbound')
+      .send({ phone: client.phone, message: 'YES' })
+      .expect(200);
+
+    await request(app.getHttpServer())
+      .post(`/admin/loan-requests/${loanRequestId}/reject`)
+      .set('Authorization', `Bearer ${adminAccessToken}`)
+      .send({ reason: 'Insufficient documentation' })
+      .expect(200)
+      .expect((res) => {
+        expect(res.body.status).toBe('REJECTED');
+        expect(res.body.rejectionReason).toBe('Insufficient documentation');
+      });
+  });
+
+  it(
+    'GET /admin/loan-requests/:id returns the enriched detail with availableActions, and admin can confirm a PENDING request via OTP',
+    async () => {
+      const { accessToken } = await createVerifiedClient('0000005', 'E');
+
+      const createRes = await request(app.getHttpServer())
+        .post('/client/loan-requests')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({ amount: 120000, tenorMonths: 3 })
+        .expect(201);
+      const loanRequestId = createRes.body.id;
+
+      const detailRes = await request(app.getHttpServer())
+        .get(`/admin/loan-requests/${loanRequestId}`)
+        .set('Authorization', `Bearer ${adminAccessToken}`)
+        .expect(200);
+      expect(detailRes.body.availableActions).toEqual(['confirmCode']);
+      expect(detailRes.body.client.onboarding.ippisRecord.agency).toBe(agency);
+
+      if (!createRes.body.devCode) {
+        // EMAIL_CODE_DEV_ECHO isn't set in this environment -- there's no way
+        // to read the real code back out (it's hashed), so this test can only
+        // verify the enriched detail shape, not the admin confirm-code path.
+        return;
+      }
+
+      await request(app.getHttpServer())
+        .post(`/admin/loan-requests/${loanRequestId}/confirm-code`)
+        .set('Authorization', `Bearer ${adminAccessToken}`)
+        .send({ code: createRes.body.devCode })
+        .expect(200)
+        .expect({ confirmed: true });
+
+      const confirmed = await prisma.loanRequest.findUniqueOrThrow({ where: { id: loanRequestId } });
+      expect(['CONFIRMED', 'DISBURSED']).toContain(confirmed.status);
+
+      // Whether this lands on CONFIRMED (availableActions: ['approve', 'reject'])
+      // or auto-disburses straight to DISBURSED (availableActions: []) depends on
+      // this environment's LOAN_AUTO_APPROVE_THRESHOLD config, which this test
+      // doesn't control -- just confirm the detail endpoint still resolves cleanly
+      // with a well-formed availableActions array either way.
+      const afterConfirmRes = await request(app.getHttpServer())
+        .get(`/admin/loan-requests/${loanRequestId}`)
+        .set('Authorization', `Bearer ${adminAccessToken}`)
+        .expect(200);
+      expect(Array.isArray(afterConfirmRes.body.availableActions)).toBe(true);
+    },
+    20000,
+  );
+
+  it(
+    'admin can approve with a backdated disbursedAt, which shifts the ClientLoan schedule to match',
+    async () => {
+      const { client, accessToken } = await createVerifiedClient('0000006', 'F');
+
+      const createRes = await request(app.getHttpServer())
+        .post('/client/loan-requests')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({ amount: 90000, tenorMonths: 3 })
+        .expect(201);
+      const loanRequestId = createRes.body.id;
+
+      await request(app.getHttpServer())
+        .post('/webhooks/sms/inbound')
+        .send({ phone: client.phone, message: 'YES' })
+        .expect(200);
+
+      const backdated = '2026-01-01T00:00:00.000Z';
+      await request(app.getHttpServer())
+        .post(`/admin/loan-requests/${loanRequestId}/approve`)
+        .set('Authorization', `Bearer ${adminAccessToken}`)
+        .send({ disbursedAt: backdated })
+        .expect(200)
+        .expect((res) => expect(res.body.disbursedAt).toBe(backdated));
+
+      const clientLoan = await prisma.clientLoan.findUniqueOrThrow({ where: { loanRequestId } });
+      expect(clientLoan.disbursementDate.toISOString()).toBe(backdated);
+      expect(clientLoan.maturationDate.toISOString()).toBe('2026-04-01T00:00:00.000Z');
+    },
+    20000,
+  );
+
+  it('rejects a future disbursedAt on approve with 400', async () => {
+    const { client, accessToken } = await createVerifiedClient('0000007', 'G');
+
+    const createRes = await request(app.getHttpServer())
+      .post('/client/loan-requests')
+      .set('Authorization', `Bearer ${accessToken}`)
+      .send({ amount: 50000, tenorMonths: 3 })
+      .expect(201);
+    const loanRequestId = createRes.body.id;
+
+    await request(app.getHttpServer())
+      .post('/webhooks/sms/inbound')
+      .send({ phone: client.phone, message: 'YES' })
+      .expect(200);
+
+    const future = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+    await request(app.getHttpServer())
+      .post(`/admin/loan-requests/${loanRequestId}/approve`)
+      .set('Authorization', `Bearer ${adminAccessToken}`)
+      .send({ disbursedAt: future })
+      .expect(400);
+  });
+
+  it('returns a CSV for the disbursement summary export', async () => {
+    const month = new Date().toISOString().slice(0, 7);
+    const res = await request(app.getHttpServer())
+      .get(`/admin/client-loans/disbursement-summary?month=${month}`)
+      .set('Authorization', `Bearer ${adminAccessToken}`)
+      .expect(200);
+
+    expect(res.headers['content-type']).toContain('text/csv');
+    expect(res.text).toContain('clientPhone,clientName,agency,principalAmount');
+  });
+});
+
+describe('Agent-assisted loan origination with email-OTP confirmation (e2e)', () => {
+  let app: INestApplication;
+  let prisma: PrismaService;
+  let restoreCapacity2: () => Promise<void> = async () => {};
+  let adminAccessToken: string;
+  const staffIdPrefix = `E2E-AGENT-ORIGIN-${Date.now()}`;
+  const agency = 'NPF';
+  const productCode = `E2E-AGENT-ORIGIN-PRODUCT-${Date.now()}`;
+  const createdAgentIds: string[] = [];
+  const approvalPhone = '+2348031234567';
+  let savedApprovalPhone: string | null = null;
+  let loanSettingsId: string;
+
+  async function setApprovalPhone(phone: string | null) {
+    await prisma.loanSettings.update({ where: { id: loanSettingsId }, data: { loanApprovalPhone: phone } });
+  }
+
+  beforeAll(async () => {
+    const moduleFixture: TestingModule = await Test.createTestingModule({
+      imports: [AppModule],
+    }).compile();
+
+    app = moduleFixture.createNestApplication();
+    app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
+    await app.init();
+    prisma = moduleFixture.get(PrismaService);
+    restoreCapacity2 = await ensureDefaultCapacity(prisma);
+
+    const loginRes = await request(app.getHttpServer())
+      .post('/auth/admin/login')
+      .send({ email: process.env.BOOTSTRAP_ADMIN_EMAIL, password: process.env.BOOTSTRAP_ADMIN_PASSWORD });
+    adminAccessToken = loginRes.body.accessToken;
+
+    await prisma.loanProduct.create({
+      data: {
+        productName: 'E2E Agent-Assisted Origination Product',
+        productCode,
+        sectors: [agency],
+        minimumAmount: 1000,
+        maximumAmount: 1000000,
+        minimumTenorMonths: 3,
+        maximumTenorMonths: 3,
+        interestTiers: [{ minTenorMonths: 3, maxTenorMonths: 3, interestRatePercent: 5 }],
+        managementChargeType: 'PERCENTAGE',
+        managementChargeValue: 2,
+        managementChargeApplication: 'DEDUCT_FROM_DISBURSEMENT',
+      },
+    });
+
+    const settings = (await prisma.loanSettings.findFirst()) ?? (await prisma.loanSettings.create({ data: {} }));
+    loanSettingsId = settings.id;
+    savedApprovalPhone = settings.loanApprovalPhone;
+    await setApprovalPhone(approvalPhone);
+  });
+
+  afterAll(async () => {
+    await setApprovalPhone(savedApprovalPhone);
+    await prisma.clientLoan.deleteMany({ where: { agency, staffId: { startsWith: staffIdPrefix } } });
+    await prisma.loanRequest.deleteMany({
+      where: { client: { onboarding: { ippisRecord: { staffId: { startsWith: staffIdPrefix } } } } },
+    });
+    const clientIds = (
+      await prisma.clientOnboarding.findMany({
+        where: { ippisRecord: { staffId: { startsWith: staffIdPrefix } } },
+        select: { clientId: true },
+      })
+    ).map((c) => c.clientId);
+    await prisma.clientOnboarding.deleteMany({ where: { clientId: { in: clientIds } } });
+    await prisma.ippisRecord.deleteMany({ where: { staffId: { startsWith: staffIdPrefix } } });
+    await prisma.client.deleteMany({ where: { id: { in: clientIds } } });
+    await prisma.agent.deleteMany({ where: { id: { in: createdAgentIds } } });
+    await prisma.loanProduct.deleteMany({ where: { productCode } });
+    await restoreCapacity2();
+    await app.close();
+  });
+
+  async function createAgentWithClient(phoneSuffix: string, staffIdSuffix: string) {
+    const tokenService = (app as unknown as { get: (t: unknown) => TokenService }).get(TokenService);
+    // Deviation from the plan: the plan's literal `phoneSuffix` ('0000001'..'0000004')
+    // collides with static phone literals other e2e files already use on the same
+    // `+234806`/`+234807` prefixes for Client/Agent rows (e.g.
+    // client-loan-repayment-tracking.e2e-spec.ts's `originateAndDisburseLoan`,
+    // agent-loan-products.e2e-spec.ts), causing real `*_phone_key` unique-constraint
+    // failures -- not generic DB contention -- when the full e2e suite runs those
+    // files concurrently. Mixing in Date.now() (same technique already used by
+    // file-download.e2e-spec.ts and agent-client-onboarding.e2e-spec.ts) keeps the
+    // phone format/length identical while making it unique across files/runs.
+    const uniquePhoneTail = `${Date.now().toString().slice(-6)}${phoneSuffix.slice(-1)}`;
+
+    const agent = await prisma.agent.create({
+      data: {
+        email: `e2e-agent-origin-${Date.now()}-${staffIdSuffix}@example.com`,
+        phone: `+2348011${uniquePhoneTail}`,
+        fullName: 'E2E Agent-Assisted Origination Agent',
+        address: '1 Example Street',
+        status: 'APPROVED',
+        cvKey: 'agents/e2e/agent-origin.pdf',
+        canOnboardClients: true,
+      },
+    });
+    createdAgentIds.push(agent.id);
+    const agentAccessToken = tokenService.signAccessToken({ sub: agent.id, type: 'agent', canOnboardClients: true });
+
+    const clientEmail = `e2e-agent-origin-client-${Date.now()}-${staffIdSuffix}@example.com`;
+    const client = await prisma.client.create({
+      data: { phone: `+234806${uniquePhoneTail}`, email: clientEmail, status: 'VERIFIED' },
+    });
+    const ippisRecord = await prisma.ippisRecord.create({
+      data: {
+        agency,
+        staffId: `${staffIdPrefix}-${staffIdSuffix}`,
+        employeeName: 'E2E Agent-Assisted Origination Client',
+        salary: 1000000,
+        ...salaryPayments(1000000),
+      },
+    });
+    await prisma.clientOnboarding.create({
+      data: {
+        clientId: client.id,
+        ippisRecordId: ippisRecord.id,
+        employeeName: 'E2E Agent-Assisted Origination Client',
+        agency,
+        step: 'COMPLETED',
+        onboardedByAgentId: agent.id,
+      },
+    });
+    const clientAccessToken = tokenService.signAccessToken({ sub: client.id, type: 'client' });
+
+    return { agent, agentAccessToken, client, clientAccessToken };
+  }
+
+  it(
+    "404s when an agent targets a client they didn't onboard",
+    async () => {
+      const { agentAccessToken } = await createAgentWithClient('0000001', 'A');
+      const otherAgentClient = await createAgentWithClient('0000002', 'B');
+
+      await request(app.getHttpServer())
+        .post(`/agent/clients/${otherAgentClient.client.id}/loan-requests`)
+        .set('Authorization', `Bearer ${agentAccessToken}`)
+        .send({ amount: 5000, tenorMonths: 3 })
+        .expect(404);
+    },
+    20000,
+  );
+
+  it(
+    'refuses an agent loan request until the loan approval phone is set',
+    async () => {
+      const { agentAccessToken, client } = await createAgentWithClient('0000005', 'E');
+      await setApprovalPhone(null);
+      try {
+        const res = await request(app.getHttpServer())
+          .post(`/agent/clients/${client.id}/loan-requests`)
+          .set('Authorization', `Bearer ${agentAccessToken}`)
+          .send({ amount: 5000, tenorMonths: 3 })
+          .expect(409);
+        expect(res.body.message).toContain('loan approval phone number');
+        expect(await prisma.loanRequest.count({ where: { clientId: client.id } })).toBe(0);
+      } finally {
+        await setApprovalPhone(approvalPhone);
+      }
+    },
+    20000,
+  );
+
+  it(
+    'agent-made request: only an admin can confirm the code the client sends to the approval phone',
+    async () => {
+      const { agent, agentAccessToken, client, clientAccessToken } = await createAgentWithClient('0000003', 'C');
+
+      const createRes = await request(app.getHttpServer())
+        .post(`/agent/clients/${client.id}/loan-requests`)
+        .set('Authorization', `Bearer ${agentAccessToken}`)
+        .send({ amount: 5000, tenorMonths: 3 })
+        .expect(201);
+      const loanRequestId = createRes.body.id;
+      expect(createRes.body).not.toHaveProperty('confirmationCodeHash');
+      expect(createRes.body).not.toHaveProperty('confirmationCodeExpiresAt');
+      expect(createRes.body.requestedByAgentId).toBe(agent.id);
+
+      const stored = await prisma.loanRequest.findUniqueOrThrow({ where: { id: loanRequestId } });
+      expect(stored.confirmationCodeExpiresAt).toEqual(stored.expiresAt);
+
+      const detail = await request(app.getHttpServer())
+        .get(`/admin/loan-requests/${loanRequestId}`)
+        .set('Authorization', `Bearer ${adminAccessToken}`)
+        .expect(200);
+      expect(detail.body.requestedByAgent).toEqual({ id: agent.id, fullName: agent.fullName, phone: agent.phone });
+
+      // A YES reply can't confirm it: an admin has to enter the code.
+      await request(app.getHttpServer())
+        .post('/webhooks/sms/inbound')
+        .send({ phone: client.phone, message: 'YES' })
+        .expect(200);
+      expect((await prisma.loanRequest.findUniqueOrThrow({ where: { id: loanRequestId } })).status).toBe('PENDING');
+
+      if (!createRes.body.devCode) {
+        // EMAIL_CODE_DEV_ECHO isn't set here, so the hashed code can't be read back.
+        return;
+      }
+
+      for (const [path, token] of [
+        [`/agent/clients/${client.id}/loan-requests/${loanRequestId}/confirm-code`, agentAccessToken],
+        [`/client/loan-requests/${loanRequestId}/confirm-code`, clientAccessToken],
+      ]) {
+        const res = await request(app.getHttpServer())
+          .post(path)
+          .set('Authorization', `Bearer ${token}`)
+          .send({ code: createRes.body.devCode })
+          .expect(403);
+        expect(res.body.message).toContain('requested by an agent');
+      }
+      expect((await prisma.loanRequest.findUniqueOrThrow({ where: { id: loanRequestId } })).status).toBe('PENDING');
+
+      const adminRes = await request(app.getHttpServer())
+        .post(`/admin/loan-requests/${loanRequestId}/confirm-code`)
+        .set('Authorization', `Bearer ${adminAccessToken}`)
+        .send({ code: createRes.body.devCode });
+      expect([200, 201]).toContain(adminRes.status);
+    },
+    20000,
+  );
+
+  it(
+    "a wrong code is rejected with 401, and the existing SMS-reply-YES flow still independently confirms the same pending request",
+    async () => {
+      const { client, clientAccessToken } = await createAgentWithClient('0000004', 'D');
+
+      const createRes = await request(app.getHttpServer())
+        .post('/client/loan-requests')
+        .set('Authorization', `Bearer ${clientAccessToken}`)
+        .send({ amount: 5000, tenorMonths: 3 })
+        .expect(201);
+      const loanRequestId = createRes.body.id;
+
+      await request(app.getHttpServer())
+        .post(`/client/loan-requests/${loanRequestId}/confirm-code`)
+        .set('Authorization', `Bearer ${clientAccessToken}`)
+        .send({ code: '000000' })
+        .expect(401);
+
+      await request(app.getHttpServer())
+        .post('/webhooks/sms/inbound')
+        .send({ phone: client.phone, message: 'YES' })
+        .expect(200);
+
+      const confirmedRequest = await prisma.loanRequest.findUniqueOrThrow({ where: { id: loanRequestId } });
+      expect(['CONFIRMED', 'DISBURSED']).toContain(confirmedRequest.status);
+    },
+    20000,
+  );
+});

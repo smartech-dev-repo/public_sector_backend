@@ -1,0 +1,5 @@
+export enum SmsType {
+  OTP = 'OTP',
+  LOAN_CONFIRMATION = 'LOAN_CONFIRMATION',
+  NOTIFICATION = 'NOTIFICATION',
+}

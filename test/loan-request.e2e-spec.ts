@@ -1,0 +1,143 @@
+import { Test, TestingModule } from '@nestjs/testing';
+import { INestApplication, ValidationPipe } from '@nestjs/common';
+import * as request from 'supertest';
+import { AppModule } from '../src/app.module';
+import { PrismaService } from '../src/prisma/prisma.service';
+import { ensureDefaultCapacity, salaryPayments } from './fixtures/affordability';
+import { TokenService } from '../src/auth/token.service';
+
+describe('Loan request workflow (e2e)', () => {
+  let app: INestApplication;
+  let prisma: PrismaService;
+  let restoreCapacity: () => Promise<void> = async () => {};
+  let clientId: string;
+  let accessToken: string;
+  const phone = `+234802${Date.now().toString().slice(-7)}`;
+  const staffId = `E2E-LOAN-${Date.now()}`;
+  const productCode = `E2E-LOAN-PRODUCT-${Date.now()}`;
+
+  beforeAll(async () => {
+    const moduleFixture: TestingModule = await Test.createTestingModule({
+      imports: [AppModule],
+    }).compile();
+
+    app = moduleFixture.createNestApplication();
+    app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
+    await app.init();
+    prisma = moduleFixture.get(PrismaService);
+    restoreCapacity = await ensureDefaultCapacity(prisma);
+
+    const client = await prisma.client.create({ data: { phone, status: 'VERIFIED' } });
+    clientId = client.id;
+    const ippisRecord = await prisma.ippisRecord.create({
+      data: { agency: 'NPF', staffId, employeeName: 'E2E Loan Test', salary: 1000000, ...salaryPayments(1000000) },
+    });
+    await prisma.clientOnboarding.create({
+      data: {
+        clientId,
+        ippisRecordId: ippisRecord.id,
+        employeeName: 'E2E Loan Test',
+        agency: 'NPF',
+        step: 'COMPLETED',
+      },
+    });
+
+    await prisma.loanProduct.create({
+      data: {
+        productName: 'E2E Loan Product',
+        productCode,
+        sectors: ['NPF'],
+        minimumAmount: 1000,
+        maximumAmount: 1000000,
+        minimumTenorMonths: 6,
+        maximumTenorMonths: 6,
+        interestTiers: [{ minTenorMonths: 6, maxTenorMonths: 6, interestRatePercent: 5 }],
+        managementChargeType: 'PERCENTAGE',
+        managementChargeValue: 2,
+        managementChargeApplication: 'DEDUCT_FROM_DISBURSEMENT',
+      },
+    });
+
+    const tokenService = moduleFixture.get(TokenService);
+    accessToken = tokenService.signAccessToken({ sub: clientId, type: 'client' });
+  });
+
+  afterAll(async () => {
+    // approve() now disburses in one step (creating a real ClientLoan row),
+    // so it must be deleted before its referencing LoanRequest or the FK
+    // constraint on ClientLoan.loanRequestId rejects the delete.
+    await prisma.clientLoan.deleteMany({ where: { clientId } });
+    await prisma.loanRequest.deleteMany({ where: { clientId } });
+    await prisma.clientOnboarding.deleteMany({ where: { clientId } });
+    await prisma.ippisRecord.deleteMany({ where: { staffId } });
+    await prisma.client.deleteMany({ where: { id: clientId } });
+    await prisma.loanProduct.deleteMany({ where: { productCode } });
+    await restoreCapacity();
+    await app.close();
+  });
+
+  let loanRequestId: string;
+
+  it('rejects a request that exceeds the loan product\'s maximum amount', async () => {
+    await request(app.getHttpServer())
+      .post('/client/loan-requests')
+      .set('Authorization', `Bearer ${accessToken}`)
+      .send({ amount: 100000000, tenorMonths: 6 })
+      .expect(422);
+  });
+
+  it('creates a loan request and resends the confirmation while still PENDING', async () => {
+    const createRes = await request(app.getHttpServer())
+      .post('/client/loan-requests')
+      .set('Authorization', `Bearer ${accessToken}`)
+      .send({ amount: 500000, tenorMonths: 6 })
+      .expect(201);
+    expect(createRes.body.status).toBe('PENDING');
+    loanRequestId = createRes.body.id;
+
+    const resendRes = await request(app.getHttpServer())
+      .post(`/client/loan-requests/${loanRequestId}/resend`)
+      .set('Authorization', `Bearer ${accessToken}`)
+      .expect(200);
+    expect(resendRes.body.status).toBe('PENDING');
+  });
+
+  it('confirms the request via the inbound webhook and lists it as CONFIRMED', async () => {
+    await request(app.getHttpServer())
+      .post('/webhooks/sms/inbound')
+      .send({ phone, message: 'YES' })
+      .expect(200);
+
+    const listRes = await request(app.getHttpServer())
+      .get('/client/loan-requests')
+      .set('Authorization', `Bearer ${accessToken}`)
+      .expect(200);
+    const confirmed = listRes.body.data.find((lr: { id: string }) => lr.id === loanRequestId);
+    expect(confirmed.status).toBe('CONFIRMED');
+  });
+
+  it('rejects resend once the request is no longer PENDING', async () => {
+    await request(app.getHttpServer())
+      .post(`/client/loan-requests/${loanRequestId}/resend`)
+      .set('Authorization', `Bearer ${accessToken}`)
+      .expect(409);
+  });
+
+  it('admin approves the confirmed loan request (which disburses it in one step), hydrating the client object', async () => {
+    const adminLoginRes = await request(app.getHttpServer())
+      .post('/auth/admin/login')
+      .send({
+        email: process.env.BOOTSTRAP_ADMIN_EMAIL,
+        password: process.env.BOOTSTRAP_ADMIN_PASSWORD,
+      });
+    const adminAccessToken = adminLoginRes.body.accessToken;
+
+    const res = await request(app.getHttpServer())
+      .post(`/admin/loan-requests/${loanRequestId}/approve`)
+      .set('Authorization', `Bearer ${adminAccessToken}`)
+      .expect(200);
+
+    expect(res.body.status).toBe('DISBURSED');
+    expect(res.body.client).toEqual(expect.objectContaining({ id: clientId, phone, status: 'VERIFIED' }));
+  });
+});

@@ -1,0 +1,312 @@
+import { ConflictException, NotFoundException } from '@nestjs/common';
+import { RoleService } from './role.service';
+import { PrismaService } from '../prisma/prisma.service';
+
+describe('RoleService', () => {
+  let service: RoleService;
+  let prisma: {
+    role: {
+      create: jest.Mock;
+      findMany: jest.Mock;
+      findUnique: jest.Mock;
+      update: jest.Mock;
+      delete: jest.Mock;
+      count: jest.Mock;
+    };
+    adminUser: { count: jest.Mock; updateMany: jest.Mock };
+    department: { findUnique: jest.Mock };
+    permission: { findUnique: jest.Mock; findMany: jest.Mock };
+    rolePermission: { upsert: jest.Mock; deleteMany: jest.Mock; createMany: jest.Mock };
+    $transaction: jest.Mock;
+  };
+
+  beforeEach(() => {
+    prisma = {
+      role: {
+        create: jest.fn(),
+        findMany: jest.fn(),
+        findUnique: jest.fn(),
+        update: jest.fn(),
+        delete: jest.fn(),
+        count: jest.fn(),
+      },
+      adminUser: { count: jest.fn(), updateMany: jest.fn() },
+      department: { findUnique: jest.fn().mockResolvedValue({ id: 'dept-1' }) },
+      permission: { findUnique: jest.fn(), findMany: jest.fn() },
+      rolePermission: { upsert: jest.fn(), deleteMany: jest.fn(), createMany: jest.fn() },
+      $transaction: jest.fn(),
+    };
+    service = new RoleService(prisma as unknown as PrismaService);
+  });
+
+  it('create converts a duplicate-name DB error into ConflictException', async () => {
+    prisma.role.create.mockRejectedValue({ code: 'P2002' });
+    await expect(service.create({ name: 'SUPER_ADMIN' })).rejects.toThrow(ConflictException);
+  });
+
+  it('findById throws NotFoundException for an unknown id', async () => {
+    prisma.role.findUnique.mockResolvedValue(null);
+    await expect(service.findById('missing')).rejects.toThrow(NotFoundException);
+  });
+
+  it('update rejects renaming SUPER_ADMIN', async () => {
+    prisma.role.findUnique.mockResolvedValue({ id: 'role-1', name: 'SUPER_ADMIN' });
+    await expect(service.update('role-1', { name: 'NOT_SUPER_ADMIN' })).rejects.toThrow(ConflictException);
+    expect(prisma.role.update).not.toHaveBeenCalled();
+  });
+
+  it('update allows editing SUPER_ADMIN description without touching name, and hydrates department/permissions', async () => {
+    prisma.role.findUnique.mockResolvedValue({ id: 'role-1', name: 'SUPER_ADMIN' });
+    prisma.role.update.mockResolvedValue({ id: 'role-1', name: 'SUPER_ADMIN', description: 'new' });
+    await service.update('role-1', { description: 'new' });
+    expect(prisma.role.update).toHaveBeenCalledWith({
+      where: { id: 'role-1' },
+      data: { name: undefined, description: 'new', departmentId: undefined },
+      include: { permissions: { include: { permission: true } }, department: { select: { id: true, name: true } }, _count: { select: { admins: true } } },
+    });
+  });
+
+  it('create stores the departmentId when given, and hydrates department/permissions in the response', async () => {
+    prisma.role.create.mockResolvedValue({ id: 'role-2', name: 'REVIEWER', departmentId: 'dept-1' });
+    await service.create({ name: 'REVIEWER', departmentId: 'dept-1' });
+    expect(prisma.role.create).toHaveBeenCalledWith({
+      data: { name: 'REVIEWER', departmentId: 'dept-1' },
+      include: { permissions: { include: { permission: true } }, department: { select: { id: true, name: true } }, _count: { select: { admins: true } } },
+    });
+  });
+
+  it('update sets departmentId when given, and clears it when explicitly set to null', async () => {
+    prisma.role.findUnique.mockResolvedValue({ id: 'role-1', name: 'REVIEWER' });
+    prisma.role.update.mockResolvedValue({ id: 'role-1', name: 'REVIEWER', departmentId: null });
+    prisma.$transaction.mockResolvedValue([{ id: 'role-1', departmentId: null }, { count: 0 }]);
+    await service.update('role-1', { departmentId: null });
+    expect(prisma.role.update).toHaveBeenCalledWith({
+      where: { id: 'role-1' },
+      data: { name: undefined, description: undefined, departmentId: null },
+      include: { permissions: { include: { permission: true } }, department: { select: { id: true, name: true } }, _count: { select: { admins: true } } },
+    });
+  });
+
+  it('update moves the role\'s admins when its department changes, in one transaction', async () => {
+    prisma.role.findUnique.mockResolvedValue({ id: 'role-1', name: 'REVIEWER', departmentId: 'dept-old' });
+    prisma.role.update.mockReturnValue('role-update');
+    prisma.adminUser.updateMany.mockReturnValue('holders-update');
+    prisma.$transaction.mockResolvedValue([{ id: 'role-1', departmentId: 'dept-1' }, { count: 2 }]);
+
+    const role = await service.update('role-1', { departmentId: 'dept-1' });
+
+    expect(prisma.$transaction).toHaveBeenCalledWith(['role-update', 'holders-update']);
+    expect(prisma.adminUser.updateMany).toHaveBeenCalledWith({ where: { roleId: 'role-1' }, data: { departmentId: 'dept-1' } });
+    expect(role).toEqual({ id: 'role-1', departmentId: 'dept-1' });
+  });
+
+  it('update leaves admins alone when the department is unchanged', async () => {
+    prisma.role.findUnique.mockResolvedValue({ id: 'role-1', name: 'REVIEWER', departmentId: 'dept-1' });
+    prisma.role.update.mockResolvedValue({ id: 'role-1' });
+
+    await service.update('role-1', { departmentId: 'dept-1', description: 'x' });
+
+    expect(prisma.adminUser.updateMany).not.toHaveBeenCalled();
+  });
+
+  it('create and update refuse an unknown department', async () => {
+    prisma.department.findUnique.mockResolvedValue(null);
+    prisma.role.findUnique.mockResolvedValue({ id: 'role-1', name: 'REVIEWER' });
+
+    await expect(service.create({ name: 'X', departmentId: 'nope' })).rejects.toThrow(NotFoundException);
+    await expect(service.update('role-1', { departmentId: 'nope' })).rejects.toThrow(NotFoundException);
+    expect(prisma.role.create).not.toHaveBeenCalled();
+  });
+
+  it('remove rejects deleting SUPER_ADMIN', async () => {
+    prisma.role.findUnique.mockResolvedValue({ id: 'role-1', name: 'SUPER_ADMIN' });
+    await expect(service.remove('role-1')).rejects.toThrow(ConflictException);
+    expect(prisma.role.delete).not.toHaveBeenCalled();
+  });
+
+  it('remove rejects deleting a role assigned to any admin', async () => {
+    prisma.role.findUnique.mockResolvedValue({ id: 'role-1', name: 'CUSTOM_ROLE' });
+    prisma.adminUser.count.mockResolvedValue(2);
+    await expect(service.remove('role-1')).rejects.toThrow(ConflictException);
+    expect(prisma.role.delete).not.toHaveBeenCalled();
+  });
+
+  it('remove deletes an unused, non-SUPER_ADMIN role', async () => {
+    prisma.role.findUnique.mockResolvedValue({ id: 'role-1', name: 'CUSTOM_ROLE' });
+    prisma.adminUser.count.mockResolvedValue(0);
+    await service.remove('role-1');
+    expect(prisma.role.delete).toHaveBeenCalledWith({ where: { id: 'role-1' } });
+  });
+
+  it('assignPermission throws NotFoundException for an unknown permission', async () => {
+    prisma.role.findUnique.mockResolvedValue({ id: 'role-1' });
+    prisma.permission.findUnique.mockResolvedValue(null);
+    await expect(service.assignPermission('role-1', 'missing-perm')).rejects.toThrow(NotFoundException);
+  });
+
+  it('assignPermission upserts the RolePermission row', async () => {
+    prisma.role.findUnique.mockResolvedValue({ id: 'role-1' });
+    prisma.permission.findUnique.mockResolvedValue({ id: 'perm-1' });
+    await service.assignPermission('role-1', 'perm-1');
+    expect(prisma.rolePermission.upsert).toHaveBeenCalledWith({
+      where: { roleId_permissionId: { roleId: 'role-1', permissionId: 'perm-1' } },
+      update: {},
+      create: { roleId: 'role-1', permissionId: 'perm-1' },
+    });
+  });
+
+  it('update converts a duplicate-name DB error into ConflictException', async () => {
+    prisma.role.findUnique.mockResolvedValue({ id: 'role-1', name: 'REVIEWER' });
+    prisma.role.update.mockRejectedValue(
+      Object.assign(new Error('Unique constraint'), { code: 'P2002' }),
+    );
+    await expect(service.update('role-1', { name: 'TAKEN' })).rejects.toThrow(ConflictException);
+  });
+
+  it('removePermission refuses to touch SUPER_ADMIN', async () => {
+    prisma.role.findUnique.mockResolvedValue({ id: 'role-1', name: 'SUPER_ADMIN' });
+    await expect(service.removePermission('role-1', 'perm-1')).rejects.toThrow(ConflictException);
+    expect(prisma.rolePermission.deleteMany).not.toHaveBeenCalled();
+  });
+
+  describe('setPermissions', () => {
+    const roleWith = (...keys: string[]) => ({
+      id: 'role-1',
+      name: 'REVIEWER',
+      permissions: keys.map((key) => ({ permission: { id: `id-${key}`, key } })),
+    });
+
+    it('replaces the list and reports what was added and removed', async () => {
+      prisma.role.findUnique.mockResolvedValue(roleWith('a:read', 'b:read'));
+      prisma.permission.findMany.mockResolvedValue([
+        { id: 'id-b:read', key: 'b:read' },
+        { id: 'id-c:read', key: 'c:read' },
+      ]);
+
+      const changes = await service.setPermissions('role-1', ['id-b:read', 'id-c:read', 'id-c:read']);
+
+      expect(changes).toEqual({ added: ['c:read'], removed: ['a:read'] });
+      expect(prisma.rolePermission.deleteMany).toHaveBeenCalledWith({
+        where: { roleId: 'role-1', permissionId: { notIn: ['id-b:read', 'id-c:read'] } },
+      });
+      expect(prisma.rolePermission.createMany).toHaveBeenCalledWith({
+        data: [
+          { roleId: 'role-1', permissionId: 'id-b:read' },
+          { roleId: 'role-1', permissionId: 'id-c:read' },
+        ],
+        skipDuplicates: true,
+      });
+      expect(prisma.$transaction).toHaveBeenCalledTimes(1);
+    });
+
+    it('clears every permission when given an empty list', async () => {
+      prisma.role.findUnique.mockResolvedValue(roleWith('a:read'));
+      prisma.permission.findMany.mockResolvedValue([]);
+
+      const changes = await service.setPermissions('role-1', []);
+
+      expect(changes).toEqual({ added: [], removed: ['a:read'] });
+      expect(prisma.rolePermission.deleteMany).toHaveBeenCalledWith({
+        where: { roleId: 'role-1', permissionId: { notIn: [] } },
+      });
+    });
+
+    it('rejects an unknown permission without writing anything', async () => {
+      prisma.role.findUnique.mockResolvedValue(roleWith());
+      prisma.permission.findMany.mockResolvedValue([]);
+
+      await expect(service.setPermissions('role-1', ['nope'])).rejects.toThrow(NotFoundException);
+      expect(prisma.$transaction).not.toHaveBeenCalled();
+    });
+
+    it('refuses to edit SUPER_ADMIN', async () => {
+      prisma.role.findUnique.mockResolvedValue({ ...roleWith(), name: 'SUPER_ADMIN' });
+
+      await expect(service.setPermissions('role-1', [])).rejects.toThrow(ConflictException);
+      expect(prisma.$transaction).not.toHaveBeenCalled();
+    });
+  });
+
+  it('removePermission deletes the RolePermission row', async () => {
+    prisma.role.findUnique.mockResolvedValue({ id: 'role-1', name: 'REVIEWER' });
+    await service.removePermission('role-1', 'perm-1');
+    expect(prisma.rolePermission.deleteMany).toHaveBeenCalledWith({ where: { roleId: 'role-1', permissionId: 'perm-1' } });
+  });
+
+  describe('assignPermissions', () => {
+    it('rejects the whole batch when any permissionId is unknown, writing none of them', async () => {
+      prisma.role.findUnique.mockResolvedValue({ id: 'role-1' });
+      prisma.permission.findMany.mockResolvedValue([{ id: 'perm-1' }]);
+
+      await expect(service.assignPermissions('role-1', ['perm-1', 'perm-missing'])).rejects.toThrow(NotFoundException);
+      expect(prisma.$transaction).not.toHaveBeenCalled();
+    });
+
+    it('upserts every permission in the batch when all are valid', async () => {
+      prisma.role.findUnique.mockResolvedValue({ id: 'role-1' });
+      prisma.permission.findMany.mockResolvedValue([{ id: 'perm-1' }, { id: 'perm-2' }]);
+      prisma.$transaction.mockResolvedValue(undefined);
+      prisma.rolePermission.upsert.mockReturnValue('upsert-call');
+
+      await service.assignPermissions('role-1', ['perm-1', 'perm-2']);
+
+      expect(prisma.rolePermission.upsert).toHaveBeenCalledWith({
+        where: { roleId_permissionId: { roleId: 'role-1', permissionId: 'perm-1' } },
+        update: {},
+        create: { roleId: 'role-1', permissionId: 'perm-1' },
+      });
+      expect(prisma.rolePermission.upsert).toHaveBeenCalledWith({
+        where: { roleId_permissionId: { roleId: 'role-1', permissionId: 'perm-2' } },
+        update: {},
+        create: { roleId: 'role-1', permissionId: 'perm-2' },
+      });
+      expect(prisma.$transaction).toHaveBeenCalledWith(['upsert-call', 'upsert-call']);
+    });
+  });
+
+  describe('list', () => {
+    it('defaults to page 1/limit 25 with no filters', async () => {
+      prisma.role.findMany.mockResolvedValue([]);
+      prisma.role.count.mockResolvedValue(0);
+
+      const result = await service.list();
+
+      expect(prisma.role.findMany).toHaveBeenCalledWith(expect.objectContaining({ skip: 0, take: 25 }));
+      expect(result.meta).toEqual({ total: 0, page: 1, limit: 25, totalPages: 0 });
+    });
+
+    it('searches by name', async () => {
+      prisma.role.findMany.mockResolvedValue([]);
+      prisma.role.count.mockResolvedValue(0);
+
+      await service.list({ q: 'reviewer' });
+
+      expect(prisma.role.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { name: { contains: 'reviewer', mode: 'insensitive' } } }),
+      );
+    });
+
+    it('computes skip/take from page and limit and reports the total', async () => {
+      prisma.role.findMany.mockResolvedValue([]);
+      prisma.role.count.mockResolvedValue(8);
+
+      const result = await service.list({}, { page: 2, limit: 5 });
+
+      expect(prisma.role.findMany).toHaveBeenCalledWith(expect.objectContaining({ skip: 5, take: 5 }));
+      expect(result.meta).toEqual({ total: 8, page: 2, limit: 5, totalPages: 2 });
+    });
+
+    it('includes department alongside permissions', async () => {
+      prisma.role.findMany.mockResolvedValue([]);
+      prisma.role.count.mockResolvedValue(0);
+
+      await service.list();
+
+      expect(prisma.role.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          include: { permissions: { include: { permission: true } }, department: { select: { id: true, name: true } }, _count: { select: { admins: true } } },
+        }),
+      );
+    });
+  });
+});

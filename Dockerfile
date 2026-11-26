@@ -4,7 +4,7 @@
 # No nginx (Dokploy's own Traefik handles routing/TLS) and no
 # docker-compose (this is the only service in the deployment).
 
-FROM node:22-alpine AS base
+FROM node:22.23.4-alpine AS base
 WORKDIR /app
 
 # ---- deps: full install (incl. devDependencies), needed to build ----
@@ -27,10 +27,25 @@ RUN apk add --no-cache python3 make g++
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev
 
+# ---- face-models: OpenCV model files for face comparison ----
+# Pinned to fixed upstream commits and checked against SHA-256 by the script; a changed file
+# fails the build.
+FROM base AS face-models
+RUN apk add --no-cache python3
+COPY face-match/fetch_models.py ./face-match/fetch_models.py
+RUN python3 face-match/fetch_models.py
+
 # ---- runtime: lean final image ----
 FROM base AS runtime
 ENV NODE_ENV=production
-ENV PORT=3000
+ENV PORT=3020
+
+# Face comparison (face-match/compare_faces.py) runs on Alpine's own OpenCV build, as OpenCV
+# publishes no pip wheels for Alpine. Installed whether or not the feature is switched on in
+# the back office, so it can be switched on without a redeploy.
+RUN apk add --no-cache python3 py3-numpy py3-opencv
+COPY face-match/compare_faces.py ./face-match/compare_faces.py
+COPY --from=face-models /app/face-match/models ./face-match/models
 
 COPY --from=prod-deps /app/node_modules ./node_modules
 # dist/generated/prisma (the compiled Prisma client) comes along with
@@ -44,7 +59,7 @@ COPY --from=build /app/prisma ./prisma
 COPY --from=build /app/prisma.config.ts ./prisma.config.ts
 COPY package.json ./package.json
 
-EXPOSE 3000
+EXPOSE 3020
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
   CMD wget -qO- "http://127.0.0.1:${PORT}/health" || exit 1

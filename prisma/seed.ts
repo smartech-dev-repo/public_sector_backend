@@ -1,7 +1,7 @@
 import 'dotenv/config';
 import { PrismaClient } from '../src/generated/prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
-import * as bcrypt from 'bcrypt';
+import { hashPassword } from '../src/common/password-hash.util';
 
 const prisma = new PrismaClient({
   adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }),
@@ -17,6 +17,43 @@ const BOOTSTRAP_PERMISSIONS: Array<{ key: string; description: string }> = [
   { key: 'agents:sessions:revoke', description: "Force-revoke an agent's active sessions" },
   { key: 'clients:sessions:revoke', description: "Force-revoke a client's active sessions" },
   { key: 'audit:read', description: 'View audit log entries' },
+  { key: 'loans:upload', description: 'Upload disbursed loans reports' },
+  { key: 'repayments:upload', description: 'Upload IPPIS repayment schedule reports' },
+  { key: 'documents:read', description: 'View document upload batches and snapshot exports' },
+  { key: 'permissions:manage', description: 'Create, edit, and delete permission definitions' },
+  { key: 'reconciliation:read', description: 'View loan repayment reconciliation variances' },
+  { key: 'reconciliation:resolve', description: 'Assign, refund or dismiss payroll deductions that match no running loan' },
+  { key: 'wallets:read', description: "View a client's wallet balance and entries" },
+  { key: 'approvals:loans', description: 'Decide loan approvals, disbursements and code confirmations sent for approval' },
+  { key: 'approvals:agents', description: 'Decide agent approvals and credential resends sent for approval' },
+  { key: 'approvals:wallets', description: 'Decide wallet credits and debits sent for approval' },
+  { key: 'sectors:manage', description: 'Add, rename and remove sectors' },
+  { key: 'alerts:manage', description: 'Choose who receives security alert emails' },
+  { key: 'sessions:manage', description: "View every user's sessions and sign users out" },
+  { key: 'wallets:manage', description: "Credit or debit a client's wallet" },
+  { key: 'loan-products:manage', description: 'Create/edit the loan product catalog (sectors, amount/tenor range, interest tiers, service-length eligibility)' },
+  { key: 'management-fees:manage', description: 'Create, edit, and delete the management fees loan products pick from' },
+  { key: 'loan-settings:manage', description: 'Configure the global retirement-age and max-service-years settings used for loan eligibility' },
+  { key: 'face-match:manage', description: 'Switch face comparison on or off and set the minimum score for client onboarding' },
+  { key: 'loan-requests:read', description: 'View the loan request list and details' },
+  { key: 'loan-requests:manage', description: 'Send a confirmed loan request for approval' },
+  { key: 'loan-requests:confirm-code', description: "Enter the client's code to confirm a pending loan request" },
+  { key: 'loan-requests:reject', description: 'Reject a confirmed loan request' },
+  { key: 'loan-requests:disburse', description: 'Send an approved loan request for disbursement' },
+  { key: 'clients:all-records', description: "See every client's records, not only clients this admin onboarded" },
+  { key: 'clients:assign', description: 'Assign a client to an agent or admin, and move clients between agents' },
+  { key: 'devices:read', description: 'See the devices agents and clients are signed in on, and release requests' },
+  { key: 'devices:manage', description: 'Release a bound device, with a reason, and decide release requests' },
+  { key: 'client-loans:read', description: "View client loans and disbursement reports" },
+  { key: 'clients:read', description: "View a client's loan requests, loans, and activity history" },
+  { key: 'departments:manage', description: 'Create, edit, and delete department definitions' },
+  { key: 'clients:onboard', description: "Onboard a client on the client's behalf (admin-initiated onboarding)" },
+  { key: 'agents:onboarding-access:manage', description: "Grant or revoke an agent's ability to onboard clients" },
+  { key: 'clients:analytics:read', description: 'View aggregate client onboarding and activity analytics' },
+  { key: 'agents:analytics:read', description: 'View aggregate agent-application analytics' },
+  { key: 'agents:recruitment:read', description: 'View in-progress and completed agent recruitment applications' },
+  { key: 'agents:recruitment:analytics:read', description: 'View agent recruitment funnel analytics' },
+  { key: 'agents:recruitment:manage', description: 'Delete an abandoned agent recruitment application' },
 ];
 
 async function main() {
@@ -59,20 +96,27 @@ async function main() {
     );
   }
 
-  const passwordHash = await bcrypt.hash(bootstrapPassword, 12);
+  const passwordHash = await hashPassword(bootstrapPassword);
 
-  const admin = await prisma.adminUser.upsert({
+  const trimmedBootstrapName = bootstrapName.trim();
+  const bootstrapFirstSpace = trimmedBootstrapName.indexOf(' ');
+  const bootstrapFirstName =
+    bootstrapFirstSpace === -1 ? trimmedBootstrapName : trimmedBootstrapName.slice(0, bootstrapFirstSpace);
+  const bootstrapLastName =
+    bootstrapFirstSpace === -1 ? '' : trimmedBootstrapName.slice(bootstrapFirstSpace + 1).trim();
+
+  await prisma.adminUser.upsert({
     where: { email: bootstrapEmail },
     update: {},
-    create: { email: bootstrapEmail, passwordHash, fullName: bootstrapName },
-  });
-
-  await prisma.adminUserRole.upsert({
-    where: {
-      adminUserId_roleId: { adminUserId: admin.id, roleId: superAdminRole.id },
+    create: {
+      email: bootstrapEmail,
+      passwordHash,
+      firstName: bootstrapFirstName,
+      lastName: bootstrapLastName,
+      fullName: bootstrapName,
+      roleId: superAdminRole.id,
+      departmentId: superAdminRole.departmentId,
     },
-    update: {},
-    create: { adminUserId: admin.id, roleId: superAdminRole.id },
   });
 }
 

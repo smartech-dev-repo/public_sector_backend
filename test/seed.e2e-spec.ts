@@ -31,10 +31,10 @@ describe('Seed data', () => {
   it('creates the bootstrap admin with the SUPER_ADMIN role', async () => {
     const admin = await prisma.adminUser.findUnique({
       where: { email: process.env.BOOTSTRAP_ADMIN_EMAIL },
-      include: { roles: { include: { role: true } } },
+      include: { role: true },
     });
 
     expect(admin).not.toBeNull();
-    expect(admin!.roles.some((r) => r.role.name === 'SUPER_ADMIN')).toBe(true);
+    expect(admin!.role.name).toBe('SUPER_ADMIN');
   });
 });

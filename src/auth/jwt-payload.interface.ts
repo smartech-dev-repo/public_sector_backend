@@ -4,4 +4,6 @@ export interface JwtPayload {
   sub: string;
   type: PrincipalType;
   permissions?: string[];
+  mustChangePassword?: boolean;
+  canOnboardClients?: boolean;
 }

@@ -35,7 +35,35 @@
 | Client | `POST /auth/client/otp/request` then `POST /auth/client/otp/verify` | `{ phone }` then `{ phone, code }` |
 
 OTP codes are logged to the console by the mock `ConsoleOtpProvider` in
-development — there is no real SMS vendor wired in yet.
+development — there is no real SMS vendor wired in yet. Phone OTP codes
+are 4 digits by default, configurable via `PHONE_OTP_LENGTH`.
+
+## Admin password self-service
+
+`POST /auth/admin/forgot-password` (`{ email }`, always `200` — never reveals
+whether the email exists) emails a one-hour opaque reset token via the
+same mechanism `AdminInvite` already uses. `POST /auth/admin/reset-password`
+(`{ token, newPassword }`) consumes it and force-revokes every existing
+session for that admin, since a reset implies the old password may be
+compromised. `POST /auth/admin/change-password` (Admin JWT,
+`{ currentPassword, newPassword }`) is the voluntary path — it does not
+revoke other sessions.
+
+## Admin two-factor authentication
+
+An admin can enable 2FA via `POST /auth/admin/2fa/setup` (`{ method: 'TOTP' | 'EMAIL' }`,
+`409` if already enabled), confirm it via `POST /auth/admin/2fa/confirm`
+(`{ code }` — only activates on a real, successfully-verified code, so a
+botched setup never locks anyone out), and turn it off via
+`POST /auth/admin/2fa/disable` (`{ currentPassword }`, requires
+re-confirming the password). Once enabled, `POST /auth/admin/login`
+returns `{ twoFactorRequired: true, method, pendingToken }` instead of
+real tokens — `pendingToken` is signed with a **separate secret**
+(`JWT_TWO_FACTOR_PENDING_SECRET`), so it's cryptographically incapable of
+being used as a real Bearer token anywhere. `POST /auth/admin/2fa/login-verify`
+(`{ pendingToken, code }`) completes the login and issues real tokens. The
+`EMAIL` method's emailed code is `EMAIL_CODE_LENGTH` digits (default 6,
+configurable 6-8).
 
 ## Session endpoints
 
@@ -47,21 +75,183 @@ development — there is no real SMS vendor wired in yet.
 | `GET /auth/sessions` | Bearer access token | Lists the caller's own active sessions. |
 | `DELETE /auth/sessions/:id` | Bearer access token | Revokes one of the caller's own sessions. |
 
+`GET /auth/sessions` also accepts a `createdFrom`/`createdTo` date range
+over `createdAt`, plus `page`/`limit` pagination (default `1`/`25`,
+`limit` capped at `100`), and returns
+`{ data: [...], meta: { total, page, limit, totalPages } }` in place of a
+bare array.
+
 ## Admin invite flow
 
 `POST /admin/invites` (`admins:create`) → emails a token via the mock console
-email provider → `POST /auth/admin/accept-invite { token, password, fullName }`
-(public) creates the `AdminUser` and logs them in. `POST
-/admin/invites/:id/resend` and `GET /admin/invites` manage outstanding
-invites. No `AdminUser` row exists until the invite is accepted.
+email provider → `POST /auth/admin/accept-invite { token, password, firstName, lastName }`
+(public) creates the `AdminUser` (`fullName` is derived as
+`` `${firstName} ${lastName}` ``, never set independently) and logs them in.
+`POST /admin/invites/:id/resend` and `GET /admin/invites` manage outstanding
+invites; `DELETE /admin/invites/:id` (`admins:create`) hard-deletes a
+`PENDING` invite (`404` if it doesn't exist or is no longer `PENDING`). No
+`AdminUser` row exists until the invite is accepted.
+
+`POST /admin/invites` and `POST /admin/invites/:id/resend` responses include
+a trimmed `role: { id, name }`; `GET /admin/invites` rows include the full
+nested `Role` object (matching how `AdminUser.role` is returned by
+`GET /admin/admins`).
+
+`GET /admin/invites` filters by `status`, a `q` search across `email`, and
+`createdFrom`/`createdTo`/`expiresFrom`/`expiresTo` date ranges over
+`createdAt`/`expiresAt`; it accepts `page`/`limit` pagination (default
+`1`/`25`, `limit` capped at `100`) and returns
+`{ data: [...], meta: { total, page, limit, totalPages } }` in place of a
+bare array.
 
 ## Audit log
 
 Every mutating request to an admin-guarded route gets a baseline `AuditLog`
 row automatically (actor, route, status). Business-meaningful actions (invite
 created/resent, sessions force-revoked) also get an explicit, richer entry.
-View them at `GET /admin/audit-logs` (`audit:read`), optionally filtered by
-`actorType`, `action`, `targetType`, `targetId`.
+View them at `GET /admin/audit-logs` (`audit:read`), filterable by
+`actorType`, `action`, `targetType`, `targetId`, plus a `createdFrom`/
+`createdTo` date range over `createdAt`. It accepts `page`/`limit`
+pagination (default `1`/`25`, `limit` capped at `100`) and returns
+`{ data: [...], meta: { total, page, limit, totalPages } }` in place of the
+previous unpaged, `take: 100`-capped bare array.
+
+## Document ingestion
+
+Upload endpoints for the three source documents exist and are fully wired
+(auth, permissions, audit logging, background processing via BullMQ).
+**All three document types are now fully parsed**: IPPIS Broadsheet into
+`IppisRecord` (by `agency`+`staffId`), Disbursed Loans into `Loan` (by
+`customerId`), and Repayment Schedule into `LoanRepaymentRecord` (by
+`agency`+`staffId`+`period`+`elementName`, one small hardcoded mapper per
+agency sheet since those six sheets share almost no column names) — see
+`src/document-ingestion/parsers/`. Reconciliation (comparing expected vs.
+actual repayments) runs automatically after ingestion — see the
+"Reconciliation" section below.
+
+| Endpoint | Permission | Notes |
+|---|---|---|
+| `POST /admin/documents/ippis-broadsheet/upload` | `ippis:upload` | Multipart, field `file` |
+| `POST /admin/documents/disbursed-loans/upload` | `loans:upload` | Multipart, field `file` |
+| `POST /admin/documents/repayment-schedule/upload` | `repayments:upload` | Multipart, field `file` + required `period` (`YYYY-MM`) |
+| `GET /admin/documents/batches` | `documents:read` | List upload history, filterable by `documentType`/`status` |
+| `GET /admin/documents/batches/:id` | `documents:read` | Batch detail incl. snapshot export links |
+| `GET /admin/documents/files/:key` | `documents:read` | Download a stored file (raw upload or snapshot export) |
+
+`GET /admin/documents/batches` also accepts a `q` search across
+`originalFileName`/`period`, and `createdFrom`/`createdTo`/
+`completedFrom`/`completedTo` date ranges over `createdAt`/`completedAt`.
+It accepts `page`/`limit` pagination (default `1`/`25`, `limit` capped at
+`100`) and returns `{ data: [...], meta: { total, page, limit, totalPages } }`
+in place of the previous unpaged, `take: 100`-capped bare array.
+
+File storage picks its active provider via `STORAGE_PROVIDER` (`local` |
+`s3` | `gcs` | `nobus`, default `local`). Only the selected provider's env vars need
+real values — see `.env.example` for the full list. For GCS:
+`GCP_BUCKET_NAME` plus one of `GCP_CREDENTIALS_FILE` (a local
+service-account JSON key file path — local dev) or `GCP_CREDENTIALS_JSON`
+(that same file's raw contents as one env var — for platforms like
+Dokploy with no file mount; `FILE` wins if both are set), plus optional
+`GCP_SUB_PATH`. For Nobus Object Storage (through its S3-compatible API):
+`NOBUS_ACCESS_KEY_ID` and `NOBUS_SECRET_ACCESS_KEY` (the "EC2 credentials"
+under **Settings & help → API keys** in the Nobus dashboard, signed in with
+the admin/root account) and `NOBUS_BUCKET_NAME`, plus optional
+`NOBUS_S3_ENDPOINT` (default `https://fos-az1-store.nobus.io`) and
+`NOBUS_REGION` (default `RegionOne`). Nobus addresses buckets in the path
+rather than as a subdomain, and is sent checksums only when an operation
+requires them; the provider sets both. Automated tests always run against the local provider
+regardless of this setting. Background processing uses BullMQ against the
+`REDIS_URL`/`REDIS_KEY_PREFIX` already configured in your environment.
+
+## Reconciliation
+
+After a `disbursed-loans` or `repayment-schedule` upload completes, the
+system recomputes reconciliation across every `Loan` and its matching
+`LoanRepaymentRecord` rows (matched via `agency`+IPPIS number, same as
+the client loan dashboard) — a full idempotent recompute rather than one
+scoped to the triggering upload, upserted by `(loanId, period)`. For each
+period within a loan's disbursement-to-maturation range, the expected
+installment (standard reducing-balance amortization from `loanAmount`,
+`interestRatePercent`, and the loan term) is compared against the actual
+summed deductions for that period: `MATCHED` (within a ₦1 tolerance),
+`UNDER_PAID`, `OVER_PAID`, or `NO_DEDUCTION_FOUND` (no matching repayment
+rows at all for that period). `GET /admin/reconciliation`
+(`reconciliation:read`) lists variances, filterable by `agency`/`status`/
+`period`, plus a `generatedFrom`/`generatedTo` date range over
+`generatedAt`. `GET /admin/loans` (`loans:upload`) filters by `agency`/
+`product`, a `q` search across `customerName`/`accountNumber`/
+`ippisNumber`, and `disbursedFrom`/`disbursedTo`/`createdFrom`/`createdTo`
+date ranges. `GET /admin/ippis-records` (`ippis:upload`) filters by
+`agency`/`employeeStatus`/`department`/`grade`, a `q` search across
+`employeeName`/`staffId`, and `hireDateFrom`/`hireDateTo`/`createdFrom`/
+`createdTo` date ranges. All three accept `page`/`limit` pagination
+(default `1`/`25`, `limit` capped at `100` — a request above the cap is a
+`400`, not a silent clamp) and return
+`{ data: [...], meta: { total, page, limit, totalPages } }` in place of a
+bare array.
+
+## RBAC management
+
+Roles and permissions can now be managed via the API — previously only
+`prisma/seed.ts` could create them.
+
+Every `AdminUser` has **exactly one required role** (`AdminUser.roleId`,
+not-null) — the old unconstrained many-to-many `AdminUserRole` join table
+has been dropped. `Role` has an optional, freely editable
+`departmentId` (including on `SUPER_ADMIN`), and whenever an admin's role
+is set — via `PATCH /admin/admins/:id/role` or by accepting an invite —
+`AdminUser.departmentId` is copied from that role's `departmentId`
+(including `null`, if the role has none). `department` is therefore
+always derived from `role`; it is never set independently.
+
+| Endpoint | Permission | Notes |
+|---|---|---|
+| `POST/GET /admin/permissions` | `permissions:manage` | |
+| `GET/PATCH/DELETE /admin/permissions/:id` | `permissions:manage` | `PATCH` only changes `description` — `key` is immutable. `DELETE` is blocked (409) if any role still has it. |
+| `POST/GET /admin/roles` | `roles:manage` | Body accepts an optional `departmentId`. |
+| `GET/PATCH/DELETE /admin/roles/:id` | `roles:manage` | Renaming or deleting `SUPER_ADMIN` is blocked (409); deleting a role assigned to any admin is blocked (409). `PATCH` accepts `departmentId` (a UUID, or `null` to clear it). |
+| `POST /admin/roles/:id/permissions` | `roles:manage` | `{ permissionId }` |
+| `POST /admin/roles/:id/permissions/bulk` | `roles:manage` | `{ permissionIds: string[] }`. Upserts every permission in one call, all-or-nothing — if any `permissionId` doesn't exist, the whole batch is rejected (404) and none are written. |
+| `DELETE /admin/roles/:id/permissions/:permissionId` | `roles:manage` | |
+| `GET /admin/admins` | `roles:manage` | Lists admins with `role` and `department` as direct nested objects (not an array). |
+| `PATCH /admin/admins/:id/role` | `roles:manage` | `{ roleId }`. Sets the admin's role and inherits that role's `departmentId` in one call. 404 if the admin or role doesn't exist; blocked (409) if it would leave zero admins holding `SUPER_ADMIN`. Replaces the old `POST /admin/admins/:id/roles` / `DELETE /admin/admins/:id/roles/:roleId` pair — an admin can no longer hold zero or multiple roles. |
+| `POST /admin/admins/:id/suspend` | `roles:manage` | 409 if targeting your own account or an already-suspended admin; force-revokes the admin's sessions. Was `deactivate`. |
+| `POST /admin/admins/:id/unsuspend` | `roles:manage` | 409 if the admin is already active. Was `reactivate`. |
+
+`GET /admin/roles/ping` no longer exists — it was a Phase 1 placeholder,
+superseded by the real endpoints above.
+
+`GET /admin/permissions` searches with a `q` across `key`. `GET
+/admin/roles` searches with a `q` across `name`. `GET /admin/admins`
+filters by `isActive`, a `q` search across `email`/`fullName`, and a
+`createdFrom`/`createdTo` date range over `createdAt`. All three accept
+`page`/`limit` pagination (default `1`/`25`, `limit` capped at `100`) and
+return `{ data: [...], meta: { total, page, limit, totalPages } }` in
+place of a bare array.
+
+## Departments
+
+`Department` (`id`, `name` unique, `description?`, `createdAt`) is a
+standalone entity managed the same way as `Role`/`Permission`, gated by
+its own `departments:manage` permission.
+
+| Endpoint | Permission | Notes |
+|---|---|---|
+| `POST/GET /admin/departments` | `departments:manage` | `GET` is paginated (default `1`/`25`, `limit` capped at `100`) and searches with `q` across `name`. |
+| `GET/PATCH/DELETE /admin/departments/:id` | `departments:manage` | `DELETE` is blocked (409) if any role still has this department assigned. |
+
+A department has no direct link to `AdminUser` — it only reaches admins
+indirectly, through whichever role(s) reference it (`Role.departmentId`),
+and from there onto each of that role's admins via the department
+inheritance described above.
+
+## CORS
+
+Controlled by `CORS_ORIGINS`: a comma-separated allowlist
+(`https://admin.example.com,https://app.example.com`), `*` to allow any
+origin, or unset/empty to disable CORS entirely (the default — no
+`Access-Control-Allow-Origin` header is sent). Adjust it per environment
+without a code change.
 
 ## Notes on the stack
 
@@ -92,6 +282,30 @@ View them at `GET /admin/audit-logs` (`audit:read`), optionally filtered by
   reference docs for AI coding assistants working on this repo, not
   application code.
 
+## Hardening: rate limiting & observability
+
+Every route is rate-limited globally (`THROTTLE_DEFAULT_LIMIT` per
+`THROTTLE_DEFAULT_TTL_SECONDS`, per IP, Redis-backed so limits are shared
+across horizontally-scaled instances); six abuse-prone routes (OTP
+request/verify, all three login endpoints, agent registration, agent
+password change) get a stricter hardcoded override (5 requests per 15
+minutes). `RATE_LIMITING_ENABLED=false` in this repo's own dev/test
+config disables the guard entirely — almost every e2e test logs in as
+admin in its own `beforeAll`, which would otherwise exhaust both limits
+within minutes of a full suite run.
+
+Logging is structured JSON via `nestjs-pino` (pretty-printed outside
+production), with a per-request correlation id echoed back as
+`X-Request-Id` on every response. A pluggable `ErrorTrackingProvider`
+(no-op for now — logs a warning instead of reporting anywhere) is wired
+into a global exception filter that reports every unhandled exception
+without changing what the client actually receives; a real Sentry (or
+similar) provider slots in later behind an env var, matching every other
+external integration in this project.
+
+`GET /health` checks Postgres and Redis connectivity, returning `503`
+(instead of a static `200`) if either is down.
+
 ## Deploying to Dokploy
 
 The `Dockerfile` builds a single, self-contained production image — no
@@ -106,7 +320,18 @@ and no docker-compose (this is a one-service deployment).
    `BOOTSTRAP_ADMIN_PASSWORD`, `BOOTSTRAP_ADMIN_NAME`, `OTP_TTL_SECONDS`.
    `DATABASE_URL` should point at a reachable PostgreSQL instance (a
    Dokploy-managed Postgres service or an external one) — never bake
-   credentials into the image.
+   credentials into the image. If `STORAGE_PROVIDER=gcs`, also set
+   `GCP_BUCKET_NAME` and `GCP_CREDENTIALS_JSON` (the service-account key
+   file's raw JSON contents, pasted as one env var) — `GCP_CREDENTIALS_FILE`
+   won't work here since there's no file mount and the key file itself is
+   gitignored, never part of the built image. If `STORAGE_PROVIDER=nobus`,
+   set `NOBUS_ACCESS_KEY_ID`, `NOBUS_SECRET_ACCESS_KEY` and
+   `NOBUS_BUCKET_NAME` (see the file storage notes above). After the first
+   deploy, upload a document in the back office and open it again to
+   confirm the bucket works.
+   Also set the visitor-IP settings described in
+   [Visitor IP behind proxies](#visitor-ip-behind-proxies) below, and
+   `BACKOFFICE_PROXY_SECRET`, which must match the back office's.
 3. Set the app's internal port to `3000` (or override `PORT` and match
    it) so Dokploy's Traefik can route to it.
 4. Deploy. The container's start command
@@ -117,6 +342,483 @@ and no docker-compose (this is a one-service deployment).
    bootstrap admin; it's idempotent (`upsert`-based) so it's safe to rerun.
 5. Point Dokploy's health check at `GET /health` (also used by the
    image's own `HEALTHCHECK`).
+
+### Visitor IP behind proxies
+
+Login rate limits, sessions and the audit trail all use the visitor's IP.
+Behind proxies, the API has to be told where to find it, or it sees the
+proxy's address and treats every visitor as one caller. All of these are
+runtime environment variables, never build args.
+
+| Setting | What it does |
+|---|---|
+| `CLIENT_IP_HEADER` | Header the edge sets to the visitor's IP, e.g. `cf-connecting-ip` behind Cloudflare. Takes precedence over `TRUST_PROXY_HOPS`. |
+| `TRUST_PROXY_HOPS` | Otherwise, how many proxies in front of the API append to `X-Forwarded-For` (`1` for Traefik alone). Defaults to `0`. |
+| `BACKOFFICE_PROXY_SECRET` | At least 32 characters (`openssl rand -hex 32`), the same value as on the back office. The back office signs admins in through its own server and uses this to vouch for the admin's IP; without a match that IP is ignored. |
+
+Which to use depends on what sits in front of the apps:
+
+| Setup | API and back office |
+|---|---|
+| Cloudflare, then Traefik (current) | `CLIENT_IP_HEADER=cf-connecting-ip` |
+| Traefik only | no `CLIENT_IP_HEADER`, `TRUST_PROXY_HOPS=1` |
+
+`CLIENT_IP_HEADER` is only safe while the server can't be reached around
+the edge, since anyone reaching it directly could send that header
+themselves. Check that a direct request to the server's IP fails, and
+restrict ports 80 and 443 to Cloudflare's IP ranges if it doesn't:
+
+```sh
+curl -sk -o /dev/null --connect-timeout 5 -w "%{http_code}\n" \
+  --resolve <domain>:443:<server-public-ip> https://<domain>/health
+```
+
+`000` means the server is reachable only through the edge.
+
+**Revisit these whenever the proxy setup changes**, for example when
+Cloudflare is added or removed. A `CLIENT_IP_HEADER` left behind after
+its edge is gone stops working (every visitor falls back to the proxy's
+address) and lets callers fake their IP. If a request arrives without the
+configured header, both apps log a warning saying so, at most every ten
+minutes (health checks excepted). To confirm the setup, sign in and check
+that User Sessions shows your own public IP.
+
+## Admin client review
+
+Clients that fail identity or face-match verification land at
+`Client.status = MANUAL_REVIEW` with `ClientOnboarding.failureReasons`
+populated. Admins holding `clients:review` can list/inspect them and
+either `approve` (overrides straight to `VERIFIED`) or `retry` — which
+auto-resets the client to the right earlier onboarding step based on
+*which* check failed, rather than requiring the admin to pick a step
+manually.
+
+| Endpoint | Permission | Notes |
+|---|---|---|
+| `GET /admin/clients` | `clients:review` | Filterable by `status` |
+| `GET /admin/clients/:id` | `clients:review` | Full detail incl. `ClientOnboarding` — selfie images are downloaded separately via `GET /admin/documents/files/:key` (`documents:read`); `onboarding.documents` is an array of `{ documentType, url, uploadedAt }` with each of the 4 uploaded documents' `storageKey` already resolved to a signed, directly viewable `url` |
+
+| `POST /admin/clients/:id/approve` | `clients:review` | Only valid from `MANUAL_REVIEW` |
+| `POST /admin/clients/:id/retry` | `clients:review` | `{ note }`. Resets to `IPPIS_LINKED` if identity verification itself failed, or `IDENTITY_SUBMITTED` if only the face match failed |
+
+`GET /admin/clients/:id`'s `onboarding.ippisRecord` is trimmed to
+review-relevant fields only — `agency`, `staffId`, `employeeName`,
+`employeeStatus`, `hireDate`, `department`, `grade`, `bankName`,
+`accountNumber` — excluding `salary`, `pinNumber`, `pfaName`, `bvn` (the
+`IppisRecord`'s own separate field), and `rawFields` (raw ingestion
+JSON). The response also resolves `bvnSelfie`/`ninSelfie`/`liveSelfieKey`
+into signed, directly viewable URLs — `bvnSelfieUrl`/`ninSelfieUrl`/
+`liveSelfieUrl` — the same treatment `ClientDocument`s already get,
+alongside the raw storage-key fields (kept, not hidden). All other
+`ClientOnboarding` fields, including `bvn`/`nin` plaintext and the new
+identity/address/marital-status fields below, are returned as-is —
+this endpoint is for admin manual review and isn't curated the way the
+client-facing status endpoint is.
+
+`GET /admin/clients` also accepts a `q` search across `phone`, and a
+`createdFrom`/`createdTo` date range over `createdAt`. It accepts
+`page`/`limit` pagination (default `1`/`25`, `limit` capped at `100`) and
+returns `{ data: [...], meta: { total, page, limit, totalPages } }` in place
+of the previous unpaged, `take: 100`-capped bare array.
+
+## Loan requests
+
+A `VERIFIED` client can request a loan; eligibility (currently: must be
+`VERIFIED`, amount within `LOAN_SALARY_MULTIPLE_CAP` × their IPPIS salary
+— both env-var-provisional pending real business criteria) is checked
+before a `PENDING` `LoanRequest` is created and a confirmation SMS sent
+via a pluggable `TwoWaySmsProvider` (mock-only for now). The client
+confirms by replying "YES"/"1", forwarded to
+`POST /webhooks/sms/inbound` by whatever SMS vendor is eventually wired
+in — that endpoint has no auth guard since there's no vendor credential
+to check yet. An unconfirmed request auto-expires to `FAILED` after 24
+hours (a BullMQ-delayed job). Disbursement (turning a `CONFIRMED` request
+into an actual `Loan` record) is not built — a separate future concern.
+
+| Endpoint | Auth | Notes |
+|---|---|---|
+| `POST /client/loan-requests` | Client JWT | `{ amount }`; `422` on eligibility failure |
+| `POST /client/loan-requests/:id/resend` | Client JWT | Only valid while `PENDING`; doesn't reset the 24h expiry |
+| `GET /client/loan-requests` | Client JWT | The calling client's own requests |
+| `POST /webhooks/sms/inbound` | None (public) | `{ phone, message }` — mocked shape standing in for a real vendor's payload |
+
+`GET /client/loan-requests` also accepts an optional `status` filter,
+plus `page`/`limit` pagination (default `1`/`25`, `limit` capped at
+`100`), and returns
+`{ data: [...], meta: { total, page, limit, totalPages } }` in place of a
+bare array.
+
+## Loan origination
+
+`LoanRequest` now carries a `tenorMonths` (chosen from
+`GET /client/loan-terms`, the active `LoanTermOption`s for the client's own
+agency) and a rate/management-charge snapshot taken at request time. After
+the existing SMS "YES" confirmation, a request below
+`LOAN_AUTO_APPROVE_THRESHOLD` auto-`APPROVED`s and auto-`DISBURSED`s in the
+same step; at or above it, an admin holding `loan-requests:review` calls
+`POST /admin/loan-requests/:id/approve` or `.../reject` (`{ reason }`),
+then separately `.../disburse` once the external transfer is confirmed —
+`DISBURSED` is always its own manual step for a manually-approved request.
+Either path creates exactly one `ClientLoan` (the client's single
+platform-native loan — topup and repayment tracking are still to come). A
+client can only have one loan in flight at a time: a new
+`POST /client/loan-requests` is rejected (`422`) while they have a
+non-terminal request, an `ACTIVE` `ClientLoan`, or an `ACTIVE` loan in
+their ingested bank history. `GET /admin/client-loans/disbursement-summary
+?month=YYYY-MM` (`client-loans:read`) streams a CSV of that month's
+disbursed loans.
+
+`GET /admin/loan-terms` (`loan-terms:manage`) filters by `agency`/
+`isActive`; it accepts `page`/`limit` pagination (default `1`/`25`,
+`limit` capped at `100`) and returns
+`{ data: [...], meta: { total, page, limit, totalPages } }` in place of a
+bare array. `GET /client/loan-terms`, the client-facing list of active
+terms for the client's own agency, also accepts `page`/`limit`
+pagination (default `1`/`25`, `limit` capped at `100`, no other filters)
+and returns the same `{ data: [...], meta: { total, page, limit,
+totalPages } }` shape in place of a bare array.
+
+### Topup
+
+`POST /client/loan-requests/topup` (`{ amount, tenorMonths }`, Client JWT)
+adds more funds to the client's existing single active `ClientLoan` — no
+loan ID in the request; the service looks up the client's one `ACTIVE`
+loan itself. Reuses the exact same request→confirm→approve/auto-approve→
+disburse pipeline as origination (`LoanRequest.type` is now `ORIGINATION`
+or `TOPUP`), gated by a separate eligibility chain requiring an active
+loan to exist and no other request already in progress. On disbursement,
+instead of creating a new loan, the existing `ClientLoan`'s
+`principalAmount`/`principalBalance`/`disbursedAmount` increase by the
+topup's own amount, and `maturationDate` extends to
+`max(current, topup disbursement date + topup's own tenor)` — a topup
+never shortens the loan's remaining term. `GET /admin/loan-requests` also
+accepts optional `status`/`type` (`ORIGINATION`/`TOPUP`)/`clientId`
+filters, plus `createdFrom`/`createdTo`/`disbursedFrom`/`disbursedTo` date
+ranges, and `page`/`limit` pagination (default `1`/`25`, `limit` capped at
+`100`) — its existing `loan-requests:review` permission is unchanged by
+this addition. Response is now
+`{ data: [...], meta: { total, page, limit, totalPages } }` rather than a
+bare array.
+
+### Repayment tracking
+
+Repayment-schedule uploads are matched against `ClientLoan` the same way
+they're already matched against the historical ingested `Loan` model —
+`ClientLoanReconciliationService.reconcileAll()` runs automatically
+alongside the existing reconciliation, right after every
+disbursed-loans/repayment-schedule upload finishes. Each new period
+(never re-processed once recorded — a correction is a manual admin
+action) reduces `principalBalance` by `min(actualAmount, expectedAmount)`;
+any excess beyond the expected installment is credited to the client's
+wallet (`SYSTEM` actor). Underpayment carries no penalty and no automatic
+remediation — it's simply recorded, which feeds `ClientLoan.status`
+toward `DEFAULT` (mirroring the same `ACTIVE`/`DEFAULT`/`CLOSED` logic
+used for the ingested-loan history). `GET /client/client-loans/me`
+(Client JWT) returns the caller's most recent platform loan with its full
+period-by-period schedule (`null` if they've never had one);
+`GET /admin/client-loans/:id/repayment-plan` (`client-loans:read`)
+returns the same for any loan.
+
+### Spend wallet balance toward a loan payment
+
+`POST /client/client-loans/me/apply-wallet` (`{ amount }`, Client JWT)
+lets a client apply their own wallet balance toward their loan's
+outstanding `principalBalance` — `422` if they have no outstanding
+balance, `409` if the current period already has a
+`ClientLoanRepaymentVariance` row (from either payroll reconciliation or
+an earlier wallet application this period — at most one per period,
+either source). The requested amount is silently capped at
+`principalBalance`; `WalletService.debit()` still applies its own
+independent insufficient-wallet-balance check. Unlike payroll
+reconciliation, the **full** applied amount reduces `principalBalance` —
+there's no excess-to-wallet step, since the amount already came from the
+client's own wallet. Produces a `ClientLoanRepaymentVariance` row for the
+current period (`source: WALLET_APPLICATION`), so the payment shows up in
+`GET /client/client-loans/me`'s schedule the same way a payroll deduction
+would.
+
+## Client loan dashboard
+
+`GET /client/loans` (Client JWT) returns the calling client's pre-existing
+loan history — real disbursed loans and repayment activity ingested from
+bank reports, which predate this platform and have no direct database
+link to `Client`. Matched via the client's linked `IppisRecord`'s
+`agency`+`staffId` (the same pairing `Loan.agency`/`.ippisNumber` and
+`LoanRepaymentRecord.agency`/`.staffId` already carry from ingestion),
+with a BVN cross-check against `Loan.bvn` (comparing the client's own
+Dojah-verified BVN from onboarding, not the IPPIS broadsheet's BVN) to
+guard against an agency+staffId collision showing one client someone
+else's loan. Returns `{ loans: { data: [], meta: { total: 0, page: 1, limit: 25, totalPages: 0 } }, repayments: [] }`
+(empty, not an error) if the client hasn't linked IPPIS yet or has no
+matching history. This is deliberately separate from
+`GET /client/loan-requests` — that endpoint is the client's own
+in-platform loan applications; this one is historical/external data.
+
+Each loan in the response carries a computed (not persisted) `status`:
+`CLOSED` if `principalBalance <= 0`; else `DEFAULT` if `maturationDate`
+has passed with a balance still owed, or the loan's most recent
+`RepaymentVariance` row is `UNDER_PAID`/`NO_DEDUCTION_FOUND`; else
+`ACTIVE`. `GET /client/loans` accepts optional `status`/`product`/
+`disbursedFrom`/`disbursedTo` query params to filter the `loans` array,
+plus `page`/`limit` pagination query params (default `1`/`25`, `limit`
+capped at `100` — a request above the cap is a `400`, not a silent
+clamp). The response's `loans` field is a `PaginatedResult`:
+`{ data: [...], meta: { total, page, limit, totalPages } }`, where
+`total`/`totalPages` reflect the count *after* the `status`/`product`/
+date-range filters are applied (status is computed post-query, so
+filtering and pagination both happen in memory over the already-filtered
+array, not via a database `skip`/`take`). `repayments` is unrelated to
+this filter/pagination set and stays a plain, unpaginated array — those
+rows aren't tied to a specific loan in the schema.
+
+`GET /client/loans/:loanId/repayment-plan` (Client JWT) returns one
+loan's full month-by-month schedule from disbursement to maturity, reusing
+the reconciliation module's `computeExpectedInstallment()` for the
+expected amount (the same value reconciliation stores as
+`RepaymentVariance.expectedAmount`) and overlaying real `RepaymentVariance`
+rows where they exist. Periods with no row yet are returned with
+`status: "UPCOMING"` and null `actualAmount`/`variance`. Requesting a
+`loanId` that isn't the caller's own (or doesn't exist) returns `404`,
+matching this codebase's never-leak-existence convention elsewhere.
+
+## Admin client visibility
+
+`GET /admin/loan-requests` accepts `clientId` alongside `status`/`type`
+(see "Loan origination" above for its full filter set and response
+shape). `GET /admin/client-loans?clientId=` (`clients:read`, required
+`clientId` — `400` if missing) lists a client's `ClientLoan` history;
+also filterable by `status`/`agency`, a `disbursedFrom`/`disbursedTo`
+date range over `disbursementDate`, plus `page`/`limit` pagination
+(default `1`/`25`, `limit` capped at `100`), returning
+`{ data: [...], meta: { total, page, limit, totalPages } }` in place of a
+bare array.
+`GET /admin/clients/:id/activities` (`clients:read`) returns a merged,
+timestamp-descending timeline for one client: admin actions on them or
+their loan requests (from the audit log), their own loan-request
+creation/confirmation, logins, `CLIENT`-actor wallet applications, and
+their current onboarding step — all derived at query time from existing
+records, not a separately tracked feed. Accepts an optional `type` filter
+(matching one of the synthesized entry types, e.g. `session.created`,
+`loan-request.created`) and an `occurredFrom`/`occurredTo` date range over
+each entry's `timestamp`, plus `page`/`limit` pagination (default `1`/`25`,
+`limit` capped at `100`) applied in memory over the merged,
+already-sorted list. Returns
+`{ data: [...], meta: { total, page, limit, totalPages } }`.
+
+## Wallet
+
+Every client has a wallet backed by an append-only ledger of
+`WalletEntry` rows — there is no separate `Wallet` model; the balance is
+always the sum of a client's entries (`SUM(CREDIT) - SUM(DEBIT)`), so it
+can never drift out of sync with its own history. `GET /client/wallet`
+(Client JWT) returns the caller's own `{ balance, entries }`, empty/zero
+if they have no history yet. Admins holding `wallets:read`/
+`wallets:manage` can view any client's wallet
+(`GET /admin/clients/:clientId/wallet`) and credit or debit it
+(`POST .../wallet/credit`, `POST .../wallet/debit`, both `{ amount,
+description }`) — a debit that would take the balance below zero is
+rejected with `422`; the balance never goes negative. Both admin
+mutations are recorded through the existing `AuditLogService`, the same
+mechanism used for every other sensitive admin action on a client (e.g.
+approve/reject in `AdminClientReviewController`). This is the first of
+two sub-projects in a broader loan-lifecycle overhaul — a second,
+not-yet-built piece will let overpayment on a loan auto-credit this same
+wallet, and let a client spend their balance toward a payment.
+
+Both `GET /client/wallet` and `GET /admin/clients/:clientId/wallet` also
+accept `direction`/`actorType` filters and a `createdFrom`/`createdTo`
+date range over `createdAt`, plus `page`/`limit` pagination (default
+`1`/`25`, `limit` capped at `100`), applied to the `entries` list only.
+**This is the one endpoint in the whole pagination initiative with a
+mixed response shape**: `{ balance: number, entries: { data: [...],
+meta: { total, page, limit, totalPages } } }` — `balance` stays a plain
+number (always computed from the client's *entire* entry history via
+`WalletService.getBalance()`, never from just the current page) while
+only `entries` is wrapped in the `{ data, meta }` envelope. `debit()`'s
+own insufficient-balance check also uses `getBalance()` internally, so
+it's never affected by which page of `entries` a caller happens to be
+viewing.
+
+## Agent enrollment
+
+`POST /agents/register` (public, multipart: `fullName`/`email`/`phone`/
+`address` fields, `cv` file required, up to 5 `supportingDocuments` files
+optional) creates an `Agent` at `PENDING_REVIEW`. Admins holding
+`agents:read`/`agents:review` list/inspect/approve/reject submissions
+(`GET /admin/agents`, `GET /admin/agents/:id`,
+`POST /admin/agents/:id/approve`, `POST /admin/agents/:id/reject` with a
+required `reason`). Approving generates a temporary password, emails it
+to the agent (with an optional app-download link from
+`AGENT_APP_DOWNLOAD_URL`) via the existing `EmailService`, and requires
+the agent to change it before their JWT stops carrying
+`mustChangePassword: true` — `POST /auth/agent/change-password` is the
+one route reachable regardless of that flag.
+`POST /admin/agents/:id/resend-credentials` regenerates and re-sends the
+credentials, but only until the agent has logged in once
+(`Agent.hasLoggedIn`), after which it's permanently disabled.
+`POST /auth/refresh` re-derives `mustChangePassword` fresh from the
+database on every agent token refresh, the same way it already
+re-derives `permissions` fresh for admin tokens.
+`GET /admin/agents` filters by `status`, a `q` search across
+`fullName`/`email`/`phone`, and `createdFrom`/`createdTo`/`reviewedFrom`/
+`reviewedTo` date ranges over `createdAt`/`reviewedAt`; it accepts
+`page`/`limit` pagination (default `1`/`25`, `limit` capped at `100`) and
+returns `{ data: [...], meta: { total, page, limit, totalPages } }` in
+place of a bare array.
+
+## Agent password self-service
+
+`POST /auth/agent/forgot-password` (`{ email }`, always `200`, gated on
+`status === APPROVED`) emails a one-hour opaque reset token via the same
+mechanism Admin's own password reset uses. Unlike Admin, the email also
+contains an `EMAIL_CODE_LENGTH`-digit reset code (default 6, configurable
+6-8) valid for the same hour — either the link or the code resets the
+password, and using one invalidates the other. `POST /auth/agent/reset-password`
+(`{ token, newPassword }`) consumes the token, clears `mustChangePassword` (a
+reset via a verified email token counts as establishing a real password
+of the agent's own choosing), and force-revokes every existing session
+for that agent. `POST /auth/agent/reset-password/code`
+(`{ email, code, newPassword }`) is the code-based equivalent — same
+validation and session-revocation behavior, `401` on a wrong/expired/missing
+code. `POST /auth/agent/change-password` (the voluntary,
+already-authenticated path) already existed from the enrollment work and
+is unchanged. Admin forgot-password is untouched — it remains a
+link-only flow.
+
+## Agent two-factor authentication
+
+Identical shape to Admin's 2FA (see "Admin two-factor authentication"
+above) — `POST /auth/agent/2fa/setup` (`{ method: 'TOTP' | 'EMAIL' }`),
+`POST /auth/agent/2fa/confirm` (`{ code }`), `POST /auth/agent/2fa/disable`
+(`{ currentPassword }`), and `POST /auth/agent/login` returning
+`{ twoFactorRequired: true, method, pendingToken }` when enabled, completed
+via `POST /auth/agent/2fa/login-verify` (`{ pendingToken, code }`). Agent
+was originally scoped to email-OTP-only given its mobile-app context, but
+that was revised to give Agent the same TOTP option Admin has.
+
+## Client/IPPIS onboarding
+
+After phone/OTP login, a Client links their IPPIS number, submits BVN/NIN
+for lookup (via a pluggable `IdentityVerificationProvider` — mock by
+default, `DojahIdentityVerificationProvider` when
+`IDENTITY_VERIFICATION_PROVIDER=dojah` and `DOJAH_APP_ID`/`DOJAH_SECRET_KEY`
+are set), then uploads four required documents (NIN Card, Work ID,
+Passport Photo, Signature), then submits a live selfie compared against
+both the BVN and NIN reference photos (see [Face comparison](#face-comparison)).
+Passing both auto-verifies the client; any failure routes to
+`MANUAL_REVIEW` (existing `clients:review` permission covers visibility).
+
+The step order is `PHONE_VERIFIED` → `IPPIS_LINKED` → `IDENTITY_SUBMITTED`
+→ `DOCUMENTS_SUBMITTED` → `FACE_MATCH_PENDING`/`COMPLETED`.
+`POST /client/onboarding/documents/:type` accepts a single-file multipart
+upload (`:type` one of `NIN_CARD`/`WORK_ID`/`PASSPORT_PHOTO`/`SIGNATURE`)
+from either `IDENTITY_SUBMITTED` or `DOCUMENTS_SUBMITTED` — the latter
+lets a client re-upload one document (replacing it, not duplicating it)
+without needing all 4 still outstanding. Only JPEG/PNG/PDF are accepted,
+capped at 5MB. The step only advances to `DOCUMENTS_SUBMITTED` once all 4
+document types have been uploaded, and face-match is allowed from either
+`IDENTITY_SUBMITTED` or `DOCUMENTS_SUBMITTED`. An admin `retry` (see
+below) after a face-match-only failure lands the client back on
+`DOCUMENTS_SUBMITTED` directly, rather than forcing a redundant
+re-upload, if all 4 documents already exist.
+
+| Endpoint | Auth | Notes |
+|---|---|---|
+| `POST /client/onboarding/ippis-link` | Client JWT | `{ ippisNumber }` |
+| `POST /client/onboarding/identity` | Client JWT | `{ bvn, nin }` |
+| `POST /client/onboarding/documents/:type` | Client JWT | multipart, field `file`; JPEG/PNG/PDF only, 5MB cap; valid from `IDENTITY_SUBMITTED` or `DOCUMENTS_SUBMITTED` |
+| `POST /client/onboarding/face-match` | Client JWT | multipart, field `selfie` (JPEG/PNG, 5MB cap); valid from `IDENTITY_SUBMITTED` or `DOCUMENTS_SUBMITTED` |
+| `GET /client/onboarding/status` | Client JWT | resumability — `step` says exactly where to continue; returns a curated `onboarding` shape, see below |
+| `PATCH /client/onboarding/marital-status` | Client JWT | `{ maritalStatus }`. Lets the client correct their IPPIS-sourced marital status; no onboarding-step precondition |
+
+`ClientOnboarding.employeeStatus`/`legacyId` are copied from the matched
+`IppisRecord` at `ippis-link` time (the same snapshot pattern as
+`employeeName`/`agency`/`bankName`/`accountNumber`). `maritalStatus` is
+copied the same way, from `IppisRecord.maritalStatus`, and can be
+corrected afterward by the client via `PATCH
+/client/onboarding/marital-status`. Both `GET /client/onboarding/status`
+and `GET /admin/clients/:id` additionally return a computed
+`lengthOfService: { years, months } | null`, derived at read time from
+the linked `IppisRecord`'s `hireDate` — `null` when there's no linked
+`IppisRecord` yet.
+
+`POST /client/onboarding/identity` also extracts and persists 10
+demographic/address fields onto `ClientOnboarding` from the Dojah (or
+mock) BVN/NIN lookups it already performs:
+
+- From the **BVN** lookup: `identityDateOfBirth`, `identityGender`,
+  `identityPhoneNumber`, `stateOfOrigin`, `lgaOfOrigin`,
+  `stateOfResidence`, `lgaOfResidence`.
+- From the **NIN** lookup: `address`, `city` (BVN's advance response has
+  no address/city field at all).
+- `zipCode` exists on the schema but is **never populated** by any
+  current data source — Dojah returns no postal/zip code for Nigerian
+  BVN/NIN at any tier. This is a known, permanent gap, not a bug.
+- Dojah's BVN response also includes its own `marital_status`, captured
+  into the shared `IdentityLookupResult` interface for completeness but
+  deliberately **not** used to populate `ClientOnboarding.maritalStatus`
+  — that field stays IPPIS-sourced (see above); there's no automatic
+  reconciliation between the two.
+
+`GET /client/onboarding/status`'s `onboarding` object is a curated
+subset of the `ClientOnboarding` row, not a raw spread — it returns
+`employeeName`, `agency`, `bankName`, `accountNumber`, `employeeStatus`,
+`identityDateOfBirth`, `identityGender`, `identityPhoneNumber`,
+`stateOfOrigin`, `lgaOfOrigin`, `stateOfResidence`, `lgaOfResidence`,
+`address`, `city`, `zipCode`, `maritalStatus`, and `step`. It excludes
+`bvn`/`nin` plaintext, the `bvnSelfie`/`ninSelfie`/`liveSelfieKey`
+internal storage keys, internal review metadata
+(`failureReasons`/`reviewedBy`/`reviewedAt`/`reviewNote`), `legacyId`,
+and the raw nested `ippisRecord` entirely (already summarized via
+`lengthOfService`) — a pre-existing PII-exposure gap fixed alongside
+adding these new fields to the same response path.
+
+### Face comparison
+
+When an agent or admin onboards the client, `POST .../onboarding/face-match`
+takes no file: it compares the uploaded `PASSPORT_PHOTO` instead of a
+selfie. Either way the photo is compared with the BVN and NIN photos by
+`face-match/compare_faces.py`, a small Python script using OpenCV's YuNet
+face detector and SFace face recognizer. The API runs it once per
+comparison (`src/face-verification/python-face-verification.provider.ts`),
+passing the photos on stdin; it takes about 0.3 s.
+
+Back office **Configuration → Face Match** (`GET`/`PATCH
+/admin/face-match-settings`, permission `face-match:manage`) controls it:
+
+- **On/off.** Off by default. While off, the photo is still kept, scores
+  stay null and onboarding completes on BVN/NIN verification alone. It
+  can't be switched on while the server can't run the comparison (the
+  settings response's `engine` says why).
+- **Minimum score** (1-100, default 40). The score is the cosine
+  similarity of the two faces as a percentage. Each of the BVN and NIN
+  photos must reach it. SFace's published same-person cutoff is 36.3; on
+  public test portraits the same person scored 54-84 and different people
+  21 or less. Photos of one person taken decades apart can score near the
+  cutoff, so raise the minimum only after looking at real results.
+
+Results land on `ClientOnboarding`: `faceMatchBvnScore`/`faceMatchNinScore`
+(0-1), `faceMatchPassed`, `faceMatchMinimumScore` (the minimum in force,
+null when switched off) and, on failure, `failureReasons.faceMatch` with
+`BELOW_MINIMUM`, `NO_FACE` or `UNREADABLE_IMAGE` per ID photo; the client
+goes to `MANUAL_REVIEW`. A photo with no face, or with a second person in
+it, is refused with 422 and nothing is saved, so it can be retaken. If
+the comparison itself can't run, the request fails with 503 and the
+reason is logged as `[face-match]`.
+
+The Docker image installs Alpine's `py3-opencv` and downloads the two
+model files at build time (pinned commits, SHA-256 checked by
+`face-match/fetch_models.py`). Locally:
+
+```sh
+npm run face-match:setup   # .venv with OpenCV 4.12 + model files, in face-match/
+npm run face-match:test    # Python tests against public-domain portraits in face-match/fixtures
+```
+
+and set `FACE_MATCH_PYTHON=face-match/.venv/bin/python` in `.env`.
+Optional settings: `FACE_MATCH_PYTHON` (default `python3`),
+`FACE_MATCH_MODELS_DIR`, `FACE_MATCH_CONCURRENCY` (default 2),
+`FACE_MATCH_TIMEOUT_MS` (default 30000).
 
 ## Roadmap
 

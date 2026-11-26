@@ -1,0 +1,187 @@
+import { ConflictException, Inject, Injectable, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { PrismaService } from '../prisma/prisma.service';
+import { EmailService } from '../email/email.service';
+import { generateOpaqueToken } from '../common/opaque-token.util';
+import { hashPassword } from '../common/password-hash.util';
+import { buildPaginatedResult } from '../common/pagination/paginated-result';
+import { Agent, AgentStatus, Prisma } from '../generated/prisma/client';
+import { agentApplicationRejectedEmail, agentCredentialsEmail } from '../email/templates/action-emails';
+import { FILE_STORAGE_PROVIDER, FileStorageProvider } from '../file-storage/file-storage-provider.interface';
+
+export interface ListAgentsFilters {
+  status?: AgentStatus;
+  q?: string;
+  createdFrom?: Date;
+  createdTo?: Date;
+  reviewedFrom?: Date;
+  reviewedTo?: Date;
+}
+
+@Injectable()
+export class AdminAgentReviewService {
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly emailService: EmailService,
+    private readonly configService: ConfigService,
+    @Inject(FILE_STORAGE_PROVIDER) private readonly fileStorageProvider: FileStorageProvider,
+  ) {}
+
+  async list(
+    filters: ListAgentsFilters = {},
+    pagination: { page: number; limit: number } = { page: 1, limit: 25 },
+  ) {
+    const { page, limit } = pagination;
+    const where: Prisma.AgentWhereInput = {
+      // Default to APPROVED-only so this list doesn't show agents still in
+      // the recruitment pipeline (PENDING_REVIEW) or REJECTED ones -- an
+      // explicit ?status=... filter still overrides this.
+      status: filters.status ?? AgentStatus.APPROVED,
+      createdAt:
+        filters.createdFrom || filters.createdTo
+          ? { gte: filters.createdFrom, lte: filters.createdTo }
+          : undefined,
+      reviewedAt:
+        filters.reviewedFrom || filters.reviewedTo
+          ? { gte: filters.reviewedFrom, lte: filters.reviewedTo }
+          : undefined,
+      OR: filters.q
+        ? [
+            { fullName: { contains: filters.q, mode: 'insensitive' } },
+            { email: { contains: filters.q, mode: 'insensitive' } },
+            { phone: { contains: filters.q, mode: 'insensitive' } },
+          ]
+        : undefined,
+    };
+
+    const [data, total] = await Promise.all([
+      this.prisma.agent.findMany({
+        where,
+        include: { reviewedByAdmin: { select: { id: true, fullName: true, email: true } } },
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      this.prisma.agent.count({ where }),
+    ]);
+
+    return buildPaginatedResult(
+      await Promise.all(data.map((row) => this.attachDocumentUrls(row))),
+      total,
+      page,
+      limit,
+    );
+  }
+
+  async findById(id: string) {
+    const agent = await this.prisma.agent.findUnique({
+      where: { id },
+      include: { reviewedByAdmin: { select: { id: true, fullName: true, email: true } } },
+    });
+    if (!agent) {
+      throw new NotFoundException('Agent not found');
+    }
+    return this.attachDocumentUrls(agent);
+  }
+
+  private async attachDocumentUrls<T extends Agent>(agent: T) {
+    const { cvKey, passportPhotoKey, identityDocumentKey, supportingDocumentKeys, ...rest } = agent;
+    const [cvUrl, passportPhotoUrl, identityDocumentUrl, supportingDocumentUrls] = await Promise.all([
+      cvKey ? this.fileStorageProvider.getSignedDownloadUrl(cvKey) : null,
+      passportPhotoKey ? this.fileStorageProvider.getSignedDownloadUrl(passportPhotoKey) : null,
+      identityDocumentKey ? this.fileStorageProvider.getSignedDownloadUrl(identityDocumentKey) : null,
+      Promise.all(supportingDocumentKeys.map((key) => this.fileStorageProvider.getSignedDownloadUrl(key))),
+    ]);
+
+    return { ...rest, cvUrl, passportPhotoUrl, identityDocumentUrl, supportingDocumentUrls };
+  }
+
+  async setOnboardingAccess(id: string, canOnboardClients: boolean): Promise<Agent> {
+    const agent = await this.prisma.agent.findUnique({ where: { id } });
+    if (!agent) {
+      throw new NotFoundException('Agent not found');
+    }
+    if (canOnboardClients && agent.status !== AgentStatus.APPROVED) {
+      throw new UnprocessableEntityException('Agent must be APPROVED before granting client-onboarding access');
+    }
+
+    return this.prisma.agent.update({ where: { id }, data: { canOnboardClients } });
+  }
+
+  async approve(id: string, reviewerId: string): Promise<void> {
+    const agent = await this.loadPendingReview(id);
+    await this.issueCredentials(agent, { reviewerId });
+  }
+
+  async reject(id: string, reviewerId: string, reason: string): Promise<void> {
+    const agent = await this.loadPendingReview(id);
+
+    await this.prisma.agent.update({
+      where: { id },
+      data: {
+        status: AgentStatus.REJECTED,
+        rejectionReason: reason,
+        reviewedBy: reviewerId,
+        reviewedAt: new Date(),
+      },
+    });
+
+    await this.emailService.send({ to: agent.email, ...agentApplicationRejectedEmail({ fullName: agent.fullName, reason }) });
+  }
+
+  async resendCredentials(id: string, reviewerId: string): Promise<void> {
+    const agent = await this.assertCanResendCredentials(id);
+    await this.issueCredentials(agent, {});
+  }
+
+  async assertCanResendCredentials(id: string): Promise<Agent> {
+    const agent = await this.prisma.agent.findUnique({ where: { id } });
+    if (!agent) {
+      throw new NotFoundException('Agent not found');
+    }
+    if (agent.status !== AgentStatus.APPROVED) {
+      throw new ConflictException(`Agent is not APPROVED (currently ${agent.status})`);
+    }
+    if (agent.hasLoggedIn) {
+      throw new ConflictException('Credentials have already been used and can no longer be resent');
+    }
+    return agent;
+  }
+
+  assertCanApprove(id: string): Promise<Agent> {
+    return this.loadPendingReview(id);
+  }
+
+  private async loadPendingReview(id: string): Promise<Agent> {
+    const agent = await this.prisma.agent.findUnique({ where: { id } });
+    if (!agent) {
+      throw new NotFoundException('Agent not found');
+    }
+    if (agent.status !== AgentStatus.PENDING_REVIEW) {
+      throw new ConflictException(`Agent is not PENDING_REVIEW (currently ${agent.status})`);
+    }
+    return agent;
+  }
+
+  private async issueCredentials(agent: Agent, options: { reviewerId?: string }): Promise<void> {
+    const temporaryPassword = generateOpaqueToken();
+    const passwordHash = await hashPassword(temporaryPassword);
+
+    await this.prisma.agent.update({
+      where: { id: agent.id },
+      data: {
+        passwordHash,
+        mustChangePassword: true,
+        status: AgentStatus.APPROVED,
+        ...(options.reviewerId ? { reviewedBy: options.reviewerId, reviewedAt: new Date() } : {}),
+      },
+    });
+
+    const downloadUrl = this.configService.get<string>('AGENT_APP_DOWNLOAD_URL');
+
+    await this.emailService.send({
+      to: agent.email,
+      ...agentCredentialsEmail({ fullName: agent.fullName, email: agent.email, temporaryPassword, downloadUrl }),
+    });
+  }
+}

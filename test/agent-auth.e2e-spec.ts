@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import * as request from 'supertest';
-import * as bcrypt from 'bcrypt';
+import { hashPassword } from '../src/common/password-hash.util';
 import { AppModule } from '../src/app.module';
 import { PrismaService } from '../src/prisma/prisma.service';
 
@@ -20,12 +20,14 @@ describe('Agent auth (e2e)', () => {
     await app.init();
     prisma = moduleFixture.get(PrismaService);
 
-    const passwordHash = await bcrypt.hash('agent-password', 12);
+    const passwordHash = await hashPassword('agent-password');
     await prisma.agent.create({
       data: {
         email,
         phone: '+2348022222222',
         fullName: 'Test Agent',
+        address: '1 Example Street, Lagos',
+        cvKey: 'agent-documents/test-agent/cv.pdf',
         passwordHash,
         status: 'APPROVED',
       },

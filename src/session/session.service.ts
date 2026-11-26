@@ -1,8 +1,9 @@
-import { Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditLogService } from '../audit/audit-log.service';
 import { generateOpaqueToken, hashToken } from '../common/opaque-token.util';
-import { AuditActorType, SessionPrincipalType } from '../generated/prisma/client';
+import { AuditActorType, Prisma, SessionPrincipalType } from '../generated/prisma/client';
+import { buildPaginatedResult, PaginatedResult } from '../common/pagination/paginated-result';
 
 const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -11,6 +12,8 @@ export interface CreateSessionParams {
   principalId: string;
   userAgent?: string;
   ip?: string;
+  /** The bound device the session was opened on (agents and clients). */
+  deviceId?: string;
 }
 
 export interface RotateResult {
@@ -27,6 +30,12 @@ export interface SessionSummary {
   lastUsedAt: Date;
   expiresAt: Date;
 }
+
+const SESSION_AUDIT_NAMES: Record<SessionPrincipalType, { prefix: string; targetType: string }> = {
+  ADMIN: { prefix: 'admin', targetType: 'AdminUser' },
+  AGENT: { prefix: 'agent', targetType: 'Agent' },
+  CLIENT: { prefix: 'client', targetType: 'Client' },
+};
 
 @Injectable()
 export class SessionService {
@@ -45,6 +54,7 @@ export class SessionService {
         refreshTokenHash: hashToken(token),
         userAgent: params.userAgent,
         ip: params.ip,
+        deviceId: params.deviceId,
         expiresAt: new Date(Date.now() + SESSION_TTL_MS),
       },
     });
@@ -66,10 +76,15 @@ export class SessionService {
 
     if (session.revokedAt) {
       await this.revokeAllForPrincipal(session.principalType, session.principalId, 'reuse_detected');
+      const targetType: Record<SessionPrincipalType, string> = {
+        ADMIN: 'AdminUser',
+        AGENT: 'Agent',
+        CLIENT: 'Client',
+      };
       await this.auditLogService.record({
         actorType: AuditActorType.SYSTEM,
         action: 'session.reuse_detected',
-        targetType: 'Session',
+        targetType: targetType[session.principalType],
         targetId: session.principalId,
         metadata: { principalType: session.principalType },
       });
@@ -116,6 +131,18 @@ export class SessionService {
       where: { id: session.id },
       data: { revokedAt: new Date(), revokedReason: 'logout' },
     });
+    await this.recordLogout(session.principalType, session.principalId, 'logout');
+  }
+
+  private recordLogout(principalType: SessionPrincipalType, principalId: string, action: string) {
+    const { prefix, targetType } = SESSION_AUDIT_NAMES[principalType];
+    return this.auditLogService.recordSafely({
+      actorType: AuditActorType[principalType],
+      actorId: principalId,
+      action: `${prefix}.${action}`,
+      targetType,
+      targetId: principalId,
+    });
   }
 
   async revokeAllForPrincipal(
@@ -127,18 +154,41 @@ export class SessionService {
       where: { principalType, principalId, revokedAt: null },
       data: { revokedAt: new Date(), revokedReason: reason },
     });
+    if (reason === 'logout_all') {
+      await this.recordLogout(principalType, principalId, 'logout_all');
+    }
   }
 
   async listActiveSessions(
     principalType: SessionPrincipalType,
     principalId: string,
-  ): Promise<SessionSummary[]> {
-    const sessions = await this.prisma.session.findMany({
-      where: { principalType, principalId, revokedAt: null, expiresAt: { gt: new Date() } },
-      orderBy: { lastUsedAt: 'desc' },
-    });
+    filters: { q?: string; createdFrom?: Date; createdTo?: Date } = {},
+    pagination: { page: number; limit: number } = { page: 1, limit: 25 },
+  ): Promise<PaginatedResult<SessionSummary>> {
+    const { page, limit } = pagination;
+    const where: Prisma.SessionWhereInput = {
+      principalType,
+      principalId,
+      revokedAt: null,
+      expiresAt: { gt: new Date() },
+      OR: filters.q
+        ? [
+            { ip: { contains: filters.q, mode: 'insensitive' } },
+            { userAgent: { contains: filters.q, mode: 'insensitive' } },
+          ]
+        : undefined,
+      createdAt:
+        filters.createdFrom || filters.createdTo
+          ? { gte: filters.createdFrom, lte: filters.createdTo }
+          : undefined,
+    };
 
-    return sessions.map((session) => ({
+    const [sessions, total] = await Promise.all([
+      this.prisma.session.findMany({ where, orderBy: { lastUsedAt: 'desc' }, skip: (page - 1) * limit, take: limit }),
+      this.prisma.session.count({ where }),
+    ]);
+
+    const data = sessions.map((session) => ({
       id: session.id,
       userAgent: session.userAgent,
       ip: session.ip,
@@ -146,6 +196,77 @@ export class SessionService {
       lastUsedAt: session.lastUsedAt,
       expiresAt: session.expiresAt,
     }));
+
+    return buildPaginatedResult(data, total, page, limit);
+  }
+
+  /** Every user's sessions, for the back office, newest activity first. */
+  async listForAdmin(
+    filters: {
+      userType?: SessionPrincipalType;
+      userId?: string;
+      status?: 'active' | 'revoked' | 'expired';
+      idsByType?: Partial<Record<SessionPrincipalType, string[]>>;
+      createdFrom?: Date;
+      createdTo?: Date;
+    },
+    pagination: { page: number; limit: number },
+  ) {
+    const { page, limit } = pagination;
+    const now = new Date();
+    const statusWhere: Record<string, Prisma.SessionWhereInput> = {
+      active: { revokedAt: null, expiresAt: { gt: now } },
+      revoked: { revokedAt: { not: null } },
+      expired: { revokedAt: null, expiresAt: { lte: now } },
+    };
+    const where: Prisma.SessionWhereInput = {
+      ...(filters.status ? statusWhere[filters.status] : {}),
+      principalType: filters.userType,
+      principalId: filters.userId,
+      OR: filters.idsByType
+        ? Object.entries(filters.idsByType).map(([type, ids]) => ({
+            principalType: type as SessionPrincipalType,
+            principalId: { in: ids },
+          }))
+        : undefined,
+      createdAt:
+        filters.createdFrom || filters.createdTo
+          ? { gte: filters.createdFrom, lte: filters.createdTo }
+          : undefined,
+    };
+
+    const [sessions, total] = await Promise.all([
+      this.prisma.session.findMany({
+        where,
+        omit: { refreshTokenHash: true },
+        orderBy: { lastUsedAt: 'desc' },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      this.prisma.session.count({ where }),
+    ]);
+
+    const data = sessions.map((session) => ({
+      ...session,
+      status: session.revokedAt ? 'revoked' : session.expiresAt <= now ? 'expired' : 'active',
+    }));
+    return buildPaginatedResult(data, total, page, limit);
+  }
+
+  /** Signs out one session on an admin's instruction, and returns whose it was. */
+  async revokeById(sessionId: string) {
+    const session = await this.prisma.session.findUnique({ where: { id: sessionId } });
+    if (!session) {
+      throw new NotFoundException('Session not found');
+    }
+    if (session.revokedAt) {
+      throw new ConflictException('This session has already been signed out');
+    }
+    await this.prisma.session.update({
+      where: { id: sessionId },
+      data: { revokedAt: new Date(), revokedReason: 'admin_forced' },
+    });
+    return session;
   }
 
   async revokeOwnSession(
@@ -163,5 +284,6 @@ export class SessionService {
       where: { id: sessionId },
       data: { revokedAt: new Date(), revokedReason: 'logout' },
     });
+    await this.recordLogout(session.principalType, session.principalId, 'logout');
   }
 }

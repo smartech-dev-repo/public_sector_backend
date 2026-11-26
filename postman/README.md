@@ -1,0 +1,194 @@
+# Postman collection
+
+`public-sector-backend.postman_collection.json` covers every endpoint in the
+codebase, with a success scenario and the meaningful failure scenarios
+(validation, auth, permission, not-found) for each one. Filterable
+list endpoints (`/admin/invites`, `/admin/audit-logs`,
+`/admin/documents/batches`) include requests demonstrating their query
+params.
+
+## Folder structure
+
+Three top-level groups, each self-contained (its own Auth where applicable,
+and its own Session sub-folder using that group's own tokens), plus a
+standalone Health check:
+
+- **Health** — the one endpoint that isn't tied to any principal type.
+- **Admin** — Auth, Session (admin tokens), Profile (`/admin/me` — resolved
+  role/department, name self-update, profile-image upload/delete),
+  **Permissions** (full CRUD, blocked-delete-if-in-use), **Roles** (full
+  CRUD, SUPER_ADMIN protections, role↔permission assignment),
+  **Departments** (full CRUD, blocked-delete-if-assigned-to-a-role,
+  mirrors Permissions/Roles exactly — gated by `departments:manage`),
+  **Admins** (list admins, set role via `PATCH .../role`, SUPER_ADMIN-lockout protection),
+  Invites, Audit Logs, Force-Revoke Sessions (an admin action that
+  *targets* an Agent's or a Client's sessions — it lives here because an
+  Admin performs it, and it doesn't affect or get affected by the
+  Agent/Client groups' own session management of themselves), and
+  **Documents** (the ippis-broadsheet/disbursed-loans/repayment-schedule
+  upload + batch + file-download endpoints — admin-authenticated, so it
+  lives here rather than under its own group; there's no separate "IPPIS"
+  principal type in the JWT system), **Reconciliation & Catalog**
+  (`GET /admin/reconciliation` listing expected-vs-actual repayment
+  variances produced after every disbursed-loans/repayment-schedule
+  upload; `/admin/reconciliation/deductions` listing payroll deductions
+  that match no loan running in their month, with the reason, and
+  resolving them — `:id/candidates` lists the staff number's loans,
+  `:id/assign` counts a deduction toward one (optionally in another month),
+  `:id/refund` sends a wallet refund for `approvals:wallets` approval and
+  `:id/dismiss` closes it with a required note, all three gated by
+  `reconciliation:resolve` and chained through `deduction_id` /
+  `client_loan_id`; plus `GET /admin/loans` and `GET /admin/ippis-records` basic
+  agency-filterable listings over the underlying ingested tables — closely
+  related to Documents but its own controllers), **Wallet** (one client's
+  wallet: balance, lifetime totals, open credit/debit requests with a
+  projected balance, and the statement with `source`, `reference` and
+  `balanceAfter` on each entry; credit/debit go through `approvals:wallets`
+  approval, and a debit above the balance is refused when requested),
+  **Wallets** (`GET /admin/wallets` lists every client wallet with a
+  summary of money held and moved by source; `GET /admin/wallets/entries`
+  lists movements across wallets; both need `wallets:read` and are scoped
+  to the admin's clients), **Client Review** (list/inspect
+  clients stuck at `Client.status = MANUAL_REVIEW` and approve or retry
+  them, gated by `clients:review`; the list also takes an `agentId` filter
+  to see one agent's onboarded clients, plus a `GET /admin/clients/analytics`
+  summary), **Review** (agents) (list/inspect Agent submissions stuck at
+  `Agent.status = PENDING_REVIEW` and approve/reject/resend-credentials
+  them, gated by `agents:read`/`agents:review`, plus a
+  `GET /admin/agents/analytics` summary gated by `agents:analytics:read`
+  — it lives under Admin, not Agent, because an Admin is the one
+  authenticating to call it), and **Agent Recruitment Applications**
+  (`GET`/`GET .../analytics`/`GET .../:id`/`DELETE .../:id` over the
+  `AgentApplication` draft table — applicants who verified their email or
+  started the recruitment form but haven't finished `POST
+  /agents/recruitment/submit` yet, otherwise invisible anywhere else;
+  gated by `agents:recruitment:read`/`:analytics:read`/`:manage`; mounted
+  at a path disjoint from `admin/agents/:id` on purpose, so it never
+  competes with that route for match order), **Loan Eligibility**
+  (`GET /admin/clients/:clientId/loan-eligibility` — the salary-based
+  maximum for a tenor with its workings — and a client's own repayment
+  capacity, `GET/PATCH /admin/clients/:clientId/repayment-capacity`; the
+  default capacity and salary table are under **Loan Settings** and a
+  sector's under **Sectors**; methods are BASE_PAY, DTI and BASE_PAY_DTI),
+  **Client Assignment** (a client's current agent and admin, reassignment
+  with a required reason and history, moving all of an agent's clients,
+  and the assignable-agents/admins pickers; gated by `clients:assign`),
+  and **Devices** (the phones agents and clients are locked to, release
+  requests, approve/reject/release with a reason and optional proof
+  file, proof links and a test push; gated by `devices:read`/
+  `devices:manage`).
+- **Agent** — Auth, this agent's own Session (agent tokens), Profile
+  (`GET /agent/me`, read-only), and **Recruitment** (the public,
+  multi-step `agents/recruitment/*` flow — email verification by code,
+  NIN self-check, resumable status, and final submission, each gated by
+  a short-lived application token issued after email confirmation — plus
+  the `POST /auth/agent/change-password` an agent uses to clear a
+  `mustChangePassword: true` JWT after being approved), **Devices**
+  (`/agent/devices/me`: the linked phone, asking for a release, updating
+  the push token), **Client Link** (`/agent/clients/link/request` and
+  `/confirm`: linking an unassigned client with the code texted to them),
+  and **Loan Requests** (including the `.../loan-requests/eligibility`
+  preview).
+- **Client** — Auth (phone + OTP), this client's own Session (client
+  tokens), Profile (`GET /client/me`, read-only), **Onboarding** (IPPIS
+  number linking, BVN/NIN identity submission, and selfie face-match,
+  walking the client from `PHONE_VERIFIED` to `Client.status =
+  VERIFIED`/`MANUAL_REVIEW`), and **Loan Requests** (a `VERIFIED` client
+  requesting a loan, confirming via the inbound SMS webhook, resend, and
+  listing their own requests, plus the `eligibility` preview), and
+  **Devices** (`/client/devices/me`). In this
+  codebase an IPPIS civil servant is onboarded and logs in *as* a Client —
+  see `docs/specs/2026-09-09-public-sector-backend-spec.md`.
+
+## Device headers
+
+Agents and clients are locked to one phone. Sign-in requests (agent login,
+agent 2FA verify, client OTP verify) carry the phone as headers:
+`X-Device-Id` (`{{device_id}}`, the one that matters for binding),
+`X-Device-Brand`, `X-Device-Model`, `X-Device-Platform`,
+`X-Device-Os-Version`, `X-Device-Name`, `X-App-Version`, and optionally
+`X-Device-Imei` and `X-Push-Token`. The first `device_id` an account signs
+in with is linked; change it to see the `403 DEVICE_NOT_RECOGNISED`
+refusal, whose `releaseToken` is saved to `{{device_release_token}}` for
+`POST /auth/devices/release-request`. On a shared database, use your own
+`device_id` value so you don't collide with someone else's linked phone.
+Other variables these folders set: `device_release_request_id`,
+`admin_device_id`, `client_link_request_id`, `client_link_code`.
+
+## Setup
+
+1. Import `public-sector-backend.postman_collection.json` into Postman.
+2. Import `local.postman_environment.json` and select it as the active
+   environment.
+3. In Postman (not by editing the JSON file), set `admin_password` and
+   `agent_password` to your real local values from `.env`
+   (`BOOTSTRAP_ADMIN_PASSWORD`, and whatever password you used when
+   inserting a test Agent row — see the description on
+   "Agent > Auth > POST /auth/agent/login - Success"). Edits you make
+   inside the Postman app are stored in Postman's own local data, not
+   written back to this repo's JSON file, so there's no risk of committing
+   a real password by doing this.
+4. Make sure the app is running (`npm run start:dev`) against a
+   migrated + seeded database.
+
+## Running it
+
+Requests are grouped so you can run a whole folder (or the whole
+collection via Collection Runner) top to bottom and have most of it chain
+automatically — success requests capture tokens/ids into collection
+variables (`admin_access_token`, `invite_id`, `ippis_batch_id`, etc.) via
+test scripts, and later requests reference those variables.
+
+A few things can't be automated end-to-end and need a manual step —
+each has a `description` on the request explaining why:
+
+- **Client OTP verify** and **admin invite accept**: the OTP code and
+  invite token are only ever delivered via the mock console
+  `OtpProvider`/`EmailProvider`, which just logs to the running server's
+  stdout (no real SMS/email vendor is wired in yet). Copy the value from
+  the server log into `client_otp_code` / `invite_token` before running
+  those requests.
+- **SMS could not be sent (424)** requests: these only reproduce when the
+  server's SMS provider is Termii and the send fails (for example, a route
+  not configured for the workspace). Every endpoint that texts a code
+  returns `424 Failed Dependency` with "We couldn't send the confirmation code. Please try
+  again shortly" and creates nothing, so the caller can retry; the
+  provider's own error is only in the server log.
+- **Agent login**: Agent self-registration isn't built yet (deferred —
+  see `docs/specs/2026-09-09-public-sector-backend-spec.md`). You need an
+  `Agent` row with `status = APPROVED` and a real bcrypt `passwordHash`
+  already in the database before this succeeds.
+- **Document uploads**: all three document types (IPPIS Broadsheet,
+  Disbursed Loans, Repayment Schedule) are fully parsed — see each
+  upload request's `description` for the real column headers it expects.
+  **Never attach the real sample files under `docs/added/`** to a request
+  in a shared Postman workspace — those contain real BVNs, bank accounts,
+  and names, and are gitignored in this repo for that exact reason.
+
+## Maintenance — read this before changing any endpoint
+
+**This collection must be updated in the same change as any code change
+that affects it.** That means, whenever you (or an AI assistant working in
+this repo):
+
+- add, remove, or rename an endpoint,
+- change a DTO's fields or validation rules,
+- change a permission key an endpoint requires,
+- add or change a query filter,
+- change a response shape that a test script or chained request depends on,
+
+...the corresponding request(s) in `public-sector-backend.postman_collection.json`
+get added/updated/removed in the same commit — not as separate follow-up
+work, not "later." This is a standing project rule (see the repo's
+`CLAUDE.md`), not a one-time request.
+
+When adding a new endpoint, follow the existing pattern: one success
+request with a test script that captures anything later requests need,
+plus the meaningful failure requests (at minimum: validation error if it
+takes a body, auth/permission error if it's guarded). Place it under
+whichever of the three groups (Admin/Agent/Client) matches who
+*authenticates* to call it — not who it's about — in the sub-folder
+matching its controller, creating a new sub-folder for a new
+controller/module. A brand new fourth top-level group is only warranted
+for a genuinely new principal type (the JWT system currently has exactly
+three: admin, agent, client).

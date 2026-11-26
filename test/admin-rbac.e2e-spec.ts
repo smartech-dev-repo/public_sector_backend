@@ -39,16 +39,16 @@ describe('Admin RBAC (e2e)', () => {
       .set('Authorization', `Bearer ${accessToken}`)
       .expect(200)
       .expect((res) => {
-        expect(res.body.type).toBe('admin');
+        expect(res.body.email).toBe(process.env.BOOTSTRAP_ADMIN_EMAIL);
+        expect(res.body.role).toBeDefined();
         expect(res.body.permissions).toContain('roles:manage');
       });
   });
 
   it('allows the bootstrap super-admin to hit a roles:manage-gated route', () => {
     return request(app.getHttpServer())
-      .get('/admin/roles/ping')
+      .get('/admin/roles')
       .set('Authorization', `Bearer ${accessToken}`)
-      .expect(200)
-      .expect({ ok: true });
+      .expect(200);
   });
 });

@@ -2,6 +2,7 @@ import { of, throwError } from 'rxjs';
 import { CallHandler, ExecutionContext } from '@nestjs/common';
 import { AuditInterceptor } from './audit.interceptor';
 import { AuditLogService } from './audit-log.service';
+import { auditRequestContext } from './audit-request-context';
 import { AuditActorType } from '../generated/prisma/client';
 
 function buildContext(request: Record<string, unknown>): ExecutionContext {
@@ -30,6 +31,50 @@ describe('AuditInterceptor', () => {
     interceptor.intercept(buildContext(request), buildHandler({ ok: true })).subscribe(() => {
       expect(auditLogService.record).not.toHaveBeenCalled();
       done();
+    });
+  });
+
+  it('exposes the request origin to code running inside the handler', (done) => {
+    const request = { method: 'POST', url: '/admin/roles', ip: '10.0.0.1', headers: { 'user-agent': 'jest' } };
+    const handler: CallHandler = {
+      handle: () => {
+        expect(auditRequestContext.getStore()).toEqual({ ip: '10.0.0.1', userAgent: 'jest' });
+        return of(true);
+      },
+    };
+    interceptor.intercept(buildContext(request), handler).subscribe(() => done());
+  });
+
+  it('skips the automatic row when the handler recorded a named event', (done) => {
+    const request = { method: 'POST', url: '/admin/roles', headers: {} };
+    const handler: CallHandler = {
+      handle: () => {
+        auditRequestContext.getStore()!.namedEventRecorded = true;
+        return of(true);
+      },
+    };
+    interceptor.intercept(buildContext(request), handler).subscribe(() => {
+      setImmediate(() => {
+        expect(auditLogService.record).not.toHaveBeenCalled();
+        done();
+      });
+    });
+  });
+
+  it('still logs a failed request after a named event', (done) => {
+    const request = { method: 'POST', url: '/admin/roles', headers: {} };
+    const handler: CallHandler = {
+      handle: () => {
+        auditRequestContext.getStore()!.namedEventRecorded = true;
+        return throwError(() => ({ status: 409 }));
+      },
+    };
+    interceptor.intercept(buildContext(request), handler).subscribe({
+      error: () =>
+        setImmediate(() => {
+          expect(auditLogService.record).toHaveBeenCalledTimes(1);
+          done();
+        }),
     });
   });
 

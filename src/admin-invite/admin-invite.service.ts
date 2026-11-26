@@ -1,7 +1,8 @@
-import { Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { generateOpaqueToken, hashToken } from '../common/opaque-token.util';
-import { AdminInvite, AdminInviteStatus } from '../generated/prisma/client';
+import { AdminInvite, AdminInviteStatus, Prisma } from '../generated/prisma/client';
+import { buildPaginatedResult, PaginatedResult } from '../common/pagination/paginated-result';
 
 const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -11,9 +12,20 @@ export interface CreateInviteParams {
   invitedById: string;
 }
 
+export type AdminInviteWithRole = Prisma.AdminInviteGetPayload<{ include: { role: true } }>;
+
 export interface IssuedInvite {
-  invite: AdminInvite;
+  invite: AdminInviteWithRole;
   token: string;
+}
+
+export interface ListInvitesFilters {
+  status?: AdminInviteStatus;
+  q?: string;
+  createdFrom?: Date;
+  createdTo?: Date;
+  expiresFrom?: Date;
+  expiresTo?: Date;
 }
 
 @Injectable()
@@ -21,6 +33,22 @@ export class AdminInviteService {
   constructor(private readonly prisma: PrismaService) {}
 
   async create(params: CreateInviteParams): Promise<IssuedInvite> {
+    const existingAdmin = await this.prisma.adminUser.findUnique({ where: { email: params.email } });
+    if (existingAdmin) {
+      throw new ConflictException('An admin with this email already exists');
+    }
+
+    // Scoped to expiresAt > now, not just status === PENDING: nothing in
+    // this codebase ever transitions a PENDING invite to EXPIRED once its
+    // TTL passes (that status is only ever checked, never set), so a
+    // genuinely-stale invite row must not block issuing a fresh one.
+    const existingInvite = await this.prisma.adminInvite.findFirst({
+      where: { email: params.email, status: AdminInviteStatus.PENDING, expiresAt: { gt: new Date() } },
+    });
+    if (existingInvite) {
+      throw new ConflictException('A pending invite already exists for this email');
+    }
+
     const token = generateOpaqueToken();
 
     const invite = await this.prisma.adminInvite.create({
@@ -31,6 +59,7 @@ export class AdminInviteService {
         tokenHash: hashToken(token),
         expiresAt: new Date(Date.now() + INVITE_TTL_MS),
       },
+      include: { role: true },
     });
 
     return { invite, token };
@@ -48,16 +77,42 @@ export class AdminInviteService {
     const invite = await this.prisma.adminInvite.update({
       where: { id },
       data: { tokenHash: hashToken(token), expiresAt: new Date(Date.now() + INVITE_TTL_MS) },
+      include: { role: true },
     });
 
     return { invite, token };
   }
 
-  async list(status?: AdminInviteStatus): Promise<AdminInvite[]> {
-    return this.prisma.adminInvite.findMany({
-      where: status ? { status } : undefined,
-      orderBy: { createdAt: 'desc' },
-    });
+  async list(
+    filters: ListInvitesFilters = {},
+    pagination: { page: number; limit: number } = { page: 1, limit: 25 },
+  ): Promise<PaginatedResult<AdminInviteWithRole & { invitedBy: { id: string; fullName: string; email: string } }>> {
+    const { page, limit } = pagination;
+    const where: Prisma.AdminInviteWhereInput = {
+      status: filters.status,
+      createdAt:
+        filters.createdFrom || filters.createdTo
+          ? { gte: filters.createdFrom, lte: filters.createdTo }
+          : undefined,
+      expiresAt:
+        filters.expiresFrom || filters.expiresTo
+          ? { gte: filters.expiresFrom, lte: filters.expiresTo }
+          : undefined,
+      email: filters.q ? { contains: filters.q, mode: 'insensitive' } : undefined,
+    };
+
+    const [data, total] = await Promise.all([
+      this.prisma.adminInvite.findMany({
+        where,
+        include: { role: true, invitedBy: { select: { id: true, fullName: true, email: true } } },
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      this.prisma.adminInvite.count({ where }),
+    ]);
+
+    return buildPaginatedResult(data, total, page, limit);
   }
 
   async findValidByToken(token: string): Promise<AdminInvite> {
@@ -77,5 +132,13 @@ export class AdminInviteService {
       where: { id },
       data: { status: AdminInviteStatus.ACCEPTED, acceptedAt: new Date() },
     });
+  }
+
+  async remove(id: string): Promise<void> {
+    const invite = await this.prisma.adminInvite.findUnique({ where: { id } });
+    if (!invite || invite.status !== AdminInviteStatus.PENDING) {
+      throw new NotFoundException('Invite not found or not pending');
+    }
+    await this.prisma.adminInvite.delete({ where: { id } });
   }
 }

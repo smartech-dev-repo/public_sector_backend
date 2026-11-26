@@ -1,0 +1,133 @@
+import { ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
+import { SessionService } from '../session/session.service';
+import { Prisma, SessionPrincipalType } from '../generated/prisma/client';
+import { buildPaginatedResult } from '../common/pagination/paginated-result';
+import { FILE_STORAGE_PROVIDER, FileStorageProvider } from '../file-storage/file-storage-provider.interface';
+
+const SUPER_ADMIN_ROLE_NAME = 'SUPER_ADMIN';
+
+export interface ListAdminsFilters {
+  isActive?: boolean;
+  roleId?: string;
+  q?: string;
+  createdFrom?: Date;
+  createdTo?: Date;
+}
+
+@Injectable()
+export class AdminRoleAssignmentService {
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly sessionService: SessionService,
+    @Inject(FILE_STORAGE_PROVIDER) private readonly fileStorageProvider: FileStorageProvider,
+  ) {}
+
+  async listAdmins(
+    filters: ListAdminsFilters = {},
+    pagination: { page: number; limit: number } = { page: 1, limit: 25 },
+  ) {
+    const { page, limit } = pagination;
+    const where: Prisma.AdminUserWhereInput = {
+      isActive: filters.isActive,
+      roleId: filters.roleId,
+      createdAt:
+        filters.createdFrom || filters.createdTo
+          ? { gte: filters.createdFrom, lte: filters.createdTo }
+          : undefined,
+      OR: filters.q
+        ? [
+            { email: { contains: filters.q, mode: 'insensitive' } },
+            { fullName: { contains: filters.q, mode: 'insensitive' } },
+          ]
+        : undefined,
+    };
+
+    const [data, total] = await Promise.all([
+      this.prisma.adminUser.findMany({
+        where,
+        select: {
+          id: true,
+          email: true,
+          fullName: true,
+          isActive: true,
+          createdAt: true,
+          updatedAt: true,
+          role: true,
+          department: true,
+          profileImageKey: true,
+        },
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      this.prisma.adminUser.count({ where }),
+    ]);
+
+    const rows = await Promise.all(
+      data.map(async ({ profileImageKey, ...admin }) => ({
+        ...admin,
+        profileImageUrl: profileImageKey ? await this.fileStorageProvider.getSignedDownloadUrl(profileImageKey) : null,
+      })),
+    );
+
+    return buildPaginatedResult(rows, total, page, limit);
+  }
+
+  async setRole(adminId: string, roleId: string): Promise<{ from: string; to: string }> {
+    const admin = await this.prisma.adminUser.findUnique({
+      where: { id: adminId },
+      include: { role: true },
+    });
+    if (!admin) {
+      throw new NotFoundException('Admin not found');
+    }
+
+    const newRole = await this.prisma.role.findUnique({ where: { id: roleId } });
+    if (!newRole) {
+      throw new NotFoundException('Role not found');
+    }
+
+    const movingAwayFromSuperAdmin = admin.role.name === SUPER_ADMIN_ROLE_NAME && newRole.id !== admin.role.id;
+    if (movingAwayFromSuperAdmin) {
+      const holderCount = await this.prisma.adminUser.count({ where: { roleId: admin.role.id } });
+      if (holderCount <= 1) {
+        throw new ConflictException('Cannot remove the last admin holding the SUPER_ADMIN role');
+      }
+    }
+
+    await this.prisma.adminUser.update({
+      where: { id: adminId },
+      data: { roleId: newRole.id, departmentId: newRole.departmentId },
+    });
+    return { from: admin.role.name, to: newRole.name };
+  }
+
+  async suspend(callerId: string, id: string): Promise<void> {
+    const admin = await this.prisma.adminUser.findUnique({ where: { id } });
+    if (!admin) {
+      throw new NotFoundException('Admin not found');
+    }
+    if (id === callerId) {
+      throw new ConflictException('Cannot deactivate your own account');
+    }
+    if (!admin.isActive) {
+      throw new ConflictException('Admin is already deactivated');
+    }
+
+    await this.prisma.adminUser.update({ where: { id }, data: { isActive: false } });
+    await this.sessionService.revokeAllForPrincipal(SessionPrincipalType.ADMIN, id, 'admin_suspended');
+  }
+
+  async unsuspend(id: string): Promise<void> {
+    const admin = await this.prisma.adminUser.findUnique({ where: { id } });
+    if (!admin) {
+      throw new NotFoundException('Admin not found');
+    }
+    if (admin.isActive) {
+      throw new ConflictException('Admin is already active');
+    }
+
+    await this.prisma.adminUser.update({ where: { id }, data: { isActive: true } });
+  }
+}

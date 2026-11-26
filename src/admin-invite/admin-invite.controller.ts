@@ -1,4 +1,5 @@
-import { Body, Controller, Get, Param, Post, Query, Req, UseGuards, UseInterceptors } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, Param, Post, Query, Req, UseGuards, UseInterceptors } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { PermissionsGuard } from '../auth/permissions.guard';
 import { RequirePermissions } from '../auth/permissions.decorator';
@@ -8,7 +9,9 @@ import { AuditLogService } from '../audit/audit-log.service';
 import { EmailService } from '../email/email.service';
 import { AdminInviteService } from './admin-invite.service';
 import { CreateInviteDto } from './dto/create-invite.dto';
-import { AdminInviteStatus, AuditActorType } from '../generated/prisma/client';
+import { ListInvitesQueryDto } from './dto/list-invites-query.dto';
+import { AuditActorType } from '../generated/prisma/client';
+import { adminInviteEmail, adminInviteResentEmail } from '../email/templates/token-emails';
 
 @Controller('admin/invites')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
@@ -18,7 +21,13 @@ export class AdminInviteController {
     private readonly adminInviteService: AdminInviteService,
     private readonly emailService: EmailService,
     private readonly auditLogService: AuditLogService,
+    private readonly configService: ConfigService,
   ) {}
+
+  private buildAcceptUrl(token: string): string | undefined {
+    const dashboardUrl = this.configService.get<string>('ADMIN_DASHBOARD_URL');
+    return dashboardUrl ? `${dashboardUrl}/accept-invite?token=${token}` : undefined;
+  }
 
   @Post()
   @RequirePermissions('admins:create')
@@ -29,12 +38,7 @@ export class AdminInviteController {
       invitedById: req.user.sub,
     });
 
-    await this.emailService.send({
-      to: dto.email,
-      subject: 'You have been invited as an admin',
-      html: `<p>You have been invited. Use this token to accept: ${token}</p>`,
-      text: `You have been invited. Use this token to accept: ${token}`,
-    });
+    await this.emailService.send({ to: dto.email, ...adminInviteEmail({ token, acceptUrl: this.buildAcceptUrl(token) }) });
 
     await this.auditLogService.record({
       actorType: AuditActorType.ADMIN,
@@ -45,7 +49,13 @@ export class AdminInviteController {
       metadata: { email: dto.email, roleId: dto.roleId },
     });
 
-    return { id: invite.id, email: invite.email, status: invite.status, expiresAt: invite.expiresAt };
+    return {
+      id: invite.id,
+      email: invite.email,
+      status: invite.status,
+      expiresAt: invite.expiresAt,
+      role: { id: invite.role.id, name: invite.role.name },
+    };
   }
 
   @Post(':id/resend')
@@ -53,12 +63,7 @@ export class AdminInviteController {
   async resend(@Param('id') id: string, @Req() req: { user: JwtPayload }) {
     const { invite, token } = await this.adminInviteService.resend(id);
 
-    await this.emailService.send({
-      to: invite.email,
-      subject: 'Your admin invitation (resent)',
-      html: `<p>Use this token to accept: ${token}</p>`,
-      text: `Use this token to accept: ${token}`,
-    });
+    await this.emailService.send({ to: invite.email, ...adminInviteResentEmail({ token, acceptUrl: this.buildAcceptUrl(token) }) });
 
     await this.auditLogService.record({
       actorType: AuditActorType.ADMIN,
@@ -68,12 +73,43 @@ export class AdminInviteController {
       targetId: invite.id,
     });
 
-    return { id: invite.id, email: invite.email, status: invite.status, expiresAt: invite.expiresAt };
+    return {
+      id: invite.id,
+      email: invite.email,
+      status: invite.status,
+      expiresAt: invite.expiresAt,
+      role: { id: invite.role.id, name: invite.role.name },
+    };
   }
 
   @Get()
   @RequirePermissions('admins:create')
-  list(@Query('status') status?: AdminInviteStatus) {
-    return this.adminInviteService.list(status);
+  list(@Query() query: ListInvitesQueryDto) {
+    return this.adminInviteService.list(
+      {
+        status: query.status,
+        q: query.q,
+        createdFrom: query.createdFrom ? new Date(query.createdFrom) : undefined,
+        createdTo: query.createdTo ? new Date(query.createdTo) : undefined,
+        expiresFrom: query.expiresFrom ? new Date(query.expiresFrom) : undefined,
+        expiresTo: query.expiresTo ? new Date(query.expiresTo) : undefined,
+      },
+      { page: query.page, limit: query.limit },
+    );
+  }
+
+  @Delete(':id')
+  @HttpCode(200)
+  @RequirePermissions('admins:create')
+  async remove(@Param('id') id: string, @Req() req: { user: JwtPayload }) {
+    await this.adminInviteService.remove(id);
+    await this.auditLogService.record({
+      actorType: AuditActorType.ADMIN,
+      actorId: req.user.sub,
+      action: 'admin.invite.deleted',
+      targetType: 'AdminInvite',
+      targetId: id,
+    });
+    return { deleted: true };
   }
 }

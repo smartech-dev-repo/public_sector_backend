@@ -1,4 +1,4 @@
-import { NotFoundException, UnauthorizedException } from '@nestjs/common';
+import { ConflictException, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { AdminInviteService } from './admin-invite.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { hashToken } from '../common/opaque-token.util';
@@ -12,6 +12,12 @@ describe('AdminInviteService', () => {
       update: jest.Mock;
       findMany: jest.Mock;
       findUnique: jest.Mock;
+      findFirst: jest.Mock;
+      count: jest.Mock;
+      delete: jest.Mock;
+    };
+    adminUser: {
+      findUnique: jest.Mock;
     };
   };
 
@@ -22,6 +28,12 @@ describe('AdminInviteService', () => {
         update: jest.fn(),
         findMany: jest.fn(),
         findUnique: jest.fn(),
+        findFirst: jest.fn().mockResolvedValue(null),
+        count: jest.fn(),
+        delete: jest.fn(),
+      },
+      adminUser: {
+        findUnique: jest.fn().mockResolvedValue(null),
       },
     };
     service = new AdminInviteService(prisma as unknown as PrismaService);
@@ -44,6 +56,44 @@ describe('AdminInviteService', () => {
     const expiresInMs = createArgs.data.expiresAt.getTime() - Date.now();
     expect(expiresInMs).toBeGreaterThan(6 * 24 * 60 * 60 * 1000);
     expect(expiresInMs).toBeLessThanOrEqual(7 * 24 * 60 * 60 * 1000);
+  });
+
+  it('rejects when an admin already exists with this email', async () => {
+    prisma.adminUser.findUnique.mockResolvedValue({ id: 'admin-1', email: 'taken@example.com' });
+
+    await expect(
+      service.create({ email: 'taken@example.com', roleId: 'role-1', invitedById: 'admin-1' }),
+    ).rejects.toThrow(ConflictException);
+    expect(prisma.adminInvite.create).not.toHaveBeenCalled();
+  });
+
+  it('rejects when a pending, unexpired invite already exists for this email', async () => {
+    prisma.adminInvite.findFirst.mockResolvedValue({
+      id: 'invite-1',
+      status: AdminInviteStatus.PENDING,
+      expiresAt: new Date(Date.now() + 60_000),
+    });
+
+    await expect(
+      service.create({ email: 'invited@example.com', roleId: 'role-1', invitedById: 'admin-1' }),
+    ).rejects.toThrow(ConflictException);
+    expect(prisma.adminInvite.create).not.toHaveBeenCalled();
+  });
+
+  it('allows a new invite when the only existing one for this email is past its expiry', async () => {
+    prisma.adminInvite.findFirst.mockResolvedValue(null);
+    prisma.adminInvite.create.mockResolvedValue({ id: 'invite-2' });
+
+    await service.create({ email: 'reinvited@example.com', roleId: 'role-1', invitedById: 'admin-1' });
+
+    expect(prisma.adminInvite.findFirst).toHaveBeenCalledWith({
+      where: {
+        email: 'reinvited@example.com',
+        status: AdminInviteStatus.PENDING,
+        expiresAt: { gt: expect.any(Date) },
+      },
+    });
+    expect(prisma.adminInvite.create).toHaveBeenCalled();
   });
 
   it('resend rejects an invite that is not PENDING', async () => {
@@ -94,6 +144,94 @@ describe('AdminInviteService', () => {
     expect(prisma.adminInvite.update).toHaveBeenCalledWith({
       where: { id: 'invite-1' },
       data: { status: AdminInviteStatus.ACCEPTED, acceptedAt: expect.any(Date) },
+    });
+  });
+
+  describe('list', () => {
+    it('defaults to page 1/limit 25 with no filters', async () => {
+      prisma.adminInvite.findMany.mockResolvedValue([]);
+      prisma.adminInvite.count.mockResolvedValue(0);
+
+      const result = await service.list();
+
+      expect(prisma.adminInvite.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          skip: 0,
+          take: 25,
+          include: { role: true, invitedBy: { select: { id: true, fullName: true, email: true } } },
+        }),
+      );
+      expect(result.meta).toEqual({ total: 0, page: 1, limit: 25, totalPages: 0 });
+    });
+
+    it('filters by status and searches email', async () => {
+      prisma.adminInvite.findMany.mockResolvedValue([]);
+      prisma.adminInvite.count.mockResolvedValue(0);
+
+      await service.list({ status: AdminInviteStatus.PENDING, q: 'someone@example.com' });
+
+      expect(prisma.adminInvite.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            status: AdminInviteStatus.PENDING,
+            email: { contains: 'someone@example.com', mode: 'insensitive' },
+          }),
+          include: { role: true, invitedBy: { select: { id: true, fullName: true, email: true } } },
+        }),
+      );
+    });
+
+    it('applies createdAt and expiresAt date ranges independently', async () => {
+      prisma.adminInvite.findMany.mockResolvedValue([]);
+      prisma.adminInvite.count.mockResolvedValue(0);
+      const createdFrom = new Date('2025-01-01');
+      const expiresTo = new Date('2025-06-01');
+
+      await service.list({ createdFrom, expiresTo });
+
+      expect(prisma.adminInvite.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            createdAt: { gte: createdFrom, lte: undefined },
+            expiresAt: { gte: undefined, lte: expiresTo },
+          }),
+          include: { role: true, invitedBy: { select: { id: true, fullName: true, email: true } } },
+        }),
+      );
+    });
+
+    it('computes skip/take from page and limit and reports the total', async () => {
+      prisma.adminInvite.findMany.mockResolvedValue([]);
+      prisma.adminInvite.count.mockResolvedValue(6);
+
+      const result = await service.list({}, { page: 2, limit: 3 });
+
+      expect(prisma.adminInvite.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          skip: 3,
+          take: 3,
+          include: { role: true, invitedBy: { select: { id: true, fullName: true, email: true } } },
+        }),
+      );
+      expect(result.meta).toEqual({ total: 6, page: 2, limit: 3, totalPages: 2 });
+    });
+  });
+
+  describe('remove', () => {
+    it('throws NotFoundException for an unknown invite', async () => {
+      prisma.adminInvite.findUnique.mockResolvedValue(null);
+      await expect(service.remove('missing')).rejects.toThrow(NotFoundException);
+    });
+
+    it('throws NotFoundException for a non-PENDING invite', async () => {
+      prisma.adminInvite.findUnique.mockResolvedValue({ id: 'invite-1', status: 'ACCEPTED' });
+      await expect(service.remove('invite-1')).rejects.toThrow(NotFoundException);
+    });
+
+    it('deletes a PENDING invite', async () => {
+      prisma.adminInvite.findUnique.mockResolvedValue({ id: 'invite-1', status: 'PENDING' });
+      await service.remove('invite-1');
+      expect(prisma.adminInvite.delete).toHaveBeenCalledWith({ where: { id: 'invite-1' } });
     });
   });
 });

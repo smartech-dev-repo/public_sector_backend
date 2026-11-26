@@ -1,0 +1,35 @@
+// src/email/templates/action-emails.ts
+import { wrapEmailLayout, wrapEmailLayoutText, credentialsBox } from './layout';
+
+const CLOSING_TEXT = 'Warm regards,\nThe Moneyfield Team';
+const CLOSING_HTML = '<p>Warm regards,<br>The Moneyfield Team</p>';
+
+export function agentApplicationRejectedEmail(params: { fullName: string; reason: string }): { subject: string; html: string; text: string } {
+  // "Reason: " must stay immediately before the reason text — src/admin-agent-review/admin-agent-review.service.spec.ts
+  // asserts `text` contains the reason string.
+  const bodyText = `Hi ${params.fullName},\n\nThank you for applying to become a Moneyfield agent. After review, we're unable to approve your application at this time.\n\nReason: ${params.reason}\n\nIf you believe this was a mistake or have questions, please contact support.\n\n${CLOSING_TEXT}`;
+  const bodyHtml = `<p>Hi ${params.fullName},</p><p>Thank you for applying to become a Moneyfield agent. After review, we're unable to approve your application at this time.</p><p><strong>Reason:</strong> ${params.reason}</p><p>If you believe this was a mistake or have questions, please contact support.</p>${CLOSING_HTML}`;
+  return {
+    subject: 'An update on your agent application',
+    html: wrapEmailLayout({ headline: 'Application update', bodyHtml }),
+    text: wrapEmailLayoutText({ headline: 'Application update', bodyText }),
+  };
+}
+
+export function agentCredentialsEmail(params: { fullName: string; email: string; temporaryPassword: string; downloadUrl?: string }): { subject: string; html: string; text: string } {
+  // "Download the app: " must stay present/absent exactly as before —
+  // src/admin-agent-review/admin-agent-review.service.spec.ts asserts
+  // both the absence (no downloadUrl) and presence+URL (with downloadUrl) cases.
+  const downloadText = params.downloadUrl ? `\n\nDownload the app: ${params.downloadUrl}` : '';
+  const downloadHtml = params.downloadUrl ? `<p>Download the app: <a href="${params.downloadUrl}">${params.downloadUrl}</a></p>` : '';
+  const bodyText = `Hi ${params.fullName},\n\nYour agent account has been approved. Here are your login details:\n\nEmail: ${params.email}\nPassword: ${params.temporaryPassword}${downloadText}\n\nYou'll be asked to set a new password the first time you log in.\n\n${CLOSING_TEXT}`;
+  const bodyHtml = `<p>Hi ${params.fullName},</p><p>Your agent account has been approved. Here are your login details:</p>${credentialsBox([
+    { label: 'Email', value: params.email },
+    { label: 'Password', value: params.temporaryPassword },
+  ])}${downloadHtml}<p>You'll be asked to set a new password the first time you log in.</p>${CLOSING_HTML}`;
+  return {
+    subject: 'Welcome to Moneyfield — your account is ready',
+    html: wrapEmailLayout({ headline: 'Your account is ready', bodyHtml }),
+    text: wrapEmailLayoutText({ headline: 'Your account is ready', bodyText }),
+  };
+}

@@ -1,16 +1,17 @@
-import {
-  Inject,
-  Injectable,
-  InternalServerErrorException,
-  Logger,
-} from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
-import { OTP_PROVIDERS, OtpProvider } from './otp-provider.interface';
+import { SmsService } from '../sms/sms.service';
+import { SmsType } from '../sms/sms-type';
+import { EmailService } from '../email/email.service';
+import { hashPassword } from '../common/password-hash.util';
+import { generateNumericCode } from '../common/generate-numeric-code.util';
+import { clientOtpCodeEmail } from '../email/templates/verification-code-emails';
 
-function generateCode(): string {
-  return Math.floor(100000 + Math.random() * 900000).toString();
+export interface OtpVerifyResult {
+  valid: boolean;
+  email?: string | null;
 }
 
 @Injectable()
@@ -19,58 +20,69 @@ export class OtpService {
 
   constructor(
     private readonly prisma: PrismaService,
-    @Inject(OTP_PROVIDERS) private readonly providers: OtpProvider[],
+    private readonly smsService: SmsService,
     private readonly configService?: ConfigService,
+    private readonly emailService?: EmailService,
   ) {}
 
   private ttlSeconds(): number {
     return Number(this.configService?.get('OTP_TTL_SECONDS') ?? 300);
   }
 
-  private async sendWithFailover(phone: string, code: string): Promise<void> {
-    const failures: string[] = [];
-
-    for (const provider of this.providers) {
-      try {
-        await provider.send(phone, code);
-        return;
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        this.logger.warn(`OTP provider "${provider.name}" failed: ${message}`);
-        failures.push(`${provider.name}: ${message}`);
-      }
-    }
-
-    throw new InternalServerErrorException(
-      `All OTP providers failed: ${failures.join('; ')}`,
-    );
-  }
-
-  async request(phone: string): Promise<void> {
-    const code = generateCode();
-    const codeHash = await bcrypt.hash(code, 12);
+  async request(phone: string, email?: string): Promise<{ mockCode?: string }> {
+    const length = Number(this.configService?.get('PHONE_OTP_LENGTH') ?? 4);
+    const code = generateNumericCode(length);
+    const codeHash = await hashPassword(code);
     const expiresAt = new Date(Date.now() + this.ttlSeconds() * 1000);
 
     await this.prisma.otpCode.create({
-      data: { phone, codeHash, purpose: 'CLIENT_LOGIN', expiresAt },
+      data: { phone, email, codeHash, purpose: 'CLIENT_LOGIN', expiresAt },
     });
 
-    await this.sendWithFailover(phone, code);
+    await this.smsService.send({ type: SmsType.OTP, phone, message: code });
+
+    if (email) {
+      await this.sendEmailCopy(email, code);
+    }
+
+    return {
+      mockCode:
+        this.configService?.get('ENABLE_MOCK_OTP') === 'true'
+          ? code
+          : undefined,
+    };
   }
 
-  async verify(phone: string, code: string): Promise<boolean> {
+  private async sendEmailCopy(email: string, code: string): Promise<void> {
+    const ttlMinutes = Math.round(this.ttlSeconds() / 60);
+    try {
+      await this.emailService?.send({ to: email, ...clientOtpCodeEmail({ code, ttlMinutes }) });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.warn(`OTP email copy to ${email} failed: ${message}`);
+    }
+  }
+
+  async verify(phone: string, code: string): Promise<OtpVerifyResult> {
+    if (
+      this.configService?.get('ENABLE_MOCK_OTP') === 'true' &&
+      code === (this.configService?.get('MOCK_OTP_CODE') ?? '0000')
+    ) {
+      return { valid: true };
+    }
+
     const candidate = await this.prisma.otpCode.findFirst({
       where: { phone, purpose: 'CLIENT_LOGIN', consumedAt: null },
       orderBy: { createdAt: 'desc' },
     });
 
     if (!candidate || candidate.expiresAt < new Date()) {
-      return false;
+      return { valid: false };
     }
 
     const matches = await bcrypt.compare(code, candidate.codeHash);
     if (!matches) {
-      return false;
+      return { valid: false };
     }
 
     await this.prisma.otpCode.update({
@@ -78,6 +90,6 @@ export class OtpService {
       data: { consumedAt: new Date() },
     });
 
-    return true;
+    return { valid: true, email: candidate.email };
   }
 }

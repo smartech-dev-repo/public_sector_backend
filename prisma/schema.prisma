@@ -22,13 +22,25 @@ model Permission {
 }
 
 model Role {
-  id          String           @id @default(uuid())
-  name        String           @unique
+  id           String           @id @default(uuid())
+  name         String           @unique
+  description  String?
+  departmentId String?
+  department   Department?      @relation(fields: [departmentId], references: [id])
+  permissions  RolePermission[]
+  admins       AdminUser[]
+  invites      AdminInvite[]
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @default(now()) @updatedAt
+}
+
+model Department {
+  id          String      @id @default(uuid())
+  name        String      @unique
   description String?
-  permissions RolePermission[]
-  admins      AdminUserRole[]
-  invites     AdminInvite[]
-  createdAt   DateTime         @default(now())
+  roles       Role[]
+  admins      AdminUser[]
+  createdAt   DateTime    @default(now())
 }
 
 model RolePermission {
@@ -41,24 +53,45 @@ model RolePermission {
 }
 
 model AdminUser {
-  id           String          @id @default(uuid())
-  email        String          @unique
-  passwordHash String
-  fullName     String
-  isActive     Boolean         @default(true)
-  roles        AdminUserRole[]
-  sentInvites  AdminInvite[]
-  createdAt    DateTime        @default(now())
-  updatedAt    DateTime        @updatedAt
+  id                          String                @id @default(uuid())
+  email                       String                @unique
+  passwordHash                String
+  firstName                   String
+  lastName                    String
+  fullName                    String
+  isActive                    Boolean               @default(true)
+  roleId                      String
+  role                        Role                  @relation(fields: [roleId], references: [id])
+  assignedClients             Client[]              @relation("ClientAssignedAdmin")
+  departmentId                String?
+  department                  Department?           @relation(fields: [departmentId], references: [id])
+  sentInvites                 AdminInvite[]
+  reviewedOnboardings         ClientOnboarding[]    @relation("ClientOnboardingReviewedBy")
+  onboardedClients            ClientOnboarding[]    @relation("ClientOnboardingByAdmin")
+  createdClients              Client[]              @relation("ClientCreatedByAdmin")
+  reviewedAgents              Agent[]
+  uploadedDocumentBatches     DocumentUploadBatch[]
+  requestedApprovals          ApprovalRequest[]     @relation("ApprovalRequestedBy")
+  decidedApprovals            ApprovalRequest[]     @relation("ApprovalDecidedBy")
+  assignedApprovals           ApprovalRequest[]     @relation("ApprovalAssignedTo")
+  resolvedDeductions          LoanRepaymentRecord[]
+  profileImageKey             String?
+  createdAt                   DateTime              @default(now())
+  updatedAt                   DateTime              @updatedAt
+  passwordResetTokenHash      String?
+  passwordResetTokenExpiresAt DateTime?
+  twoFactorMethod             TwoFactorMethod?
+  twoFactorEnabled            Boolean               @default(false)
+  twoFactorSecret             String?
+  twoFactorPendingSecret      String?
+  twoFactorPendingMethod      TwoFactorMethod?
+  twoFactorEmailCodeHash      String?
+  twoFactorEmailCodeExpiresAt DateTime?
 }
 
-model AdminUserRole {
-  adminUserId String
-  roleId      String
-  adminUser   AdminUser @relation(fields: [adminUserId], references: [id], onDelete: Cascade)
-  role        Role      @relation(fields: [roleId], references: [id], onDelete: Cascade)
-
-  @@id([adminUserId, roleId])
+enum TwoFactorMethod {
+  TOTP
+  EMAIL
 }
 
 enum AgentStatus {
@@ -68,14 +101,86 @@ enum AgentStatus {
 }
 
 model Agent {
-  id           String      @id @default(uuid())
-  email        String      @unique
-  phone        String
-  fullName     String
-  passwordHash String?
-  status       AgentStatus @default(PENDING_REVIEW)
-  createdAt    DateTime    @default(now())
-  updatedAt    DateTime    @updatedAt
+  id                          String              @id @default(uuid())
+  email                       String              @unique
+  phone                       String
+  fullName                    String
+  address                     String
+  passwordHash                String?
+  status                      AgentStatus         @default(PENDING_REVIEW)
+  cvKey                       String
+  supportingDocumentKeys      String[]            @default([])
+  gender                      String?
+  city                        String?
+  state                       String?
+  localGovernment             String?
+  nin                         String?
+  ninVerified                 Boolean?
+  ninVerifiedName             String?
+  coverLetter                 String?
+  passportPhotoKey            String?
+  identityDocumentKey         String?
+  mustChangePassword          Boolean             @default(true)
+  hasLoggedIn                 Boolean             @default(false)
+  canOnboardClients           Boolean             @default(false)
+  reviewedBy                  String?
+  reviewedByAdmin             AdminUser?          @relation(fields: [reviewedBy], references: [id])
+  reviewedAt                  DateTime?
+  rejectionReason             String?
+  createdAt                   DateTime            @default(now())
+  updatedAt                   DateTime            @updatedAt
+  onboardedClients            ClientOnboarding[]
+  assignedClients             Client[]            @relation("ClientAssignedAgent")
+  clientLinkRequests          ClientLinkRequest[]
+  loanRequests                LoanRequest[]
+  agentApplication            AgentApplication?
+  passwordResetTokenHash      String?
+  passwordResetTokenExpiresAt DateTime?
+  twoFactorMethod             TwoFactorMethod?
+  twoFactorEnabled            Boolean             @default(false)
+  twoFactorSecret             String?
+  twoFactorPendingSecret      String?
+  twoFactorPendingMethod      TwoFactorMethod?
+  twoFactorEmailCodeHash      String?
+  twoFactorEmailCodeExpiresAt DateTime?
+  passwordResetCodeHash       String?
+  passwordResetCodeExpiresAt  DateTime?
+  changePasswordPendingHash   String?
+  changePasswordCodeHash      String?
+  changePasswordCodeExpiresAt DateTime?
+}
+
+enum AgentApplicationStatus {
+  EMAIL_PENDING
+  EMAIL_VERIFIED
+  SUBMITTED
+}
+
+model AgentApplication {
+  id                  String                 @id @default(uuid())
+  email               String                 @unique
+  status              AgentApplicationStatus @default(EMAIL_PENDING)
+  emailCodeHash       String?
+  emailCodeExpiresAt  DateTime?
+  emailVerifiedAt     DateTime?
+  fullName            String?
+  phone               String?
+  gender              String?
+  address             String?
+  city                String?
+  state               String?
+  localGovernment     String?
+  nin                 String?
+  ninVerified         Boolean?
+  ninVerifiedName     String?
+  coverLetter         String?
+  cvKey               String?
+  passportPhotoKey    String?
+  identityDocumentKey String?
+  submittedAgentId    String?                @unique
+  submittedAgent      Agent?                 @relation(fields: [submittedAgentId], references: [id])
+  createdAt           DateTime               @default(now())
+  updatedAt           DateTime               @updatedAt
 }
 
 enum ClientStatus {
@@ -86,11 +191,31 @@ enum ClientStatus {
 }
 
 model Client {
-  id        String       @id @default(uuid())
-  phone     String       @unique
-  status    ClientStatus @default(PHONE_VERIFIED)
-  createdAt DateTime     @default(now())
-  updatedAt DateTime     @updatedAt
+  id                  String               @id @default(uuid())
+  phone               String               @unique
+  email               String?              @unique
+  status              ClientStatus         @default(PHONE_VERIFIED)
+  createdById         String?
+  createdByAdmin      AdminUser?           @relation("ClientCreatedByAdmin", fields: [createdById], references: [id])
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  /// Repayment capacity override: BASE_PAY keeps basePayAmount, DTI allows dtiPercent of salary.
+  affordabilityMethod AffordabilityMethod?
+  basePayAmount       Decimal?
+  dtiPercent          Decimal?
+  /// The agent who looks after this client now. Starts as the onboarding agent; admins can reassign.
+  assignedAgentId     String?
+  assignedAgent       Agent?               @relation("ClientAssignedAgent", fields: [assignedAgentId], references: [id])
+  /// The admin who owns this client's records now (record scope). Starts as the onboarding/creating admin.
+  assignedAdminId     String?
+  assignedAdmin       AdminUser?           @relation("ClientAssignedAdmin", fields: [assignedAdminId], references: [id])
+
+  onboarding    ClientOnboarding?
+  assignments   ClientAssignment[]
+  linkRequests  ClientLinkRequest[]
+  loanRequests  LoanRequest[]
+  walletEntries WalletEntry[]
+  clientLoans   ClientLoan[]
 }
 
 enum OtpPurpose {
@@ -100,6 +225,7 @@ enum OtpPurpose {
 model OtpCode {
   id         String     @id @default(uuid())
   phone      String
+  email      String?
   codeHash   String
   purpose    OtpPurpose
   expiresAt  DateTime
@@ -128,7 +254,117 @@ model Session {
   expiresAt        DateTime
   revokedAt        DateTime?
   revokedReason    String?
+  /// The bound device this session was opened on (agents and clients).
+  deviceId         String?
 
+  @@index([principalType, principalId])
+}
+
+enum ClientAssignmentKind {
+  AGENT
+  ADMIN
+}
+
+/// Every change of a client's assigned agent or admin, with who did it and why.
+model ClientAssignment {
+  id        String               @id @default(uuid())
+  clientId  String
+  client    Client               @relation(fields: [clientId], references: [id])
+  kind      ClientAssignmentKind
+  fromId    String?
+  toId      String?
+  reason    String
+  /// ADMIN, AGENT (an agent linking a client by the client's code) or SYSTEM.
+  actorType String
+  actorId   String?
+  createdAt DateTime             @default(now())
+
+  @@index([clientId, createdAt])
+}
+
+/// An agent asking to link an unassigned client; the client consents by giving the agent the code.
+model ClientLinkRequest {
+  id         String    @id @default(uuid())
+  clientId   String
+  client     Client    @relation(fields: [clientId], references: [id])
+  agentId    String
+  agent      Agent     @relation(fields: [agentId], references: [id])
+  codeHash   String
+  expiresAt  DateTime
+  attempts   Int       @default(0)
+  consumedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([agentId, createdAt])
+}
+
+enum DeviceStatus {
+  ACTIVE
+  RELEASED
+}
+
+/// A phone an agent or client signs in on. Each account has at most one ACTIVE device
+/// (enforced by a partial unique index in the migration); another device is refused until
+/// an admin releases this one.
+model Device {
+  id                String               @id @default(uuid())
+  principalType     SessionPrincipalType
+  principalId       String
+  /// Stable per-install identifier from the app (Android ID / iOS identifierForVendor, or one the app stores).
+  fingerprint       String
+  /// Only where the OS allows apps to read it (not iOS, not Android 10+ without device-owner rights).
+  imei              String?
+  deviceName        String?
+  brand             String?
+  model             String?
+  platform          String?
+  osVersion         String?
+  appVersion        String?
+  pushToken         String?
+  status            DeviceStatus         @default(ACTIVE)
+  boundAt           DateTime             @default(now())
+  lastSeenAt        DateTime             @default(now())
+  releasedAt        DateTime?
+  releasedByAdminId String?
+  releaseReason     String?
+  releaseProofKey   String?
+  createdAt         DateTime             @default(now())
+
+  @@index([principalType, principalId, status])
+  @@index([fingerprint])
+}
+
+enum DeviceReleaseStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+/// An agent or client asking for their bound device to be released, usually from the new
+/// device they were refused on (which is then bound when an admin approves).
+model DeviceReleaseRequest {
+  id                   String               @id @default(uuid())
+  principalType        SessionPrincipalType
+  principalId          String
+  /// The ACTIVE device to release.
+  deviceId             String?
+  /// The device asked for, when filed from a refused sign-in.
+  requestedFingerprint String?
+  requestedDeviceName  String?
+  requestedBrand       String?
+  requestedModel       String?
+  requestedPlatform    String?
+  requestedImei        String?
+  reason               String?
+  status               DeviceReleaseStatus  @default(PENDING)
+  decidedByAdminId     String?
+  decidedAt            DateTime?
+  decisionReason       String?
+  proofKey             String?
+  createdAt            DateTime             @default(now())
+
+  @@index([status, createdAt])
   @@index([principalType, principalId])
 }
 
@@ -162,6 +398,88 @@ enum AuditActorType {
   SYSTEM
 }
 
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+  FAILED
+}
+
+model ApprovalRequest {
+  id                 String         @id @default(uuid())
+  action             String
+  status             ApprovalStatus @default(PENDING)
+  requiredPermission String
+  targetType         String
+  targetId           String
+  summary            Json
+  payload            Json
+  /// Set only while pending, so one record can't have two open requests for the same action.
+  pendingKey         String?        @unique
+  requestedById      String
+  requestedBy        AdminUser      @relation("ApprovalRequestedBy", fields: [requestedById], references: [id])
+  /// When set, only this admin may decide, whatever their permissions.
+  assignedToId       String?
+  assignedTo         AdminUser?     @relation("ApprovalAssignedTo", fields: [assignedToId], references: [id])
+  decidedById        String?
+  decidedBy          AdminUser?     @relation("ApprovalDecidedBy", fields: [decidedById], references: [id])
+  decisionNote       String?
+  failureReason      String?
+  createdAt          DateTime       @default(now())
+  decidedAt          DateTime?
+
+  @@index([status, requiredPermission])
+  @@index([requestedById])
+  @@index([assignedToId])
+}
+
+model Notification {
+  id                String             @id @default(uuid())
+  category          String
+  title             String
+  body              String
+  link              String
+  targetPermissions String[]
+  recipientAdminId  String?
+  excludeAdminId    String?
+  reads             NotificationRead[]
+  createdAt         DateTime           @default(now())
+
+  @@index([createdAt])
+  @@index([recipientAdminId])
+}
+
+model NotificationRead {
+  notificationId String
+  notification   Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+  adminId        String
+  readAt         DateTime     @default(now())
+
+  @@id([notificationId, adminId])
+}
+
+model Sector {
+  id                  String               @id @default(uuid())
+  /// The agency value on records and loan products, and the sheet name in uploads.
+  code                String               @unique
+  name                String?
+  /// Repayment capacity override: BASE_PAY keeps basePayAmount, DTI allows dtiPercent of salary.
+  affordabilityMethod AffordabilityMethod?
+  basePayAmount       Decimal?
+  dtiPercent          Decimal?
+  createdAt           DateTime             @default(now())
+}
+
+model AlertRecipient {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  name      String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+}
+
 model AuditLog {
   id         String         @id @default(uuid())
   actorType  AuditActorType
@@ -177,4 +495,499 @@ model AuditLog {
   @@index([actorType, actorId])
   @@index([targetType, targetId])
   @@index([action])
+}
+
+enum DocumentType {
+  IPPIS_BROADSHEET
+  REPAYMENT_SCHEDULE
+  DISBURSED_LOANS
+}
+
+enum DocumentBatchStatus {
+  ANALYZING
+  AWAITING_CONFIRMATION
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+model DocumentUploadBatch {
+  id               String              @id @default(uuid())
+  documentType     DocumentType
+  uploadedById     String
+  uploadedBy       AdminUser           @relation(fields: [uploadedById], references: [id])
+  originalFileName String
+  sheetName        String?
+  storedFileName   String?
+  fileSizeBytes    Int?
+  storageKey       String
+  period           String?
+  status           DocumentBatchStatus @default(PENDING)
+  analysis         Json?
+  confirmedAt      DateTime?
+  rowsProcessed    Int                 @default(0)
+  rowsCreated      Int                 @default(0)
+  rowsUpdated      Int                 @default(0)
+  rowsSkipped      Int                 @default(0)
+  warnings         Json?
+  errorMessage     String?
+  snapshotExportId String?             @unique
+  snapshotExport   DataSnapshotExport? @relation(fields: [snapshotExportId], references: [id])
+  startedAt        DateTime?
+  completedAt      DateTime?
+  createdAt        DateTime            @default(now())
+}
+
+model DataSnapshotExport {
+  id            String               @id @default(uuid())
+  documentType  DocumentType
+  recordCount   Int
+  sqlStorageKey String
+  csvStorageKey String
+  sqlUrl        String
+  csvUrl        String
+  generatedAt   DateTime             @default(now())
+  batch         DocumentUploadBatch?
+}
+
+model IppisRecord {
+  id                    String    @id @default(uuid())
+  agency                String
+  staffId               String
+  employeeName          String
+  employeeStatus        String?
+  hireDate              DateTime?
+  dateOfBirth           DateTime?
+  maritalStatus         String?
+  gender                String?
+  jobTitle              String?
+  department            String?
+  subOrganization       String?
+  grade                 String?
+  step                  String?
+  salary                Decimal?
+  paymentThreeMonthsAgo Decimal?
+  paymentTwoMonthsAgo   Decimal?
+  paymentLastMonth      Decimal?
+  phone                 String?
+  bankName              String?
+  accountNumber         String?
+  pfaName               String?
+  pinNumber             String?
+  dateTerminated        DateTime?
+  bvn                   String?
+  legacyId              String?
+  rawFields             Json?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  clientOnboarding ClientOnboarding?
+
+  @@unique([agency, staffId])
+}
+
+enum OnboardingStep {
+  PHONE_VERIFIED
+  IPPIS_LINKED
+  IDENTITY_SUBMITTED
+  DOCUMENTS_SUBMITTED
+  FACE_MATCH_PENDING
+  COMPLETED
+}
+
+enum ClientDocumentType {
+  NIN_CARD
+  WORK_ID
+  PASSPORT_PHOTO
+  SIGNATURE
+}
+
+model ClientOnboarding {
+  id                    String           @id @default(uuid())
+  clientId              String           @unique
+  client                Client           @relation(fields: [clientId], references: [id])
+  ippisRecordId         String           @unique
+  ippisRecord           IppisRecord      @relation(fields: [ippisRecordId], references: [id])
+  employeeName          String
+  agency                String
+  bankName              String?
+  accountNumber         String?
+  employeeStatus        String?
+  legacyId              String?
+  identityDateOfBirth   DateTime?
+  identityGender        String?
+  identityPhoneNumber   String?
+  stateOfOrigin         String?
+  lgaOfOrigin           String?
+  stateOfResidence      String?
+  lgaOfResidence        String?
+  address               String?
+  city                  String?
+  zipCode               String?
+  maritalStatus         String?
+  bvn                   String?
+  nin                   String?
+  bvnSelfie             String?
+  ninSelfie             String?
+  liveSelfieKey         String?
+  identityVerified      Boolean?
+  faceMatchBvnScore     Float?
+  faceMatchNinScore     Float?
+  faceMatchPassed       Boolean?
+  /// Minimum score (0-100) in force when the photos were compared. Null when face comparison
+  /// was switched off at the time, so the photo was kept but not compared.
+  faceMatchMinimumScore Int?
+  step                  OnboardingStep   @default(PHONE_VERIFIED)
+  failureReasons        Json?
+  reviewedBy            String?
+  reviewedByAdmin       AdminUser?       @relation("ClientOnboardingReviewedBy", fields: [reviewedBy], references: [id])
+  onboardedById         String?
+  onboardedByAdmin      AdminUser?       @relation("ClientOnboardingByAdmin", fields: [onboardedById], references: [id])
+  onboardedByAgentId    String?
+  onboardedByAgent      Agent?           @relation(fields: [onboardedByAgentId], references: [id])
+  reviewedAt            DateTime?
+  reviewNote            String?
+  documents             ClientDocument[]
+  createdAt             DateTime         @default(now())
+  updatedAt             DateTime         @updatedAt
+}
+
+model ClientDocument {
+  id                 String             @id @default(uuid())
+  clientOnboardingId String
+  clientOnboarding   ClientOnboarding   @relation(fields: [clientOnboardingId], references: [id])
+  documentType       ClientDocumentType
+  storageKey         String
+  uploadedAt         DateTime           @default(now())
+
+  @@unique([clientOnboardingId, documentType])
+}
+
+model Loan {
+  id                     String                @id @default(uuid())
+  customerId             String                @unique
+  customerName           String
+  accountNumber          String
+  address                String?
+  branch                 String?
+  gender                 String?
+  phone                  String?
+  ippisNumber            String
+  agency                 String?
+  loanAmount             Decimal
+  principalBalance       Decimal
+  disbursementDate       DateTime
+  maturationDate         DateTime
+  effectiveDate          DateTime?
+  moratoriumDays         Int?
+  product                String
+  linkedAccountNumber    String?
+  bvn                    String?
+  interestRatePercent    Decimal
+  accountOfficer         String?
+  hasPreviouslyTakenLoan Boolean               @default(false)
+  /// Set when an app top-up took over this loan's balance; reconciliation stops from then on.
+  settledAt              DateTime?
+  settledByLoanRequestId String?
+  rawFields              Json?
+  createdAt              DateTime              @default(now())
+  updatedAt              DateTime              @updatedAt
+  repaymentVariances     RepaymentVariance[]
+  repaymentRecords       LoanRepaymentRecord[]
+
+  @@index([ippisNumber])
+}
+
+/// Whether a payroll deduction belongs to a loan running in its month, and if not, why.
+enum RepaymentMatchStatus {
+  MATCHED
+  NO_LOAN
+  REQUEST_NOT_DISBURSED
+  BEFORE_DISBURSEMENT
+  AFTER_MATURITY
+  AFTER_SETTLEMENT
+  NO_PERIOD
+}
+
+/// What an admin did with a deduction that matched no loan.
+enum RepaymentResolution {
+  ASSIGNED
+  REFUNDED
+  DISMISSED
+}
+
+model LoanRepaymentRecord {
+  id                  String               @id @default(uuid())
+  agency              String
+  staffId             String
+  period              String?
+  elementName         String
+  elementDetail       String?
+  amount              Decimal
+  rawFields           Json?
+  createdAt           DateTime             @default(now())
+  matchStatus         RepaymentMatchStatus @default(NO_LOAN)
+  /// The loan the deduction counts toward: matched automatically, or assigned by an admin.
+  loanId              String?
+  loan                Loan?                @relation(fields: [loanId], references: [id])
+  clientLoanId        String?
+  clientLoan          ClientLoan?          @relation(fields: [clientLoanId], references: [id])
+  /// Set on assignment when the deduction counts toward a different month than it was uploaded for.
+  appliedPeriod       String?
+  resolution          RepaymentResolution?
+  resolutionNote      String?
+  resolvedById        String?
+  resolvedBy          AdminUser?           @relation(fields: [resolvedById], references: [id])
+  resolvedAt          DateTime?
+  /// The wallet credit made by a refund.
+  refundWalletEntryId String?
+
+  @@unique([agency, staffId, period, elementName])
+  @@index([matchStatus, resolution])
+  @@index([loanId])
+  @@index([clientLoanId])
+}
+
+enum ManagementChargeType {
+  PERCENTAGE
+  FLAT
+}
+
+enum ManagementChargeApplication {
+  DEDUCT_FROM_DISBURSEMENT
+  ADD_TO_REPAYMENT
+}
+
+model ManagementFee {
+  id           String               @id @default(uuid())
+  name         String               @unique
+  type         ManagementChargeType
+  value        Decimal
+  minAmount    Decimal?
+  maxAmount    Decimal?
+  isActive     Boolean              @default(true)
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+  loanProducts LoanProduct[]
+}
+
+model LoanProduct {
+  id                          String                      @id @default(uuid())
+  productName                 String
+  productCode                 String                      @unique
+  sectors                     String[]
+  minimumAmount               Decimal
+  maximumAmount               Decimal
+  minimumTenorMonths          Int
+  maximumTenorMonths          Int
+  interestTiers               Json
+  managementChargeType        ManagementChargeType
+  managementChargeValue       Decimal
+  managementChargeApplication ManagementChargeApplication
+  managementFeeId             String?
+  managementFee               ManagementFee?              @relation(fields: [managementFeeId], references: [id], onDelete: Restrict)
+  minimumServiceMonthsLeft    Int?
+  maximumMonthsInService      Int?
+  isActive                    Boolean                     @default(true)
+  createdAt                   DateTime                    @default(now())
+  updatedAt                   DateTime                    @updatedAt
+}
+
+model LoanSettings {
+  id                    String               @id @default(uuid())
+  retirementAgeYears    Int                  @default(60)
+  maxServiceYears       Int                  @default(35)
+  /// Admin number an agent-assisted client sends their loan code to. Stored as +234XXXXXXXXXX.
+  loanApprovalPhone     String?
+  /// Default repayment capacity, used when neither the client nor their sector has one.
+  affordabilityMethod   AffordabilityMethod?
+  basePayAmount         Decimal?
+  dtiPercent            Decimal?
+  /// Outcome per salary pattern (see salary-pattern.util.ts). Null uses the built-in defaults.
+  salaryPatternOutcomes Json?
+  updatedAt             DateTime             @updatedAt
+}
+
+/// Face comparison during client onboarding: the client's selfie (or the passport photo an agent
+/// or admin uploads) against the BVN and NIN photos. One row, edited from the back office.
+model FaceMatchSettings {
+  id           String   @id @default(uuid())
+  /// Off: the photo is stored and onboarding completes on BVN/NIN verification alone.
+  enabled      Boolean  @default(false)
+  /// Each of the BVN and NIN photos must score at least this (0-100) to pass; below it, the
+  /// client goes to manual review.
+  minimumScore Int      @default(40)
+  updatedAt    DateTime @updatedAt
+}
+
+enum AffordabilityMethod {
+  BASE_PAY
+  DTI
+  /// DTI share of salary, but never leaving the client less than base pay.
+  BASE_PAY_DTI
+}
+
+enum LoanRequestStatus {
+  PENDING
+  CONFIRMED
+  APPROVED
+  DISBURSED
+  REJECTED
+  FAILED
+}
+
+enum LoanRequestType {
+  ORIGINATION
+  TOPUP
+}
+
+model LoanRequest {
+  id                          String                      @id @default(uuid())
+  clientId                    String
+  client                      Client                      @relation(fields: [clientId], references: [id])
+  amount                      Decimal
+  status                      LoanRequestStatus           @default(PENDING)
+  confirmationSmsSentAt       DateTime?
+  confirmedAt                 DateTime?
+  confirmationCodeHash        String?
+  confirmationCodeExpiresAt   DateTime?
+  expiresAt                   DateTime
+  createdAt                   DateTime                    @default(now())
+  updatedAt                   DateTime                    @updatedAt
+  tenorMonths                 Int
+  interestRatePercent         Decimal
+  managementChargeType        ManagementChargeType
+  managementChargeValue       Decimal
+  managementChargeApplication ManagementChargeApplication
+  managementChargeAmount      Decimal
+  rejectionReason             String?
+  approvedAt                  DateTime?
+  disbursedAt                 DateTime?
+  type                        LoanRequestType             @default(ORIGINATION)
+  clientLoan                  ClientLoan?                 @relation("OriginatingRequest")
+  topupTargetId               String?
+  topupTarget                 ClientLoan?                 @relation("TopupRequests", fields: [topupTargetId], references: [id])
+  /// Top-up of a loan from the disbursed-loans broadsheet; the new app loan takes over its balance.
+  topupImportedLoanId         String?
+  /// Balance owed on the loan being topped up when the request was made.
+  topupOutstandingBalance     Decimal?
+  /// How the maximum amount was worked out when the request was made (salary pick, capacity, ratio).
+  affordability               Json?
+  /// Set when an agent made the request for the client. The code then goes to an admin, not back to the app.
+  requestedByAgentId          String?
+  requestedByAgent            Agent?                      @relation(fields: [requestedByAgentId], references: [id], onDelete: SetNull)
+
+  @@index([requestedByAgentId])
+}
+
+enum ClientLoanStatus {
+  ACTIVE
+  CLOSED
+  DEFAULT
+}
+
+model ClientLoan {
+  id                          String                        @id @default(uuid())
+  clientId                    String
+  client                      Client                        @relation(fields: [clientId], references: [id])
+  loanRequestId               String                        @unique
+  loanRequest                 LoanRequest                   @relation("OriginatingRequest", fields: [loanRequestId], references: [id])
+  topupRequests               LoanRequest[]                 @relation("TopupRequests")
+  agency                      String
+  staffId                     String
+  principalAmount             Decimal
+  disbursedAmount             Decimal
+  principalBalance            Decimal
+  tenorMonths                 Int
+  interestRatePercent         Decimal
+  managementChargeType        ManagementChargeType
+  managementChargeValue       Decimal
+  managementChargeApplication ManagementChargeApplication
+  managementChargeAmount      Decimal
+  disbursementDate            DateTime
+  maturationDate              DateTime
+  status                      ClientLoanStatus              @default(ACTIVE)
+  createdAt                   DateTime                      @default(now())
+  updatedAt                   DateTime                      @updatedAt
+  repaymentVariances          ClientLoanRepaymentVariance[]
+  repaymentRecords            LoanRepaymentRecord[]
+}
+
+enum VarianceStatus {
+  MATCHED
+  UNDER_PAID
+  OVER_PAID
+  NO_DEDUCTION_FOUND
+}
+
+model RepaymentVariance {
+  id             String         @id @default(uuid())
+  loanId         String
+  loan           Loan           @relation(fields: [loanId], references: [id])
+  period         String
+  expectedAmount Decimal
+  actualAmount   Decimal
+  variance       Decimal
+  status         VarianceStatus
+  generatedAt    DateTime       @default(now())
+
+  @@unique([loanId, period])
+}
+
+enum VarianceSource {
+  PAYROLL_RECONCILIATION
+  WALLET_APPLICATION
+}
+
+model ClientLoanRepaymentVariance {
+  id             String         @id @default(uuid())
+  clientLoanId   String
+  clientLoan     ClientLoan     @relation(fields: [clientLoanId], references: [id])
+  period         String
+  expectedAmount Decimal
+  actualAmount   Decimal
+  variance       Decimal
+  status         VarianceStatus
+  source         VarianceSource @default(PAYROLL_RECONCILIATION)
+  generatedAt    DateTime       @default(now())
+
+  @@unique([clientLoanId, period])
+}
+
+enum WalletEntryDirection {
+  CREDIT
+  DEBIT
+}
+
+/// Where a wallet movement came from, so it can be grouped and traced back.
+enum WalletEntrySource {
+  /// An admin credit or debit, approved by a second admin. reference = the approval request.
+  MANUAL
+  /// Payroll deducted more than the month's installment. reference = the client loan.
+  LOAN_OVERPAYMENT
+  /// A payroll deduction with no running loan, refunded. reference = the repayment record.
+  DEDUCTION_REFUND
+  /// The client paid toward their loan from the wallet. reference = the client loan.
+  LOAN_REPAYMENT
+}
+
+model WalletEntry {
+  id          String               @id @default(uuid())
+  clientId    String
+  client      Client               @relation(fields: [clientId], references: [id])
+  amount      Decimal
+  direction   WalletEntryDirection
+  description String
+  source      WalletEntrySource    @default(MANUAL)
+  /// The record behind the movement; what it points at depends on source.
+  reference   String?
+  actorType   AuditActorType
+  actorId     String?
+  createdAt   DateTime             @default(now())
+
+  @@index([clientId])
+  @@index([createdAt])
+  @@index([source])
 }

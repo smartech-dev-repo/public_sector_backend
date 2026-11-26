@@ -1,24 +1,29 @@
-import { Body, Controller, HttpCode, Post, Req } from '@nestjs/common';
+import { Body, Controller, HttpCode, Post, Req, UseInterceptors } from '@nestjs/common';
+import { AuditContextInterceptor } from '../../audit/audit-context.interceptor';
+import { Throttle } from '@nestjs/throttler';
 import { Request } from 'express';
 import { ClientAuthService } from './client-auth.service';
 import { RequestOtpDto } from './dto/request-otp.dto';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
-import { getRequestMetadata } from '../../common/request-metadata.util';
+import { getRequestMetadata, getSignInMetadata } from '../../common/request-metadata.util';
 
 @Controller('auth/client')
+@UseInterceptors(AuditContextInterceptor)
 export class ClientAuthController {
   constructor(private readonly clientAuthService: ClientAuthService) {}
 
+  @Throttle({ default: { limit: 5, ttl: 900000 } })
   @Post('otp/request')
   @HttpCode(200)
   async requestOtp(@Body() dto: RequestOtpDto) {
-    await this.clientAuthService.requestOtp(dto.phone);
-    return { sent: true };
+    const { mockCode, emailSent } = await this.clientAuthService.requestOtp(dto.phone, dto.email);
+    return { sent: true, emailSent, ...(mockCode ? { mockCode } : {}) };
   }
 
+  @Throttle({ default: { limit: 5, ttl: 900000 } })
   @Post('otp/verify')
   @HttpCode(200)
   verifyOtp(@Body() dto: VerifyOtpDto, @Req() req: Request) {
-    return this.clientAuthService.verifyOtp(dto.phone, dto.code, getRequestMetadata(req));
+    return this.clientAuthService.verifyOtp(dto.phone, dto.code, getSignInMetadata(req));
   }
 }

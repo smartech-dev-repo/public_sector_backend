@@ -1,0 +1,194 @@
+import { ReconciliationService } from './reconciliation.service';
+import { PrismaService } from '../prisma/prisma.service';
+import { VarianceStatus } from '../generated/prisma/client';
+
+describe('ReconciliationService', () => {
+  let service: ReconciliationService;
+  let prisma: {
+    loan: { findMany: jest.Mock };
+    loanRepaymentRecord: { findMany: jest.Mock };
+    repaymentVariance: { upsert: jest.Mock; findMany: jest.Mock; count: jest.Mock; groupBy: jest.Mock };
+  };
+
+  beforeEach(() => {
+    prisma = {
+      loan: { findMany: jest.fn() },
+      loanRepaymentRecord: { findMany: jest.fn() },
+      repaymentVariance: {
+        groupBy: jest.fn().mockResolvedValue([{ status: 'MATCHED', _count: { _all: 2 } }]),
+        upsert: jest.fn().mockResolvedValue(undefined),
+        findMany: jest.fn(),
+        count: jest.fn(),
+      },
+    };
+    service = new ReconciliationService(prisma as unknown as PrismaService);
+  });
+
+  describe('reconcileAll', () => {
+    const baseLoan = {
+      id: 'loan-1',
+      agency: 'NPF',
+      ippisNumber: 'NPF-001',
+      loanAmount: 100000,
+      interestRatePercent: 12,
+      disbursementDate: new Date('2025-01-01'),
+      maturationDate: new Date('2025-02-01'),
+    };
+
+    it('stops reconciling an imported loan from the month an app top-up took it over', async () => {
+      prisma.loan.findMany.mockResolvedValue([{ ...baseLoan, maturationDate: new Date('2025-06-01'), settledAt: new Date('2025-03-15') }]);
+      prisma.loanRepaymentRecord.findMany.mockResolvedValue([
+        { agency: 'NPF', staffId: 'NPF-001', loanId: 'loan-1', period: '2025-02', amount: 1000 },
+        { agency: 'NPF', staffId: 'NPF-001', loanId: 'loan-1', period: '2025-03', amount: 1000 },
+      ]);
+
+      await service.reconcileAll();
+
+      const periods = prisma.repaymentVariance.upsert.mock.calls.map((call: [{ where: { loanId_period: { period: string } } }]) => call[0].where.loanId_period.period);
+      expect(periods).toEqual(['2025-02']);
+    });
+
+    it('counts only deductions matched or assigned to the loan, an assigned one in its assigned month', async () => {
+      prisma.loan.findMany.mockResolvedValue([{ ...baseLoan, maturationDate: new Date('2025-06-01') }]);
+      prisma.loanRepaymentRecord.findMany.mockResolvedValue([
+        // Same staff number, but matched to no loan: it counts toward nothing.
+        { agency: 'NPF', staffId: 'NPF-001', loanId: null, period: '2025-02', amount: 999 },
+        { agency: 'NPF', staffId: 'NPF-001', loanId: 'loan-1', period: '2025-02', amount: 1000 },
+        { agency: 'NPF', staffId: 'NPF-001', loanId: 'loan-1', period: '2024-11', appliedPeriod: '2025-03', amount: 500, resolution: 'ASSIGNED' },
+        { agency: 'NPF', staffId: 'NPF-001', loanId: 'loan-1', period: '2025-02', amount: 7000, resolution: 'DISMISSED' },
+      ]);
+
+      await service.reconcileAll();
+
+      const actual = Object.fromEntries(
+        prisma.repaymentVariance.upsert.mock.calls.map((call: [{ where: { loanId_period: { period: string } }; create: { actualAmount: number } }]) => [
+          call[0].where.loanId_period.period,
+          call[0].create.actualAmount,
+        ]),
+      );
+      expect(actual).toEqual({ '2025-02': 1000, '2025-03': 500 });
+    });
+
+    it('skips a loan with no agency', async () => {
+      prisma.loan.findMany.mockResolvedValue([{ ...baseLoan, agency: null }]);
+      prisma.loanRepaymentRecord.findMany.mockResolvedValue([]);
+
+      await service.reconcileAll();
+
+      expect(prisma.repaymentVariance.upsert).not.toHaveBeenCalled();
+    });
+
+    it('marks MATCHED when the actual amount is within the ₦1 tolerance of the expected installment', async () => {
+      prisma.loan.findMany.mockResolvedValue([baseLoan]);
+      prisma.loanRepaymentRecord.findMany.mockResolvedValue([
+        { agency: 'NPF', staffId: 'NPF-001', loanId: 'loan-1', period: '2025-01', amount: 112000 },
+      ]);
+
+      await service.reconcileAll();
+
+      // One month at a flat 12% a month: 100,000 × 1.12.
+      expect(prisma.repaymentVariance.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { loanId_period: { loanId: 'loan-1', period: '2025-01' } },
+          create: expect.objectContaining({
+            status: VarianceStatus.MATCHED,
+            expectedAmount: 112000,
+            actualAmount: 112000,
+            variance: 0,
+          }),
+        }),
+      );
+    });
+
+    it('marks UNDER_PAID when the actual amount falls short beyond tolerance', async () => {
+      prisma.loan.findMany.mockResolvedValue([baseLoan]);
+      prisma.loanRepaymentRecord.findMany.mockResolvedValue([
+        { agency: 'NPF', staffId: 'NPF-001', loanId: 'loan-1', period: '2025-01', amount: 50000 },
+      ]);
+
+      await service.reconcileAll();
+
+      expect(prisma.repaymentVariance.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({ create: expect.objectContaining({ status: VarianceStatus.UNDER_PAID }) }),
+      );
+    });
+
+    it('marks OVER_PAID when the actual amount exceeds the expected installment beyond tolerance', async () => {
+      prisma.loan.findMany.mockResolvedValue([baseLoan]);
+      prisma.loanRepaymentRecord.findMany.mockResolvedValue([
+        { agency: 'NPF', staffId: 'NPF-001', loanId: 'loan-1', period: '2025-01', amount: 150000 },
+      ]);
+
+      await service.reconcileAll();
+
+      expect(prisma.repaymentVariance.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({ create: expect.objectContaining({ status: VarianceStatus.OVER_PAID }) }),
+      );
+    });
+
+    it('marks NO_DEDUCTION_FOUND for a period within the loan term that has no matching repayment rows', async () => {
+      prisma.loan.findMany.mockResolvedValue([baseLoan]);
+      prisma.loanRepaymentRecord.findMany.mockResolvedValue([
+        { agency: 'OTHER_AGENCY', staffId: 'X', period: '2025-01', amount: 999 },
+      ]);
+
+      await service.reconcileAll();
+
+      expect(prisma.repaymentVariance.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { loanId_period: { loanId: 'loan-1', period: '2025-01' } },
+          create: expect.objectContaining({ status: VarianceStatus.NO_DEDUCTION_FOUND, actualAmount: 0 }),
+        }),
+      );
+    });
+
+    it("excludes periods outside the loan's disbursement-to-maturation range", async () => {
+      prisma.loan.findMany.mockResolvedValue([baseLoan]);
+      prisma.loanRepaymentRecord.findMany.mockResolvedValue([
+        { agency: 'NPF', staffId: 'NPF-001', loanId: 'loan-1', period: '2024-06', amount: 101000 },
+      ]);
+
+      await service.reconcileAll();
+
+      expect(prisma.repaymentVariance.upsert).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('list', () => {
+    it('applies agency, status, and period filters', async () => {
+      prisma.repaymentVariance.findMany.mockResolvedValue([]);
+      prisma.repaymentVariance.count.mockResolvedValue(0);
+
+      await service.list({ agency: 'NPF', status: VarianceStatus.UNDER_PAID, period: '2025-01' });
+
+      expect(prisma.repaymentVariance.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { status: VarianceStatus.UNDER_PAID, period: '2025-01', loan: { agency: 'NPF' }, generatedAt: undefined },
+        }),
+      );
+    });
+
+    it('applies the generatedAt date range filter', async () => {
+      prisma.repaymentVariance.findMany.mockResolvedValue([]);
+      prisma.repaymentVariance.count.mockResolvedValue(0);
+
+      const generatedFrom = new Date('2025-01-01');
+      const generatedTo = new Date('2025-12-31');
+      await service.list({ generatedFrom, generatedTo });
+
+      expect(prisma.repaymentVariance.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({ where: expect.objectContaining({ generatedAt: { gte: generatedFrom, lte: generatedTo } }) }),
+      );
+    });
+
+    it('computes skip/take from page and limit and reports the total', async () => {
+      prisma.repaymentVariance.findMany.mockResolvedValue([]);
+      prisma.repaymentVariance.count.mockResolvedValue(11);
+
+      const result = await service.list({}, { page: 1, limit: 5 });
+
+      expect(prisma.repaymentVariance.findMany).toHaveBeenCalledWith(expect.objectContaining({ skip: 0, take: 5 }));
+      expect(result.meta).toEqual({ total: 11, page: 1, limit: 5, totalPages: 3 });
+    });
+  });
+});
