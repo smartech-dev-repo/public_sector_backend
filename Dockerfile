@@ -4,7 +4,9 @@
 # No nginx (Dokploy's own Traefik handles routing/TLS) and no
 # docker-compose (this is the only service in the deployment).
 
-FROM node:22.23.4-alpine AS base
+# Node and Alpine both pinned: a bare tag (node:22-alpine) can move to a new Alpine release, which
+# changes the apk packages below (OpenCV included). Bump deliberately.
+FROM node:22.23.5-alpine3.24 AS base
 WORKDIR /app
 
 # ---- deps: full install (incl. devDependencies), needed to build ----
