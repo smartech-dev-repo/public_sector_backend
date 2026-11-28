@@ -19,6 +19,8 @@ import { JwtPayload } from '../auth/jwt-payload.interface';
 import { AuditInterceptor } from '../audit/audit.interceptor';
 import { AdminService } from './admin.service';
 import { UpdateAdminProfileDto } from './dto/update-admin-profile.dto';
+import { PHOTO, multerLimits } from '../upload-validation/upload-policies';
+import { ValidateUpload, ValidatedFile } from '../upload-validation/validate-upload.pipe';
 
 @Controller('admin')
 @UseInterceptors(AuditInterceptor)
@@ -43,22 +45,9 @@ export class AdminController {
   @Post('me/profile-image')
   @UseGuards(JwtAuthGuard, AdminOnlyGuard)
   @UseInterceptors(
-    FileInterceptor('file', {
-      limits: { fileSize: 5 * 1024 * 1024 },
-      fileFilter: (
-        _req: Express.Request,
-        file: Express.Multer.File,
-        callback: (error: Error | null, acceptFile: boolean) => void,
-      ) => {
-        if (!['image/jpeg', 'image/png'].includes(file.mimetype)) {
-          callback(new BadRequestException('Only JPEG or PNG files are allowed'), false);
-          return;
-        }
-        callback(null, true);
-      },
-    }),
+    FileInterceptor('file', { limits: multerLimits(PHOTO) }),
   )
-  async uploadProfileImage(@UploadedFile() file: Express.Multer.File, @Req() req: { user: JwtPayload }) {
+  async uploadProfileImage(@UploadedFile(new ValidateUpload(PHOTO, 'file')) file: ValidatedFile, @Req() req: { user: JwtPayload }) {
     if (!file) {
       throw new BadRequestException('file is required');
     }

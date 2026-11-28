@@ -820,6 +820,51 @@ Optional settings: `FACE_MATCH_PYTHON` (default `python3`),
 `FACE_MATCH_MODELS_DIR`, `FACE_MATCH_CONCURRENCY` (default 2),
 `FACE_MATCH_TIMEOUT_MS` (default 30000).
 
+### Upload validation
+
+Every uploaded file is checked for what it really is, from its bytes (its signature), before
+anything is stored. The file name and the `Content-Type` the uploader sends are not trusted.
+The code is in `src/upload-validation/`.
+
+| Policy | Accepts | Max | Used by |
+|---|---|---|---|
+| `PHOTO` | JPEG, PNG (stored as JPEG) | 5 MB, 40 MP | Admin profile picture, client selfie, applicant passport photo |
+| `KYC_DOCUMENT` | JPEG, PNG, PDF | 5 MB | Client documents (client, agent and admin routes), applicant ID document |
+| `PROOF` | JPEG, PNG, PDF | 5 MB | Device release proof |
+| `CV` | PDF | 5 MB | Applicant CV |
+| `SPREADSHEET` | .xlsx, CSV | 50 MB | IPPIS broadsheet, disbursed loans, repayment schedule (upload and validate) |
+
+A route names its policy: `FileInterceptor('file', { limits: multerLimits(PHOTO) })` plus
+`@UploadedFile(new ValidateUpload(PHOTO, 'file')) file: ValidatedFile` (or `ValidateUploads`
+for several fields). A new upload route must do the same.
+
+What's checked:
+
+- **Type:** the signature must be one the policy allows. A file extension or `Content-Type` that
+  contradicts the bytes is refused; a missing one (no extension, `application/octet-stream`) isn't.
+- **Images:** fully decoded, at most 40 megapixels, then re-encoded. That applies the EXIF rotation
+  and drops all metadata (GPS, camera) and anything hidden after the image data.
+- **PDFs:** must start with `%PDF-` and end with `%%EOF`. Refused if password-protected, or if they
+  contain JavaScript, launch actions, embedded files, XFA forms, rich media or form submission,
+  including inside compressed streams and behind `#xx` name escapes.
+- **.xlsx:** a real workbook (`[Content_Types].xml`, `xl/workbook.xml`). Refused with macros,
+  ActiveX or embedded objects, encryption, or zip-bomb sizes.
+- **CSV:** text, with no NUL bytes or binary content.
+
+Accepted files are stored under a generated key with the real extension, and the bucket object
+gets the real `Content-Type`, so photos and PDFs open in the browser instead of downloading.
+
+| Refused because | Status |
+|---|---|
+| Over the size or pixel limit | 413 |
+| Not an accepted type, or disguised as one | 415 |
+| Damaged, password-protected, or with dangerous content | 422 |
+
+The message tells the uploader what is accepted. A refused file is never stored. Each refusal
+logs one line (`[upload][rejected:<reason>] POST /route field=… user=… claimed=… detected=… size=…`,
+never the content) and records an `upload.rejected` audit event. Three refusals from one account
+(or one IP, for applicants) within 15 minutes email the security alert recipients.
+
 ## Roadmap
 
 See `docs/specs/2026-09-09-public-sector-backend-spec.md` for the full

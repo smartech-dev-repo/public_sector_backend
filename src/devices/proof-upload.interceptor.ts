@@ -1,23 +1,9 @@
-import { BadRequestException } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { PROOF_TYPES } from './device-release.service';
+import { PROOF, multerLimits } from '../upload-validation/upload-policies';
 
-/** Optional multipart field "proof": JPEG, PNG or PDF up to 5 MB. */
+/**
+ * Optional multipart field "proof": JPEG, PNG or PDF up to 5 MB. Multer only caps the size; pair it
+ * with `@UploadedFile(new ValidateUpload(PROOF, 'proof'))`, which checks what the file really is.
+ */
 export const ProofUpload = () =>
-  FileInterceptor('proof', {
-    limits: { fileSize: 5 * 1024 * 1024 },
-    fileFilter: (
-      _req: Express.Request,
-      file: Express.Multer.File,
-      callback: (error: Error | null, accept: boolean) => void,
-    ) => {
-      if (!PROOF_TYPES.includes(file.mimetype)) {
-        callback(
-          new BadRequestException('Proof must be a JPEG, PNG or PDF file'),
-          false,
-        );
-        return;
-      }
-      callback(null, true);
-    },
-  });
+  FileInterceptor('proof', { limits: multerLimits(PROOF) });

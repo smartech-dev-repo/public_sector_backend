@@ -89,7 +89,7 @@ describe('GcsFileStorageProvider', () => {
     await provider.putObject('uploads/file.xlsx', Buffer.from('data'));
 
     expect(bucketMock.file).toHaveBeenCalledWith('uploads/file.xlsx');
-    expect(fileMock.save).toHaveBeenCalledWith(Buffer.from('data'));
+    expect(fileMock.save).toHaveBeenCalledWith(Buffer.from('data'), { contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
   });
 
   it('prefixes the key with GCP_SUB_PATH when configured', async () => {

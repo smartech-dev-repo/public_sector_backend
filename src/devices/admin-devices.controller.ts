@@ -26,6 +26,11 @@ import {
   ReleaseDeviceDto,
 } from './dto/device.dto';
 import { ProofUpload } from './proof-upload.interceptor';
+import { PROOF } from '../upload-validation/upload-policies';
+import {
+  ValidateUpload,
+  ValidatedFile,
+} from '../upload-validation/validate-upload.pipe';
 
 @Controller('admin')
 @UseGuards(JwtAuthGuard, AdminOnlyGuard, PermissionsGuard)
@@ -69,7 +74,8 @@ export class AdminDevicesController {
   release(
     @Param('id') id: string,
     @Body() dto: ReleaseDeviceDto,
-    @UploadedFile() proof: Express.Multer.File | undefined,
+    @UploadedFile(new ValidateUpload(PROOF, 'proof'))
+    proof: ValidatedFile | undefined,
     @Req() req: { user: JwtPayload },
   ) {
     return this.releases.releaseDevice(id, req.user.sub, dto.reason, proof);
@@ -82,7 +88,8 @@ export class AdminDevicesController {
   approve(
     @Param('id') id: string,
     @Body() dto: ReleaseDeviceDto,
-    @UploadedFile() proof: Express.Multer.File | undefined,
+    @UploadedFile(new ValidateUpload(PROOF, 'proof'))
+    proof: ValidatedFile | undefined,
     @Req() req: { user: JwtPayload },
   ) {
     return this.releases.approveRequest(id, req.user.sub, dto.reason, proof);

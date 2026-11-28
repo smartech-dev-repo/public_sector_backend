@@ -8,6 +8,7 @@ import {
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { FileStorageProvider } from './file-storage-provider.interface';
+import { inferContentType } from './content-type.util';
 
 const SIGNED_URL_TTL_SECONDS = 3600;
 
@@ -47,6 +48,10 @@ export abstract class S3CompatibleFileStorageProvider implements FileStorageProv
         Bucket: this.getBucket(),
         Key: key,
         Body: content,
+        // Keys end in the file's real extension (uploads are validated first), so this is the true
+        // type; without it the bucket serves everything as application/octet-stream and browsers
+        // download photos and PDFs instead of showing them.
+        ContentType: inferContentType(key),
       }),
     );
   }

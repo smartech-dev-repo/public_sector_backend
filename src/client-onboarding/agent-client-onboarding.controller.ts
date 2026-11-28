@@ -23,6 +23,8 @@ import { ClientOnboardingService } from './client-onboarding.service';
 import { LinkIppisDto } from './dto/link-ippis.dto';
 import { SubmitIdentityDto } from './dto/submit-identity.dto';
 import { ClientDocumentType } from '../generated/prisma/client';
+import { KYC_DOCUMENT, multerLimits } from '../upload-validation/upload-policies';
+import { ValidateUpload, ValidatedFile } from '../upload-validation/validate-upload.pipe';
 
 @Controller('agent/clients')
 @UseGuards(JwtAuthGuard, AgentOnlyGuard, AgentCanOnboardClientsGuard)
@@ -47,26 +49,12 @@ export class AgentClientOnboardingController {
   @UseGuards(AgentOwnsClientGuard)
   @AuditEvent({ action: 'client.onboarding.document_uploaded', targetType: 'Client', targetId: { param: 'clientId' }, params: ['type'] })
   @UseInterceptors(
-    FileInterceptor('file', {
-      limits: { fileSize: 5 * 1024 * 1024 },
-      fileFilter: (
-        _req: Express.Request,
-        file: Express.Multer.File,
-        callback: (error: Error | null, acceptFile: boolean) => void,
-      ) => {
-        const allowedMimeTypes = ['image/jpeg', 'image/png', 'application/pdf'];
-        if (!allowedMimeTypes.includes(file.mimetype)) {
-          callback(new BadRequestException('Only JPEG, PNG, or PDF files are allowed'), false);
-          return;
-        }
-        callback(null, true);
-      },
-    }),
+    FileInterceptor('file', { limits: multerLimits(KYC_DOCUMENT) }),
   )
   uploadDocument(
     @Param('clientId') clientId: string,
     @Param('type', new ParseEnumPipe(ClientDocumentType)) type: ClientDocumentType,
-    @UploadedFile() file: Express.Multer.File,
+    @UploadedFile(new ValidateUpload(KYC_DOCUMENT, 'file')) file: ValidatedFile,
   ) {
     if (!file) {
       throw new BadRequestException('file is required');

@@ -16,6 +16,9 @@ const FAILED_LOGIN_WINDOW_MS = 15 * 60 * 1000;
 const BLOCKED_ACCESS_ACTION = 'agent.client_access.denied';
 const BLOCKED_ACCESS_THRESHOLD = 3;
 const BLOCKED_ACCESS_WINDOW_MS = 15 * 60 * 1000;
+const UPLOAD_REJECTED_ACTION = 'upload.rejected';
+const UPLOAD_REJECTED_THRESHOLD = 3;
+const UPLOAD_REJECTED_WINDOW_MS = 15 * 60 * 1000;
 
 export interface AlertableEvent {
   action: string;
@@ -56,7 +59,10 @@ export class AuditAlertService {
   async evaluate(event: AlertableEvent): Promise<void> {
     try {
       const subject =
-        ALERT_SUBJECTS[event.action] ?? (await this.failedLoginSubject(event)) ?? (await this.blockedAccessSubject(event));
+        ALERT_SUBJECTS[event.action] ??
+        (await this.failedLoginSubject(event)) ??
+        (await this.blockedAccessSubject(event)) ??
+        (await this.rejectedUploadSubject(event));
       if (!subject) return;
 
       const recipients = await this.recipients();
@@ -85,6 +91,23 @@ export class AuditAlertService {
     } catch (error) {
       this.logger.error(`Could not send audit alert for ${event.action}: ${error instanceof Error ? error.message : error}`);
     }
+  }
+
+  // Several refused files in a row is someone probing with disguised files, not a mistake. Counted
+  // per account, or per IP for applicants who aren't signed in. Fires once, at the threshold.
+  private async rejectedUploadSubject(event: AlertableEvent): Promise<string | null> {
+    if (event.action !== UPLOAD_REJECTED_ACTION || (!event.actorId && !event.ip)) return null;
+
+    const attempts = await this.prisma.auditLog.count({
+      where: {
+        action: UPLOAD_REJECTED_ACTION,
+        ...(event.actorId ? { actorId: event.actorId } : { ip: event.ip }),
+        createdAt: { gte: new Date(Date.now() - UPLOAD_REJECTED_WINDOW_MS) },
+      },
+    });
+    return attempts === UPLOAD_REJECTED_THRESHOLD
+      ? `${UPLOAD_REJECTED_THRESHOLD} refused file uploads from one ${event.actorId ? 'account' : 'IP address'} in 15 minutes`
+      : null;
   }
 
   // Like failed sign-ins, this fires only on the attempt that reaches the threshold.

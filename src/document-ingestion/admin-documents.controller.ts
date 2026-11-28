@@ -48,6 +48,8 @@ import {
 } from './document-templates';
 import { SectorService } from '../sectors/sector.service';
 import { normalizeSectorCode } from '../sectors/sector-code.util';
+import { SPREADSHEET } from '../upload-validation/upload-policies';
+import { ValidateUpload, ValidatedFile } from '../upload-validation/validate-upload.pipe';
 
 @Controller('admin/documents')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
@@ -160,7 +162,7 @@ export class AdminDocumentsController {
   @UseInterceptors(FileInterceptor('file', SPREADSHEET_UPLOAD_OPTIONS))
   async validateUpload(
     @Param('documentType') slug: string,
-    @UploadedFile() file: Express.Multer.File,
+    @UploadedFile(new ValidateUpload(SPREADSHEET)) file: ValidatedFile,
     @Body() dto: ValidateDocumentUploadDto,
     @Req() req: { user: JwtPayload },
   ) {
@@ -230,7 +232,7 @@ export class AdminDocumentsController {
   @UseInterceptors(FileInterceptor('file', SPREADSHEET_UPLOAD_OPTIONS))
   @RequirePermissions('ippis:upload')
   uploadIppisBroadsheet(
-    @UploadedFile() file: Express.Multer.File,
+    @UploadedFile(new ValidateUpload(SPREADSHEET)) file: ValidatedFile,
     @Req() req: { user: JwtPayload },
   ) {
     return this.createAndEnqueue(DocumentType.IPPIS_BROADSHEET, file, req.user.sub);
@@ -240,7 +242,7 @@ export class AdminDocumentsController {
   @UseInterceptors(FileInterceptor('file', SPREADSHEET_UPLOAD_OPTIONS))
   @RequirePermissions('loans:upload')
   uploadDisbursedLoans(
-    @UploadedFile() file: Express.Multer.File,
+    @UploadedFile(new ValidateUpload(SPREADSHEET)) file: ValidatedFile,
     @Req() req: { user: JwtPayload },
   ) {
     return this.createAndEnqueue(DocumentType.DISBURSED_LOANS, file, req.user.sub);
@@ -250,7 +252,7 @@ export class AdminDocumentsController {
   @UseInterceptors(FileInterceptor('file', SPREADSHEET_UPLOAD_OPTIONS))
   @RequirePermissions('repayments:upload')
   uploadRepaymentSchedule(
-    @UploadedFile() file: Express.Multer.File,
+    @UploadedFile(new ValidateUpload(SPREADSHEET)) file: ValidatedFile,
     @Body() dto: UploadRepaymentScheduleDto,
     @Req() req: { user: JwtPayload },
   ) {

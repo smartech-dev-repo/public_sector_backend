@@ -97,6 +97,8 @@ describe('NobusFileStorageProvider', () => {
       Bucket: 'ps-documents',
       Key: 'uploads/file.xlsx',
       Body: Buffer.from('data'),
+      ContentType:
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     });
   });
 

@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Storage } from '@google-cloud/storage';
 import { FileStorageProvider } from './file-storage-provider.interface';
+import { inferContentType } from './content-type.util';
 
 const SIGNED_URL_TTL_MS = 60 * 60 * 1000;
 
@@ -51,7 +52,7 @@ export class GcsFileStorageProvider implements FileStorageProvider {
   }
 
   async putObject(key: string, content: Buffer): Promise<void> {
-    await this.file(key).save(content);
+    await this.file(key).save(content, { contentType: inferContentType(key) });
   }
 
   async getObject(key: string): Promise<Buffer> {

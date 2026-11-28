@@ -76,6 +76,31 @@ describe('AuditAlertService', () => {
     expect(prisma.auditLog.count.mock.calls[0][0].where.actorId).toBe('agent-1');
   });
 
+  it('alerts once, on the third refused upload from one account, counting by account', async () => {
+    const event = { action: 'upload.rejected', actorType: 'CLIENT', actorId: 'client-1', ip: '10.0.0.9' };
+    prisma.auditLog.count.mockResolvedValue(2);
+    await build('sec@x.test').evaluate(event);
+    expect(email.send).not.toHaveBeenCalled();
+
+    prisma.auditLog.count.mockResolvedValue(3);
+    await build('sec@x.test').evaluate(event);
+    expect(email.send).toHaveBeenCalledTimes(1);
+    expect(email.send.mock.calls[0][0].subject).toBe('Security alert: 3 refused file uploads from one account in 15 minutes');
+    expect(prisma.auditLog.count.mock.calls[1][0].where).toMatchObject({ action: 'upload.rejected', actorId: 'client-1' });
+
+    prisma.auditLog.count.mockResolvedValue(4);
+    await build('sec@x.test').evaluate(event);
+    expect(email.send).toHaveBeenCalledTimes(1);
+  });
+
+  it('counts refused uploads by IP for applicants who are not signed in', async () => {
+    prisma.auditLog.count.mockResolvedValue(3);
+    await build('sec@x.test').evaluate({ action: 'upload.rejected', actorType: 'SYSTEM', ip: '203.0.113.5' });
+    expect(prisma.auditLog.count.mock.calls[0][0].where).toMatchObject({ action: 'upload.rejected', ip: '203.0.113.5' });
+    expect(prisma.auditLog.count.mock.calls[0][0].where).not.toHaveProperty('actorId');
+    expect(email.send.mock.calls[0][0].subject).toContain('from one IP address');
+  });
+
   it('prefers the saved list over the server setting, skipping anyone switched off', async () => {
     prisma.alertRecipient.findMany.mockResolvedValue([
       { email: 'on@x.test', isActive: true },

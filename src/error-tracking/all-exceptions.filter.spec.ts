@@ -1,8 +1,9 @@
-import { ArgumentsHost, ForbiddenException } from '@nestjs/common';
+import { ArgumentsHost, ForbiddenException, Logger, PayloadTooLargeException } from '@nestjs/common';
 import { BaseExceptionFilter, HttpAdapterHost } from '@nestjs/core';
 import { AllExceptionsFilter } from './all-exceptions.filter';
 import { ErrorTrackingProvider } from './error-tracking-provider.interface';
 import { AuditLogService } from '../audit/audit-log.service';
+import { UploadRejectedException } from '../upload-validation/upload-rejected.exception';
 
 describe('AllExceptionsFilter', () => {
   let filter: AllExceptionsFilter;
@@ -87,5 +88,63 @@ describe('AllExceptionsFilter', () => {
       { path: '/fallback-path', method: 'POST' },
     );
     baseSpy.mockRestore();
+  });
+
+  describe('refused uploads', () => {
+    const hostFor = (request: object) => ({ switchToHttp: () => ({ getRequest: () => request }) }) as unknown as ArgumentsHost;
+    const rejected = () =>
+      new UploadRejectedException('Only JPEG or PNG files are accepted.', {
+        reason: 'type-mismatch', field: 'selfie', policy: 'photo', claimedType: 'image/jpeg', detectedType: 'pdf', size: 1234,
+      });
+    let warn: jest.SpyInstance;
+
+    beforeEach(() => {
+      jest.spyOn(BaseExceptionFilter.prototype, 'catch').mockImplementation(() => undefined);
+      warn = jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+    });
+
+    afterEach(() => jest.restoreAllMocks());
+
+    it('logs one distinct line and records upload.rejected for a signed-in user', () => {
+      const request = { method: 'POST', headers: {}, ip: '10.0.0.9', path: '/client-onboarding/face-match', route: { path: '/client-onboarding/face-match' }, user: { sub: 'client-1', type: 'client' } };
+
+      filter.catch(rejected(), hostFor(request));
+
+      expect(warn).toHaveBeenCalledTimes(1);
+      expect(warn.mock.calls[0][0]).toBe(
+        '[upload][rejected:type-mismatch] POST /client-onboarding/face-match field=selfie policy=photo user=client:client-1 claimed=image/jpeg detected=pdf size=1234',
+      );
+      expect(auditLogService.recordSafely).toHaveBeenCalledWith(
+        expect.objectContaining({
+          actorType: 'CLIENT',
+          actorId: 'client-1',
+          action: 'upload.rejected',
+          ip: '10.0.0.9',
+          metadata: expect.objectContaining({ reason: 'type-mismatch', field: 'selfie', claimedType: 'image/jpeg', detectedType: 'pdf', size: 1234 }),
+        }),
+      );
+    });
+
+    it('records an anonymous applicant as SYSTEM, keeping the IP', () => {
+      filter.catch(rejected(), hostFor({ method: 'POST', headers: {}, ip: '203.0.113.5', path: '/agent-recruitment/submit', route: { path: '/agent-recruitment/submit' } }));
+
+      expect(warn.mock.calls[0][0]).toContain('user=anonymous');
+      expect(auditLogService.recordSafely).toHaveBeenCalledWith(expect.objectContaining({ actorType: 'SYSTEM', actorId: undefined, ip: '203.0.113.5' }));
+    });
+
+    it("records multer's size limit on a multipart upload", () => {
+      const request = { method: 'POST', headers: { 'content-length': '7000000' }, ip: '10.0.0.9', path: '/admin/me/profile-image', route: { path: '/admin/me/profile-image' }, user: { sub: 'admin-1', type: 'admin' }, is: (type: string) => type === 'multipart/form-data' };
+
+      filter.catch(new PayloadTooLargeException('File too large'), hostFor(request));
+
+      expect(auditLogService.recordSafely).toHaveBeenCalledWith(expect.objectContaining({ action: 'upload.rejected', metadata: expect.objectContaining({ reason: 'too-large', size: 7000000 }) }));
+    });
+
+    it('leaves a non-upload 413 alone', () => {
+      filter.catch(new PayloadTooLargeException(), hostFor({ method: 'POST', headers: {}, path: '/x', is: () => false }));
+
+      expect(warn).not.toHaveBeenCalled();
+      expect(auditLogService.recordSafely).not.toHaveBeenCalled();
+    });
   });
 });

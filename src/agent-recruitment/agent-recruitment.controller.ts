@@ -20,6 +20,8 @@ import { RequestRecruitmentCodeDto } from './dto/request-recruitment-code.dto';
 import { ConfirmRecruitmentCodeDto } from './dto/confirm-recruitment-code.dto';
 import { VerifyRecruitmentNinDto } from './dto/verify-recruitment-nin.dto';
 import { SubmitRecruitmentApplicationDto } from './dto/submit-recruitment-application.dto';
+import { CV, KYC_DOCUMENT, PHOTO, multerLimits } from '../upload-validation/upload-policies';
+import { ValidateUploads, ValidatedFile } from '../upload-validation/validate-upload.pipe';
 
 interface ApplicationRequest {
   applicationId: string;
@@ -62,19 +64,23 @@ export class AgentRecruitmentController {
   @AuditEvent({ action: 'agent.application_submitted', targetType: 'Agent', targetId: { result: 'id' } })
   @UseInterceptors(
     AuditEventInterceptor,
-    FileFieldsInterceptor([
-      { name: 'cv', maxCount: 1 },
-      { name: 'passportPhoto', maxCount: 1 },
-      { name: 'identityDocument', maxCount: 1 },
-    ]),
+    // Every file is checked for what it really is by ValidateUploads below; multer only caps sizes and counts.
+    FileFieldsInterceptor(
+      [
+        { name: 'cv', maxCount: 1 },
+        { name: 'passportPhoto', maxCount: 1 },
+        { name: 'identityDocument', maxCount: 1 },
+      ],
+      { limits: multerLimits(CV, 3) },
+    ),
   )
   submit(
     @Body() dto: SubmitRecruitmentApplicationDto,
-    @UploadedFiles()
+    @UploadedFiles(new ValidateUploads({ cv: CV, passportPhoto: PHOTO, identityDocument: KYC_DOCUMENT }))
     files: {
-      cv?: Express.Multer.File[];
-      passportPhoto?: Express.Multer.File[];
-      identityDocument?: Express.Multer.File[];
+      cv?: ValidatedFile[];
+      passportPhoto?: ValidatedFile[];
+      identityDocument?: ValidatedFile[];
     },
     @Req() req: ApplicationRequest,
   ) {

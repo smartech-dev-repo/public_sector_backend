@@ -23,6 +23,8 @@ import { LinkIppisDto } from './dto/link-ippis.dto';
 import { SubmitIdentityDto } from './dto/submit-identity.dto';
 import { UpdateMaritalStatusDto } from './dto/update-marital-status.dto';
 import { ClientDocumentType } from '../generated/prisma/client';
+import { KYC_DOCUMENT, PHOTO, multerLimits } from '../upload-validation/upload-policies';
+import { ValidateUpload, ValidatedFile } from '../upload-validation/validate-upload.pipe';
 
 @Controller('client/onboarding')
 @UseGuards(JwtAuthGuard, ClientOnlyGuard)
@@ -45,22 +47,9 @@ export class ClientOnboardingController {
   @Post('face-match')
   @AuditEvent({ action: 'client.onboarding.face_match', targetType: 'Client', targetId: 'self', result: ['step', 'identityVerified', 'faceMatchPassed'] })
   @UseInterceptors(
-    FileInterceptor('selfie', {
-      limits: { fileSize: 5 * 1024 * 1024 },
-      fileFilter: (
-        _req: Express.Request,
-        file: Express.Multer.File,
-        callback: (error: Error | null, acceptFile: boolean) => void,
-      ) => {
-        if (!['image/jpeg', 'image/png'].includes(file.mimetype)) {
-          callback(new BadRequestException('The selfie must be a JPEG or PNG image'), false);
-          return;
-        }
-        callback(null, true);
-      },
-    }),
+    FileInterceptor('selfie', { limits: multerLimits(PHOTO) }),
   )
-  submitFaceMatch(@UploadedFile() file: Express.Multer.File, @Req() req: { user: JwtPayload }) {
+  submitFaceMatch(@UploadedFile(new ValidateUpload(PHOTO, 'selfie')) file: ValidatedFile, @Req() req: { user: JwtPayload }) {
     if (!file) {
       throw new BadRequestException('selfie is required');
     }
@@ -81,25 +70,11 @@ export class ClientOnboardingController {
   @Post('documents/:type')
   @AuditEvent({ action: 'client.onboarding.document_uploaded', targetType: 'Client', targetId: 'self', params: ['type'] })
   @UseInterceptors(
-    FileInterceptor('file', {
-      limits: { fileSize: 5 * 1024 * 1024 },
-      fileFilter: (
-        _req: Express.Request,
-        file: Express.Multer.File,
-        callback: (error: Error | null, acceptFile: boolean) => void,
-      ) => {
-        const allowedMimeTypes = ['image/jpeg', 'image/png', 'application/pdf'];
-        if (!allowedMimeTypes.includes(file.mimetype)) {
-          callback(new BadRequestException('Only JPEG, PNG, or PDF files are allowed'), false);
-          return;
-        }
-        callback(null, true);
-      },
-    }),
+    FileInterceptor('file', { limits: multerLimits(KYC_DOCUMENT) }),
   )
   uploadDocument(
     @Param('type', new ParseEnumPipe(ClientDocumentType)) type: ClientDocumentType,
-    @UploadedFile() file: Express.Multer.File,
+    @UploadedFile(new ValidateUpload(KYC_DOCUMENT, 'file')) file: ValidatedFile,
     @Req() req: { user: JwtPayload },
   ) {
     if (!file) {

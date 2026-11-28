@@ -47,14 +47,14 @@ describe('S3FileStorageProvider', () => {
     provider = new S3FileStorageProvider(config);
   });
 
-  it('putObject sends a PutObjectCommand with the bucket, key, and body', async () => {
+  it('putObject sends a PutObjectCommand with the bucket, key, body and content type', async () => {
     (S3Client as unknown as jest.Mock).mockImplementation(() => ({ send: jest.fn().mockResolvedValue({}) }));
     await provider.putObject('uploads/file.xlsx', Buffer.from('data'));
 
     const sendMock = getSendMock();
     expect(sendMock).toHaveBeenCalledWith(expect.any(PutObjectCommand));
     const command = sendMock.mock.calls[0][0] as PutObjectCommand;
-    expect(command.input).toEqual({ Bucket: 'test-bucket', Key: 'uploads/file.xlsx', Body: Buffer.from('data') });
+    expect(command.input).toEqual({ Bucket: 'test-bucket', Key: 'uploads/file.xlsx', Body: Buffer.from('data'), ContentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
   });
 
   it('getObject sends a GetObjectCommand and returns the body as a Buffer', async () => {
